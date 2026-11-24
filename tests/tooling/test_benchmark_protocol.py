@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from esolangs.registry import LANGUAGES
-from scripts.benchmark import MAX_RECORD_CHARS, Worker
+from scripts.benchmark import MAX_RECORD_CHARS, BenchmarkDeadline, Worker
 from tests.support.pick import one_where
 
 
@@ -65,11 +65,39 @@ def test_oversized_record_is_bounded() -> None:
     assert worker.process is None
 
 
+def test_total_deadline_reaps_worker_after_a_row_starts() -> None:
+    from esolangs import ExecutionTimeoutError
+
+    records = [
+        {"phase": "generation"},
+        {"phase": "execution", "index": 0},
+        {"execution": {"row": 0}},
+        {"phase": "execution", "index": 1},
+    ]
+    command = (
+        "import time; "
+        + "; ".join(f"print({json.dumps(record)!r}, flush=True)" for record in records)
+        + "; time.sleep(10)"
+    )
+    worker = Worker([sys.executable, "-c", command])
+    with pytest.raises(
+        ExecutionTimeoutError, match="benchmark total deadline exceeded"
+    ):
+        worker.measure(
+            {"timeout": 5, "table": "01", "all_rows": True},
+            {},
+            5,
+            budget=BenchmarkDeadline(0.5),
+        )
+    assert worker.process is None
+
+
 @pytest.mark.parametrize(
     ("option", "value", "message"),
     [
         ("--generation-timeout", "-1", "--generation-timeout must be positive"),
         ("--timeout", "inf", "--timeout must be finite"),
+        ("--total-timeout", "0", "--total-timeout must be positive"),
         ("--width", "0", "width must be positive"),
         ("--row", "-1", "--row must be nonnegative"),
         ("--scale", "2", "scale is only supported for raster generators"),
@@ -106,6 +134,48 @@ def test_benchmark_checks_arity_before_starting_a_worker(monkeypatch, capsys) ->
     assert f"max-inputs={cap}" in capsys.readouterr().err
 
 
+def test_benchmark_rejects_conflicting_row_selectors_before_reading_stdin(
+    monkeypatch, capsys
+):
+    from scripts import benchmark
+
+    monkeypatch.setattr(
+        benchmark, "_read_truth_table", lambda *_, **__: pytest.fail("read stdin")
+    )
+    with pytest.raises(SystemExit) as caught:
+        benchmark.main(["brainfuck", "-", "--row", "0", "--all-rows"])
+    assert caught.value.code == 2
+    assert (
+        "argument --all-rows: not allowed with argument --row"
+        in capsys.readouterr().err
+    )
+
+
+def test_benchmark_total_deadline_includes_piped_truth_table() -> None:
+    from scripts import benchmark
+
+    command = [
+        sys.executable,
+        benchmark.__file__,
+        "brainfuck",
+        "-",
+        "--total-timeout",
+        "0.25",
+    ]
+    with subprocess.Popen(
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as child:
+        try:
+            assert child.wait(timeout=10) == 124
+        finally:
+            if child.poll() is None:
+                child.kill()
+        stdout, stderr = child.communicate(timeout=5)
+    assert stdout == b""
+    assert b"stdin did not reach EOF" in stderr
+    assert b"--total-timeout" in stderr
+
+
 def test_store_tracking_requires_a_halting_answer_before_stdin(monkeypatch, capsys):
     from scripts import benchmark
 
@@ -136,7 +206,7 @@ def test_benchmark_reports_table_dependent_caps(monkeypatch, capsys) -> None:
     assert "error: table exceeds source cap" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("phase", ["generation", "execution"])
+@pytest.mark.parametrize("phase", ["generation", "execution", "total"])
 def test_benchmark_deadline_reports_phase_and_log(monkeypatch, capsys, phase) -> None:
     import esolangs
     from scripts import benchmark
@@ -153,6 +223,7 @@ def test_benchmark_deadline_reports_phase_and_log(monkeypatch, capsys, phase) ->
     output = capsys.readouterr()
     assert output.out == ""
     assert output.err.splitlines() == [
+        "brainfuck: benchmarking 1 row(s)",
         f"benchmark {phase} deadline exceeded (1s)",
         "[log] notes/benchmarks/worker.log",
     ]
@@ -202,7 +273,10 @@ def test_benchmark_runs_selected_rows_in_request_order(capsys) -> None:
         )
         == 0
     )
-    record = json.loads(capsys.readouterr().out)
+    stdout, stderr = capsys.readouterr()
+    record = json.loads(stdout)
+    assert "benchmarking 3 row(s)" in stderr
+    assert record["total_timeout"] == 300
     assert [entry["row"] for entry in record["executions"]] == [3, 1, 0]
     assert all(entry["matches"] for entry in record["executions"])
     assert record["row"] == 0

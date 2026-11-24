@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import builtins
 import contextlib
 import hashlib
@@ -33,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(1, str(Path(__file__).resolve().parent))
 sys.path.insert(2, str(Path(__file__).resolve().parents[1]))
 
+from benchmark_options import BenchmarkDeadline, argument_parser
 from source_units import source_units
 from verify.process import (
     EXCERPT_BYTES,
@@ -167,6 +167,15 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
         ).hexdigest(),
         "checkout": str(_ROOT),
     }
+
+
+def _request_identity(deadline: BenchmarkDeadline) -> dict[str, Any]:
+    remaining = deadline.remaining()
+    try:
+        return source_identity(timeout=min(60, remaining))
+    except subprocess.TimeoutExpired:
+        deadline.remaining()
+        raise
 
 
 @cache
@@ -745,12 +754,16 @@ def measure(
     balance: bool = False,
     scale: int | None = None,
     settings: esolangs.DialectSettings | None = None,
+    deadline: BenchmarkDeadline | None = None,
 ) -> dict[str, Any]:
-    """Bound generation and each execution row in a reusable supervised worker."""
+    """Bound the request and each phase in a reusable supervised worker."""
+    if all_rows and sample_rows is not None:
+        raise esolangs.ArgumentError("all_rows and sample_rows are mutually exclusive")
     check_timeout(timeout)
     check_timeout(generation_timeout)
+    deadline = deadline or BenchmarkDeadline()
     choices = None if settings is None else dialect_options(language, settings)
-    identity = _EVIDENCE.get() or source_identity()
+    identity = _EVIDENCE.get() or _request_identity(deadline)
     worker = _WORKER.get() or Worker()
     arguments = {
         "language": language,
@@ -768,10 +781,14 @@ def measure(
         "settings": choices,
     }
     try:
-        result = worker.measure(arguments, identity, generation_timeout)
-        if _EVIDENCE.get() is None and source_identity() != identity:
+        result = worker.measure(
+            arguments, identity, generation_timeout, budget=deadline
+        )
+        if _EVIDENCE.get() is None and _request_identity(deadline) != identity:
             raise RuntimeError("checkout changed during benchmark")
+        deadline.remaining()
         result["generation_timeout"] = generation_timeout
+        result["total_timeout"] = deadline.seconds
         return result
     finally:
         if _WORKER.get() is None:
@@ -780,44 +797,7 @@ def measure(
 
 def main(argv: list[str] | None = None) -> int:
     """Print the evidence; fail if any requested row is wrong or undecided."""
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument("language")
-    parser.add_argument(
-        "truth_table",
-        help="one output bit per input row: 0110 is two-input XOR; '-' reads stdin",
-    )
-    parser.add_argument("--repeat", type=int, default=3)
-    parser.add_argument(
-        "--row", type=int, action="append", help="input row (repeatable)"
-    )
-    parser.add_argument("--step-cap", type=int, default=2_000_000)
-    bounds = parser.add_mutually_exclusive_group()
-    bounds.add_argument("--timeout", type=float, default=30.0)
-    bounds.add_argument(
-        "--no-timeout", action="store_const", dest="timeout", const=None
-    )
-    parser.add_argument("--generation-timeout", type=float, default=30.0)
-    parser.add_argument("--all-rows", action="store_true")
-    layout = parser.add_mutually_exclusive_group()
-    layout.add_argument("--width", type=int, help="request a column width")
-    layout.add_argument("--balance", action="store_true", help="balance the layout")
-    parser.add_argument("--scale", type=int, help="replicate raster pixels")
-    parser.add_argument(
-        "-s", "--settings", action="append", help="dialect overrides as JSON"
-    )
-    parser.add_argument(
-        "--set",
-        action="append",
-        default=[],
-        help="repeatable dialect KEY=VALUE override",
-    )
-    parser.add_argument(
-        "--track-store",
-        action="store_true",
-        help="sample stores; languages with a payload split report integers too",
-    )
+    parser = argument_parser(__doc__ or "")
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
         parser.error("--repeat and --step-cap must be positive")
@@ -827,6 +807,7 @@ def main(argv: list[str] | None = None) -> int:
         declaration = LANGUAGES[resolve(args.language)]
         check_timeout(args.timeout, "--timeout")
         check_timeout(args.generation_timeout, "--generation-timeout")
+        deadline = BenchmarkDeadline(args.total_timeout)
         check_width(args.width)
         _check_generation_scale(declaration, args.scale)
     except ValueError as exc:
@@ -841,17 +822,28 @@ def main(argv: list[str] | None = None) -> int:
     settings = _settings_of(
         _settings_arguments(options, args.set), language=declaration.name
     )
-    table = (
-        _read_truth_table(declaration) if args.truth_table == "-" else args.truth_table
-    )
     try:
-        backend.check_arity(declaration.name, _validate_truth_table(table))
-    except ValueError as exc:
-        parser.error(str(exc))
-    rows = args.row or [len(table) - 1]
-    if any(not 0 <= row < len(table) for row in rows):
-        parser.error(f"--row must be in [0, {len(table) - 1}]")
-    try:
+        table = args.truth_table
+        if table == "-":
+            table = _read_truth_table(
+                declaration,
+                timeout=deadline.remaining(),
+                timeout_flag="--total-timeout",
+            )
+        try:
+            backend.check_arity(declaration.name, _validate_truth_table(table))
+        except ValueError as exc:
+            parser.error(str(exc))
+        rows = args.row or [len(table) - 1]
+        if any(not 0 <= row < len(table) for row in rows):
+            parser.error(f"--row must be in [0, {len(table) - 1}]")
+        sample = tuple(dict.fromkeys(rows)) if args.row else None
+        count = len(table) if args.all_rows else len(sample or rows)
+        print(
+            f"{declaration.name}: benchmarking {count} row(s)",
+            file=sys.stderr,
+            flush=True,
+        )
         result = measure(
             declaration.name,
             table,
@@ -859,9 +851,7 @@ def main(argv: list[str] | None = None) -> int:
             row=rows[-1],
             step_cap=args.step_cap,
             all_rows=args.all_rows,
-            sample_rows=tuple(dict.fromkeys(rows))
-            if args.row and not args.all_rows
-            else None,
+            sample_rows=sample,
             timeout=args.timeout,
             generation_timeout=args.generation_timeout,
             track_store=args.track_store,
@@ -869,7 +859,10 @@ def main(argv: list[str] | None = None) -> int:
             balance=args.balance,
             scale=args.scale,
             settings=settings,
+            deadline=deadline,
         )
+        payload = json.dumps(result, indent=2, sort_keys=True)
+        deadline.remaining()
     except (esolangs.ArgumentError, esolangs.GeneratorCapError) as exc:
         parser.error(str(exc))
     except (esolangs.ExecutionTimeoutError, esolangs.ProgramError) as exc:
@@ -878,7 +871,7 @@ def main(argv: list[str] | None = None) -> int:
             if note.startswith("[log] "):
                 print(note.partition("\n")[0], file=sys.stderr)
         return 1
-    print(json.dumps(result, indent=2, sort_keys=True))
+    print(payload)
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
 
 
@@ -1027,13 +1020,35 @@ class Worker:
             if check_log and self.log_overflow.is_set():
                 raise RuntimeError("benchmark diagnostic byte limit exceeded")
 
+    def _receive(
+        self,
+        phase: str,
+        limit: float | None,
+        deadline: float | None,
+        budget: BenchmarkDeadline,
+    ) -> dict[str, Any]:
+        """Read one worker record within both the phase and request deadlines."""
+        line = budget.wait_for_record(self.messages, phase, limit, deadline)
+        if self.log_overflow.is_set():
+            raise RuntimeError("benchmark diagnostic byte limit exceeded")
+        if line is None:
+            raise RuntimeError("benchmark worker exited without evidence")
+        message = json.loads(line)
+        if not isinstance(message, dict):
+            raise RuntimeError("invalid benchmark worker record")
+        return message
+
     def measure(
         self,
         arguments: dict[str, Any],
         identity: dict[str, Any],
         generation_timeout: float | None,
+        *,
+        budget: BenchmarkDeadline | None = None,
     ) -> dict[str, Any]:
         """Measure one request through the worker, killing its tree on a deadline."""
+        budget = budget or BenchmarkDeadline()
+        budget.remaining()
         process = self.start()
         phase, limit = "generation", generation_timeout
         deadline = None if limit is None else time.monotonic() + limit
@@ -1065,22 +1080,7 @@ class Worker:
             self.writer = threading.Thread(target=send, daemon=True)
             self.writer.start()
             while True:
-                remaining = (
-                    None if deadline is None else max(0.0, deadline - time.monotonic())
-                )
-                try:
-                    line = self.messages.get(timeout=remaining)
-                except queue.Empty:
-                    raise esolangs.ExecutionTimeoutError(
-                        f"benchmark {phase} deadline exceeded ({limit:g}s)"
-                    ) from None
-                if self.log_overflow.is_set():
-                    raise RuntimeError("benchmark diagnostic byte limit exceeded")
-                if line is None:
-                    raise RuntimeError("benchmark worker exited without evidence")
-                message = json.loads(line)
-                if not isinstance(message, dict):
-                    raise RuntimeError("invalid benchmark worker record")
+                message = self._receive(phase, limit, deadline, budget)
                 if "phase" in message:
                     next_phase = message["phase"]
                     if (

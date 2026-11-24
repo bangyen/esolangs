@@ -343,10 +343,18 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"outputs": dumped, "seconds": seconds}))
         return 0
     sys.path.insert(0, str(ROOT / "src"))
-    from esolangs.registry import resolve
+    from esolangs.registry import LANGUAGES, resolve
 
     try:
         name = resolve(args.language)
+        if not LANGUAGES[name].has_backend:
+            raise ValueError(f"{name} has no Boolean generator")
+        witnesses = _construction_tables(name, args.max_n) if not exhaustive else None
+        if witnesses is not None and not witnesses:
+            raise ValueError(
+                f"{name}: no generation requests; use --max-n 1 "
+                "or add construction witnesses"
+            )
         replacement = (
             (_mutant_target(name, args.mutant_target), _read_mutant(args.mutant))
             if args.mutant is not None
@@ -359,7 +367,8 @@ def main(argv: list[str] | None = None) -> int:
             old_src = _checkout(args.old, Path(scratch) / "old")
         except ValueError as error:
             parser.error(str(error))
-        witnesses = _construction_tables(name, args.max_n)
+        if witnesses is None:
+            witnesses = _construction_tables(name, args.max_n)
         requests = exhaustive + len(witnesses)
         passes = (6 if args.speed else 2) + (args.mutant is not None)
         print(

@@ -393,7 +393,7 @@ def test_benchmark_uses_artifacts_without_source_facades(language):
 
 def test_checkout_change_invalidates_benchmark(monkeypatch) -> None:
     identities = iter([{"commit": "before"}, {"commit": "after"}])
-    monkeypatch.setattr(b, "source_identity", lambda: next(identities))
+    monkeypatch.setattr(b, "source_identity", lambda **_: next(identities))
     with pytest.raises(RuntimeError, match="checkout changed"):
         b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=100)
 

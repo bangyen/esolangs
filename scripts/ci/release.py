@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import gzip
 import importlib.util
-import io
 import json
 import os
 import re
@@ -31,32 +30,30 @@ ROOT = Path(__file__).resolve().parents[2]
 def normalize(path: Path, epoch: int) -> None:
     """Preserve payloads while fixing gzip and tar metadata deterministically."""
     path = path.resolve(strict=True)
-    buffer = io.BytesIO()
-    with (
-        tarfile.open(path, "r:gz") as source,
-        tarfile.open(fileobj=buffer, mode="w", format=tarfile.PAX_FORMAT) as target,
-    ):
-        for member in source.getmembers():
-            member.mtime = epoch
-            member.uid = member.gid = 0
-            member.uname = member.gname = ""
-            member.pax_headers = {
-                key: value
-                for key, value in member.pax_headers.items()
-                if key not in {"mtime", "atime", "ctime"}
-            }
-            target.addfile(
-                member, source.extractfile(member) if member.isfile() else None
-            )
     with tempfile.TemporaryDirectory(dir=path.parent) as scratch:
         staged = Path(scratch) / path.name
         with (
+            tarfile.open(path, "r:gz") as source,
             staged.open("wb") as stream,
             gzip.GzipFile(
                 filename="", mode="wb", fileobj=stream, mtime=epoch
             ) as compressed,
+            tarfile.open(
+                fileobj=compressed, mode="w|", format=tarfile.PAX_FORMAT
+            ) as target,
         ):
-            compressed.write(buffer.getvalue())
+            for member in source:
+                member.mtime = epoch
+                member.uid = member.gid = 0
+                member.uname = member.gname = ""
+                member.pax_headers = {
+                    key: value
+                    for key, value in member.pax_headers.items()
+                    if key not in {"mtime", "atime", "ctime"}
+                }
+                target.addfile(
+                    member, source.extractfile(member) if member.isfile() else None
+                )
         staged.chmod(stat.S_IMODE(path.stat().st_mode))
         staged.replace(path)
 

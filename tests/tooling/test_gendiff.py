@@ -80,6 +80,38 @@ def test_matching_errors_without_a_program_fail(monkeypatch, capsys) -> None:
     assert "no matching successful generation pairs" in captured.err
 
 
+@pytest.mark.parametrize("case", ["interpreter-only", "empty"])
+def test_unusable_request_fails_before_checkout(monkeypatch, capsys, case):
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: pytest.fail("checkout"))
+    if case == "interpreter-only":
+        name = next(name for name, lang in LANGUAGES.items() if not lang.has_backend)
+        args = [name]
+        message = f"{name} has no Boolean generator"
+    else:
+        monkeypatch.setattr(gendiff, "_construction_tables", lambda *_: {})
+        args = [REFERENCE, "--max-n", "0"]
+        message = "no generation requests"
+    with pytest.raises(SystemExit) as caught:
+        gendiff.main(args)
+    assert caught.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+def test_zero_exhaustive_arity_accepts_named_witnesses(monkeypatch, capsys):
+    witness = {"named witness": ("01", {})}
+    monkeypatch.setattr(gendiff, "_construction_tables", lambda *_: witness)
+    monkeypatch.setattr(gendiff, "_checkout", lambda *_: REPO_ROOT / "src")
+
+    def dump(_source, _name, max_n, witnesses):
+        assert max_n == 0
+        assert witnesses == witness
+        return {"named witness": "{}"}, gendiff.Timings(1, 1)
+
+    monkeypatch.setattr(gendiff, "_dump", dump)
+    assert gendiff.main([REFERENCE, "--max-n", "0"]) == 0
+    assert "1 generation requests per pass" in capsys.readouterr().out
+
+
 def test_missing_baseline_fails_before_generator_witnesses(monkeypatch, capsys):
     monkeypatch.setattr(
         gendiff, "_construction_tables", lambda *_: pytest.fail("corpus")

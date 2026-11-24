@@ -883,7 +883,12 @@ def _read_stdin(
         _fail(input_read_error(exc))
 
 
-def _read_truth_table(declaration: LanguageDeclaration | None = None) -> str:
+def _read_truth_table(
+    declaration: LanguageDeclaration | None = None,
+    *,
+    timeout: float | None = None,
+    timeout_flag: str = "",
+) -> str:
     """Read a UTF-8 table, allowing one leading BOM and outer whitespace."""
     pipe_check = None
     backend = None if declaration is None else declaration.backend
@@ -912,7 +917,9 @@ def _read_truth_table(declaration: LanguageDeclaration | None = None) -> str:
         pipe_check = check_chunk
     return (
         _read_stdin(
+            timeout,
             hint="; finish the truth table or close stdin",
+            timeout_flag=timeout_flag,
             terminal_prompt="Enter a truth table, then signal EOF.\n",
             pipe_check=pipe_check,
         )

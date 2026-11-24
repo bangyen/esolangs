@@ -152,6 +152,32 @@ def test_normalize_leaves_original_if_compression_fails(tmp_path, monkeypatch) -
     assert list(tmp_path.iterdir()) == [archive]
 
 
+def test_normalize_streams_members_in_archive_order(tmp_path, monkeypatch) -> None:
+    archive = tmp_path / "source.tar.gz"
+    members = {"package/z": b"x" * (64 * 1024), "package/a": b"last"}
+    with tarfile.open(archive, "w:gz") as source:
+        for name, payload in members.items():
+            member = tarfile.TarInfo(name)
+            member.size = len(payload)
+            source.addfile(member, io.BytesIO(payload))
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            tarfile.TarFile,
+            "getmembers",
+            lambda _: pytest.fail("read every header first"),
+        )
+        smoke.normalize(archive, 1700000000)
+    normalized = archive.read_bytes()
+    smoke.normalize(archive, 1700000000)
+    assert archive.read_bytes() == normalized
+    with tarfile.open(archive) as source:
+        assert source.getnames() == list(members)
+        for member in source:
+            content = source.extractfile(member)
+            assert content is not None
+            assert content.read() == members[member.name]
+
+
 def test_release_notes_are_the_tag_changelog_section() -> None:
     changelog = "# Changelog\n\n## 1.1.0\n\n- New.\n\n## 1.0.0\n\n- Old.\n"
     assert smoke.notes("v1.1.0", changelog) == "- New.\n"
