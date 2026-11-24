@@ -6,6 +6,7 @@ import os
 import shlex
 import sys
 from ast import literal_eval
+from codecs import BOM_UTF8
 from dataclasses import replace
 from io import StringIO
 from pathlib import Path
@@ -69,6 +70,29 @@ def test_native_run_keeps_json_with_only_a_similar_format_marker(tmp_path, capsy
     output, error = call_both(["run", REFERENCE, str(path)], capsys, stdin="A")
     assert output == "\x00"
     assert error == ""
+
+
+@pytest.mark.parametrize("bom_count", [1, 2])
+def test_run_reports_a_bom_before_parsing_portable_json(tmp_path, capsys, bom_count):
+    path = tmp_path / "portable.json"
+    record = esolangs.to_json(REFERENCE, "+.").encode("utf-8")
+    path.write_bytes(BOM_UTF8 * bom_count + record)
+    for flags in ([], ["--artifact"]):
+        output, error = _failure(
+            ["run", *flags, REFERENCE, str(path)], capsys, stdin="A"
+        )
+        assert output == ""
+        assert str(path) in error
+        assert "remove the UTF-8 BOM" in error
+        assert "remove --artifact" not in error
+    path.write_bytes(record)
+    assert call_main(["run", "--artifact", REFERENCE, str(path)], capsys) == "\x01"
+
+
+def test_a_bom_prefixed_native_program_keeps_its_source_behavior(tmp_path, capsys):
+    path = tmp_path / "native.bf"
+    path.write_bytes(BOM_UTF8 + b"{+.}")
+    assert call_main(["run", REFERENCE, str(path)], capsys) == "\x01"
 
 
 @pytest.mark.parametrize("escaped_format", [False, True])

@@ -147,6 +147,27 @@ def _saved_template_hint(language: str, path: str, catalog: Catalog) -> str:
     )
 
 
+def _run_source_command(
+    language: str, path: str, catalog: Catalog, *, portable: bool = False
+) -> str | None:
+    """Render a run command when its operands are printable."""
+    encoding = _display_encoding(sys.stderr)
+    operand = _as_argument(language, catalog=catalog, encoding=encoding)
+    filename = shell_argument(path, encoding=encoding)
+    if operand is None or filename is None:
+        return None
+    if operand.startswith("-- "):
+        filename = filename.removeprefix("-- ")
+    option = " --artifact" if portable else ""
+    return f"esolangs run{option} {operand} {filename}"
+
+
+def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
+    hint = "remove --artifact to run native source"
+    command = _run_source_command(language, path, catalog)
+    return f"{hint}, for example: {command}" if command else hint
+
+
 #: The flag that raises each bound ``run`` can report.
 _BOUND_FLAGS = {
     "execution_timeout": "--execution-timeout",

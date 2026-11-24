@@ -11,7 +11,7 @@ import select
 import stat
 import sys
 import threading
-from codecs import IncrementalEncoder, lookup
+from codecs import BOM_UTF8, IncrementalEncoder, lookup
 from collections.abc import Buffer, Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager, nullcontext, suppress
 from contextvars import ContextVar, copy_context
@@ -42,6 +42,8 @@ from esolangs.cli.hints import (
     _cli_error_text,
     _display_encoding,
     _exit_code,
+    _native_run_hint,
+    _run_source_command,
     _saved_template_hint,
     _timeout_text,
 )
@@ -81,7 +83,6 @@ from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 from esolangs.runtime.source_hints import (
     display_label,
-    shell_argument,
     source_read_error,
     with_hint,
 )
@@ -227,38 +228,30 @@ def _read_program(
         _fail(exc)
 
 
-def _run_source_command(
-    language: str, path: str, catalog: Catalog, *, portable: bool = False
-) -> str | None:
-    """Render a run command when its operands are printable."""
-    encoding = _display_encoding(sys.stderr)
-    operand = _as_argument(language, catalog=catalog, encoding=encoding)
-    filename = shell_argument(path, encoding=encoding)
-    if operand is None or filename is None:
-        return None
-    if operand.startswith("-- "):
-        filename = filename.removeprefix("-- ")
-    option = " --artifact" if portable else ""
-    return f"esolangs run{option} {operand} {filename}"
-
-
-def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
-    hint = "remove --artifact to run native source"
-    command = _run_source_command(language, path, catalog)
-    return f"{hint}, for example: {command}" if command else hint
+def _portable_bom_error(label: str) -> ProgramError:
+    return with_hint(
+        ProgramError(f"{label}: portable JSON starts with a UTF-8 BOM"),
+        "remove the UTF-8 BOM from the portable JSON and retry",
+    )
 
 
 def _reject_portable_source(
     data: bytes, path: str, label: str, catalog: Catalog
 ) -> None:
     """Stop a portable envelope from reaching a native interpreter."""
-    if not data.lstrip().startswith(b"{"):
+    start = 0
+    while data.startswith(BOM_UTF8, start):
+        start += len(BOM_UTF8)
+    document = data[start:]
+    if not document.lstrip().startswith(b"{"):
         return
     from esolangs.portable import _portable_record_header
     from esolangs.registry._catalog import resolve_origin
 
-    if (header := _portable_record_header(data)) is None:
+    if (header := _portable_record_header(document)) is None:
         return
+    if start:
+        raise _portable_bom_error(label)
     recorded, is_template = header
     message = f"{label} contains a portable JSON artifact"
     if (owner := resolve_origin(recorded, catalog=catalog)) is None:
@@ -350,6 +343,8 @@ def _decode_portable_record(
     """Read a portable program or template document under the caller's bounds."""
     from esolangs import from_json
 
+    if data.startswith(BOM_UTF8):
+        raise _portable_bom_error("stdin" if path == "-" else display_label(path))
     try:
         document = decode_utf8(data)
     except UnicodeDecodeError as error:

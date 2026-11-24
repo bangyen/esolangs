@@ -1,12 +1,14 @@
 """Retain verification evidence when the producing worktree is removed."""
 
+import hashlib
 import json
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
-from scripts.verify.receipts import AcceptanceRun, archive, validate
+from scripts.verify.receipts import AcceptanceRun, archive, digest, validate
 from tests.tooling.receipt_support import _checkout, completed
 
 
@@ -18,6 +20,22 @@ def _git(root, *args):
         text=True,
         timeout=10,
     ).stdout.strip()
+
+
+def test_evidence_digest_reads_the_complete_file_without_a_snapshot(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "evidence"
+    payload = bytes(range(256)) * 2048 + b"tail"
+    path.write_bytes(payload)
+
+    def read_bytes(_path):
+        pytest.fail("digest tried to load the whole file")
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    assert digest(path) == hashlib.sha256(payload).hexdigest()
+    with pytest.raises(FileNotFoundError):
+        digest(tmp_path / "missing")
 
 
 def _commit(root, message):

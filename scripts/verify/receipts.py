@@ -33,8 +33,9 @@ class _PytestExecution(NamedTuple):
 
 
 def digest(path: Path) -> str:
-    """Hash the complete artifact, refusing missing evidence."""
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """Hash the complete artifact in bounded memory."""
+    with path.open("rb") as source:
+        return hashlib.file_digest(source, "sha256").hexdigest()
 
 
 def _git(root: Path, *args: str) -> str:

@@ -349,6 +349,7 @@ def _smoke_files() -> None:
         source.write_text(",>,<.", encoding="utf-8")
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0011"
         _smoke_portable_artifact(source.with_suffix(".json"))
+        _smoke_saved_template(source.parent)
 
 
 def _smoke_portable_artifact(target: Path) -> None:
@@ -393,6 +394,39 @@ def _smoke_portable_artifact(target: Path) -> None:
     for row, expected in enumerate(table):
         stdin = esolangs.encode_inputs(language, [row >> 1, row & 1])
         output = _cli(["run", "--artifact", language, str(target)], stdin)
+        assert esolangs.read_answer(language, output) == expected, (language, row)
+
+
+def _smoke_saved_template(directory: Path) -> None:
+    """Save one XOR template and fill and run every row through the installed CLI."""
+    import esolangs
+
+    (language,) = _first_languages(
+        lambda facts: facts.parameterized and facts.answer_mode == "output",
+        1,
+    )
+    table = "0110"
+    template = directory / "xor template.json"
+    template.write_text(
+        _cli(["generate", "--artifact", language, table]), encoding="utf-8"
+    )
+    filled = directory / "filled.json"
+    for row, expected in enumerate(table):
+        filled.write_text(
+            _cli(
+                [
+                    "generate",
+                    "--from-template",
+                    str(template),
+                    "--bits",
+                    f"{row:02b}",
+                    "--artifact",
+                    language,
+                ]
+            ),
+            encoding="utf-8",
+        )
+        output = _cli(["run", "--artifact", language, str(filled)])
         assert esolangs.read_answer(language, output) == expected, (language, row)
 
 

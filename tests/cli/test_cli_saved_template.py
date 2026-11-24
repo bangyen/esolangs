@@ -84,6 +84,18 @@ def test_saved_template_can_have_zero_bindings(language, capsys) -> None:
     assert language.read_answer(output) == "1"
 
 
+def test_fill_reports_a_bom_on_saved_template_stdin(language, capsys):
+    document = call_main(["generate", "--artifact", language.name, "0110"], capsys)
+    output, error = _failure(
+        ["generate", "--from-template=-", "--bits=01", language.name],
+        capsys,
+        stdin="\ufeff" + document,
+    )
+    assert output == ""
+    assert "stdin: portable JSON starts with a UTF-8 BOM" in error
+    assert "remove the UTF-8 BOM" in error
+
+
 @pytest.mark.parametrize(
     ("options", "message"),
     [

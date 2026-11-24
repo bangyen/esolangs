@@ -18,6 +18,11 @@ def test_generator_batch_executes_all_rows() -> None:
     smoke._generator_process("Brainfuck", image_extra=True)
 
 
+@pytest.mark.medium
+def test_saved_template_smoke_runs_all_rows_through_the_cli(tmp_path) -> None:
+    smoke._smoke_saved_template(tmp_path)
+
+
 def test_generator_batch_rejects_a_wrong_table(monkeypatch) -> None:
     monkeypatch.setattr(smoke, "_evaluator", lambda: lambda *_args, **_kwargs: "0000")
     with pytest.raises(AssertionError, match="Brainfuck"):
