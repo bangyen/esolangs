@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from scripts import new_language
+from tests.support.reference import REFERENCE
 
 
 @pytest.fixture
@@ -155,6 +156,23 @@ def test_finish_still_runs_the_gate_past_open_steps(
     assert new_language.finish("Tiny") == 1
     assert ran == [1]
     assert "curation unassessed" in capsys.readouterr().out
+
+
+def test_bounds_generates_each_measured_table_once(monkeypatch: pytest.MonkeyPatch):
+    import esolangs
+    from tests.proofs.measurement import tables
+
+    generate = esolangs.generate
+    generated = []
+
+    def observe(name, table, **options):
+        generated.append(table)
+        return generate(name, table, **options)
+
+    monkeypatch.setattr(esolangs, "generate", observe)
+    (result,) = new_language.bounds(REFERENCE, range(1, 2))
+    assert generated == list(tables(REFERENCE, 1))
+    assert result[0] == 1
 
 
 @pytest.mark.parametrize("gate_status", [0, 1])

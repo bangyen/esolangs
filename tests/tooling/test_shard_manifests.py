@@ -86,6 +86,21 @@ def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     check(paths, ["a", "b", "serial"], "slow", 2)
 
 
+@pytest.mark.parametrize("variable", ["GITHUB_RUN_ID", "GITHUB_SHA"])
+def test_shard_evidence_must_match_active_ci_run(tmp_path, monkeypatch, variable):
+    monkeypatch.setenv("GITHUB_RUN_ID", "100")
+    monkeypatch.setenv("GITHUB_SHA", "a" * 40)
+    paths = evidence(tmp_path)
+    check(paths, ["a", "b", "serial"], "slow", 2)
+
+    monkeypatch.setenv(variable, "101" if variable == "GITHUB_RUN_ID" else "b" * 40)
+    with pytest.raises(ValueError, match="differs from the active CI run"):
+        check(paths, ["a", "b", "serial"], "slow", 2)
+    monkeypatch.delenv("GITHUB_RUN_ID")
+    monkeypatch.delenv("GITHUB_SHA")
+    check(paths, ["a", "b", "serial"], "slow", 2)
+
+
 @pytest.mark.parametrize(
     "fault",
     [

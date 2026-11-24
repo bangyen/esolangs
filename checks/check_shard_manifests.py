@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -16,6 +17,11 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
     if shards < 1:
         raise ValueError("shards must be positive")
     expected = set(corpus)
+    current_run = {
+        key: value
+        for key, variable in (("id", "GITHUB_RUN_ID"), ("commit", "GITHUB_SHA"))
+        if (value := os.environ.get(variable))
+    }
     selected: set[str] = set()
     executed: set[str] = set()
     indices: set[int] = set()
@@ -49,6 +55,12 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
         run = record.get("run")
         if not isinstance(run, dict) or (identity is not None and run != identity):
             raise ValueError("mixed shard run identities")
+        for key, value in current_run.items():
+            if run.get(key) != value:
+                raise ValueError(
+                    f"{path}: shard run {key} {run.get(key)!r} differs from "
+                    f"the active CI run ({value!r})"
+                )
         identity = run
         omissions = set(record["excluded"])
         if not omissions <= expected or (

@@ -319,6 +319,34 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         module.write_set("boolean")
         assert path.read_bytes() == recompressed
 
+    @pytest.mark.parametrize("compressed", [False, True])
+    def test_regeneration_replaces_corrupt_examples(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, compressed: bool
+    ) -> None:
+        name = (
+            next(
+                name
+                for name, lang in LANGUAGES.items()
+                if lang.runtime.compressed_source
+            )
+            if compressed
+            else first(source_kind="raster", boolean_generator=True)
+        )
+        api = esolangs.Language(name)
+        artifact = api.generate("01")
+        module = self._redirect(monkeypatch, tmp_path)
+        monkeypatch.setitem(module.SETS, "probe", lambda: iter([("sample", artifact)]))
+        path = tmp_path / "sample" / f"sample{LANGUAGES[name].source_suffix}"
+        path.parent.mkdir()
+        path.write_bytes(b"corrupt transport")
+
+        module.write_set("probe")
+        restored = api.from_file(path)
+        for bit in (0, 1):
+            assert api.evaluate(
+                restored, [bit], limits=esolangs.ExecutionLimits(max_steps=200_000)
+            ).answer == str(bit)
+
     def test_main_with_no_arguments_writes_every_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

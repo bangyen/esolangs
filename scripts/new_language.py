@@ -747,10 +747,12 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     tables, measure = measurement.tables, measurement.measure
     rows = []
     for n in arities:
-        worst = {t: measure(name, t, written=True) for t in tables(name, n)}
-        size = max(
-            source_units(esolangs.generate(name, t).source) for t in tables(name, n)
-        )
+        worst = {}
+        size = 0
+        for table in tables(name, n):
+            program = esolangs.generate(name, table)
+            worst[table] = measure(name, table, written=True, program=program)
+            size = max(size, source_units(program.source))
         steps = max(worst, key=lambda t: worst[t][0])
         bits = max(worst, key=lambda t: worst[t][1])
         # Mean program size per row: ``size`` covers 2**n rows.

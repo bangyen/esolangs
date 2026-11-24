@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
+from esolangs.exceptions import ProgramError
 from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
 from esolangs.portable import to_file
 from esolangs.raster import Raster
@@ -165,9 +166,16 @@ def _same_program(
         return False
     generated = artifact.source
     if isinstance(generated, Raster):
-        return Raster.from_png(existing) == generated
+        try:
+            saved_image = Raster.from_png(existing)
+        except ProgramError:
+            return False
+        return saved_image == generated
     if isinstance(generated, CompressedText):
-        saved = CompressedText(existing)
+        try:
+            saved = CompressedText(existing)
+        except ProgramError:
+            return False
         return all(a == b for a, b in zip_longest(saved.chunks(), generated.chunks()))
     return existing == encoded
 
