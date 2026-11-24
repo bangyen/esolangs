@@ -8,6 +8,7 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import signal
 import stat
 import subprocess
@@ -16,6 +17,7 @@ import tarfile
 import tempfile
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack, contextmanager
 from functools import cache
 from itertools import islice
 from pathlib import Path
@@ -27,12 +29,13 @@ if TYPE_CHECKING:
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def normalize(path: Path, epoch: int) -> None:
-    """Preserve payloads while fixing gzip and tar metadata deterministically."""
+@contextmanager
+def _staged_normalization(path: Path, epoch: int) -> Iterator[tuple[Path, Path]]:
+    """Normalize an archive into a temporary directory on its own filesystem."""
     path = path.resolve(strict=True)
     fixed_metadata = {"mtime", "atime", "ctime", "uid", "gid", "uname", "gname"}
     with tempfile.TemporaryDirectory(dir=path.parent) as scratch:
-        staged = Path(scratch) / path.name
+        staged = Path(scratch) / "normalized"
         with (
             tarfile.open(path, "r:gz") as source,
             staged.open("wb") as stream,
@@ -57,6 +60,12 @@ def normalize(path: Path, epoch: int) -> None:
                     member, source.extractfile(member) if member.isfile() else None
                 )
         staged.chmod(stat.S_IMODE(path.stat().st_mode))
+        yield path, staged
+
+
+def normalize(path: Path, epoch: int) -> None:
+    """Preserve payloads while fixing gzip and tar metadata deterministically."""
+    with _staged_normalization(path, epoch) as (path, staged):
         staged.replace(path)
 
 
@@ -78,8 +87,30 @@ def normalize_main(argv: list[str]) -> int:
         parser.error(message)
     if not 0 <= epoch <= max_epoch:
         parser.error(message)
-    for archive in args.archives:
-        normalize(archive, epoch)
+    with ExitStack() as scratch, ExitStack() as rollback:
+        pending: dict[Path, tuple[Path, Path | None]] = {}
+        for archive in args.archives:
+            try:
+                path, staged = scratch.enter_context(
+                    _staged_normalization(archive, epoch)
+                )
+                if path in pending:
+                    continue
+                backup = None
+                if len(args.archives) > 1:
+                    backup = staged.with_name("original")
+                    shutil.copy2(path, backup)
+                pending[path] = staged, backup
+            except (OSError, EOFError, tarfile.TarError) as error:
+                parser.exit(1, f"{archive}: {error}\n")
+        for path, (staged, backup) in pending.items():
+            try:
+                staged.replace(path)
+            except OSError as error:
+                parser.exit(1, f"{path}: {error}\n")
+            if backup is not None:
+                rollback.callback(backup.replace, path)
+        rollback.pop_all()
     return 0
 
 

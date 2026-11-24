@@ -33,11 +33,40 @@ from esolangs.runtime._json import unique_object
 ROOT = Path(__file__).resolve().parents[2]
 
 
+class CollectionError(RuntimeError):
+    """A failed pytest collection with a short diagnostic and persistent log."""
+
+
 def _pytest_env() -> dict[str, str]:
     """Use the declared selectors even when a caller has local pytest options."""
     env = dict(os.environ)
     env.pop("PYTEST_ADDOPTS", None)
     return env
+
+
+def _collection_error(
+    marker: str, result: subprocess.CompletedProcess[str]
+) -> CollectionError:
+    """Keep all output in the log and expose only pytest's error on the console."""
+    directory = ROOT / "notes" / "verification"
+    directory.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        prefix="pytest-collection-",
+        suffix=".log",
+        dir=directory,
+        delete=False,
+    ) as log:
+        log.write(result.stdout)
+        log.write("\n")
+        log.write(result.stderr)
+    detail = result.stderr.strip() or "\n".join(
+        line for line in result.stdout.splitlines() if line.startswith(("E ", "ERROR "))
+    )
+    header = f"collection for -m {marker!r} failed (pytest exit {result.returncode})"
+    diagnostic = f"\n{detail[:2048]}" if detail else ""
+    return CollectionError(f"{header}{diagnostic}\n[log] {log.name}")
 
 
 def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
@@ -70,15 +99,14 @@ def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
             cwd=ROOT,
             env=_pytest_env(),
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             check=False,
         )
         if proc.returncode == 5:
             return []
         if proc.returncode != 0:
-            raise RuntimeError(
-                f"collection for -m {marker} failed:\n{proc.stdout}\n{proc.stderr}"
-            )
+            raise _collection_error(marker, proc)
         return sorted(set(json.loads(destination.read_text(encoding="utf-8"))))
 
 
@@ -257,7 +285,11 @@ def shard_main(argv: list[str] | None = None) -> int:
         return 2
     data = args.bind_coverage.resolve() if args.bind_coverage is not None else None
     state = coverage_evidence.checkout(ROOT, data) if data is not None else ""
-    collected = collect_ids(args.marker)
+    try:
+        collected = collect_ids(args.marker)
+    except (CollectionError, OSError) as error:
+        print(error, file=sys.stderr)
+        return 2
     excluded = set(args.exclude_node)
     if not excluded <= set(collected):
         raise ValueError("excluded nodes must belong to the collected corpus")
@@ -496,8 +528,8 @@ def refresh_main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.shards < 1:
         parser.error("--shards must be at least 1")
-    ids = collect_ids(args.marker)
     try:
+        ids = collect_ids(args.marker)
         if set(args.serial_node) - set(ids):
             raise ValueError("serial nodes must belong to the selected corpus")
         refresh(args.runs, ids, args.output)
@@ -513,7 +545,7 @@ def refresh_main(argv: list[str] | None = None) -> int:
             if node in durations:
                 print(f"serial {node}: {durations[node]:.1f}s")
         print(f"updated {args.output}: {len(ids)} tests, {len(args.runs)} runs")
-    except (ValueError, OSError) as error:
+    except (CollectionError, ValueError, OSError) as error:
         parser.error(str(error))
     return 0
 

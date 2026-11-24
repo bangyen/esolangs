@@ -514,8 +514,14 @@ def _receipt_shape(record: object) -> dict[str, Any]:
 
 def _read_receipt(path: Path) -> dict[str, Any]:
     """Load a receipt with a path-qualified error for malformed JSON or fields."""
+    from esolangs.runtime._json import unique_object
+
     try:
-        return _receipt_shape(json.loads(path.read_text(encoding="utf-8")))
+        return _receipt_shape(
+            json.loads(
+                path.read_text(encoding="utf-8"), object_pairs_hook=unique_object
+            )
+        )
     except (ValueError, RecursionError) as error:
         raise ValueError(f"{path}: {error}") from error
 

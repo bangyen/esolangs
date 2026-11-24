@@ -64,6 +64,28 @@ class TestShardIds:
         )
 
 
+@pytest.mark.medium
+def test_invalid_marker_reports_the_error_and_keeps_the_collection_log(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    shard = load_script()
+    monkeypatch.setattr(shard, "ROOT", tmp_path)
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
+    (tmp_path / "test_collection.py").write_text(
+        "def test_probe():\n    pass\n", encoding="utf-8"
+    )
+    assert shard.shard_main(["--marker", "not (", "--shard", "0", "--shards", "1"]) == 2
+    message = capsys.readouterr().err
+    assert "Wrong expression passed to '-m'" in message
+    assert "Traceback" not in message
+    assert "test_collection.py::test_probe" not in message
+    log = Path(message.partition("[log] ")[2].strip())
+    assert log.parent == tmp_path / "notes/verification"
+    contents = log.read_text(encoding="utf-8")
+    assert "test_collection.py::test_probe" in contents
+    assert "Wrong expression passed to '-m'" in contents
+
+
 def test_duration_assignment_improves_longest_shard_and_covers_unknowns() -> None:
     shard = load_script()
     ids = list("abcdefghij")

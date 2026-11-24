@@ -8,7 +8,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ci.shard import collect_ids, load_run, read_completion_metadata, read_evidence_json
+from ci.shard import (
+    CollectionError,
+    collect_ids,
+    load_run,
+    read_completion_metadata,
+    read_evidence_json,
+)
 
 
 def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> None:
@@ -104,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
             args.marker,
             args.shards,
         )
-    except (ValueError, OSError) as error:
+    except (CollectionError, ValueError, OSError) as error:
         parser.error(str(error))
     print("all shards selected and completed the collected corpus exactly once")
     return 0

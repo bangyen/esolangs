@@ -95,6 +95,22 @@ def test_malformed_receipts_name_the_file_and_field(tmp_path) -> None:
     assert result.stderr.strip() == f"{receipt}: missing receipt field 'schema'"
 
 
+def test_repeated_receipt_fields_cannot_replace_the_schema(tmp_path) -> None:
+    root = _checkout(tmp_path / "checkout")
+    run, _ = completed(root)
+    receipt, passed = run.finish(0)
+    assert passed
+    original = receipt.read_text(encoding="utf-8")
+    receipt.write_text('{"schema":999,' + original[1:], encoding="utf-8")
+    for action in (
+        lambda: validate(receipt, root, {"probe"}),
+        lambda: archive(receipt, root, root),
+    ):
+        with pytest.raises(ValueError, match="duplicate field: schema") as error:
+            action()
+        assert str(receipt) in str(error.value)
+
+
 def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path):
     primary = _checkout(tmp_path / "primary")
     source = tmp_path / "worktree"

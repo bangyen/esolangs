@@ -134,11 +134,50 @@ def test_normalize_rejects_invalid_epoch_before_opening_archives(
         monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
     else:
         monkeypatch.setenv("SOURCE_DATE_EPOCH", epoch)
-    monkeypatch.setattr(smoke, "normalize", lambda *_: pytest.fail("opened archive"))
+    monkeypatch.setattr(
+        smoke, "_staged_normalization", lambda *_: pytest.fail("opened archive")
+    )
     with pytest.raises(SystemExit) as caught:
         smoke.main(["normalize", "first.tar.gz", "second.tar.gz"])
     assert caught.value.code == 2
     assert "SOURCE_DATE_EPOCH must be an integer" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("failure", ["stage", "publish"])
+def test_normalize_preserves_archives_when_a_batch_fails(
+    tmp_path, monkeypatch, capsys, failure
+) -> None:
+    first, second = (tmp_path / name for name in ("first.tar.gz", "second.tar.gz"))
+    for path in (first, second):
+        with tarfile.open(path, "w:gz") as output:
+            output.addfile(tarfile.TarInfo("example"))
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
+    if failure == "stage":
+        second.write_bytes(b"corrupt archive")
+    original = first.read_bytes(), second.read_bytes()
+    replace = Path.replace
+
+    def fail_publication(path, target):
+        if path.name == "normalized" and target == second.resolve():
+            raise OSError("injected publication failure")
+        return replace(path, target)
+
+    with monkeypatch.context() as patch:
+        if failure == "publish":
+            patch.setattr(Path, "replace", fail_publication)
+        with pytest.raises(SystemExit) as caught:
+            smoke.main(["normalize", str(first), str(second)])
+    assert caught.value.code == 1
+    assert str(second) in capsys.readouterr().err
+    assert (first.read_bytes(), second.read_bytes()) == original
+    assert set(tmp_path.iterdir()) == {first, second}
+
+    if failure == "stage":
+        second.write_bytes(original[0])
+    assert smoke.main(["normalize", str(first), str(second)]) == 0
+    for path in (first, second):
+        with tarfile.open(path) as archive:
+            assert archive.getmember("example").mtime == 1700000000
 
 
 def test_normalize_without_an_installed_package(tmp_path) -> None:
