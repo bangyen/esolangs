@@ -94,8 +94,16 @@ def test_invalid_shard_arguments_are_refused() -> None:
         load_script().shard_ids([], -1, 2)
 
 
+@pytest.mark.parametrize(
+    ("excluded", "expected"),
+    [
+        ([], "18.0s (1 tests use median fallback 6.000s)"),
+        (["a"], "4.0s (1 tests use median fallback 2.000s)"),
+        (["a", "b"], "1.0s (1 tests use median fallback 1.000s)"),
+    ],
+)
 def test_shard_reports_estimate_and_unknown_weights(
-    tmp_path, monkeypatch, capsys
+    tmp_path, monkeypatch, capsys, excluded, expected
 ) -> None:
     shard = load_script()
     path = tmp_path / "durations.json"
@@ -117,11 +125,12 @@ def test_shard_reports_estimate_and_unknown_weights(
                 "1",
                 "--durations",
                 str(path),
+                *(f"--exclude-node={node}" for node in excluded),
             ]
         )
         == 0
     )
-    assert "18.0s (1 tests use median fallback 6.000s)" in capsys.readouterr().out
+    assert expected in capsys.readouterr().out
 
 
 def test_progress_survives_without_publishing_complete_evidence(tmp_path) -> None:

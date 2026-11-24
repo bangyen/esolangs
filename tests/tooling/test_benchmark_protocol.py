@@ -287,6 +287,35 @@ def test_benchmark_reads_large_truth_table_from_stdin() -> None:
 
 
 @pytest.mark.medium
+def test_benchmark_and_worker_load_the_checkout_before_pythonpath(tmp_path):
+    from scripts import benchmark
+
+    package = tmp_path / "esolangs"
+    package.mkdir()
+    (package / "__init__.py").write_text("raise AssertionError('foreign checkout')\n")
+    result = subprocess.run(
+        [
+            sys.executable,
+            benchmark.__file__,
+            "brainfuck",
+            "01",
+            "--all-rows",
+            "--repeat",
+            "1",
+        ],
+        env={**os.environ, "PYTHONPATH": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    record = json.loads(result.stdout)
+    assert record["provenance"]["checkout"] == str(benchmark._ROOT)
+    assert [row["actual_answer"] for row in record["executions"]] == ["0", "1"]
+
+
+@pytest.mark.medium
 def test_all_rows_can_exceed_one_worker_record() -> None:
     from scripts import benchmark
 
@@ -414,7 +443,7 @@ def test_timing_journal_is_scratch_but_source_edits_change_identity(
         "-qm",
         "fixture",
     )
-    monkeypatch.setattr(benchmark, "__file__", str(tmp_path / "scripts/benchmark.py"))
+    monkeypatch.setattr(benchmark, "_ROOT", tmp_path)
     recorder = Recorder(tmp_path / directory / "test-durations.json")
     before = benchmark.source_identity()
     recorder.pytest_runtest_logreport(
@@ -498,7 +527,7 @@ def test_provenance_fingerprints_untracked_modes_and_links(tmp_path, monkeypatch
     from tests.tooling.receipt_support import _checkout
 
     root = _checkout(tmp_path / "checkout")
-    monkeypatch.setattr(benchmark, "__file__", str(root / "scripts/benchmark.py"))
+    monkeypatch.setattr(benchmark, "_ROOT", root)
     untracked = root / "untracked"
     untracked.write_text("same bytes\n")
     untracked.chmod(0o644)

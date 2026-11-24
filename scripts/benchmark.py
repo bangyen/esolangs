@@ -28,9 +28,10 @@ from operator import is_not
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 
-# Resolve sibling tools on import and the test alarm guard on direct execution.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(1, str(Path(__file__).resolve().parents[1]))
+# Pin the package and development tools before the driver or worker imports them.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(1, str(Path(__file__).resolve().parent))
+sys.path.insert(2, str(Path(__file__).resolve().parents[1]))
 
 from source_units import source_units
 from verify.process import (
@@ -61,6 +62,11 @@ from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import dialect_options
 from esolangs.vm import SnapshotVM, _capture_workspace, complete_vm
 from tests.support.execution import run_guard
+
+_SCRIPT = Path(__file__).resolve()
+_ROOT = _SCRIPT.parents[1]
+if Path(esolangs.__file__ or "").resolve().parent != _ROOT / "src/esolangs":
+    raise ImportError("benchmark imported esolangs from another checkout")
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -124,8 +130,6 @@ def artifact_digests(artifact: Artifact) -> tuple[str, str]:
 
 def source_identity(timeout: float = 60) -> dict[str, Any]:
     """Identify the checkout; refuse evidence without readable Git state."""
-    root = Path(__file__).resolve().parents[1]
-
     check_timeout(timeout)
     deadline = time.monotonic() + timeout
 
@@ -134,7 +138,7 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
             bytes,
             run_bounded(
                 ["git", *args],
-                cwd=root,
+                cwd=_ROOT,
                 capture_output=True,
                 check=True,
                 text=False,
@@ -147,7 +151,7 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
         git("ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
     ):
         if name:
-            path = root / os.fsdecode(name)
+            path = _ROOT / os.fsdecode(name)
             entry = file_fingerprint(path)
             if entry is None:
                 raise ValueError(f"cannot fingerprint untracked input {str(path)!r}")
@@ -161,7 +165,7 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
         "tracked_diff_sha256": hashlib.sha256(
             git("diff", "HEAD", "--binary")
         ).hexdigest(),
-        "checkout": str(root),
+        "checkout": str(_ROOT),
     }
 
 
@@ -917,11 +921,7 @@ class Worker:
 
     def __init__(self, command: list[str] | None = None) -> None:
         """Spawn ``command``, or this module's worker by default."""
-        self.command = command or [
-            sys.executable,
-            str(Path(__file__).resolve()),
-            "--worker",
-        ]
+        self.command = command or [sys.executable, str(_SCRIPT), "--worker"]
         self.process: subprocess.Popen[str] | None = None
         self.messages: queue.Queue[str | None] = queue.Queue(maxsize=1)
         self.stopped = threading.Event()
@@ -936,7 +936,7 @@ class Worker:
         if self.process is None:
             self.messages = queue.Queue(maxsize=1)
             self.stopped = threading.Event()
-            directory = Path(__file__).resolve().parents[1] / "notes" / "benchmarks"
+            directory = _ROOT / "notes" / "benchmarks"
             directory.mkdir(parents=True, exist_ok=True)
             fd, filename = tempfile.mkstemp(
                 prefix="worker-", suffix=".log", dir=directory
@@ -953,7 +953,7 @@ class Worker:
                     text=True,
                     encoding="utf-8",
                     start_new_session=os.name == "posix",
-                    cwd=Path(__file__).resolve().parents[1],
+                    cwd=_ROOT,
                 )
             except BaseException:
                 self.log_path.unlink(missing_ok=True)

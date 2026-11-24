@@ -198,25 +198,21 @@ def _read_program(
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
             if portable:
                 return _load_portable_source(language, path, data, settings, catalog)
-            try:
-                return _check_program(
-                    language,
-                    _FileSource(label, data),
-                    normalize=True,
-                    settings=settings,
-                    catalog=catalog,
-                    _settings_validated=_settings_validated,
-                )
-            except ProgramError as error:
-                owner = _portable_source_owner(data, catalog)
-                if owner is None:
-                    raise
+            if (owner := _portable_source_owner(data, catalog)) is not None:
                 raise with_hint(
-                    ProgramError(str(error)),
+                    ProgramError(f"{label} contains a portable JSON artifact"),
                     _portable_run_hint(
                         owner, path, catalog, "use --artifact to run portable JSON"
                     ),
-                ) from error
+                )
+            return _check_program(
+                language,
+                _FileSource(label, data),
+                normalize=True,
+                settings=settings,
+                catalog=catalog,
+                _settings_validated=_settings_validated,
+            )
 
     try:
         if deadline is None:
@@ -258,18 +254,27 @@ def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
 
 
 def _portable_source_owner(data: bytes, catalog: Catalog) -> str | None:
-    """Recognize rejected portable JSON without loading its source payload."""
+    """Recognize a portable JSON envelope without loading its source payload."""
+    if not data.lstrip().startswith(b"{"):
+        return None
     from esolangs.portable import _FORMAT
     from esolangs.registry._catalog import resolve_origin
     from esolangs.runtime._json import record_loads
 
-    if not data.lstrip().startswith(b"{") or _FORMAT.encode("ascii") not in data:
+    if _FORMAT.encode("ascii") not in data:
         return None
     try:
         value = record_loads(decode_utf8(data))
     except (ValueError, RecursionError):
         return None
-    if isinstance(value, dict) and value.get("format") == _FORMAT:
+    if (
+        isinstance(value, dict)
+        and value.get("format") == _FORMAT
+        and type(value.get("version")) is int
+        and value.get("kind") in ("text", "png", "gzip", "template")
+        and isinstance(value.get("source"), str)
+        and "settings" in value
+    ):
         owner = value.get("language")
         if isinstance(owner, str):
             return resolve_origin(owner, catalog=catalog)

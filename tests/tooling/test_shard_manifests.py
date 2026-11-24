@@ -3,12 +3,13 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 from shutil import copytree
 
 import pytest
 
 from checks.check_shard_manifests import check
-from scripts.ci.shard import Recorder, load_durations, refresh
+from scripts.ci.shard import Recorder, load_durations, load_run, refresh
 
 
 def evidence(tmp_path):
@@ -84,6 +85,27 @@ def test_timing_refresh_rejects_duplicate_runs(
 def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     paths = evidence(tmp_path)
     check(paths, ["a", "b", "serial"], "slow", 2)
+
+
+def test_timing_load_parses_the_snapshot_it_hashed(tmp_path, monkeypatch) -> None:
+    directory = evidence(tmp_path)[0].parent
+    metadata = json.loads((directory / "test-durations.json.meta.json").read_text())
+    snapshot = directory / metadata["durations_file"]
+    replacement = tmp_path / "replacement.json"
+    replacement.write_text('{"a": 900, "serial": 1}')
+    read_bytes = Path.read_bytes
+
+    def read_and_replace(path):
+        data = read_bytes(path)
+        if path == snapshot:
+            replacement.replace(snapshot)
+        return data
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, "read_bytes", read_and_replace)
+        assert load_run(directory, {"a", "serial"}) == {"a": 1, "serial": 1}
+    with pytest.raises(ValueError, match="altered timing run"):
+        load_run(directory, {"a", "serial"})
 
 
 @pytest.mark.parametrize("variable", ["GITHUB_RUN_ID", "GITHUB_SHA"])

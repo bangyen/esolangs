@@ -87,7 +87,12 @@ def _timing_map(raw: object) -> object:
 
 def load_durations(path: Path) -> dict[str, float]:
     """Return finite positive timings, refusing a corrupt timing file."""
-    raw = _timing_map(json.loads(path.read_text(encoding="utf-8")))
+    return _parse_durations(path.read_bytes())
+
+
+def _parse_durations(data: bytes) -> dict[str, float]:
+    """Parse the bytes read from a timing file or checked against a sidecar."""
+    raw = _timing_map(json.loads(data.decode("utf-8")))
     if not isinstance(raw, dict) or any(
         not isinstance(key, str)
         or isinstance(value, bool)
@@ -176,12 +181,8 @@ def shard_main(argv: list[str] | None = None) -> int:
     excluded = set(args.exclude_node)
     if not excluded <= set(collected):
         raise ValueError("excluded nodes must belong to the collected corpus")
-    ids = shard_ids(
-        [node for node in collected if node not in excluded],
-        args.shard,
-        args.shards,
-        durations,
-    )
+    eligible = [node for node in collected if node not in excluded]
+    ids = shard_ids(eligible, args.shard, args.shards, durations)
     if args.manifest is not None:
         write_text(
             args.manifest,
@@ -205,7 +206,7 @@ def shard_main(argv: list[str] | None = None) -> int:
             + "\n",
         )
     if durations:
-        fallback = _fallback(durations, collected)
+        fallback = _fallback(durations, eligible)
         estimate = sum(durations.get(node, fallback) for node in ids)
         missing = sum(node not in durations for node in ids)
         print(
@@ -255,16 +256,17 @@ def _load_run(
             or not all(isinstance(node, str) for node in metadata["collected"])
             or metadata.get("finished") != metadata["collected"]
             or len(set(metadata["collected"])) != len(metadata["collected"])
-            or metadata.get("durations_sha256")
-            != hashlib.sha256(durations_path.read_bytes()).hexdigest()
         ):
             raise ValueError(f"{path}: failed, incomplete, or altered timing run")
+        data = durations_path.read_bytes()
+        if metadata.get("durations_sha256") != hashlib.sha256(data).hexdigest():
+            raise ValueError(f"{path}: altered timing run")
         if not isinstance(metadata.get("run"), dict):
             raise ValueError(f"{path}: missing run identity")
         if identity is not None and identity != metadata["run"]:
             raise ValueError(f"{directory}: mixed CI runs or Python versions")
         identity = metadata["run"]
-        durations = load_durations(durations_path)
+        durations = _parse_durations(data)
         if set(durations) != set(metadata["collected"]):
             raise ValueError(f"{path}: incomplete timing corpus")
         for node in expected & durations.keys():
