@@ -66,9 +66,8 @@ commands:
   Generator-made (the API invents source from a truth table):
     generate [--width [N] | --balance] [--bits BITS] [--scale N]
              [--settings JSON] [--set KEY=VALUE] [--plain | --gzip | --artifact]
-             <language> <truth-table>
-                                print a program computing a truth table
-                                (--width wraps it; --bits fills a template)
+             [--from-template FILE] <language> [<truth-table>]
+                                generate a program or fill a saved template
   Caller-supplied (you supply the program):
     run [--execution-timeout S] [--total-timeout S] [--preparation-timeout S]
         [--isolated] [--max-output N] [--max-memory BYTES] [--max-steps N]
@@ -177,6 +176,9 @@ examples:
     "generate": """usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
                          [--plain | --gzip | --artifact] <language> <truth-table>
+       esolangs generate --from-template FILE --bits BITS [--width [N]]
+                         [--settings JSON] [--set KEY=VALUE]
+                         [--plain | --gzip | --artifact] <language>
 
 Print a program in <language> computing <truth-table>.
 
@@ -202,6 +204,10 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
+  --from-template FILE
+               fill a saved portable JSON template using --bits. Use - to
+               read the template from stdin. Supply a language and omit
+               the truth table. Use --width to rewrap where supported.
   --scale N    enlarge raster pixels by N after layout (default 1).
   -s, --settings JSON
                dialect overrides; describe lists supported settings.

@@ -35,7 +35,7 @@ from math import ceil
 from time import monotonic, sleep
 from typing import BinaryIO, NoReturn, TextIO, cast
 
-from esolangs.artifacts import ProgramArtifact, TemplateArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _as_argument,
@@ -299,7 +299,6 @@ def _load_portable_source(
     catalog: Catalog,
 ) -> ProgramArtifact[Program]:
     """Restore runnable JSON and combine any explicit compatible choices."""
-    from esolangs import from_json
     from esolangs.portable import _ArtifactLanguageMismatchError
 
     for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
@@ -311,11 +310,7 @@ def _load_portable_source(
                 _native_run_hint(language, path, catalog),
             )
     try:
-        document = decode_utf8(data)
-    except UnicodeDecodeError as error:
-        raise source_read_error("stdin" if path == "-" else path, error) from error
-    try:
-        artifact = from_json(language, document, catalog=catalog)
+        artifact = _decode_portable_record(language, path, data, catalog)
     except ProgramError as error:
         cause = error.__cause__
         if isinstance(cause, _ArtifactLanguageMismatchError):
@@ -336,7 +331,9 @@ def _load_portable_source(
             f"if this is a native program, {_native_run_hint(language, path, catalog)}",
         ) from error
     if isinstance(artifact, TemplateArtifact):
-        raise TemplateError("unfilled portable template; fill it before running")
+        raise TemplateError(
+            "unfilled portable template; use generate --from-template with --bits"
+        )
     retained = artifact.settings
     if settings is not None and retained is not None:
         _check_dialect_conflicts(retained, settings)
@@ -349,6 +346,19 @@ def _load_portable_source(
         _sparse_validated=True,
     )
     return artifact if merged is retained else replace(artifact, settings=merged)
+
+
+def _decode_portable_record(
+    language: str, path: str, data: bytes, catalog: Catalog
+) -> Artifact:
+    """Read a portable program or template document under the caller's bounds."""
+    from esolangs import from_json
+
+    try:
+        document = decode_utf8(data)
+    except UnicodeDecodeError as error:
+        raise source_read_error("stdin" if path == "-" else path, error) from error
+    return from_json(language, document, catalog=catalog)
 
 
 def _note(message: str) -> None:

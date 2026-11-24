@@ -30,6 +30,7 @@ from stdin. For example, pipe `esolangs generate --bits 01 Trml 0110` into
 | `--width [N]` | generate | wrap or lay out to N columns (default 80); what it does per language is `describe`'s `width_effect` |
 | `--balance` | generate | pick the layout fitting the smallest on-screen square; excludes `--width` |
 | `--bits BITS` | generate | fill a template's input slots, printing a runnable program |
+| `--from-template FILE` | generate | fill a saved portable JSON template with `--bits`. Use `-` for stdin |
 | `--plain` | generate | write compressed text as plain text instead of gzip |
 | `--gzip` | generate | compress any text export; excludes `--plain` and raster PNGs |
 | `--artifact` | generate, run | export or load portable JSON with its settings and input metadata |
@@ -112,13 +113,15 @@ Native exports contain the program and, for PNG, raster metadata.
 Export templates after filling them.
 
 Use `--artifact` to save and run the same portable records from the CLI.
-Generate a runnable template record with `--bits`.
-To reuse a saved template in Python, load it with `from_json`, bind a row
-with `template.fill(bits)`, and serialize the runnable artifact with `to_json`.
+Fill a saved template with `generate --from-template FILE --bits BITS`.
 
 ```bash
 esolangs generate --artifact --set expression_syntax=postfix Alight 0110 > xor.json
 esolangs encode-inputs Alight 01 | esolangs run --artifact Alight xor.json
+
+esolangs generate --artifact Trml 0110 > xor.template.json
+esolangs generate --from-template xor.template.json --bits 01 --artifact Trml > row.json
+esolangs run --artifact Trml row.json
 ```
 
 ```python

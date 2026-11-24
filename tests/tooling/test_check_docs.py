@@ -167,6 +167,31 @@ def test_a_tilde_fenced_heading_is_not_an_anchor(tmp_path: Path) -> None:
     assert checker.broken_links(tmp_path, files) == [("b.md", "a.md#hidden")]
 
 
+@pytest.mark.parametrize(
+    ("opening", "closing"),
+    [
+        ("````md\n```\n", "`````\n"),
+        ("   ~~~md\n~~~ with trailing text\n```\n", " ~~~ \t\n"),
+        ("  ```md\n", ""),
+    ],
+)
+def test_fence_boundaries_hide_examples(
+    tmp_path: Path, opening: str, closing: str
+) -> None:
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {
+            "a.md": f"# Before\n\n{opening}# Hidden\n[example](gone.md)\n{closing}"
+            + ("# After\n\n[real link](gone.md)\n" if closing else ""),
+            "b.md": "[before](a.md#before) [hidden](a.md#hidden)"
+            + (" [after](a.md#after)" if closing else ""),
+        },
+    )
+    expected = [("a.md", "gone.md")] if closing else []
+    assert checker.broken_links(tmp_path, files) == [*expected, ("b.md", "a.md#hidden")]
+
+
 def test_proof_evidence_shares_the_link_gates_anchors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -342,15 +342,17 @@ def _collected_dates(output: Path) -> dict[str, str]:
     """
     try:
         raw = json.loads(output.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return {}
-    if not isinstance(raw, dict) or not isinstance(raw.get("collected"), dict):
-        return {}
-    return {
-        key: value
-        for key, value in raw["collected"].items()
-        if isinstance(key, str) and isinstance(value, str)
-    }
+    except (OSError, ValueError) as error:
+        raise ValueError(f"{output}: cannot read timing snapshot: {error}") from error
+    if (
+        not isinstance(raw, dict)
+        or not isinstance(collected := raw.get("collected"), dict)
+        or not all(isinstance(value, str) for value in collected.values())
+    ):
+        raise ValueError(f"{output}: collected dates must map names to strings")
+    return collected
 
 
 def refresh(runs: list[Path], ids: list[str], output: Path) -> None:

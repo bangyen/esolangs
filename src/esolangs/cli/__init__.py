@@ -65,6 +65,7 @@ from esolangs.cli.args import (
     _scale_of,
     _settings_arguments,
     _settings_of,
+    _SettingsArguments,
     _split_positional,
 )
 from esolangs.cli.help import COMMANDS, USAGE, help_text
@@ -81,9 +82,13 @@ from esolangs.cli.hints import (
     _timeout_text,
 )
 from esolangs.cli.io import (
+    _MAX_PROGRAM_BYTES,
     _abandon_output,
+    _bounded_read,
+    _bounded_source_stdin,
     _complete_stderr_writes,
     _complete_stdout_writes,
+    _decode_portable_record,
     _diagnostic,
     _fail,
     _flush_stdout,
@@ -532,6 +537,68 @@ def _emit_generated(
     _note_export_settings(artifact, declaration)
 
 
+def _read_saved_template(path: str, name: str, catalog: Catalog) -> TemplateArtifact:
+    """Read a bounded portable document and require retained bindings."""
+    if path == "-":
+        data = _bounded_source_stdin(None, "", None, _MAX_PROGRAM_BYTES)
+        if len(data) > _MAX_PROGRAM_BYTES:
+            _fail(
+                f"stdin is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB "
+                "template stream limit; pass a template filename"
+            )
+    else:
+        data = _bounded_read(path, None)
+    try:
+        artifact = _decode_portable_record(name, path, data, catalog)
+    except ProgramError as error:
+        if not isinstance(error.__cause__, json.JSONDecodeError):
+            raise
+        label = "stdin" if path == "-" else display_label(path)
+        raise ProgramError(
+            f"invalid portable template in {label}: {error.__cause__}"
+        ) from error
+    if not isinstance(artifact, TemplateArtifact):
+        _fail("--from-template requires an unfilled portable template")
+    return artifact
+
+
+def _generate_from_template(
+    args: list[str],
+    options: dict[str, str],
+    flags: set[str],
+    *,
+    width: int | None,
+    settings_arguments: _SettingsArguments | None,
+    catalog: Catalog,
+) -> None:
+    """Fill retained bindings through the public API and export the result."""
+    from esolangs import instantiate
+
+    bits = options.get("--bits")
+    if bits is None:
+        _fail("--from-template requires --bits")
+    if "--balance" in flags or "--scale" in options:
+        _fail("--from-template cannot be combined with --balance or --scale")
+    _check_count("generate", args, 1, catalog=catalog)
+    with _errors():
+        declaration = catalog.languages[catalog.resolve(args[0])]
+        settings = _settings_of(settings_arguments, language=args[0], catalog=catalog)
+        if "--gzip" in flags:
+            _check_binary_terminal(declaration.name, raster=False, gzip=True)
+        template = _read_saved_template(
+            options["--from-template"], declaration.name, catalog
+        )
+        filled = instantiate(
+            declaration.name,
+            template,
+            [int(bit) for bit in bits],
+            width=width,
+            settings=settings,
+            catalog=catalog,
+        )
+    _emit_generated(filled, declaration, flags, catalog)
+
+
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     from esolangs.operations.generation import (
@@ -557,7 +624,9 @@ def _generate(rest: list[str]) -> None:
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
     bits = options.get("--bits")
-    if bits is not None and (not bits or set(bits) - {"0", "1"}):
+    if bits is not None and (
+        set(bits) - {"0", "1"} or (not bits and "--from-template" not in options)
+    ):
         _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
     rest = _split_positional(
         rest,
@@ -567,6 +636,16 @@ def _generate(rest: list[str]) -> None:
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
     settings_arguments = _settings_arguments(options, set_pairs)
     catalog = get_catalog()
+    if "--from-template" in options:
+        _generate_from_template(
+            rest,
+            options,
+            flags,
+            width=width,
+            settings_arguments=settings_arguments,
+            catalog=catalog,
+        )
+        return
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten, catalog=catalog)
     language, table_operand = rest
     table = table_operand

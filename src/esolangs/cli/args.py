@@ -51,7 +51,7 @@ _SHORT_OPTIONS = {"-s": "--settings"}
 
 #: Required-value options, excluding the optional value on ``--width``.
 _VALUE_OPTIONS = {
-    "generate": {"--bits", "--scale", "--settings", "--set"},
+    "generate": {"--bits", "--from-template", "--scale", "--settings", "--set"},
     "list": {"--grep", "--inputs", "--source-kind", "--input-shape", "--answer-mode"},
     "run": {
         "--execution-timeout",

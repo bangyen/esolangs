@@ -9,7 +9,7 @@ from shutil import copytree
 import pytest
 
 from checks.check_shard_manifests import check
-from scripts.ci.shard import Recorder, load_durations, load_run, refresh
+from scripts.ci.shard import Recorder, load_durations, load_run, refresh, refresh_main
 
 
 def evidence(tmp_path):
@@ -85,6 +85,41 @@ def test_timing_refresh_rejects_duplicate_runs(
 def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     paths = evidence(tmp_path)
     check(paths, ["a", "b", "serial"], "slow", 2)
+
+
+def test_timing_refresh_preserves_census_dates(tmp_path) -> None:
+    run = tmp_path / "run"
+    run.mkdir()
+    evidence(run)
+    destination = tmp_path / "snapshot.json"
+    collected = {"curation": "2026-10-06", "bf_derivatives": "2026-10-15"}
+    destination.write_text(json.dumps({"collected": collected, "durations": {}}))
+    refresh([run], ["a", "b", "serial"], destination)
+    observed = json.loads(destination.read_text())["collected"]
+    assert observed.pop("durations")
+    assert observed == collected
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    ['{"collected": {"curation": "2026-10-06"},', '{"collected":{"curation": null}}'],
+)
+def test_timing_refresh_reports_and_preserves_invalid_snapshot(
+    tmp_path, monkeypatch, capsys, malformed
+) -> None:
+    run = tmp_path / "run"
+    run.mkdir()
+    evidence(run)
+    destination = tmp_path / "snapshot.json"
+    destination.write_text(malformed, encoding="utf-8")
+    monkeypatch.setattr(
+        "scripts.ci.shard.collect_ids", lambda _marker: ["a", "b", "serial"]
+    )
+    with pytest.raises(SystemExit) as error:
+        refresh_main([str(run), "--output", str(destination)])
+    assert error.value.code == 2
+    assert str(destination) in capsys.readouterr().err
+    assert destination.read_text(encoding="utf-8") == malformed
 
 
 def test_timing_load_parses_the_snapshot_it_hashed(tmp_path, monkeypatch) -> None:
