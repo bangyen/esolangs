@@ -204,15 +204,31 @@ def test_bounds_refuses_a_wrong_answer(monkeypatch, capsys):
     assert "witness tables (steps, bits)" not in captured.out
 
 
+def test_bounds_reports_the_row_when_a_witness_loops(monkeypatch, capsys):
+    import esolangs
+
+    loop = esolangs.from_source(REFERENCE, "+[]")
+    monkeypatch.setattr(esolangs, "generate", lambda *_a, **_kw: loop)
+    monkeypatch.setattr(new_language, "_BOUNDS_STEP_CAP", 12)
+    assert new_language.main(["bounds", REFERENCE, "--max-n", "1"]) == 1
+    assert (
+        f"{REFERENCE} [01] row 0: exceeded the 12-command limit"
+        in capsys.readouterr().err
+    )
+
+
 @pytest.mark.parametrize(
     "contract", [{"dumps_on_the_post_halt_step": True}, {"steppable_to_answer": False}]
 )
 def test_checked_bounds_read_dumps_without_changing_counts(contract):
+    from esolangs import ProgramError
     from tests.proofs.measurement import measure
 
     name = first(boolean_generator=True, **contract)
     checked = measure(name, "01", written=True, check_answers=True)
     assert checked == measure(name, "01", written=True)
+    with pytest.raises(ProgramError, match=r"\[01\] row 0: exceeded"):
+        measure(name, "01", written=True, check_answers=True, step_cap=1)
 
 
 def test_bounds_rejects_impossible_arity_before_measuring(monkeypatch, capsys):

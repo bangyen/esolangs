@@ -71,7 +71,8 @@ def test_boolean_example_matches_generator(name: str) -> None:
     """Each committed boolean program is what its generator produces today."""
     example = BOOLEAN_GENERATED[name]
     path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
-    program = example.build(balance=True).source
+    artifact = example.build(balance=True)
+    program = artifact.source
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
     if isinstance(program, CompressedText):
         saved = CompressedText(path.read_bytes())
@@ -79,8 +80,8 @@ def test_boolean_example_matches_generator(name: str) -> None:
             stale
         )
     elif isinstance(program, Raster):
-        # PNG compression differs across platforms; the pixels are the program.
-        assert Raster.from_png(path.read_bytes()) == program, stale
+        # PNG compression differs across platforms.
+        assert esolangs.from_file(name, path) == artifact, stale
     else:
         ending = "\n" if LANGUAGES[resolve(name)].runtime.file_newline else ""
         expected = (program + ending).encode("utf-8")
@@ -293,11 +294,13 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         assert lines
         assert all(line.startswith("unchanged") for line in lines if ".txt" in line)
 
-    def test_a_png_with_the_same_pixels_is_left_alone(
+    def test_a_png_with_the_same_pixels_and_metadata_is_left_alone(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Another zlib's bytes for the same pixels are not a change."""
         from PIL import Image
+
+        from esolangs.raster import png
 
         module = self._redirect(monkeypatch, tmp_path / "examples")
         painted = esolangs.describe(first(source_kind="raster", boolean_generator=True))
@@ -314,10 +317,35 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", artifact)]))
         module.write_set("boolean")
         path = tmp_path / "examples" / "img/img.png"
+        original = path.read_bytes()
+        metadata = png.read_metadata(original)
+        assert metadata is not None
         Image.open(path).save(path, compress_level=1)
-        recompressed = path.read_bytes()
+        recompressed = png.write_metadata(path.read_bytes(), metadata)
+        assert recompressed != original
+        path.write_bytes(recompressed)
         module.write_set("boolean")
         assert path.read_bytes() == recompressed
+
+    def test_regeneration_repairs_png_arity_without_changing_pixels(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from dataclasses import replace
+
+        name = first(source_kind="raster", boolean_generator=True)
+        api = esolangs.Language(name)
+        artifact = api.generate("01")
+        module = self._redirect(monkeypatch, tmp_path)
+        monkeypatch.setitem(module.SETS, "probe", lambda: iter([("sample", artifact)]))
+        path = tmp_path / "sample/sample.png"
+        path.parent.mkdir()
+        api.to_file(replace(artifact, input_arity=2), path)
+
+        module.write_set("probe")
+        restored = api.from_file(path)
+        assert restored == artifact
+        for bit in (0, 1):
+            assert api.evaluate(restored, [bit]).answer == str(bit)
 
     @pytest.mark.parametrize("compressed", [False, True])
     def test_regeneration_replaces_corrupt_examples(

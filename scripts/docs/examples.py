@@ -12,9 +12,10 @@ from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ProgramError
 from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
+from esolangs.operations.source import read_png_source
 from esolangs.portable import to_file
-from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.raster import Raster, png
+from esolangs.registry import LANGUAGES, canonical_id, get_catalog
 from esolangs.runtime._program import Program
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -157,20 +158,22 @@ def _same_program(
 ) -> bool:
     """Whether the file holding ``existing`` already is ``generated``.
 
-    A raster compares by pixels, not bytes: the PNG encoder's zlib differs
-    between Pillow builds, so a byte comparison rewrote every committed
-    image on any machine but the one that last wrote it, with nothing in it
-    changed.  The pixels are the program, which is what the tests compare.
+    Compare PNG pixels and source metadata independently of zlib encoding.
     """
     if existing is None:
         return False
     generated = artifact.source
     if isinstance(generated, Raster):
         try:
-            saved_image = Raster.from_png(existing)
+            scan, _ = read_png_source(
+                artifact.language, existing, catalog=get_catalog()
+            )
+            return (
+                scan.metadata == png.read_metadata(encoded)
+                and Raster._from_png(scan) == generated  # noqa: SLF001
+            )
         except ProgramError:
             return False
-        return saved_image == generated
     if isinstance(generated, CompressedText):
         try:
             saved = CompressedText(existing)

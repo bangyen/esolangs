@@ -736,6 +736,9 @@ def sources(name: str) -> list[str]:
     return found
 
 
+_BOUNDS_STEP_CAP = 2_000_000
+
+
 def bounds(
     name: str, arities: range, *, announce: bool = False
 ) -> list[tuple[int, int, int, int, str, str]]:
@@ -767,7 +770,12 @@ def bounds(
         for table in witnesses:
             program = esolangs.generate(name, table)
             worst[table] = measure(
-                name, table, written=True, program=program, check_answers=True
+                name,
+                table,
+                written=True,
+                program=program,
+                check_answers=True,
+                step_cap=_BOUNDS_STEP_CAP,
             )
             size = max(size, source_units(program.source))
         steps = max(worst, key=lambda t: worst[t][0])

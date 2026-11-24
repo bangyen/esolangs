@@ -78,7 +78,25 @@ def _report(data: Path, packages: list[str]) -> dict[str, dict[str, Any]]:
         cmd = [sys.executable, "-m", "coverage", "json", "-q", "-o", str(out)]
         cmd += ["--data-file", str(data), "--include", include]
         subprocess.run(cmd, cwd=ROOT, check=True)
-        files: dict[str, dict[str, Any]] = json.loads(out.read_text())["files"]
+        report = json.loads(out.read_text(encoding="utf-8"))
+    if report["meta"]["branch_coverage"] is not True:
+        raise ValueError("generator coverage must include branch data")
+    files: dict[str, dict[str, Any]] = report["files"]
+    expected = {
+        path.resolve()
+        for package in packages or ["*"]
+        for pattern in (f"{package}/generator.py", f"{package}/generator/**/*.py")
+        for path in LANGUAGES.glob(pattern)
+        if path.is_file()
+    }
+    missing = sorted(expected - {(ROOT / name).resolve() for name in files})
+    if missing:
+        preview = ", ".join(str(path.relative_to(LANGUAGES)) for path in missing[:3])
+        ellipsis = ", ..." if len(missing) > 3 else ""
+        raise ValueError(
+            f"coverage is missing {len(missing)} generator source files: "
+            f"{preview}{ellipsis}"
+        )
     return files
 
 
@@ -143,7 +161,10 @@ def main() -> int:
     data = args.data or Path(tempfile.mkdtemp()) / ".coverage"
     if not data.exists():
         _collect(data, packages)
-    found = _entries(_report(data, packages))
+    try:
+        found = _entries(_report(data, packages))
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.update:
         _dump(found)
         print(f"{sum(map(len, found.values()))} entries in {len(found)} files")

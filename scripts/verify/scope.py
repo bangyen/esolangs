@@ -100,14 +100,19 @@ def changed_files() -> list[str]:
             names = paths
             known = True
             break
-    status = subprocess.run(
-        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
-        capture_output=True,
-        cwd=ROOT,
-        check=False,
-        timeout=60,
-    )
-    if not known or status.returncode != 0:
+    if not known:
+        return []
+    try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+            capture_output=True,
+            cwd=ROOT,
+            check=False,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if status.returncode != 0:
         return []
     records = iter(status.stdout.split(b"\0"))
     for record in records:

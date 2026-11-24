@@ -137,6 +137,19 @@ def test_missing_local_main_uses_remote_main() -> None:
     assert run.call_args_list[1].args[0][-1] == "origin/main...HEAD"
 
 
+@pytest.mark.parametrize(
+    "error", [subprocess.TimeoutExpired(["git", "status"], 60), OSError()]
+)
+def test_git_status_failure_widens_the_gate(error, monkeypatch):
+    scope = load_script()
+    monkeypatch.delenv("VERIFY_FULL", raising=False)
+    diff = subprocess.CompletedProcess([], 0, stdout=b"docs/usage.md\x00")
+    with mock.patch.object(scope.subprocess, "run", side_effect=[diff, error]):
+        whole, reason = scope._scope_plan(full=False)
+    assert whole
+    assert reason == "no diff available"
+
+
 def test_whole_tree_pre_commit_reaches_untracked_files() -> None:
     """``--all-files`` skips files never added; a new language is all such."""
     scope = load_script()

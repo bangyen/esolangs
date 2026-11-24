@@ -2,12 +2,48 @@
 
 from types import SimpleNamespace
 
+import pytest
+
 from conftest import pytest_terminal_summary
 
 
 def test_evidence_reports(tmp_path, monkeypatch):
     _contract_summary_counts_outcomes_and_reasons()
     _failed_collection_removes_partial_coverage(tmp_path, monkeypatch)
+
+
+def test_deadcode_rejects_partial_coverage_before_reporting_or_updating(
+    tmp_path, monkeypatch, capsys
+):
+    import sys
+
+    from coverage import CoverageData
+
+    from tests.support.reference import REFERENCE
+    from tests.tooling.script_support import REPO_ROOT, load
+
+    scripts = REPO_ROOT / "scripts"
+    monkeypatch.syspath_prepend(str(scripts))
+    module = load(scripts / "deadcode.py")
+    package = module.REGISTRY[module.resolve(REFERENCE)].id
+    source = module.LANGUAGES / package / "generator.py"
+    data = tmp_path / ".coverage"
+    coverage = CoverageData(basename=str(data))
+    coverage.add_arcs({str(source): [(-1, 1), (1, -1)]})
+    coverage.write()
+    baseline = tmp_path / "known.toml"
+    baseline.write_text("# existing baseline\n")
+    monkeypatch.setattr(module, "KNOWN", baseline)
+    for flags in ([], ["--update"]):
+        monkeypatch.setattr(sys, "argv", ["deadcode", "--data", str(data), *flags])
+        with pytest.raises(SystemExit) as caught:
+            module.main()
+        assert caught.value.code == 2
+        captured = capsys.readouterr()
+        assert "generator source files" in captured.err
+        assert captured.out == ""
+        assert baseline.read_text() == "# existing baseline\n"
+    assert len(module._report(data, [package])) == 1
 
 
 def _contract_summary_counts_outcomes_and_reasons():
@@ -56,8 +92,6 @@ def _failed_collection_removes_partial_coverage(tmp_path, monkeypatch):
     data.write_text("partial coverage")
     failed = Mock(side_effect=subprocess.CalledProcessError(1, [sys.executable]))
     monkeypatch.setattr(module.subprocess, "run", failed)
-    import pytest
-
     with pytest.raises(subprocess.CalledProcessError):
         module._collect(data, [])
     assert not data.exists()
