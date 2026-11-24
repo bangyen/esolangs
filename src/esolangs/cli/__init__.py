@@ -546,6 +546,7 @@ def _read_saved_template(
     """Read a bounded portable document and require retained bindings."""
     from esolangs.portable import _ArtifactLanguageMismatchError
 
+    label = "stdin" if path == "-" else display_label(path)
     if path == "-":
         data = _bounded_source_stdin(None, "", None, _MAX_PROGRAM_BYTES)
         if len(data) > _MAX_PROGRAM_BYTES:
@@ -566,10 +567,9 @@ def _read_saved_template(
             raise _with_cli_hint(error, hint) from cause
         if not isinstance(cause, json.JSONDecodeError):
             raise
-        label = "stdin" if path == "-" else display_label(path)
         raise ProgramError(f"invalid portable template in {label}: {cause}") from error
     if not isinstance(artifact, TemplateArtifact):
-        _fail("--from-template requires an unfilled portable template")
+        _fail(f"{label}: --from-template requires an unfilled portable template")
     return artifact
 
 

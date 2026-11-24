@@ -258,14 +258,14 @@ def _smoke_install(package: Path) -> None:
         ),
         "the bounded runner accepted a diverging program",
     )
+    _smoke_quickstart()
+
+
+def _smoke_quickstart() -> None:
+    """Execute the README's Bash and compare its documented output."""
     executable = Path(sys.executable).with_name(
         "esolangs.exe" if sys.platform == "win32" else "esolangs"
     )
-    _smoke_quickstart(executable)
-
-
-def _smoke_quickstart(executable: Path) -> None:
-    """Execute the README's Bash and compare its documented output."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     quickstart = readme.partition("\n## Try it\n")[2].partition("\n## ")[0]
     example = re.search(

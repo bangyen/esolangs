@@ -88,6 +88,16 @@ def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     check(paths, ["a", "b", "serial"], "slow", 2)
 
 
+def test_duplicate_manifest_fields_cannot_replace_a_shard_selection(tmp_path) -> None:
+    paths = evidence(tmp_path)
+    manifest = paths[0]
+    original = manifest.read_text(encoding="utf-8")
+    manifest.write_text('{"selected":["other"],' + original[1:], encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate field: selected") as error:
+        check(paths, ["a", "b", "serial"], "slow", 2)
+    assert str(manifest) in str(error.value)
+
+
 def test_timing_refresh_preserves_census_dates(tmp_path) -> None:
     run = tmp_path / "run"
     run.mkdir()

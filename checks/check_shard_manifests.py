@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ci.shard import collect_ids, load_run, read_completion_metadata
+from ci.shard import collect_ids, load_run, read_completion_metadata, read_evidence_json
 
 
 def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> None:
@@ -30,7 +29,7 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
     if len(paths) != shards:
         raise ValueError("missing or extra shard manifests")
     for path in paths:
-        record = json.loads(path.read_text())
+        record = read_evidence_json(path, kind="shard manifest")
         if (
             not isinstance(record, dict)
             or record.get("schema") != 1

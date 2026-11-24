@@ -98,18 +98,18 @@ def load_durations(path: Path) -> dict[str, float]:
     return _parse_durations(path.read_bytes(), path)
 
 
-def read_timing_json(path: Path, *, data: bytes | None = None) -> Any:
-    """Read unique timing fields, reusing already hashed bytes when supplied."""
+def read_evidence_json(path: Path, *, kind: str, data: bytes | None = None) -> Any:
+    """Read unique evidence fields, reusing already hashed bytes when supplied."""
     try:
         payload = path.read_bytes() if data is None else data
         return json.loads(payload.decode("utf-8"), object_pairs_hook=unique_object)
     except (OSError, ValueError) as error:
-        raise ValueError(f"{path}: invalid timing JSON: {error}") from error
+        raise ValueError(f"{path}: invalid {kind} JSON: {error}") from error
 
 
 def read_completion_metadata(path: Path) -> dict[str, Any]:
     """Read the identity and unique node IDs before consumers compare them."""
-    metadata = read_timing_json(path)
+    metadata = read_evidence_json(path, kind="timing")
     if not isinstance(metadata, dict):
         raise ValueError(f"{path}: timing completion metadata must be an object")
     run = metadata.get("run")
@@ -142,7 +142,7 @@ def read_completion_metadata(path: Path) -> dict[str, Any]:
 
 def _parse_durations(data: bytes, path: Path) -> dict[str, float]:
     """Parse the bytes read from a timing file or checked against a sidecar."""
-    raw = _timing_map(read_timing_json(path, data=data))
+    raw = _timing_map(read_evidence_json(path, kind="timing", data=data))
     if not isinstance(raw, dict):
         raise ValueError(
             f"{path}: durations must map node IDs to finite positive seconds"
@@ -434,7 +434,7 @@ def _collected_dates(output: Path) -> dict[str, str]:
         return {}
     except OSError as error:
         raise ValueError(f"{output}: cannot read timing snapshot: {error}") from error
-    raw = read_timing_json(output, data=data)
+    raw = read_evidence_json(output, kind="timing", data=data)
     if (
         not isinstance(raw, dict)
         or not isinstance(collected := raw.get("collected"), dict)

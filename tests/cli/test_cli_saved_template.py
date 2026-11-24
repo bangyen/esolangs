@@ -1,5 +1,6 @@
 """Fill portable template bindings through generate and execute the result."""
 
+import json
 import shlex
 from pathlib import Path
 
@@ -140,6 +141,31 @@ def test_saved_template_rejects_wrong_record_owner_and_row(language, capsys) -> 
         )
         assert not output
         assert message in error
+
+
+@pytest.mark.parametrize("from_stdin", [False, True])
+def test_invalid_portable_bindings_name_the_source(
+    language, tmp_path, capsys, from_stdin
+) -> None:
+    record = json.loads(
+        call_main(["generate", "--artifact", language.name, "0110"], capsys)
+    )
+    record["spans"] = [[]]
+    document = json.dumps(record)
+    path = tmp_path / "broken template.json"
+    if not from_stdin:
+        path.write_text(document, encoding="utf-8")
+    operand = "-" if from_stdin else str(path)
+    source = "stdin" if from_stdin else str(path)
+    stdin = document if from_stdin else ""
+    for command in (
+        ["run", "--artifact", language.name, operand],
+        ["generate", f"--from-template={operand}", "--bits=01", language.name],
+    ):
+        output, error = _failure(command, capsys, stdin=stdin)
+        assert output == ""
+        assert error.startswith(f"{source}: invalid portable program:")
+        assert "template spans must be pairs of offsets" in error
 
 
 @pytest.mark.parametrize("path", ["-", "--saved 'width=80'.json"])

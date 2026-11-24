@@ -85,6 +85,7 @@ from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 from esolangs.runtime.source_hints import (
     display_label,
+    program_error_context,
     source_read_error,
     with_hint,
 )
@@ -297,11 +298,13 @@ def _load_portable_source(
     """Restore runnable JSON and combine any explicit compatible choices."""
     from esolangs.portable import _ArtifactLanguageMismatchError
 
+    label = "stdin" if path == "-" else display_label(path)
     for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
         if data.startswith(signature):
             raise _with_cli_hint(
                 ProgramError(
-                    f"--artifact expects portable JSON; the input is native {kind}"
+                    f"{label}: --artifact expects portable JSON; "
+                    f"the input is native {kind}"
                 ),
                 _native_run_hint(language, path, catalog),
             )
@@ -323,12 +326,12 @@ def _load_portable_source(
         if not isinstance(cause, JSONDecodeError):
             raise
         raise _with_cli_hint(
-            ProgramError(f"invalid portable program: {cause}"),
+            error,
             f"if this is a native program, {_native_run_hint(language, path, catalog)}",
         ) from error
     if isinstance(artifact, TemplateArtifact):
         raise _with_cli_hint(
-            TemplateError("unfilled portable template"),
+            TemplateError(f"{label}: unfilled portable template"),
             _saved_template_hint(artifact.language, path, catalog),
         )
     retained = artifact.settings
@@ -351,13 +354,23 @@ def _decode_portable_record(
     """Read a portable program or template document under the caller's bounds."""
     from esolangs import from_json
 
+    label = "stdin" if path == "-" else display_label(path)
     if data.startswith(BOM_UTF8):
-        raise _portable_bom_error("stdin" if path == "-" else display_label(path))
+        raise _portable_bom_error(label)
     try:
         document = decode_utf8(data)
     except UnicodeDecodeError as error:
         raise source_read_error("stdin" if path == "-" else path, error) from error
-    return from_json(language, document, catalog=catalog)
+    try:
+        return from_json(language, document, catalog=catalog)
+    except ProgramError as error:
+        cause = error.__cause__
+        message = (
+            f"invalid portable program: {cause}"
+            if isinstance(cause, JSONDecodeError)
+            else str(error)
+        )
+        raise program_error_context(f"{label}: {message}", error) from cause
 
 
 def _note(message: str) -> None:

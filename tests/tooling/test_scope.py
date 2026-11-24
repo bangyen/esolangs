@@ -129,6 +129,16 @@ def test_workflow_only_change_runs_its_pytest_suites(workflow) -> None:
     assert scope.local_tooling_deselections(changed) == []
 
 
+def test_readme_only_change_runs_the_quickstart() -> None:
+    scope = load_script()
+    changed = ["README.md"]
+    assert scope.widens_to_everything(changed) is None
+    assert scope._scoped_cmd("pytest", ["pytest"], changed) == [
+        "pytest",
+        "tests/tooling/test_readme_quickstart.py",
+    ]
+
+
 def test_serial_manifest_change_runs_its_pytest_suite() -> None:
     scope = load_script()
     changed = [".github/serial-test-nodes.txt"]

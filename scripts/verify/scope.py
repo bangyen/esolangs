@@ -443,6 +443,9 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
     paths: set[str] = set()
     changed_tests: set[str] = set()
     for f in changed:
+        if f == "README.md":
+            paths.add("tests/tooling/test_readme_quickstart.py")
+            continue
         if f == _SERIAL_TEST_NODES:
             paths.add("tests/tooling/test_ci_coverage.py")
             continue
