@@ -290,9 +290,54 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         capsys.readouterr()
         module.write_set("boolean")
 
-        lines = capsys.readouterr().out.splitlines()
-        assert lines
-        assert all(line.startswith("unchanged") for line in lines if ".txt" in line)
+        assert capsys.readouterr().out.splitlines() == [
+            f"unchanged {written.relative_to(tmp_path / 'examples')}",
+            "unchanged EXAMPLES.md",
+        ]
+
+    @pytest.mark.parametrize("phase", ["build", "export", "manifest"])
+    def test_a_staging_failure_leaves_the_published_set_intact(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        phase: str,
+    ) -> None:
+        module = self._redirect(monkeypatch, tmp_path)
+        program = esolangs.ProgramArtifact("x", REFERENCE)
+        suffix = LANGUAGES[resolve(REFERENCE)].source_suffix
+        old_paths = [tmp_path / f"early/early{suffix}", tmp_path / "EXAMPLES.md"]
+        for path in old_paths:
+            path.parent.mkdir(exist_ok=True)
+            path.write_bytes(b"previous")
+
+        def fail() -> None:
+            raise RuntimeError(phase)
+
+        def build():
+            yield "early", program
+            if phase == "build":
+                fail()
+            yield "late", program
+
+        export = module.to_file
+
+        def export_program(language, artifact, path, **options):
+            if phase == "export" and path.stem == "late":
+                fail()
+            export(language, artifact, path, **options)
+
+        monkeypatch.setitem(module.SETS, "boolean", build)
+        monkeypatch.setattr(module, "to_file", export_program)
+        monkeypatch.setattr(
+            module, "boolean_manifest_text", fail if phase == "manifest" else str
+        )
+
+        with pytest.raises(RuntimeError, match=phase):
+            module.write_set("boolean")
+        assert sorted(tmp_path.iterdir()) == [old_paths[1], old_paths[0].parent]
+        assert [path.read_bytes() for path in old_paths] == [b"previous"] * 2
+        assert capsys.readouterr().out == ""
 
     def test_a_png_with_the_same_pixels_and_metadata_is_left_alone(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

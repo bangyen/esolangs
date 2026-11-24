@@ -20,6 +20,45 @@ def test_invalid_budget_is_rejected_before_opening_output(tmp_path, capsys, budg
     assert not out.exists()
 
 
+@pytest.mark.parametrize("count", [0, -1])
+def test_invalid_count_is_rejected_before_opening_output(tmp_path, capsys, count):
+    out = tmp_path / "out.jsonl"
+    message = "--per-language must be positive"
+    with pytest.raises(ValueError, match=message):
+        mutants.candidates("test", count)
+    with pytest.raises(ValueError, match=message):
+        mutants.sweep(["test"], out, count, 10)
+    with pytest.raises(SystemExit) as caught:
+        mutants.main(["test", "--out", str(out), "--per-language", str(count)])
+    assert caught.value.code == 2
+    assert message in capsys.readouterr().err
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("duration_only", [False, True])
+def test_an_inconclusive_verdict_fails_a_sweep(
+    tmp_path, monkeypatch, capsys, duration_only
+):
+    source = tmp_path / "source.py"
+    source.write_text("value = 1\n")
+    mutant = {"file": "source.py", "line": 1, "col": 8, "old": "1", "new": "2"}
+    outcome = ("killed", "duration") if duration_only else ("inconclusive", "")
+    results = iter([("survived", "baseline"), outcome])
+    monkeypatch.setattr(mutants, "ROOT", tmp_path)
+    monkeypatch.setattr(mutants, "_pytest", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(mutants, "_run", lambda *_args: next(results))
+    monkeypatch.setattr(mutants, "candidates", lambda *_args: [mutant])
+    monkeypatch.setattr(mutants, "_duration_flips", lambda _: ["test::slow"])
+    out = tmp_path / "out.jsonl"
+
+    assert mutants.sweep(["test"], out, 1, 10) == 1
+    record = json.loads(out.read_text())
+    assert record["status"] == "inconclusive"
+    assert record.get("duration_flips") == (["test::slow"] if duration_only else None)
+    assert "inconclusive" in capsys.readouterr().err
+    assert source.read_text() == "value = 1\n"
+
+
 @pytest.mark.parametrize("cutoff", ["probe", "global", "streak"])
 def test_sweep_budget_clips_probes_and_restores_source(
     tmp_path, monkeypatch, capsys, cutoff

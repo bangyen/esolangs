@@ -52,6 +52,54 @@ def test_a_missing_relative_file_is_reported(tmp_path: Path) -> None:
     assert checker.broken_links(tmp_path, files) == [("a.md", "gone.md")]
 
 
+def test_link_destinations_allow_angles_parentheses_and_titles(tmp_path: Path) -> None:
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {
+            "a.md": (
+                '[with spaces](<b b.md#yes> "Optional title")\n'
+                "[balanced](b(c(d)).md#yes 'Another title')\n"
+                r"[escaped](b\(c\(d\)\).md#yes)"
+                "\n"
+                "[missing](<b b.md#no>) [missing](b(c(d)).md#no)\n"
+            ),
+            "b b.md": "# Yes\n",
+            "b(c(d)).md": "# Yes\n",
+        },
+    )
+    assert checker.broken_links(tmp_path, files) == [
+        ("a.md", "b b.md#no"),
+        ("a.md", "b(c(d)).md#no"),
+    ]
+
+
+def test_only_used_reference_destinations_are_checked(tmp_path: Path) -> None:
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {
+            "a.md": (
+                "[nested [text]][  lIVE   link ] [external][]\n"
+                "[missing][] [shortcut] `[unused]` "
+                "```text`[unused]``` \\[unused]\n\n"
+                "[Live Link]:\n <b b.md#yes> 'Title'\n"
+                "[live link]: ignored-duplicate.md\n"
+                "[external]: https://example.com/x#y\n"
+                "[missing]: gone(extra).md\n"
+                "[shortcut]: <b b.md#no>\n"
+                "[unused]: also-gone.md\n\n"
+                "~~~\n[unused]\n~~~\n"
+            ),
+            "b b.md": "# Yes\n",
+        },
+    )
+    assert checker.broken_links(tmp_path, files) == [
+        ("a.md", "gone(extra).md"),
+        ("a.md", "b b.md#no"),
+    ]
+
+
 def test_external_links_and_code_spans_are_ignored(tmp_path: Path) -> None:
     checker = load_script()
     files = _tree(

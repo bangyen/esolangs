@@ -130,24 +130,6 @@ def boolean_manifest_text() -> str:
     return "\n".join(rows) + "\n"
 
 
-def write_boolean_manifest() -> None:
-    """Write the manifest to disk.
-
-    Split from the text so a test can compare the committed file against
-    what this would produce without regenerating every program to find
-    out.  Nothing checked the manifest at all until then, so a note added
-    to a language left the committed table describing the one before it.
-    """
-    path = LANGUAGES_DIR / "EXAMPLES.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    text = boolean_manifest_text()
-    if path.exists() and path.read_text(encoding="utf-8") == text:
-        print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
-        return
-    path.write_text(text, encoding="utf-8")
-    print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
-
-
 SETS = {
     "boolean": boolean_programs,
 }
@@ -184,15 +166,21 @@ def _same_program(
 
 
 def write_set(name: str) -> None:
-    """Write one example directory from its generators, reporting each file."""
-    for stem, generated in SETS[name]():
-        directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " "))
-        directory.mkdir(parents=True, exist_ok=True)
-        suffix = LANGUAGES[generated.language].source_suffix
-        path = directory / f"{stem}{suffix}"
-        existing = path.read_bytes() if path.exists() else None
-        with TemporaryDirectory(dir=directory) as temporary:
-            staged = pathlib.Path(temporary) / path.name
+    """Stage the whole example set before replacing any published file."""
+    build = SETS[name]
+    LANGUAGES_DIR.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(dir=LANGUAGES_DIR, prefix=".examples-") as temporary:
+        staging = pathlib.Path(temporary)
+        pending: list[pathlib.Path] = []
+        for stem, generated in build():
+            suffix = LANGUAGES[generated.language].source_suffix
+            relative = pathlib.Path(canonical_id(stem.replace("-", " "))) / (
+                f"{stem}{suffix}"
+            )
+            path = LANGUAGES_DIR / relative
+            existing = path.read_bytes() if path.exists() else None
+            staged = staging / relative
+            staged.parent.mkdir(parents=True, exist_ok=True)
             compressed = isinstance(generated.source, CompressedText)
             to_file(
                 generated.language,
@@ -201,13 +189,26 @@ def write_set(name: str) -> None:
                 gzip=compressed,
                 normalize=not compressed,
             )
-            if not _same_program(existing, staged.read_bytes(), generated):
+            if _same_program(existing, staged.read_bytes(), generated):
+                staged.unlink()
+            pending.append(relative)
+        if name == "boolean":
+            relative = pathlib.Path("EXAMPLES.md")
+            path = LANGUAGES_DIR / relative
+            text = boolean_manifest_text()
+            if not path.exists() or path.read_text(encoding="utf-8") != text:
+                (staging / relative).write_text(text, encoding="utf-8")
+            pending.append(relative)
+
+        for relative in pending:
+            staged = staging / relative
+            path = LANGUAGES_DIR / relative
+            if staged.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
                 staged.replace(path)
-                print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
+                print(f"wrote     {relative}")
             else:
-                print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
-    if name == "boolean":
-        write_boolean_manifest()
+                print(f"unchanged {relative}")
 
 
 def examples_main(argv: list[str] | None = None) -> int:

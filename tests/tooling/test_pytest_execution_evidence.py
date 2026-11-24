@@ -160,20 +160,24 @@ def test_accepted_retry_requires_each_failed_call_to_pass(
 
 
 @pytest.mark.parametrize(
-    ("assertion", "options", "status"),
+    ("body", "options", "status"),
     [
-        ("True", [], "survived"),
-        ("False", [], "killed"),
-        ("True", ["--collect-only"], "inconclusive"),
-        ("True", ["-k", "there_is_no_such_test"], "inconclusive"),
-        ("True", ["--invalid-pytest-option"], "inconclusive"),
+        ("assert True", [], "survived"),
+        ("assert False", [], "killed"),
+        ("pytest.skip('skipped during call')", [], "inconclusive"),
+        ("pytest.xfail('expected failure during call')", [], "inconclusive"),
+        ("assert True", ["--collect-only"], "inconclusive"),
+        ("assert True", ["-k", "there_is_no_such_test"], "inconclusive"),
+        ("assert True", ["--invalid-pytest-option"], "inconclusive"),
     ],
 )
 def test_mutation_runner_classifies_actual_test_reports(
-    tmp_path, monkeypatch, assertion, options, status
+    tmp_path, monkeypatch, body, options, status
 ):
     probe = tmp_path / "test_mutant.py"
-    probe.write_text(f"def test_effect():\n    assert {assertion}\n", encoding="utf-8")
+    probe.write_text(
+        f"import pytest\n\ndef test_effect():\n    {body}\n", encoding="utf-8"
+    )
     monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
     command = [
         sys.executable,

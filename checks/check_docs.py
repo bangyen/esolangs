@@ -29,9 +29,11 @@ from __future__ import annotations
 import os
 import posixpath
 import re
+import string
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote
 
@@ -64,15 +66,109 @@ def _manifest_is_stale() -> bool:
     return manifest.read_text(encoding="utf-8") != examples.boolean_manifest_text()
 
 
-_INLINE_CODE = re.compile(r"`[^`\n]*`")
-_LINK = re.compile(r"\]\(\s*([^)\s]+)")
+_INLINE_CODE = re.compile(r"(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)")
+_ESCAPED = rf"\\([{re.escape(string.punctuation)}])"
+_UNESCAPE = re.compile(_ESCAPED)
+_BRACKET = re.compile(rf"{_ESCAPED}|[\[\]]")
+_LABEL = r"\[((?:\\.|[^\[\]\\\n])*)\]"
+_REFERENCE = re.compile(_LABEL)
+_DEFINITION = re.compile(rf"^ {{0,3}}{_LABEL}:[ \t]*(?:\n[ \t]*)?", re.MULTILINE)
+_TITLE = r"""(?:"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\((?:\\.|[^()\\\n])*\))"""
+_INLINE_END = re.compile(rf"(?:\s+{_TITLE})?\s*\)")
+_DEFINITION_END = re.compile(rf"(?:[ \t]+{_TITLE})?[ \t]*$", re.MULTILINE)
 _EXTERNAL = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//|/)", re.IGNORECASE)
 
 
-def _targets(text: str) -> list[str]:
-    """Return the link targets in ``text``, code spans removed."""
-    stripped = _INLINE_CODE.sub("", FENCE.sub("", text))
-    return [m.group(1) for m in _LINK.finditer(stripped)]
+def _destination(text: str, start: int) -> tuple[str, int] | None:
+    """Read a bracketed or bare destination through its last character."""
+    angle = text.startswith("<", start)
+    start += int(angle)
+    end = start
+    depth = 0
+    while end < len(text):
+        char = text[end]
+        escaped = _UNESCAPE.match(text, end)
+        if escaped is not None:
+            end = escaped.end()
+            continue
+        if angle:
+            if char == ">":
+                return _UNESCAPE.sub(r"\1", text[start:end]), end + 1
+            if char in "<\n":
+                return None
+        else:
+            if char.isspace() or (char == ")" and depth == 0):
+                break
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+        end += 1
+    if angle or depth:
+        return None
+    return _UNESCAPE.sub(r"\1", text[start:end]), end
+
+
+def _label(text: str) -> str:
+    return " ".join(text.split()).casefold()
+
+
+def _references(text: str, visible: str) -> tuple[dict[str, str], str]:
+    references: dict[str, str] = {}
+    parts: list[str] = []
+    cursor = 0
+    for match in _DEFINITION.finditer(visible):
+        if match.start() < cursor:
+            continue
+        label = _label(text[match.start(1) : match.end(1)])
+        dest = _destination(text, match.end())
+        if not label or dest is None:
+            continue
+        target, end = dest
+        tail = _DEFINITION_END.match(text, end)
+        if tail is None or end == match.end():
+            continue
+        references.setdefault(label, target)
+        parts.extend(
+            (visible[cursor : match.start()], " " * (tail.end() - match.start()))
+        )
+        cursor = tail.end()
+    parts.append(visible[cursor:])
+    return references, "".join(parts)
+
+
+def _targets(text: str) -> Iterator[str]:
+    """Yield destinations from inline links and resolved references."""
+    text = FENCE.sub("\n", text)
+    visible = _INLINE_CODE.sub(lambda match: " " * len(match[0]), text)
+    references, visible = _references(text, visible)
+    openings: list[int] = []
+    cursor = 0
+    for bracket in _BRACKET.finditer(visible):
+        start, end = bracket.span()
+        if start < cursor:
+            continue
+        if bracket[0] == "[":
+            openings.append(end)
+        elif bracket[0] == "]" and openings:
+            opening = openings.pop()
+            if visible.startswith("(", end):
+                dest_start = end + 1
+                while dest_start < len(text) and text[dest_start].isspace():
+                    dest_start += 1
+                dest = _destination(text, dest_start)
+                if dest is not None and (tail := _INLINE_END.match(text, dest[1])):
+                    yield dest[0]
+                    cursor = tail.end()
+                    continue
+            explicit = _REFERENCE.match(visible, end)
+            label = _label(text[opening:start])
+            if explicit is not None and explicit[1]:
+                label = _label(text[explicit.start(1) : explicit.end(1)])
+            if label in references:
+                yield references[label]
+                if explicit is not None:
+                    cursor = explicit.end()
 
 
 def broken_links(root: Path, files: list[str] | None = None) -> list[tuple[str, str]]:

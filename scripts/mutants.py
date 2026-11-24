@@ -13,11 +13,9 @@ Mutants edit source in place, so a sweep refuses to run outside a git
 worktree.  Caps: a baseline gets 60 s; a mutant gets three times its baseline
 (60 s at least), always clipped to the remaining global budget. A language
 stops after three consecutive timeouts.  Records
-append to ``--out`` as JSON lines for manual triage. A failure that is only a
-duration-band flip (see ``_duration_flips``) never counts: a baseline
-passes when every one of its failures is a flip, and a mutant is recorded
-survived, with the flips listed, when no test functionally kills it.
-An incomplete sweep due to a timeout or the global deadline exits 124.
+append to ``--out`` as JSON lines for manual triage. Duration-only failures
+are tolerated in the baseline and leave mutant verdicts inconclusive.
+Inconclusive results exit 1, and timeouts or the global deadline exit 124.
 """
 
 from __future__ import annotations
@@ -101,6 +99,8 @@ def _replaced(text: str, mutant: Mutant) -> str:
 
 def candidates(package: str, count: int) -> list[Mutant]:
     """Return ``count`` compiling mutants, seeded by the package name."""
+    if count < 1:
+        raise ValueError("--per-language must be positive")
     found: list[Mutant] = []
     for path in generator_files(package):
         text = path.read_text(encoding="utf-8")
@@ -249,13 +249,17 @@ def _run(command: list[str], timeout: float) -> tuple[str, str]:
             execution = json.loads(path.read_bytes())
         except (OSError, ValueError):
             return "inconclusive", output
-        if execution["exitstatus"] == process.returncode:
-            if process.returncode == 1 and execution["failed_calls"]:
+        if (
+            isinstance(execution, dict)
+            and execution.get("exitstatus") == process.returncode
+        ):
+            if process.returncode == 1 and execution.get("failed_calls"):
                 return "killed", output
             if (
                 process.returncode == 0
-                and execution["called"]
-                and execution["finished"] == execution["selected"]
+                and execution.get("passed_calls")
+                and (selected := execution.get("selected"))
+                and execution.get("finished") == selected
             ):
                 return "survived", output
         return "inconclusive", output
@@ -272,17 +276,19 @@ def _in_worktree() -> bool:
     return "/worktrees/" in git_dir
 
 
-def _incomplete(reason: str) -> int:
+def _incomplete(reason: str, code: int = 124) -> int:
     print(f"mutation sweep incomplete: {reason}", file=sys.stderr)
-    return 124
+    return code
 
 
 def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> int:
     """Run the mutation cases allowed by the finite sweep budget."""
     if not math.isfinite(budget) or budget <= 0:
         raise ValueError("--budget must be positive and finite")
+    if per_language < 1:
+        raise ValueError("--per-language must be positive")
     began = time.monotonic()
-    incomplete = False
+    statuses: set[str] = set()
     # A baseline alone may take minutes with nothing printed; say what runs.
     print(
         f"{len(packages)} package(s), up to {per_language} mutants each, "
@@ -344,8 +350,8 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                     path.write_text(original, encoding="utf-8")
                 flips = _duration_flips(output) if status == "killed" else None
                 if flips is not None:
-                    status = "survived"
-                incomplete |= status == "timeout"
+                    status = "inconclusive"
+                statuses.add(status)
                 streak = streak + 1 if status == "timeout" else 0
                 failed = sorted(set(re.findall(r"^FAILED (\S+)", output, re.MULTILINE)))
                 line = original.split("\n")[mutant["line"] - 1].strip()
@@ -367,7 +373,11 @@ def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> i
                     flush=True,
                 )
     _clear_bytecode()
-    return _incomplete("one or more mutants timed out") if incomplete else 0
+    if "timeout" in statuses:
+        return _incomplete("one or more mutants timed out")
+    if "inconclusive" in statuses:
+        return _incomplete("one or more mutant verdicts were inconclusive", 1)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -382,6 +392,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not math.isfinite(args.budget) or args.budget <= 0:
         parser.error("--budget must be positive and finite")
+    if args.per_language < 1:
+        parser.error("--per-language must be positive")
     if not _in_worktree():
         parser.error("mutants edit source in place: run a sweep in a git worktree")
     return sweep(args.packages, args.out, args.per_language, args.budget)
