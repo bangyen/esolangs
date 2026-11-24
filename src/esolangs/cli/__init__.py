@@ -79,6 +79,7 @@ from esolangs.cli.hints import (
     _generate_hint,
     _input_sentence,
     _looks_like_a_table,
+    _saved_template_hint,
     _shell_hint,
     _timeout_text,
 )
@@ -538,8 +539,12 @@ def _emit_generated(
     _note_export_settings(artifact, declaration)
 
 
-def _read_saved_template(path: str, name: str, catalog: Catalog) -> TemplateArtifact:
+def _read_saved_template(
+    path: str, name: str, catalog: Catalog, *, retry_options: list[str]
+) -> TemplateArtifact:
     """Read a bounded portable document and require retained bindings."""
+    from esolangs.portable import _ArtifactLanguageMismatchError
+
     if path == "-":
         data = _bounded_source_stdin(None, "", None, _MAX_PROGRAM_BYTES)
         if len(data) > _MAX_PROGRAM_BYTES:
@@ -552,12 +557,17 @@ def _read_saved_template(path: str, name: str, catalog: Catalog) -> TemplateArti
     try:
         artifact = _decode_portable_record(name, path, data, catalog)
     except ProgramError as error:
-        if not isinstance(error.__cause__, json.JSONDecodeError):
+        cause = error.__cause__
+        if isinstance(cause, _ArtifactLanguageMismatchError) and cause.is_template:
+            hint = _saved_template_hint(
+                cause.owner, path, catalog, options=retry_options
+            )
+            # CLI note rewrites could change a literal filename or flag.
+            _fail(f"{_cli_error_text(error)}\nhint: {hint}")
+        if not isinstance(cause, json.JSONDecodeError):
             raise
         label = "stdin" if path == "-" else display_label(path)
-        raise ProgramError(
-            f"invalid portable template in {label}: {error.__cause__}"
-        ) from error
+        raise ProgramError(f"invalid portable template in {label}: {cause}") from error
     if not isinstance(artifact, TemplateArtifact):
         _fail("--from-template requires an unfilled portable template")
     return artifact
@@ -586,8 +596,14 @@ def _generate_from_template(
         settings = _settings_of(settings_arguments, language=args[0], catalog=catalog)
         if "--gzip" in flags:
             _check_binary_terminal(declaration.name, raster=False, gzip=True)
+        retry_options = [f"--bits={bits}", *sorted(flags)]
+        if width is not None:
+            retry_options.append(f"--width={format_integer(width)}")
         template = _read_saved_template(
-            options["--from-template"], declaration.name, catalog
+            options["--from-template"],
+            declaration.name,
+            catalog,
+            retry_options=retry_options,
         )
         filled = instantiate(
             declaration.name,

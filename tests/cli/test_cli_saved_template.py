@@ -142,6 +142,26 @@ def test_saved_template_rejects_wrong_record_owner_and_row(language, capsys) -> 
         assert message in error
 
 
+@pytest.mark.parametrize("path", ["-", "--saved 'width=80'.json"])
+def test_saved_template_wrong_owner_suggests_a_runnable_retry(
+    language, tmp_path, capsys, monkeypatch, path
+) -> None:
+    document = call_main(["generate", "--artifact", language.name, "0110"], capsys)
+    monkeypatch.chdir(tmp_path)
+    if path != "-":
+        Path(path).write_text(document, encoding="utf-8")
+    stdin = document if path == "-" else ""
+    options = [f"--from-template={path}", "--bits=01", "--artifact", "--width=80"]
+    output, error = _failure(["generate", *options, REFERENCE], capsys, stdin=stdin)
+    assert output == ""
+    assert "artifact records" in error
+    retry = shlex.split(error.split("for example: ", 1)[1])
+    assert retry == ["esolangs", "generate", *options, language.name]
+    filled = call_main(retry[1:], capsys, stdin=stdin)
+    output = call_main(["run", "--artifact", language.name, "-"], capsys, filled)
+    assert language.read_answer(output) == "1"
+
+
 def test_run_points_directly_to_a_fill_command(language, tmp_path, capsys, monkeypatch):
     document = call_main(["generate", "--artifact", language.name, "0110"], capsys)
     monkeypatch.chdir(tmp_path)

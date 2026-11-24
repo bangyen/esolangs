@@ -132,7 +132,13 @@ def _template_hint(
     )
 
 
-def _saved_template_hint(language: str, path: str, catalog: Catalog) -> str:
+def _saved_template_hint(
+    language: str,
+    path: str,
+    catalog: Catalog,
+    *,
+    options: Iterable[str] = ("--bits", "BITS", "--artifact"),
+) -> str:
     """Suggest filling the existing artifact with a shell-ready filename."""
     encoding = _display_encoding(sys.stderr)
     operand = _as_argument(language, catalog=catalog, encoding=encoding)
@@ -140,11 +146,8 @@ def _saved_template_hint(language: str, path: str, catalog: Catalog) -> str:
         return (
             "fill the saved template with esolangs generate --from-template and --bits"
         )
-    return (
-        "fill the saved template, for example: "
-        f"esolangs generate --from-template={shlex.quote(path)} "
-        f"--bits BITS --artifact {operand}"
-    )
+    command = shlex.join(("esolangs", "generate", f"--from-template={path}", *options))
+    return f"fill the saved template, for example: {command} {operand}"
 
 
 def _run_source_command(

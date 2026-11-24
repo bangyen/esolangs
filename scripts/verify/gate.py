@@ -269,20 +269,32 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bo
         for name, _ in STEPS:
             print(name)
         sys.exit(0)
-    only = {s.strip() for s in args.only.split(",") if s.strip()} if args.only else None
-    skip = {s.strip() for s in args.skip.split(",") if s.strip()} if args.skip else None
     # A typo'd name used to filter STEPS down to nothing and print the same
     # "all local checks passed" a real green run prints -- a gate that ran
     # zero steps must never look like a gate that passed.
     known = {name for name, _ in STEPS}
-    for flag, names in (("--only", only), ("--skip", skip)):
-        unknown = sorted((names or set()) - known)
+
+    def selection(flag: str, raw: str | None) -> set[str] | None:
+        if raw is None:
+            return None
+        names = {part.strip() for part in raw.split(",") if part.strip()}
+        if not names:
+            parser.error(f"{flag}: expected at least one step name")
+        unknown = sorted(names - known)
         if unknown:
             parser.error(
                 f"{flag}: unknown step(s) {', '.join(unknown)}; "
                 f"--list prints the {len(known)} names"
             )
-    return only, skip, args.full, args.quiet, args.verbose
+        return names
+
+    return (
+        selection("--only", args.only),
+        selection("--skip", args.skip),
+        args.full,
+        args.quiet,
+        args.verbose,
+    )
 
 
 # The step that mutates the working tree.  pre-commit's ruff/ruff-format and

@@ -1,9 +1,23 @@
 """A mistyped argument is a one-line usage error, not a traceback."""
 
+import sys
+
 import pytest
 
 from tests.support.reference import REFERENCE
 from tests.tooling.script_support import REPO_ROOT, load
+
+
+@pytest.mark.parametrize("flag", ["--only", "--skip"])
+@pytest.mark.parametrize("value", ["", "  ", " , , "])
+def test_gate_rejects_empty_selection_before_setup(flag, value, capsys, monkeypatch):
+    gate = load(REPO_ROOT / "scripts" / "verify" / "gate.py")
+    monkeypatch.setattr(sys, "argv", ["gate.py", flag, value])
+    monkeypatch.setattr(gate, "_ensure_dev_deps", lambda: pytest.fail("started setup"))
+    with pytest.raises(SystemExit) as caught:
+        gate.main()
+    assert caught.value.code == 2
+    assert f"{flag}: expected at least one step name" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

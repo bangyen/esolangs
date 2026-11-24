@@ -90,14 +90,19 @@ def notes(version: str, changelog: str) -> str:
 
 
 def _cli(args: list[str], stdin: str = "") -> str:
-    result = subprocess.run(
-        [sys.executable, "-I", "-m", "esolangs", *args],
-        input=stdin,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=True,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-I", "-m", "esolangs", *args],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+    except subprocess.CalledProcessError as error:
+        if error.stderr:
+            error.add_note(error.stderr.rstrip())
+        raise
     return result.stdout
 
 

@@ -6,12 +6,22 @@ import stat
 import subprocess
 import sys
 import tarfile
+import traceback
 from pathlib import Path
 
 import pytest
 
 import esolangs
 from scripts.ci import release as smoke
+
+
+def test_cli_smoke_failure_exposes_the_child_diagnostic() -> None:
+    with pytest.raises(subprocess.CalledProcessError) as caught:
+        smoke._cli(["list", "--smoke-probe-unknown-option"])
+    assert caught.value.returncode == 2
+    displayed = "".join(traceback.format_exception_only(caught.value))
+    assert "returned non-zero exit status 2" in displayed
+    assert "unknown option: --smoke-probe-unknown-option" in displayed
 
 
 def test_generator_batch_executes_all_rows() -> None:
