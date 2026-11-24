@@ -1039,9 +1039,11 @@ _REFUSALS = {
 
 
 def test_option_passes_cannot_steal_another_options_value(capsys, tmp_path) -> None:
-    for options in (["--settings", "--set"], ["--settings=--set"], ["-s", "--set"]):
+    for options in (["--settings", "--set"], ["-s", "--set"], ["--settings", "-s={}"]):
         _, error = _failure(["generate", *options, REFERENCE, "01"], capsys)
-        assert "--settings is not valid JSON" in error
+        assert "--settings needs a value" in error
+    _, error = _failure(["generate", "--settings=--set", REFERENCE, "01"], capsys)
+    assert "--settings is not valid JSON" in error
 
     for command, operands in (
         ("list", []),

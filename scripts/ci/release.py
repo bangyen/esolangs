@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def normalize(path: Path, epoch: int) -> None:
     """Preserve payloads while fixing gzip and tar metadata deterministically."""
     path = path.resolve(strict=True)
+    fixed_metadata = {"mtime", "atime", "ctime", "uid", "gid", "uname", "gname"}
     with tempfile.TemporaryDirectory(dir=path.parent) as scratch:
         staged = Path(scratch) / path.name
         with (
@@ -46,10 +47,11 @@ def normalize(path: Path, epoch: int) -> None:
                 member.mtime = epoch
                 member.uid = member.gid = 0
                 member.uname = member.gname = ""
+                # PAX values take precedence over these tar header fields.
                 member.pax_headers = {
                     key: value
                     for key, value in member.pax_headers.items()
-                    if key not in {"mtime", "atime", "ctime"}
+                    if key not in fixed_metadata
                 }
                 target.addfile(
                     member, source.extractfile(member) if member.isfile() else None

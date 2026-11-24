@@ -2,6 +2,7 @@
 
 import importlib
 import shutil
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 
@@ -67,6 +68,26 @@ def test_exhaustive_price_is_checked_before_checkout(monkeypatch, capsys, arity,
     diagnostic = capsys.readouterr().err
     assert f"{count} exhaustive requests per pass" in diagnostic
     assert "Use named construction witnesses" in diagnostic
+
+
+def test_generation_deadline_owns_scratch_for_the_entire_sweep(monkeypatch, capsys):
+    args = [REFERENCE, "--speed", "--mutant", "control.py"]
+    directories = []
+
+    def time_out(command, *, timeout):
+        assert command[3] == "--sweep"
+        assert command[5:] == args
+        assert timeout == gendiff._SWEEP_TIMEOUT
+        directory = Path(command[4])
+        directories.append(directory)
+        (directory / "partial-archive").write_bytes(b"partial")
+        raise subprocess.TimeoutExpired(command, timeout)
+
+    monkeypatch.setattr(gendiff, "run_bounded", time_out)
+    assert gendiff.main(args, supervise=True) == 124
+    assert "generation sweep" in capsys.readouterr().err
+    assert directories
+    assert not directories[0].exists()
 
 
 def test_matching_errors_without_a_program_fail(monkeypatch, capsys) -> None:

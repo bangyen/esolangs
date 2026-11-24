@@ -239,19 +239,21 @@ def run_bounded(
     check: bool = False,
     stdout: int | None = None,
     stderr: int | None = None,
+    stdin_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Run preflight probes with the same descendant cleanup as check steps."""
+    """Run a bounded subprocess and clean up its process tree if interrupted."""
     with subprocess.Popen(
         cmd,
         start_new_session=os.name == "posix",
         cwd=cwd,
         env=env,
         text=text,
+        stdin=subprocess.PIPE if stdin_text is not None else None,
         stdout=subprocess.PIPE if capture_output else stdout,
         stderr=subprocess.PIPE if capture_output else stderr,
     ) as proc:
         try:
-            output, error = proc.communicate(timeout=timeout)
+            output, error = proc.communicate(input=stdin_text, timeout=timeout)
         except BaseException:
             stop_process_tree(proc)
             raise

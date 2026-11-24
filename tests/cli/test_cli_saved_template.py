@@ -102,6 +102,13 @@ def test_saved_template_preflights_before_reading(
     assert message in error
 
 
+@pytest.mark.parametrize("option", ["--bits=1", "--width", "--artifact"])
+def test_saved_template_requires_its_path_before_other_options(capsys, option) -> None:
+    output, error = _failure(["generate", "--from-template", option, REFERENCE], capsys)
+    assert not output
+    assert "--from-template needs a value" in error
+
+
 def test_saved_template_rejects_wrong_record_owner_and_row(language, capsys) -> None:
     template = call_main(["generate", "--artifact", language.name, "0110"], capsys)
     program = call_main(

@@ -360,24 +360,27 @@ def test_encode_template_refusal_points_to_cli_generation(capsys, language) -> N
 
 
 @pytest.mark.parametrize(
-    "args",
+    ("args", "reason"),
     [
-        ["", REFERENCE, "01"],
-        ["two", REFERENCE, "01"],
-        [REFERENCE, "01"],
-        ["--width", "2", REFERENCE, "01"],
+        (["--bits", "", REFERENCE, "01"], "must be a string of 0s and 1s"),
+        (["--bits", "two", REFERENCE, "01"], "must be a string of 0s and 1s"),
+        (["--bits", REFERENCE, "01"], "must be a string of 0s and 1s"),
+        (["--bits=--width", REFERENCE, "01"], "must be a string of 0s and 1s"),
+        (["--bits", "--width", "2", REFERENCE, "01"], "needs a value"),
     ],
 )
-def test_bad_bits_are_refused_before_synthesis(capsys, monkeypatch, args) -> None:
+def test_bad_bits_are_refused_before_synthesis(
+    capsys, monkeypatch, args, reason
+) -> None:
     from esolangs.operations import generation
 
     def unused(*_args, **_kwargs):
         pytest.fail("invalid --bits launched generation")
 
     monkeypatch.setattr(generation, "_generate_checked", unused)
-    out, err = _failure(["generate", "--bits", *args], capsys)
+    out, err = _failure(["generate", *args], capsys)
     assert out == ""
-    assert "--bits must be a string of 0s and 1s" in err
+    assert err.startswith(f"--bits {reason}")
 
 
 @pytest.mark.parametrize("language", one(answer_mode="termination"))

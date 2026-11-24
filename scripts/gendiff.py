@@ -10,6 +10,7 @@ is an optimization, judged by CONTRIBUTING.md's size bar, not a refactor.
 Each tree runs in its own process from its own ``src``, so a package
 generator and the shared wrapping layers come from the same revision.
 ``--mutant`` is the positive control; ``--speed`` compares generation time.
+The complete sweep has a 300-second wall-clock limit. A sweep timeout exits 124.
 
 Exits 1 on any difference, if neither tree generated a matching pair of
 programs, on a mutant that went unseen, or with ``--speed`` on a new tree
@@ -36,9 +37,13 @@ from typing import Any, NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+
+from verify.process import run_bounded  # noqa: E402
+
 #: The slowdown a refactor may cost before ``--speed`` fails it.
 SLOWDOWN = 0.10
 _DUMP_TIMEOUT = 60
+_SWEEP_TIMEOUT = 300
 _MAX_EXHAUSTIVE_ARITY = 3
 _WITNESS_ROWS = 1 << 20
 type Outputs = dict[str, str]
@@ -163,13 +168,11 @@ def _dump(
     env = dict(os.environ, PYTHONPATH=str(src))
     command = [sys.executable, __file__, "--dump", name, "--max-n", str(max_n)]
     try:
-        result = subprocess.run(
+        result = run_bounded(
             command,
             env=env,
-            input=json.dumps(witnesses),
+            stdin_text=json.dumps(witnesses),
             capture_output=True,
-            text=True,
-            check=False,
             timeout=_DUMP_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
@@ -310,7 +313,12 @@ def _speed_failed(
     return new_generation > old_generation * (1 + SLOWDOWN)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    supervise: bool = False,
+    scratch: Path | None = None,
+) -> int:
     """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -330,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--speed", action="store_true", help="also compare time")
     parser.add_argument("--dump", action="store_true", help=argparse.SUPPRESS)
+    argv = sys.argv[1:] if argv is None else argv
     args = parser.parse_args(argv)
     if args.mutant_target is not None and args.mutant is None:
         parser.error("--mutant-target requires --mutant")
@@ -342,6 +351,8 @@ def main(argv: list[str] | None = None) -> int:
         dumped, seconds = _timed_outputs(args.language, args.max_n, witnesses)
         print(json.dumps({"outputs": dumped, "seconds": seconds}))
         return 0
+    if supervise:
+        return _supervise(argv, args.language)
     sys.path.insert(0, str(ROOT / "src"))
     from esolangs.registry import LANGUAGES, resolve
 
@@ -362,9 +373,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ValueError as exc:
         parser.error(str(exc))
-    with tempfile.TemporaryDirectory() as scratch:
+    with tempfile.TemporaryDirectory(dir=scratch) as directory:
+        staging = Path(directory)
         try:
-            old_src = _checkout(args.old, Path(scratch) / "old")
+            old_src = _checkout(args.old, staging / "old")
         except ValueError as error:
             parser.error(str(error))
         if witnesses is None:
@@ -407,12 +419,28 @@ def main(argv: list[str] | None = None) -> int:
             )
         if replacement is not None:
             target, contents = replacement
-            mutant_src = _mutated(contents, target, Path(scratch) / "mutant")
+            mutant_src = _mutated(contents, target, staging / "mutant")
             caught = len(differences(old, dump(mutant_src)[0]))
             print(f"control: mutant differs on {caught}")
             failed |= not caught
     return int(failed)
 
 
+def _supervise(argv: list[str], name: str) -> int:
+    """Bound the sweep and own its scratch directory through a worker timeout."""
+    with tempfile.TemporaryDirectory(prefix="gendiff-") as directory:
+        command = [sys.executable, "-u", __file__, "--sweep", directory, *argv]
+        try:
+            return run_bounded(command, timeout=_SWEEP_TIMEOUT).returncode
+        except subprocess.TimeoutExpired:
+            print(
+                f"generation sweep for {name} exceeded {_SWEEP_TIMEOUT:g}s",
+                file=sys.stderr,
+            )
+            return 124
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if sys.argv[1:2] == ["--sweep"] and len(sys.argv) > 2:
+        raise SystemExit(main(sys.argv[3:], scratch=Path(sys.argv[2])))
+    raise SystemExit(main(supervise=True))

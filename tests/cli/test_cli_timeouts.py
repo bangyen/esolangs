@@ -22,6 +22,7 @@ from tests.support.reference import REFERENCE
 _BAD_TIMEOUTS = [
     # A forgotten number blamed the positional it had swallowed.
     ("--execution-timeout brainfuck", "--execution-timeout must be a number"),
+    ("--execution-timeout --artifact brainfuck", "--execution-timeout needs a value"),
     ("--execution-timeout -inf brainfuck", "must be finite"),
     # 1e10 overflowed the source read's thread wait as a raw OverflowError.
     ("--execution-timeout 1e9 brainfuck", "--execution-timeout must be at most"),

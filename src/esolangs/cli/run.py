@@ -8,6 +8,7 @@ from typing import NoReturn, TextIO, cast
 
 from esolangs import ExecutionLimits
 from esolangs.cli.args import (
+    _FLAG_OPTIONS,
     _VALUE_OPTIONS,
     _check_count,
     _errors,
@@ -105,7 +106,7 @@ def _run(rest: list[str]) -> None:
             options["--max-steps"], "--max-steps", kind="a non-negative integer"
         )
         _nonnegative(max_steps, "--max-steps", options["--max-steps"])
-    flag_options = {"--isolated", "--artifact"}
+    flag_options = _FLAG_OPTIONS["run"]
     rest, flags = _pop_flags(rest, flag_options)
     isolated = "--isolated" in flags
     max_output = None

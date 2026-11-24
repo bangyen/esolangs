@@ -152,6 +152,47 @@ def test_normalize_leaves_original_if_compression_fails(tmp_path, monkeypatch) -
     assert list(tmp_path.iterdir()) == [archive]
 
 
+def test_normalize_discards_global_and_local_pax_ownership(tmp_path) -> None:
+    payload = b"source payload\n"
+    ids = {"uid", "gid", "uname", "gname"}
+    shared = {"comment": "preserve unrelated PAX metadata"}
+    archives = []
+    for index in (1, 2):
+        ownership = {
+            "uid": str(index * 100_000),
+            "gid": str(index * 200_000),
+            "uname": f"builder-{index}",
+            "gname": f"group-{index}",
+        }
+        archive = tmp_path / f"source-{index}.tar.gz"
+        archives.append(archive)
+        member = tarfile.TarInfo("package/source.py")
+        member.size = len(payload)
+        member.pax_headers = shared | (ownership if index == 1 else {})
+        with tarfile.open(
+            archive,
+            "w:gz",
+            format=tarfile.PAX_FORMAT,
+            pax_headers=ownership if index == 2 else {},
+        ) as source:
+            source.addfile(member, io.BytesIO(payload))
+        with tarfile.open(archive) as source:
+            assert ids <= source.getmember(member.name).pax_headers.keys()
+
+    assert archives[0].read_bytes() != archives[1].read_bytes()
+    for archive in archives:
+        smoke.normalize(archive, 1700000000)
+    assert archives[0].read_bytes() == archives[1].read_bytes()
+    with tarfile.open(archives[0]) as source:
+        normalized = source.getmember("package/source.py")
+        assert (normalized.uid, normalized.gid) == (0, 0)
+        assert (normalized.uname, normalized.gname) == ("", "")
+        assert normalized.pax_headers == shared
+        stream = source.extractfile(normalized)
+        assert stream is not None
+        assert stream.read() == payload
+
+
 def test_normalize_streams_members_in_archive_order(tmp_path, monkeypatch) -> None:
     archive = tmp_path / "source.tar.gz"
     members = {"package/z": b"x" * (64 * 1024), "package/a": b"last"}

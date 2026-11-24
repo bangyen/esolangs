@@ -52,6 +52,7 @@ from esolangs import (
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli._answer_input import _AnswerTail
 from esolangs.cli.args import (
+    _FLAG_OPTIONS,
     _VALUE_OPTIONS,
     _check_count,
     _copyable_generation_options,
@@ -276,7 +277,7 @@ def _listed_name(name: str, *, catalog: Catalog, encoding: str) -> str:
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
     value_options = _VALUE_OPTIONS["list"]
-    flag_options = {"--details", "--json", "--all-tables", *_FLAG_FILTERS}
+    flag_options = _FLAG_OPTIONS["list"]
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
     rest = _split_positional(rest, set(), value_options | flag_options)
@@ -608,7 +609,7 @@ def _generate(rest: list[str]) -> None:
     )
 
     value_options = _VALUE_OPTIONS["generate"] - {"--set"}
-    flag_options = {"--balance", "--artifact", "--plain", "--gzip"}
+    flag_options = _FLAG_OPTIONS["generate"]
     before = rest
     rest, width, bare = _pop_width(rest)
     rest, set_pairs = _pop_set_pairs(rest)
@@ -834,8 +835,9 @@ _DETAIL_KEYS = (
 
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
-    rest, flags = _pop_flags(rest, {"--json", "--spec"})
-    rest = _split_positional(rest, set(), {"--json", "--spec"})
+    flag_options = _FLAG_OPTIONS["describe"]
+    rest, flags = _pop_flags(rest, flag_options)
+    rest = _split_positional(rest, set(), flag_options)
     as_json = "--json" in flags
     as_spec = "--spec" in flags
     catalog = get_catalog()

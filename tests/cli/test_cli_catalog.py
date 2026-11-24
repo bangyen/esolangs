@@ -328,10 +328,25 @@ def test_grep_searches_the_spec_case_insensitively(capsys) -> None:
     assert _names(["--grep", "zzz-no-spec-says-this"], capsys) == []
 
 
-@pytest.mark.parametrize("pattern", ["--help", "-h", "--version", "-V", "--set", "-s"])
+@pytest.mark.parametrize("pattern", ["--set", "-s"])
 def test_grep_keeps_option_shaped_values(capsys, pattern: str) -> None:
     expected = _names([f"--grep={pattern}"], capsys)
     assert _names(["--grep", pattern], capsys) == expected
+
+
+@pytest.mark.parametrize(
+    "option", ["--json", "--inputs=2", "--help", "-h", "--version", "-V"]
+)
+def test_grep_requires_equals_for_a_recognized_option(capsys, option: str) -> None:
+    with pytest.raises(SystemExit) as caught:
+        call_both(["list", "--grep", option], capsys)
+    assert caught.value.code == 2
+    stdout, error = capsys.readouterr()
+    assert stdout == ""
+    assert "--grep needs a value" in error
+    stdout, error = call_both(["list", f"--grep={option}", "--json"], capsys)
+    assert isinstance(json.loads(stdout), list)
+    assert error == ""
 
 
 def test_invalid_filters_are_usage_errors(capsys) -> None:
