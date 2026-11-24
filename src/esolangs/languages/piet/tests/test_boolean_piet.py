@@ -41,6 +41,26 @@ def test_layout_cache_evicts_and_passes_through_oversized_images() -> None:
     assert calls == ["a", "large", "large", "b", "a"]
 
 
+def test_layout_cache_reuses_a_fill_during_build() -> None:
+    from esolangs.languages.piet.generator.cache import LayoutCache
+
+    first = Raster((((0, 0, 0),),))
+    winner = Raster((((255, 255, 255),),))
+    images = iter((first, winner))
+    cache = LayoutCache(900)
+
+    @cache.memoize
+    def build(key: str) -> Raster:
+        image = next(images)
+        # Fill the same key before the outer build can store its result.
+        if image is first:
+            assert build(key) is winner
+        return image
+
+    assert build("a") is winner
+    assert build("a") is winner
+
+
 @pytest.mark.parametrize(
     "truth_table",
     ["01", "0110", "10010110", "0110100110010110"],
