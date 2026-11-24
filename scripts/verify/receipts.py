@@ -15,6 +15,7 @@ import tempfile
 import threading
 import time
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -25,22 +26,80 @@ def digest(path: Path) -> str:
 
 
 def _git(root: Path, *args: str) -> str:
+    return os.fsdecode(_git_bytes(root, *args))
+
+
+def _git_bytes(root: Path, *args: str) -> bytes:
     return subprocess.run(
         ["git", "-C", str(root), *args],
         check=True,
         capture_output=True,
-        text=True,
         timeout=10,
     ).stdout
+
+
+def _working_digest(path: Path) -> str | None:
+    if path.is_symlink():
+        return hashlib.sha256(os.fsencode(os.readlink(path))).hexdigest()
+    return digest(path) if path.is_file() else None
 
 
 def inputs(root: Path) -> dict[str, str | None]:
     """Fingerprint tracked and nonignored new files, including deletions."""
     names = _git(root, "ls-files", "--cached", "--others", "--exclude-standard", "-z")
     return {
-        name: digest(root / name) if (root / name).is_file() else None
+        name: _working_digest(root / name)
         for name in sorted(set(names.split("\0")) - {""})
     }
+
+
+def _commit_inputs(root: Path, commit: str) -> dict[str, str]:
+    """Hash the raw blobs at a full commit ID, regardless of the checkout."""
+    literal = ("--no-replace-objects",)
+    try:
+        resolved = _git(
+            root,
+            *literal,
+            "rev-parse",
+            "--verify",
+            "--end-of-options",
+            f"{commit}^{{commit}}",
+        ).strip()
+    except subprocess.CalledProcessError as error:
+        raise ValueError("archived receipt commit is unavailable") from error
+    if resolved != commit:
+        raise ValueError("archived receipt requires a full commit ID")
+    entries: dict[str, bytes] = {}
+    tree = _git_bytes(root, *literal, "ls-tree", "--full-tree", "-r", "-z", commit)
+    for entry in tree.split(b"\0"):
+        if entry:
+            header, name = entry.split(b"\t", 1)
+            _, kind, oid = header.split()
+            if kind == b"blob":
+                entries[os.fsdecode(name)] = oid
+
+    hashes = {}
+    oids = dict.fromkeys(entries.values())
+    # Spool the batch so large trees need only one blob in memory at a time.
+    with tempfile.TemporaryFile() as blobs:
+        subprocess.run(
+            ["git", "-C", str(root), *literal, "cat-file", "--batch"],
+            input=b"".join(oid + b"\n" for oid in oids),
+            stdout=blobs,
+            check=True,
+            timeout=10,
+        )
+        blobs.seek(0)
+        for oid in oids:
+            blob_header = blobs.readline().split()
+            if len(blob_header) != 3 or blob_header[:2] != [oid, b"blob"]:
+                raise ValueError("archived receipt blob is unavailable")
+            size = int(blob_header[2])
+            data = blobs.read(size)
+            if len(data) != size or blobs.read(1) != b"\n":
+                raise ValueError("archived receipt blob is incomplete")
+            hashes[oid] = hashlib.sha256(data).hexdigest()
+    return {name: hashes[oid] for name, oid in entries.items()}
 
 
 def _log(root: Path, output: str) -> dict[str, str]:
@@ -273,15 +332,19 @@ def _validate_receipt(
         raise ValueError("receipt does not establish acceptance")
     expected = value["inputs"]
     commit = value.get("committed_revision")
-    if commit is not None:
-        if commit != _git(root, "rev-parse", "HEAD").strip():
-            raise ValueError("archived receipt belongs to a different commit")
+    actual: Mapping[str, str | None]
+    if commit is None:
+        actual = inputs(root)
+        mismatch = "receipt inputs do not match this checkout"
+    else:
         # A deleted path was still in the index when the gate ran.
         expected = {
             name: digest for name, digest in expected.items() if digest is not None
         }
-    if not value["inputs_unchanged"] or expected != inputs(root):
-        raise ValueError("receipt inputs do not match this checkout")
+        actual = _commit_inputs(root, commit)
+        mismatch = "receipt inputs do not match the recorded commit"
+    if not value["inputs_unchanged"] or expected != actual:
+        raise ValueError(mismatch)
     if not required <= value["scope"].keys():
         raise ValueError("receipt does not cover the required scope")
     checks = {row["name"]: row for row in value["checks"]}
@@ -310,7 +373,7 @@ def _evidence_path(root: Path, relative: str) -> Path:
 
 
 def validate(path: Path, root: Path, required: set[str]) -> None:
-    """Verify a live receipt or an archive against the matching checkout."""
+    """Verify evidence and inputs against the live checkout or recorded commit."""
     value = json.loads(path.read_text())
     evidence_root = path.parent if "committed_revision" in value else root
     _validate_receipt(value, root, evidence_root, required)

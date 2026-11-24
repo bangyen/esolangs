@@ -53,6 +53,20 @@ def test_portable_run_suggests_native_command(tmp_path, capsys, kind) -> None:
         assert "invalid portable program" in error
 
 
+def test_portable_run_reports_the_recorded_language(tmp_path, capsys) -> None:
+    owner = first(source_kind="raster", boolean_generator=True)
+    api = esolangs.Language(owner)
+    path = tmp_path / "owner's program.json"
+    path.write_text(api.to_json(api.generate("0110")), encoding="utf-8")
+
+    output, error = _failure(["run", "--artifact", REFERENCE, str(path)], capsys)
+    assert output == ""
+    assert f"program language must be {REFERENCE}" in error
+    assert f"artifact records {owner}" in error
+    command = error.split("for example: ", 1)[1].strip()
+    assert shlex.split(command) == ["esolangs", "run", "--artifact", owner, str(path)]
+
+
 @pytest.mark.parametrize("raw", [b"\xff", b"\x80"])
 def test_stdin_rejects_surrogateescaped_binary(monkeypatch, capsys, raw) -> None:
     text = raw.decode("utf-8", "surrogateescape")

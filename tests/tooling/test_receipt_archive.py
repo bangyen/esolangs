@@ -19,11 +19,25 @@ def _git(root, *args):
     ).stdout.strip()
 
 
+def _commit(root, message):
+    _git(
+        root,
+        "-c",
+        "user.name=Receipt Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-qam",
+        message,
+    )
+
+
 def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path):
     primary = _checkout(tmp_path / "primary")
     source = tmp_path / "worktree"
     _git(primary, "worktree", "add", "--detach", str(source))
     (source / "program.py").write_text("print(2)\n")
+    (source / "program-link.py").symlink_to("program.py")
     run = AcceptanceRun(source, [], {"default": 10.0})
     execution = source / "notes" / "execution.json"
     execution.parent.mkdir()
@@ -47,17 +61,8 @@ def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path
     with pytest.raises(ValueError, match="after committing"):
         archive(receipt, source, primary)
 
-    _git(source, "add", "program.py")
-    _git(
-        source,
-        "-c",
-        "user.name=Receipt Test",
-        "-c",
-        "user.email=test@example.com",
-        "commit",
-        "-qm",
-        "Integrate verified program",
-    )
+    _git(source, "add", "program-link.py")
+    _commit(source, "Integrate verified program")
     commit = _git(source, "rev-parse", "HEAD")
     _git(primary, "merge", "--ff-only", commit)
     saved = archive(receipt, source, primary)
@@ -73,10 +78,19 @@ def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path
     )
     _git(primary, "worktree", "remove", str(source))
     assert not source.exists()
+    (primary / "program.py").write_text("print(3)\n")
+    _commit(primary, "Change verified program")
     validate(saved, primary, {"pytest"})
 
-    record = json.loads(saved.read_text())
+    contents = saved.read_text()
+    record = json.loads(contents)
     assert record["committed_revision"] == commit
+    record["committed_revision"] = _git(primary, "rev-parse", "HEAD")
+    saved.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="inputs do not match the recorded commit"):
+        validate(saved, primary, {"pytest"})
+    saved.write_text(contents)
+
     row = record["checks"][0]
     log = saved.parent / row["evidence"]["path"]
     assert log.read_text() == "test command ran"

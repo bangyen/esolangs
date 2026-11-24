@@ -58,6 +58,15 @@ from esolangs.settings import (
 _FORMAT = "esolangs.program"
 
 
+class _ArtifactLanguageMismatchError(ValueError):
+    def __init__(self, requested: str, owner: str) -> None:
+        super().__init__(
+            f"program language must be {display_label(requested)}"
+            f"; artifact records {display_label(owner)}"
+        )
+        self.owner = owner
+
+
 def _terminated_text(
     chunks: Iterable[str], *, plain_limits: TextLimits | None = None
 ) -> Iterator[str]:
@@ -548,9 +557,14 @@ def from_json(
             or value["version"] != 1
         ):
             raise ValueError("unsupported program format or version")
-        owner = value["language"]
-        if not isinstance(owner, str) or resolve_origin(owner, catalog=catalog) != name:
+        origin = value["language"]
+        owner = (
+            resolve_origin(origin, catalog=catalog) if isinstance(origin, str) else None
+        )
+        if owner is None:
             raise ValueError(f"program language must be {display_label(name)}")
+        if owner != name:
+            raise _ArtifactLanguageMismatchError(name, owner)
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")
         # Strict UTF-8 everywhere, as a program file is read: a JSON

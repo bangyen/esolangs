@@ -144,30 +144,31 @@ def test_update_does_not_rewrite_an_unchanged_baseline(
     assert (fragment.read_bytes(), fragment.stat().st_mtime_ns) == before
 
 
-def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch) -> None:
-    import pytest
-
+@pytest.mark.parametrize("matches", [False, None])
+def test_sweep_refuses_incorrect_or_undecided_rows(monkeypatch, matches) -> None:
     from checks import check_generator_sizes as sizes
 
     monkeypatch.setattr(sizes.esolangs, "list_languages", lambda: [REFERENCE])
     monkeypatch.setattr(sizes, "BOUNDARIES", {})
     monkeypatch.setattr(sizes, "STEP_CAP", 1)
-    for matches in (False, None):
-        monkeypatch.setattr(
-            sizes,
-            "measure",
-            lambda *_args, matches=matches, **_kwargs: {
-                **RECORD,
-                "row": 0,
-                "matches": matches,
-                "execution_status": "step_cap",
-                "expected_answer": "1",
-                "actual_answer": None,
-            },
-        )
-        with pytest.raises(ValueError, match="expected 1, got None") as caught:
-            sizes.sweep(repeat=2)
-        assert "--row 0 --step-cap 1 --repeat 2" in str(caught.value)
+    measured = []
+
+    def measure(name, table, **_kwargs):
+        measured.append((name, table))
+        return {
+            **RECORD,
+            "row": 0,
+            "matches": matches,
+            "execution_status": "step_cap",
+            "expected_answer": "1",
+            "actual_answer": None,
+        }
+
+    monkeypatch.setattr(sizes, "measure", measure)
+    with pytest.raises(ValueError, match="expected 1, got None") as caught:
+        sizes.sweep(repeat=2)
+    assert "--row 0 --step-cap 1 --repeat 2" in str(caught.value)
+    assert measured == [(REFERENCE, TABLES[0])]
 
 
 def test_boundary_rows_are_pinned_and_corpus_drift_fails() -> None:

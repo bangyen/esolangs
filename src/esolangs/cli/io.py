@@ -73,6 +73,7 @@ from esolangs.runtime._input import (
     input_read_error,
     read_input,
 )
+from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _GZIP_SIGNATURE, _FileSource, _open_program_path
 from esolangs.runtime._validate import _has_backing_type
@@ -224,17 +225,36 @@ def _read_program(
         _fail(exc)
 
 
-def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
-    """Render the native command with the same operands when they are printable."""
+def _run_source_command(
+    language: str, path: str, catalog: Catalog, *, portable: bool = False
+) -> str | None:
+    """Render a run command when its operands are printable."""
     encoding = _display_encoding(sys.stderr)
     operand = _as_argument(language, catalog=catalog, encoding=encoding)
     filename = shell_argument(path, encoding=encoding)
-    hint = "remove --artifact to run native source"
     if operand is None or filename is None:
-        return hint
+        return None
     if operand.startswith("-- "):
         filename = filename.removeprefix("-- ")
-    return f"{hint}, for example: esolangs run {operand} {filename}"
+    option = " --artifact" if portable else ""
+    return f"esolangs run{option} {operand} {filename}"
+
+
+def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
+    hint = "remove --artifact to run native source"
+    command = _run_source_command(language, path, catalog)
+    return f"{hint}, for example: {command}" if command else hint
+
+
+def _portable_owner_hint(owner: str, path: str, catalog: Catalog) -> str:
+    hint = "pass the artifact's recorded language to esolangs run --artifact"
+    if path == "-" and _runtime_reads_stdin(catalog.languages[owner].runtime):
+        command = _run_source_command(owner, "program.json", catalog, portable=True)
+        return (
+            f"save the artifact as program.json and run {command}" if command else hint
+        )
+    command = _run_source_command(owner, path, catalog, portable=True)
+    return f"{hint}, for example: {command}" if command else hint
 
 
 def _load_portable_source(
@@ -246,6 +266,7 @@ def _load_portable_source(
 ) -> ProgramArtifact[Program]:
     """Restore runnable JSON and combine any explicit compatible choices."""
     from esolangs import from_json
+    from esolangs.portable import _ArtifactLanguageMismatchError
 
     for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
         if data.startswith(signature):
@@ -263,6 +284,9 @@ def _load_portable_source(
         artifact = from_json(language, document, catalog=catalog)
     except ProgramError as error:
         cause = error.__cause__
+        if isinstance(cause, _ArtifactLanguageMismatchError):
+            with_hint(error, _portable_owner_hint(cause.owner, path, catalog))
+            raise
         if not isinstance(cause, JSONDecodeError):
             raise
         raise with_hint(

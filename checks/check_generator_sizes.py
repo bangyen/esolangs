@@ -103,16 +103,47 @@ def control_tables(name: str) -> tuple[str, ...]:
     return custom or TABLES
 
 
+def _measure_checked(
+    name: str,
+    table: str,
+    *,
+    repeat: int,
+    row: int,
+    all_rows: bool = False,
+    sample_rows: tuple[int, ...] | None = None,
+) -> dict[str, Any]:
+    record = measure(
+        name,
+        table,
+        repeat=repeat,
+        row=row,
+        step_cap=STEP_CAP,
+        all_rows=all_rows,
+        sample_rows=sample_rows,
+    )
+    for result in record.get("executions", [record]):
+        if result["matches"] is not True:
+            failed_row = result.get("row")
+            raise ValueError(
+                f"{record['language']} [{record['truth_table']}] row {failed_row}: "
+                f"{result['execution_status']}, expected {result['expected_answer']}, "
+                f"got {result['actual_answer']}; reproduce with: uv run python "
+                f"scripts/benchmark.py {shlex.quote(record['language'])} "
+                f"{record['truth_table']} --row {failed_row} "
+                f"--step-cap {STEP_CAP} --repeat {repeat}"
+            )
+    return record
+
+
 def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
     """Return one full benchmark record per (language, table), timings and all."""
     with evidence_session():
         records = [
-            measure(
+            _measure_checked(
                 name,
                 table,
                 repeat=repeat,
                 row=(1 << (len(table).bit_length() - 1)) - 1,
-                step_cap=STEP_CAP,
                 all_rows=True,
             )
             # An interpreter-only language has no generated size to record.
@@ -128,37 +159,17 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
         # promises to emit once -- the timings snapshot rejects those.
         measured = {(record["language"], record["truth_table"]) for record in records}
         records.extend(
-            measure(
+            _measure_checked(
                 name,
                 table,
                 repeat=repeat,
                 row=len(table) - 1,
-                step_cap=STEP_CAP,
                 sample_rows=(0, 1, len(table) // 2, len(table) - 1),
             )
             for name in BOUNDARIES
             for table in boundary_tables(name)
             if (name, table) not in measured
         )
-    for record in records:
-        failed = next(
-            (
-                row
-                for row in record.get("executions", [record])
-                if row["matches"] is not True
-            ),
-            None,
-        )
-        if failed is not None:
-            raise ValueError(
-                f"{record['language']} [{record['truth_table']}] "
-                f"row {failed.get('row')}: "
-                f"{failed['execution_status']}, expected {failed['expected_answer']}, "
-                f"got {failed['actual_answer']}; reproduce with: uv run python "
-                f"scripts/benchmark.py {shlex.quote(record['language'])} "
-                f"{record['truth_table']} --row {failed.get('row')} "
-                f"--step-cap {STEP_CAP} --repeat {repeat}"
-            )
     return records
 
 
