@@ -192,6 +192,46 @@ def test_bounds_generates_each_measured_table_once(monkeypatch: pytest.MonkeyPat
     assert result[0] == 1
 
 
+def test_bounds_rejects_impossible_arity_before_measuring(monkeypatch, capsys):
+    from esolangs.exceptions import GeneratorCapError
+    from esolangs.registry import LANGUAGES
+
+    declaration, cap = next(
+        (lang, lang.backend.max_inputs)
+        for lang in LANGUAGES.values()
+        if lang.backend is not None and lang.backend.max_inputs is not None
+    )
+    assert declaration.backend is not None
+    assert cap is not None
+    with pytest.raises(GeneratorCapError) as limit:
+        declaration.backend.check_arity(declaration.name, cap + 1)
+    monkeypatch.setattr(new_language, "bounds", lambda *_a, **_kw: pytest.fail("sweep"))
+    for max_n, error in [
+        (0, "--max-n must be positive"),
+        (cap + 1, str(limit.value)),
+    ]:
+        with pytest.raises(SystemExit) as caught:
+            new_language.main(["bounds", declaration.name, "--max-n", str(max_n)])
+        assert caught.value.code == 2
+        assert error in capsys.readouterr().err
+
+
+def test_bounds_announces_row_work_before_generation(monkeypatch, capsys):
+    import esolangs
+
+    generate = esolangs.generate
+    reported = []
+
+    def observe(name, table, **options):
+        reported.append(capsys.readouterr().out)
+        return generate(name, table, **options)
+
+    monkeypatch.setattr(esolangs, "generate", observe)
+    monkeypatch.setattr(new_language, "size_anchors", lambda _: [])
+    assert new_language.main(["bounds", REFERENCE, "--max-n", "1"]) == 0
+    assert "n=1: 4 witnesses, up to 8 row executions" in reported[0]
+
+
 @pytest.mark.parametrize("gate_status", [0, 1])
 def test_gate_runs_the_full_gate_not_a_scoped_one(
     monkeypatch: pytest.MonkeyPatch,

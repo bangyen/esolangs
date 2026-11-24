@@ -736,7 +736,9 @@ def sources(name: str) -> list[str]:
     return found
 
 
-def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str]]:
+def bounds(
+    name: str, arities: range, *, announce: bool = False
+) -> list[tuple[int, int, int, int, str, str]]:
     """Return ``(n, worst steps, worst bits, size, steps' table, bits' table)``.
 
     Over the tables the formula tests use, so a stated bound that matches
@@ -754,7 +756,15 @@ def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str
     for n in arities:
         worst = {}
         size = 0
-        for table in tables(name, n):
+        witnesses = tables(name, n)
+        if announce:
+            row_count = sum(map(len, witnesses))
+            print(
+                f"  n={n}: {len(witnesses):,} witnesses, "
+                f"up to {row_count:,} row executions",
+                flush=True,
+            )
+        for table in witnesses:
             program = esolangs.generate(name, table)
             worst[table] = measure(name, table, written=True, program=program)
             size = max(size, source_units(program.source))
@@ -796,14 +806,36 @@ def size_anchors(name: str) -> list[str]:
     return lines
 
 
-def _print_bounds(name: str, max_n: int) -> None:
-    """Print measured resource maxima, witnesses and size anchors."""
-    import esolangs
+def _bounds_language(name: str, max_n: int) -> LanguageDeclaration:
+    """Check the requested arity and generator before building any witnesses."""
+    from esolangs.registry import LANGUAGES, resolve
 
+    if max_n < 1:
+        raise ValueError("--max-n must be positive")
+    declaration = LANGUAGES[resolve(name)]
+    backend = declaration.backend
+    if backend is None:
+        raise ValueError(f"{declaration.name} has no Boolean generator")
+    backend.check_arity(declaration.name, max_n)
+    return declaration
+
+
+def _print_bounds(declaration: LanguageDeclaration, max_n: int) -> None:
+    """Print the workload, measured resource maxima, witnesses and size anchors."""
+    from esolangs.registry import SourceKind
+
+    name = declaration.name
+    print(
+        f"{name}: arities 1 through {max_n}, up to "
+        f"2**{max_n} row executions per witness at the largest arity",
+        flush=True,
+    )
     # Steps feed the ledger's Execution cell, bits its Workspace cell
     # (peak written state); chars/row stays flat for an O(T) generator.
-    rows = bounds(name, range(1, max_n + 1))
-    units = "pixels" if esolangs.describe(name).source_kind == "raster" else "chars"
+    rows = bounds(name, range(1, max_n + 1), announce=True)
+    units = (
+        "pixels" if declaration.runtime.source_kind is SourceKind.RASTER else "chars"
+    )
     print(f"n  Execution  Workspace  {units}/row  witness tables (steps, bits)")
     for n, steps, bits, per_row, by_steps, by_bits in rows:
         print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")
@@ -967,7 +999,11 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"{exc}; a new one starts with: just new-language")
     if args.command == "bounds":
         try:
-            _print_bounds(args.name, args.max_n)
+            declaration = _bounds_language(args.name, args.max_n)
+        except ValueError as exc:
+            measure.error(str(exc))
+        try:
+            _print_bounds(declaration, args.max_n)
         except NotImplementedError:
             print(f"{args.name}: implement the generator first", file=sys.stderr)
             return 1

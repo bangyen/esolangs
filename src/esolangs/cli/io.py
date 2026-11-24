@@ -504,7 +504,7 @@ def _read_pipe_without_poll(
     fd: int,
     deadline: float | None,
     size: int | None,
-    pipe_check: Callable[[bytes], None] | None,
+    pipe_check: Callable[[bytes, bytearray], None] | None,
 ) -> bytes:
     """Drain an anonymous pipe where poll is unavailable, including Windows."""
     blocking = os.get_blocking(fd)
@@ -528,9 +528,9 @@ def _read_pipe_without_poll(
         chunk = _binary_chunk(chunk)
         if not chunk:
             break
-        if pipe_check is not None:
-            pipe_check(chunk)
         data.extend(chunk)
+        if pipe_check is not None:
+            pipe_check(chunk, data)
     return bytes(data)
 
 
@@ -539,7 +539,7 @@ def _read_buffered_stdin(
     deadline: float | None,
     *,
     size: int | None = None,
-    pipe_check: Callable[[bytes], None] | None = None,
+    pipe_check: Callable[[bytes, bytearray], None] | None = None,
 ) -> bytes:
     """Drain buffered bytes without holding the stdin lock across a pipe wait."""
     _time_remaining(deadline)
@@ -581,9 +581,9 @@ def _read_buffered_stdin(
         chunk = _binary_chunk(chunk)
         if not chunk:
             break
-        if pipe_check is not None:
-            pipe_check(chunk)
         data.extend(chunk)
+        if pipe_check is not None:
+            pipe_check(chunk, data)
     return bytes(data)
 
 
@@ -711,7 +711,7 @@ def _read_wrapped_stdin(
     stdin: TextIOWrapper,
     stream: BinaryIO,
     deadline: float | None,
-    pipe_check: Callable[[bytes], None] | None,
+    pipe_check: Callable[[bytes, bytearray], None] | None,
 ) -> str:
     try:
         # Setting the same error handler distinguishes a fresh wrapper from
@@ -759,7 +759,7 @@ def _snapshot_stdin(
     deadline: float | None,
     frame: InputFrame | None = None,
     *,
-    pipe_check: Callable[[bytes], None] | None = None,
+    pipe_check: Callable[[bytes, bytearray], None] | None = None,
 ) -> str:
     _time_remaining(deadline)
     with stream_read_deadline(deadline):
@@ -811,7 +811,7 @@ def _read_stdin(
     timeout_flag: str = "",
     terminal_prompt: str | None = None,
     frame: InputFrame | None = None,
-    pipe_check: Callable[[bytes], None] | None = None,
+    pipe_check: Callable[[bytes, bytearray], None] | None = None,
 ) -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
@@ -888,11 +888,17 @@ def _read_truth_table(declaration: LanguageDeclaration | None = None) -> str:
         check_arity = partial(backend.check_arity, declaration.name)
         rows = 0
 
-        def check_chunk(chunk: bytes) -> None:
+        def check_chunk(chunk: bytes, received: bytearray) -> None:
             nonlocal rows
             # ASCII bit bytes cannot be part of a UTF-8 multibyte sequence.
             rows += chunk.count(b"0") + chunk.count(b"1")
             if rows and (arity := (rows - 1).bit_length()) > cap:
+                # The last UTF-8 character may still be in flight.
+                table = UTF8Decoder().decode(received).removeprefix("\ufeff").strip()
+                if len(table) != rows:
+                    from esolangs.generation.helpers import _validate_truth_table
+
+                    _validate_truth_table(table)
                 check_arity(arity)
 
         pipe_check = check_chunk

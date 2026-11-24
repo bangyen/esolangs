@@ -106,6 +106,23 @@ def test_benchmark_checks_arity_before_starting_a_worker(monkeypatch, capsys) ->
     assert f"max-inputs={cap}" in capsys.readouterr().err
 
 
+def test_store_tracking_requires_a_halting_answer_before_stdin(monkeypatch, capsys):
+    from scripts import benchmark
+
+    language = next(
+        lang.name
+        for lang in LANGUAGES.values()
+        if lang.has_backend and lang.contract.answer_mode == "termination"
+    )
+    monkeypatch.setattr(
+        benchmark, "_read_truth_table", lambda *_: pytest.fail("waited for stdin")
+    )
+    with pytest.raises(SystemExit) as caught:
+        benchmark.main([language, "-", "--track-store"])
+    assert caught.value.code == 2
+    assert "--track-store requires a halting-answer language" in capsys.readouterr().err
+
+
 def test_benchmark_reports_table_dependent_caps(monkeypatch, capsys) -> None:
     from scripts import benchmark
 

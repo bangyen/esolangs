@@ -29,7 +29,6 @@ import math
 import os
 import random
 import re
-import shutil
 import struct
 import subprocess
 import sys
@@ -47,7 +46,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from gendiff import _checkout  # noqa: E402
+from gendiff import _checkout, _mutated, _read_mutant, _replacement_target  # noqa: E402
 
 import esolangs  # noqa: E402
 from esolangs.exceptions import GeneratorCapError  # noqa: E402
@@ -718,23 +717,6 @@ def _worker_speeds(
     return was, now
 
 
-def _mutant_source(name: str, mutant: Path, target: Path | None, scratch: Path) -> Path:
-    entry = Path(importlib.import_module(INTERPRETERS[name]).__file__ or "")
-    path = entry if target is None else (ROOT / target).resolve()
-    if path != entry and (
-        entry.name != "__init__.py" or not path.is_relative_to(entry.parent)
-    ):
-        raise SystemExit(
-            "mutant target must be the interpreter or one of its package files"
-        )
-    if not path.is_file() or path.suffix != ".py":
-        raise SystemExit("mutant target must be an existing Python source file")
-    source = scratch / "mutant"
-    shutil.copytree(ROOT / "src", source, ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copyfile(mutant, source / path.relative_to(ROOT / "src"))
-    return source
-
-
 def main(argv: list[str] | None = None) -> int:
     """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(
@@ -762,8 +744,13 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--mutant-target requires --mutant")
     if args.random < 0:
         parser.error("--random must be nonnegative")
+    replacement = None
     try:
         name = resolve(args.language)
+        if args.mutant is not None:
+            entry = Path(importlib.import_module(INTERPRETERS[name]).__file__ or "")
+            target = _replacement_target(entry, args.mutant_target, "interpreter")
+            replacement = target, _read_mutant(args.mutant)
     except ValueError as exc:
         parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
@@ -774,7 +761,9 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as error:
             parser.error(str(error))
         programs = corpus(name, args.random)
-        return _compare_revisions(name, programs, ignored, args, old, scratch)
+        return _compare_revisions(
+            name, programs, ignored, args, old, scratch, replacement
+        )
 
 
 def _compare_revisions(
@@ -784,6 +773,7 @@ def _compare_revisions(
     args: argparse.Namespace,
     old: Path,
     scratch: Path,
+    replacement: tuple[Path, bytes] | None,
 ) -> int:
     new = ROOT / "src"
     request = scratch / "corpus"
@@ -817,8 +807,9 @@ def _compare_revisions(
         change = now / was - 1
         print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
         failed |= change < -SLOWDOWN
-    if args.mutant is not None:
-        mutant = _mutant_source(name, args.mutant, args.mutant_target, scratch)
+    if replacement is not None:
+        target, contents = replacement
+        mutant = _mutated(contents, target, scratch / "mutant")
         mutant_path = scratch / "mutant.gz"
         _run_worker(mutant, name, request, mutant_path)
         pairs = zip(_observations(before_path), _observations(mutant_path), strict=True)

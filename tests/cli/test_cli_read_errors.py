@@ -67,7 +67,8 @@ def test_portable_run_reports_the_recorded_language(tmp_path, capsys) -> None:
     assert shlex.split(command) == ["esolangs", "run", "--artifact", owner, str(path)]
 
 
-def test_generate_rejects_oversized_pipe_before_eof() -> None:
+@pytest.mark.parametrize("bad", [b"", b"x", b"\xff"])
+def test_generate_rejects_oversized_pipe_before_eof(bad: bytes) -> None:
     language = next(
         name
         for name, lang in _table.LANGUAGES.items()
@@ -75,6 +76,11 @@ def test_generate_rejects_oversized_pipe_before_eof() -> None:
     )
     cap = esolangs.describe(language).generator_max_inputs
     assert cap is not None
+    expected = {
+        b"": f"max-inputs={cap}",
+        b"x": "'x' at position 0",
+        b"\xff": "not text",
+    }
     with subprocess.Popen(
         [sys.executable, "-m", "esolangs", "generate", "--artifact", language, "-"],
         stdin=subprocess.PIPE,
@@ -85,11 +91,11 @@ def test_generate_rejects_oversized_pipe_before_eof() -> None:
         assert child.stdout is not None
         assert child.stderr is not None
         try:
-            child.stdin.write(b"\xef\xbb\xbf \t" + b"0" * ((1 << cap) + 1))
+            child.stdin.write(b"\xef\xbb\xbf \t" + bad + b"0" * ((1 << cap) + 1))
             child.stdin.flush()
             assert child.wait(timeout=5) == 2
             assert child.stdout.read() == b""
-            assert f"max-inputs={cap}".encode() in child.stderr.read()
+            assert expected[bad].encode() in child.stderr.read()
         finally:
             if child.poll() is None:
                 child.kill()

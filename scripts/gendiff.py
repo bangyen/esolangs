@@ -24,6 +24,7 @@ import itertools
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -223,13 +224,19 @@ def _mutant_target(name: str, target: Path | None) -> Path:
     if backend is None:
         raise ValueError(f"{name} has no Boolean generator")
     module = backend.generate.__module__
-    entry = Path(importlib.import_module(module).__file__ or "").resolve()
+    entry = Path(importlib.import_module(module).__file__ or "")
+    return _replacement_target(entry, target, "generator")
+
+
+def _replacement_target(entry: Path, target: Path | None, kind: str) -> Path:
+    """Limit replacements to the entry point or a file in its package."""
+    entry = entry.resolve()
     path = entry if target is None else (ROOT / target).resolve()
     if path != entry and (
         entry.name != "__init__.py" or not path.is_relative_to(entry.parent)
     ):
         raise ValueError(
-            "mutant target must be the generator or one of its package files"
+            f"mutant target must be the {kind} or one of its package files"
         )
     if (
         not path.is_relative_to(ROOT / "src")
@@ -242,11 +249,23 @@ def _mutant_target(name: str, target: Path | None) -> Path:
     return path
 
 
-def _mutated(mutant: Path, target: Path, scratch: Path) -> Path:
+def _read_mutant(path: Path) -> bytes:
+    """Snapshot a replacement file before spending time on either baseline."""
+    try:
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise ValueError(f"--mutant {str(path)!r} must be a regular file")
+        return path.read_bytes()
+    except OSError as error:
+        raise ValueError(
+            f"cannot read --mutant {str(path)!r}: {error.strerror}"
+        ) from error
+
+
+def _mutated(mutant: bytes, target: Path, scratch: Path) -> Path:
     """Copy the working source tree and replace only the selected file."""
     src = scratch / "src"
     shutil.copytree(ROOT / "src", src, ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copyfile(mutant, src / target.relative_to(ROOT / "src"))
+    (src / target.relative_to(ROOT / "src")).write_bytes(mutant)
     return src
 
 
@@ -325,8 +344,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         name = resolve(args.language)
-        target = (
-            None if args.mutant is None else _mutant_target(name, args.mutant_target)
+        replacement = (
+            (_mutant_target(name, args.mutant_target), _read_mutant(args.mutant))
+            if args.mutant is not None
+            else None
         )
     except ValueError as exc:
         parser.error(str(exc))
@@ -372,9 +393,9 @@ def main(argv: list[str] | None = None) -> int:
             failed = _speed_failed(
                 dump, old, (args.old, old_src, old_time), ("new", new_src, new_time)
             )
-        if args.mutant is not None:
-            assert target is not None
-            mutant_src = _mutated(args.mutant, target, Path(scratch) / "mutant")
+        if replacement is not None:
+            target, contents = replacement
+            mutant_src = _mutated(contents, target, Path(scratch) / "mutant")
             caught = len(differences(old, dump(mutant_src)[0]))
             print(f"control: mutant differs on {caught}")
             failed |= not caught

@@ -827,9 +827,10 @@ def main(argv: list[str] | None = None) -> int:
         _check_generation_scale(declaration, args.scale)
     except ValueError as exc:
         parser.error(str(exc))
-    backend = declaration.backend
-    if backend is None:
+    if (backend := declaration.backend) is None:
         parser.error(f"{declaration.name} has no Boolean generator")
+    if args.track_store and declaration.contract.answer_mode == "termination":
+        parser.error("--track-store requires a halting-answer language")
     if args.settings and len(args.settings) != 1:
         parser.error("--settings may appear only once")
     options = {"--settings": args.settings[0]} if args.settings else {}
