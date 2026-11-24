@@ -503,7 +503,7 @@ def test_pytest_cache_staging_dir_is_not_checkout_state(tmp_path, monkeypatch):
         "-qm",
         "fixture",
     )
-    monkeypatch.setattr(benchmark, "__file__", str(tmp_path / "scripts/benchmark.py"))
+    monkeypatch.setattr(benchmark, "_ROOT", tmp_path)
     before = benchmark.source_identity()
     # Only README.md: the window in _make_cachedir after the first file
     # is written but before its .gitignore (containing "*") lands — or
