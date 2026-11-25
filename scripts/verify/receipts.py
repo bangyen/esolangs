@@ -150,19 +150,17 @@ def _commit_inputs(root: Path, commit: str) -> dict[str, _Input]:
     }
 
 
-def _log(root: Path, output: str) -> dict[str, str]:
-    for line in output.splitlines():
-        if line.startswith("[log] "):
-            path = Path(line[6:].strip())
-            if not path.is_absolute():
-                path = root / path
-            relative = path.resolve().relative_to(root.resolve())
-            return {"path": str(relative), "sha256": digest(path)}
-    directory = root / "notes" / "verification" / "receipts" / "logs"
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"{uuid.uuid4().hex}.log"
-    path.write_text(output)
-    return {"path": str(path.relative_to(root)), "sha256": digest(path)}
+def _log(root: Path, output: str, path: Path | None) -> dict[str, str]:
+    """Bind a controller-owned spool file or save captured output verbatim."""
+    root = root.resolve()
+    if path is None:
+        directory = root / "notes" / "verification" / "receipts" / "logs"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{uuid.uuid4().hex}.log"
+        path.write_text(output, encoding="utf-8", newline="")
+    path = (root / path).resolve()
+    relative = path.relative_to(root)
+    return {"path": str(relative), "sha256": digest(path)}
 
 
 def _execution(
@@ -383,6 +381,7 @@ class AcceptanceRun:
         output: str | None,
         *,
         command: list[str] | None = None,
+        log_path: Path | None = None,
     ) -> None:
         """Attach a completed check and the hash of its complete log."""
         resolved_command = self.plan.get(name) if command is None else command
@@ -394,7 +393,7 @@ class AcceptanceRun:
             "deadline_seconds": self.bounds.get(
                 name.removesuffix(" retry"), self.bounds["default"]
             ),
-            "evidence": _log(self.root, output or ""),
+            "evidence": _log(self.root, output or "", log_path),
         }
         if name in {"pytest", "pytest retry"}:
             row["execution"] = _execution(self.root, resolved_command, returncode)

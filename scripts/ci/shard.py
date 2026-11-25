@@ -18,7 +18,7 @@ import re
 import statistics
 import subprocess
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from datetime import date
 from typing import Any, NamedTuple, cast
@@ -501,21 +501,34 @@ class _TimingRun(NamedTuple):
     sources: dict[str, Path]
 
 
-def load_run(directory: Path, expected: set[str]) -> dict[str, float]:
+def load_run(
+    directory: Path,
+    expected: set[str],
+    *,
+    sidecars: Mapping[Path, dict[str, Any]] | None = None,
+) -> dict[str, float]:
     """Return timings for a complete, validated run."""
-    return _load_run(directory, expected).durations
+    return _load_run(directory, expected, sidecars=sidecars).durations
 
 
-def _load_run(directory: Path, expected: set[str]) -> _TimingRun:
+def _load_run(
+    directory: Path,
+    expected: set[str],
+    *,
+    sidecars: Mapping[Path, dict[str, Any]] | None = None,
+) -> _TimingRun:
     """Validate sidecars and retain the identity shared by every shard."""
-    paths = sorted(directory.rglob("*.json.meta.json"))
-    if not paths:
+    if sidecars is None:
+        sidecars = {
+            path: read_completion_metadata(path)
+            for path in sorted(directory.rglob("*.json.meta.json"))
+        }
+    if not sidecars:
         raise ValueError(f"{directory}: no timing completion metadata")
     result: dict[str, float] = {}
     sources: dict[str, Path] = {}
     identity = None
-    for path in paths:
-        metadata = read_completion_metadata(path)
+    for path, metadata in sidecars.items():
         durations_path = path.with_suffix("").with_suffix("")
         if "durations_file" in metadata:
             name = metadata["durations_file"]

@@ -43,6 +43,7 @@ from verify.failures import (  # noqa: E402
     section_matches,
 )
 from verify.process import (  # noqa: E402
+    logged_path,
     run_bounded,
     start_logged,
     stop_process_tree,
@@ -541,12 +542,12 @@ class _RunningChecks:
 
     def wait(
         self, child: subprocess.Popen[str], name: str, started: float
-    ) -> tuple[str, int, float]:
+    ) -> tuple[str, int, float, Path]:
         """Collect a check's output and elapsed time."""
         output, returncode = _wait_with_heartbeat(child, name, started)
         with self._lock:
             self._children.discard(child)
-        return output, returncode, time.monotonic() - started
+        return output, returncode, time.monotonic() - started, logged_path(child)
 
     @contextmanager
     def stop_on_error(self) -> Iterator[None]:
@@ -614,8 +615,8 @@ def _run_shadow_phase(
             for result in results:
                 result.result()
             heavy = []
-        output, returncode, elapsed = pending.result()
-    record(LONG_STEP, elapsed, returncode, output)
+        output, returncode, elapsed, log_path = pending.result()
+    record(LONG_STEP, elapsed, returncode, output, log_path)
     return heavy
 
 
@@ -645,9 +646,13 @@ def _run_steps(
     wall_start = time.monotonic()
     running = _RunningChecks()
 
-    def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
+    def record(
+        name: str, elapsed: float, returncode: int, output: str, log_path: Path
+    ) -> None:
         if _ACTIVE_ACCEPTANCE is not None:
-            _ACTIVE_ACCEPTANCE.record(name, elapsed, returncode, output)
+            _ACTIVE_ACCEPTANCE.record(
+                name, elapsed, returncode, output, log_path=log_path
+            )
         timings.append((name, elapsed))
         if not _report(name, elapsed, returncode, output):
             failed.append((name, returncode, output))
@@ -657,8 +662,10 @@ def _run_steps(
         with running.stop_on_error():
             proc = running.start(name, cmd, step_env, stream=stream)
             if proc is not None:
-                captured, returncode, elapsed = running.wait(proc, name, start)
-                record(name, elapsed, returncode, captured)
+                captured, returncode, elapsed, log_path = running.wait(
+                    proc, name, start
+                )
+                record(name, elapsed, returncode, captured, log_path)
 
     for name, cmd, step_env in runnable:
         if name == MUTATES_TREE:

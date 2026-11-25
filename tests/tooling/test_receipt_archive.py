@@ -11,7 +11,7 @@ import pytest
 
 from scripts.verify.receipts import AcceptanceRun, archive, digest, validate
 from tests.tooling.receipt_support import _checkout, completed
-from tests.tooling.script_support import REPO_ROOT
+from tests.tooling.script_support import REPO_ROOT, load
 
 
 def _git(root, *args):
@@ -133,6 +133,38 @@ def test_receipts_require_each_checks_log_and_checksum(tmp_path) -> None:
             assert str(receipt) in str(error.value)
             assert f"'checks[0].evidence.{field}'" in str(error.value)
     assert not (root / "notes/verification/commits").exists()
+
+
+def test_receipt_steps_bind_their_own_output(tmp_path, monkeypatch) -> None:
+    root = _checkout(tmp_path / "checkout")
+    run = AcceptanceRun(root, [], {"default": 10.0})
+    gate = load(REPO_ROOT / "scripts/verify/gate.py")
+    monkeypatch.setattr(gate, "ROOT", root)
+    monkeypatch.setattr(gate, "_ACTIVE_ACCEPTANCE", run)
+    decoy = root / "notes/other-test.log"
+    decoy.parent.mkdir()
+    decoy.write_text("unrelated output\n", encoding="utf-8")
+    output = "[log] notes/other-test.log\n1 passed\n"
+    command = [sys.executable, "-c", f"print({output!r}, end='')"]
+    failures, _, _ = gate._run_steps(
+        [("probe", command, dict(os.environ))], stream=False
+    )
+    assert failures == []
+    monkeypatch.setattr(
+        gate,
+        "run_bounded",
+        lambda command, **_: subprocess.CompletedProcess(command, 0, output, ""),
+    )
+    assert gate._rerun_alone(["test_probe.py::test_probe"]) == (0, output)
+
+    spooled, retry = (root / step["evidence"]["path"] for step in run.steps)
+    assert spooled.parent == root / "notes/verification"
+    assert retry.parent == root / "notes/verification/receipts/logs"
+    assert (
+        spooled.read_text(encoding="utf-8")
+        == retry.read_text(encoding="utf-8")
+        == output
+    )
 
 
 def test_archive_retains_logs_and_pytest_sidecar_after_worktree_removal(tmp_path):

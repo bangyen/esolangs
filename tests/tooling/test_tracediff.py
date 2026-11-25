@@ -514,6 +514,24 @@ def test_cli_uses_declared_post_halt_policy_for_mutant_controls(
     assert int(control.rsplit(" ", 1)[-1]) > 0
 
 
+def test_cli_checks_ignored_views_against_both_revisions(monkeypatch, capsys) -> None:
+    baseline = _INTERPRETER.read_bytes()
+    baseline += b"\n_Machine.legacy_probe_view = property(lambda self: 0)\n"
+
+    def snapshot(_ref, scratch):
+        return tracediff._mutated(baseline, _INTERPRETER, scratch)
+
+    monkeypatch.setattr(tracediff, "_checkout", snapshot)
+    monkeypatch.setattr(tracediff, "corpus", lambda *_: [("+.", "")])
+    assert tracediff.main([REFERENCE, "--ignore-views", "legacy_probe_view, ip"]) == 0
+    assert "1 halt cleanly), 0 differ from main" in capsys.readouterr().out
+
+    assert tracediff.main([REFERENCE, "--ignore-views", "legacy_probe_view, typo"]) == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err.strip() == "--ignore-views: unknown public VM view(s): 'typo'"
+
+
 def test_speed_does_not_reward_an_inherited_warm_cache(tmp_path, monkeypatch):
     source = tmp_path / "cached.py"
     source.write_text(

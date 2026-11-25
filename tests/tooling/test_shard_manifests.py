@@ -106,6 +106,34 @@ def test_shard_completion_must_match_the_verifiers_python(tmp_path) -> None:
     assert str(sidecar) in str(error.value)
 
 
+def test_shard_referee_reuses_the_completion_bytes_it_checked(
+    tmp_path, monkeypatch
+) -> None:
+    paths = evidence(tmp_path)
+    sidecar = paths[1].parent / "test-durations.json.meta.json"
+    replacement = sidecar.with_name("replacement.json")
+    metadata = json.loads(sidecar.read_bytes())
+    metadata["run"]["python"] = "2.7.0"
+    replacement.write_text(json.dumps(metadata), encoding="utf-8")
+    read_bytes = Path.read_bytes
+    reads = 0
+
+    def replace_after_read(path):
+        nonlocal reads
+        data = read_bytes(path)
+        if path == sidecar:
+            reads += 1
+            if reads == 1:
+                replacement.replace(sidecar)
+        return data
+
+    monkeypatch.setattr(Path, "read_bytes", replace_after_read)
+    check(paths, ["a", "b", "serial"], "slow", 2)
+    assert reads == 1
+    with pytest.raises(ValueError, match=r"completion Python.*verifier"):
+        check(paths, ["a", "b", "serial"], "slow", 2)
+
+
 def test_empty_shards_validate_completion_evidence_when_present(tmp_path) -> None:
     paths = evidence(tmp_path)
     corpus = ["a", "serial"]

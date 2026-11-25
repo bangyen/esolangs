@@ -44,7 +44,7 @@ def completed(root: Path, *, returncode=0):
     log = root / "notes" / "probe.log"
     log.parent.mkdir(exist_ok=True)
     log.write_text("positive control executed\n")
-    run.record("probe", 0.01, returncode, f"[log] {log}\n")
+    run.record("probe", 0.01, returncode, None, log_path=log)
     return run, log
 
 

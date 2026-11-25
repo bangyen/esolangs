@@ -125,16 +125,22 @@ def _error(error: BaseException) -> Event:
     return (type(error).__name__, str(error), tuple(getattr(error, "__notes__", ())))
 
 
-def _views(machine: object, ignored: frozenset[str]) -> Event:
-    names = sorted(
+def _public_view_names(
+    machine: object, ignored: frozenset[str] = frozenset()
+) -> list[str]:
+    cls = type(machine)
+    return [
         name
-        for name in dir(type(machine))
-        if isinstance(getattr(type(machine), name), property)
-        and not name.startswith("_")
+        for name in dir(cls)
+        if not name.startswith("_")
         and name not in ignored
-    )
+        and isinstance(getattr(cls, name), property)
+    ]
+
+
+def _views(machine: object, ignored: frozenset[str]) -> Event:
     seen: list[tuple[str, object]] = []
-    for name in names:
+    for name in _public_view_names(machine, ignored):
         try:
             value = getattr(machine, name)
         except Exception as error:
@@ -223,6 +229,7 @@ def _capture_trace(
     ignored: frozenset[str],
     *,
     runtime: RuntimeSpec,
+    found_views: set[str] | None = None,
 ) -> tuple[list[Event], int]:
     """Record views, snapshot and output at entry and after each command.
 
@@ -240,6 +247,8 @@ def _capture_trace(
         machine = _machine(module, code, io, runtime=runtime)
     except Exception as error:
         return [("error", *_error(error))], 0
+    if found_views is not None and found_views != ignored:
+        found_views.update(ignored.intersection(_public_view_names(machine)))
     events: list[Event] = []
     commands = 0
     try:
@@ -441,8 +450,11 @@ def _observe(
     *,
     runtime: RuntimeSpec,
     allow_cycles: bool,
+    found_views: set[str] | None = None,
 ) -> Observation:
-    events, commands = _capture_trace(module, program, ignored, runtime=runtime)
+    events, commands = _capture_trace(
+        module, program, ignored, runtime=runtime, found_views=found_views
+    )
     cycle = allow_cycles and not _halts(events) and _repeated_snapshot(events)
     return events, cycle, commands
 
@@ -638,6 +650,7 @@ def _worker(
             marshal.dump((sum(steps for _, steps in work) / seconds, repeats), stream)
         return
     ignored = frozenset(extra)
+    found_views: set[str] | None = set() if ignored else None
     allow_cycles = not runtime.random and (
         runtime.capabilities.completion is Completion.PERIODIC
         or LANGUAGES[name].contract.answer_mode == "termination"
@@ -650,6 +663,7 @@ def _worker(
                 ignored,
                 runtime=runtime,
                 allow_cycles=allow_cycles,
+                found_views=found_views,
             )
             # Project private classes before crossing revisions and preserve wide ints.
             memo: dict[int, object] = {}
@@ -658,6 +672,9 @@ def _worker(
             )
             stream.write(_RECORD_SIZE.pack(len(record_bytes)))
             stream.write(record_bytes)
+    if found_views is not None:
+        with output.with_suffix(".views").open("wb") as stream:
+            marshal.dump(sorted(found_views), stream)
 
 
 def _run_worker(
@@ -699,6 +716,11 @@ def _observations(path: Path) -> Iterator[Observation]:
             if len(payload) != size:
                 raise ValueError("incomplete trace observation")
             yield marshal.loads(payload)
+
+
+def _observed_views(path: Path) -> set[str]:
+    with path.with_suffix(".views").open("rb") as stream:
+        return set(marshal.load(stream))
 
 
 def _worker_speeds(
@@ -776,7 +798,7 @@ def main(argv: list[str] | None = None, *, supervise: bool = False) -> int:
             replacement = target, _read_mutant(args.mutant)
     except ValueError as exc:
         parser.error(str(exc))
-    ignored = frozenset(filter(None, args.ignore_views.split(",")))
+    ignored = frozenset(filter(None, map(str.strip, args.ignore_views.split(","))))
     with tempfile.TemporaryDirectory() as directory:
         scratch = Path(directory)
         try:
@@ -807,6 +829,12 @@ def _compare_revisions(
         marshal.dump((packed, sorted(ignored)), stream)
     _run_worker(old, name, request, before_path)
     _run_worker(new, name, request, after_path)
+    if ignored and (
+        unknown := ignored - _observed_views(before_path) - _observed_views(after_path)
+    ):
+        names = ", ".join(repr(view) for view in sorted(unknown))
+        print(f"--ignore-views: unknown public VM view(s): {names}", file=sys.stderr)
+        return 2
     pairs = zip(_observations(before_path), _observations(after_path), strict=True)
     found, halting, witnessed = _summarize(programs, pairs, projected=True)
     for (code, stdin), step, before, after in found[:3]:

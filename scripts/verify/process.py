@@ -107,6 +107,11 @@ def start_logged(
     return proc
 
 
+def logged_path(proc: subprocess.Popen[str]) -> Path:
+    """Return the spool path assigned by the parent process."""
+    return _LOGS[proc].path
+
+
 def excerpt(proc: subprocess.Popen[str]) -> str:
     """Return a bounded tail and the path to its persistent complete log."""
     log = _LOGS[proc]
