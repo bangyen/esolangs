@@ -50,13 +50,6 @@ check or weakening a contract.
 
 ## Engineering
 
-- **Streaming DFA generator.** Pilot Brainfuck and 6-5. Emit one fixed
-  program for an arbitrary binary DFA, then run it on a terminator-ended
-  stream and report acceptance. Start with the two-state parity witness,
-  then use a DFA with at least three states and distinct transitions on both
-  bits. Compare empty and long inputs against a reference DFA and account
-  for source size in states and execution steps in stream length. Use the
-  two backends to settle the input and output contract before expanding.
 - **Malbolge read-only decoder placement.** Reuse the 20-target control
   with four late frames. The 21-target layout needs a fifth. Derive a frame
   placement or shorten the writer to free one, then run the resulting
