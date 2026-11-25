@@ -150,5 +150,5 @@ def test_chunked_columns_match_the_swept_optimum() -> None:
 def test_suffix_measurement_starts_past_the_table_push() -> None:
     """Including the packed table closer moves this form from 41 to40 columns."""
     table = f"{random.Random(1847).getrandbits(128):0128b}"
-    balanced = _balance(table, modulous(table))
+    balanced = _balance(modulous(table))
     assert max(map(len, balanced.splitlines())) == 41

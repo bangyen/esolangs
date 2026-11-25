@@ -257,7 +257,7 @@ def _shared_template(table: str, n: int) -> list[_Line]:
     ]
 
 
-def _balance(_table: str, default: str) -> str:
+def _balance(default: str) -> str:
     """Compare ``default`` with k whole instructions per line."""
     return min([default, *_packed(default)], key=balance_score)
 
@@ -285,6 +285,4 @@ def crement_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Pack instructions without moving their source offsets."""
     if not isinstance(request.source, TemplateLayout):
         raise TypeError("Crement balancing needs a rendered template with slots")
-    return TemplateLayout(
-        _balance(request.table, request.source.source), request.source.spans
-    )
+    return TemplateLayout(_balance(request.source.source), request.source.spans)

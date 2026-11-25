@@ -236,7 +236,7 @@ def balance_super_snusp(flat: str, *, plan: _FoldPlan | None = None) -> str:
     )
 
 
-def _balance(table: str, default: str | None = None) -> str:
+def _balance(table: str) -> str:
     """Balance the straight line, or the same lookup with a chunked literal.
 
     A digit run is one unsplittable token, so every fold of the plain
@@ -246,11 +246,10 @@ def _balance(table: str, default: str | None = None) -> str:
     """
     n = _validate_truth_table(table)
     lookup = None
+    default = _short_program(table, n)
     if default is None:
-        default = _short_program(table, n)
-        if default is None:
-            lookup = _lookup_plan(table, n)
-            default = _emit_lookup(lookup)
+        lookup = _lookup_plan(table, n)
+        default = _emit_lookup(lookup)
     plan = _FoldPlan(default)
     balanced = balance_super_snusp(default, plan=plan)
     if plan.floor <= 6:

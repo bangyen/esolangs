@@ -225,7 +225,7 @@ def _dimensional_bare(table: str, n: int) -> str:
     return "".join(parts)
 
 
-def _balance(_table: str, default: str) -> str:
+def _balance(default: str) -> str:
     """Return a token-balanced layout with a two-column literal floor."""
     tokens = re.findall(_DIMENSIONAL_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
@@ -239,4 +239,4 @@ def dimensional_request(request: GenerationRequest) -> Program:
 
 def dimensional_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+    return _balance(request.text_source())

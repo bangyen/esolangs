@@ -158,7 +158,7 @@ def _cut(word: str, limit: int) -> list[str]:
 _CUT = 64
 
 
-def _balance(_table: str, default: str) -> str:
+def _balance(default: str) -> str:
     """The squarest wrap, cutting words when the program is narrower than one."""
     words = default.split()
     if isqrt(CELL_ASPECT * len(default)) < max(map(len, words)):
@@ -173,4 +173,4 @@ def quassaunt_request(request: GenerationRequest) -> Program:
 
 def quassaunt_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+    return _balance(request.text_source())

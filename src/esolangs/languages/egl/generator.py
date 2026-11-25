@@ -90,7 +90,7 @@ def _wrap(program: str, width: int | None) -> str:
     return "\n".join(rows)
 
 
-def _balance(_table: str, default: str) -> str:
+def _balance(default: str) -> str:
     """Return the fold at the balanced width, never narrower than the header.
 
     The neighbouring widths and ``floor - 1`` never won on 564 tables at
@@ -109,4 +109,4 @@ def egl_request(request: GenerationRequest) -> Program:
 
 def egl_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+    return _balance(request.text_source())

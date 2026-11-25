@@ -532,7 +532,6 @@ def select_alight(
 
 def balance_alight(
     table: str,
-    default: str | None = None,
     *,
     expression_syntax: str = "infix",
     list_update: str = "in_place",
@@ -543,13 +542,12 @@ def balance_alight(
     build = _project(table, n, None)
     table, essential = build.projected, build.essential
     unchunked = None
-    if default is None:
-        _dialect(expression_syntax, list_update)
-        if postfix:
-            unchunked = _postfix_units(table, n, len(table), essential)
-            default = _flatten(unchunked)
-        else:
-            default = _layout_flat_infix(build)
+    _dialect(expression_syntax, list_update)
+    if postfix:
+        unchunked = _postfix_units(table, n, len(table), essential)
+        default = _flatten(unchunked)
+    else:
+        default = _layout_flat_infix(build)
 
     # Geometry ignores the literal's bits, so the fit depends on table size.
     chunks = _square_chunks(len(table), "balance")

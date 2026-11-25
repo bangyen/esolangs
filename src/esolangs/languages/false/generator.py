@@ -539,7 +539,7 @@ def _lookup(sub: str, n: int, ess: list[int]) -> str:
     return prologue + "".join(power) + "".join(selected) + "*0\\>1&."
 
 
-def _balance(_table: str, default: str) -> str:
+def _balance(default: str) -> str:
     """Compare the default with its balanced token fit."""
     tokens = re.findall(_FALSE_COMMAND, default)
     width = balanced_token_width(tokens, minimum=2)
@@ -553,4 +553,4 @@ def false_request(request: GenerationRequest) -> Program:
 
 def false_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+    return _balance(request.text_source())

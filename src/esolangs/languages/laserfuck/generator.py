@@ -883,14 +883,13 @@ def _laserfuck_tiled(table: str) -> str:
     return grid.render()
 
 
-def balance_laserfuck(table: str, default: str | None = None) -> str:
+def balance_laserfuck(table: str) -> str:
     """Compare reader fits, tree placements, funnel fits, the turned and tiled trees."""
     n = _validate_truth_table(table)
     margin = MARGIN
     events = {1, 4}
     tree = _laserfuck_tree(table, n)
-    if default is None:
-        default = _laserfuck_default(table, n, tree=tree)
+    default = _laserfuck_default(table, n, tree=tree)
     span = tree.span
     for candidate in _laserfuck_reader_candidates(n):
         exit_column = candidate.reader.exit_col

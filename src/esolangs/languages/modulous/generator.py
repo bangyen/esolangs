@@ -172,7 +172,7 @@ def _chunked_columns(size: int, suffix_lengths: list[int]) -> int:
     return max(_MIN_CHUNK_WIDTH + 3, isqrt(4 * size + 2 * suffix) + 1)
 
 
-def _balance(_table: str, default: str) -> str:
+def _balance(default: str) -> str:
     """Return the squarest rendering of the table lookup program.
 
     Keeps the ``balance_score`` minimum of the unwrapped ``default``, whole
@@ -203,4 +203,4 @@ def modulous_request(request: GenerationRequest) -> Program:
 
 def modulous_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+    return _balance(request.text_source())
