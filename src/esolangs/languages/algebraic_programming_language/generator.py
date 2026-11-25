@@ -573,9 +573,7 @@ def balance_apl(table: str, default: str) -> str:
 
 def algebraic_programming_language_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return algebraic_programming_language(request.table, request.width)
-    return algebraic_programming_language(request.table)
+    return algebraic_programming_language(request.table, request.width)
 
 
 def algebraic_programming_language_balance_request(request: BalanceRequest) -> Program:

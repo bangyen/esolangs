@@ -73,15 +73,16 @@ def false(truth_table: str, width: int | None = None) -> str:
     # The expression build names its variables by input position, and
     # FALSE variables are a-z: past the alphabet it cannot be built.
     if ess and ess[-1] < len(ascii_lowercase):
+        projected = read_at(truth_table, ess, n)
         # The complement build trades 1 char (``~`` on the body) for the
         # cheap polarity of the combines, which favour a clear cofactor.
         for flip_out in (False, True):
-            expression = _expression(truth_table, n, ess, flip_out=flip_out)
+            expression = _expression(projected, n, ess, flip_out=flip_out)
             if len(expression) < len(program):
                 program = expression
         # [ablations.literal_lookup_build_trick_20261102]; existing routes
         # protect their structured classes, including linear parity.
-        literal = _lookup(truth_table, n, ess)
+        literal = _lookup(projected, n, ess)
         if len(literal) < len(program):
             program = literal
     if width is None:
@@ -266,7 +267,7 @@ def _splits(table: str, positions: tuple[int, ...]) -> range | tuple[int, ...]:
 
 
 def _expression(
-    truth_table: str,
+    projected: str,
     n: int,
     ess: list[int],
     *,
@@ -297,10 +298,7 @@ def _expression(
     ``flip_out`` builds the complement and ends the body with ``~``, whose
     low bit is the complement's (``~0`` = -1, ``~1`` = -2, ``~-1`` = 0).
     """
-    # Project the table onto its essential inputs, in original order.
-    sub = read_at(truth_table, ess, n)
-    if flip_out:
-        sub = _complement(sub)
+    sub = _complement(projected) if flip_out else projected
     letters = {pos: chr(ord("a") + pos) for pos in ess}
 
     search = _ExpressionSearch(letters)
@@ -498,13 +496,12 @@ class _ExpressionSearch:
         return "".join(output)
 
 
-def _lookup(truth_table: str, n: int, ess: list[int]) -> str:
+def _lookup(sub: str, n: int, ess: list[int]) -> str:
     """Select a signed 32-bit chunk and multiply its selected bit into the sign.
 
     Stored inputs restrict this route to the same alphabet as the formula.
     The five-factor product wraps only at its exact 2**31 endpoint.
     """
-    sub = read_at(truth_table, ess, n)
     letters = {pos: ascii_lowercase[pos] for pos in ess}
     low = min(len(ess), 5)
     size = 1 << low
@@ -551,9 +548,7 @@ def _balance(_table: str, default: str) -> str:
 
 def false_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return false(request.table, request.width)
-    return false(request.table)
+    return false(request.table, request.width)
 
 
 def false_balance_request(request: BalanceRequest) -> Program:

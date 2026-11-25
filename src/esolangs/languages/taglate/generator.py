@@ -208,9 +208,7 @@ def balance_taglate(_table: str, default: str) -> str:
 
 def taglate_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return taglate(request.table, request.width)
-    return taglate(request.table)
+    return taglate(request.table, request.width)
 
 
 def taglate_balance_request(request: BalanceRequest) -> Program:

@@ -104,9 +104,7 @@ def _balance(_table: str, default: str) -> str:
 
 def egl_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return egl(request.table, request.width)
-    return egl(request.table)
+    return egl(request.table, request.width)
 
 
 def egl_balance_request(request: BalanceRequest) -> Program:

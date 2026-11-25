@@ -234,9 +234,7 @@ def _balance(_table: str, default: str) -> str:
 
 def dimensional_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return dimensional(request.table, request.width)
-    return dimensional(request.table)
+    return dimensional(request.table, request.width)
 
 
 def dimensional_balance_request(request: BalanceRequest) -> Program:

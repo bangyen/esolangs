@@ -669,6 +669,4 @@ def _emit_loop(lines: list[str], strip: _Strip, level: int, size: int) -> None:
 
 def brainif_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return brainif(request.table, request.width)
-    return brainif(request.table)
+    return brainif(request.table, request.width)

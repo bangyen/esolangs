@@ -504,9 +504,7 @@ def balance_thue(truth_table: str, default: str) -> str:
 
 def thue_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return thue(request.table, request.width)
-    return thue(request.table)
+    return thue(request.table, request.width)
 
 
 def thue_balance_request(request: BalanceRequest) -> Program:

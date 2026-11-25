@@ -198,9 +198,7 @@ def _balance(_table: str, default: str) -> str:
 
 def modulous_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return modulous(request.table, request.width)
-    return modulous(request.table)
+    return modulous(request.table, request.width)
 
 
 def modulous_balance_request(request: BalanceRequest) -> Program:
