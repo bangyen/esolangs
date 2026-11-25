@@ -28,6 +28,8 @@ Decisions:
     plain lookup or integer-coordinate folds preserve correctness.
 """
 
+from collections.abc import Callable
+from functools import cache
 from math import isqrt
 
 from esolangs.generation.algebraic import parity_bias
@@ -56,24 +58,31 @@ def fish(truth_table: str, width: int | None = None) -> str:
     # An ignored input is read and dropped; the table indexes the rest.
     original = truth_table
     weights, truth_table = input_weights(truth_table, n)
-    reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
+    reads = _lookup_reads(weights)
     header = "0" + reads + "1g68*-n;"
     if width is None:
-        plain, packed = header + "\n" + truth_table, _packed(reads, truth_table)
-        symmetric = symmetric_weights(original, n)
-        if symmetric is not None:
-            # A symmetric table adds its bits and indexes m + 1 entries
-            # ([ablations.symmetric_count]).
-            counts = "".join(
-                "i68*-+" if weight else "i~" for weight in symmetric.weights
-            )
-            plain = "0" + counts + "1g68*-n;\n" + symmetric.table
-        # Area decides; packing can cost more text at low arities.
-        return min(packed, plain, key=grid_rank)
+        return _default_lookup(
+            original, n, header + "\n" + truth_table, _packed(reads, truth_table)
+        )
     if max(len(header), len(truth_table)) <= width:
         return header + "\n" + truth_table
     columns = 1 << (min(max(1, width - 2), len(truth_table)).bit_length() - 1)
     return _folded(reads, truth_table, columns)
+
+
+def _default_lookup(original: str, n: int, plain: str, packed: str) -> str:
+    symmetric = symmetric_weights(original, n)
+    if symmetric is not None:
+        # A symmetric table adds its bits and indexes m + 1 entries
+        # ([ablations.symmetric_count]).
+        counts = "".join("i68*-+" if weight else "i~" for weight in symmetric.weights)
+        plain = "0" + counts + "1g68*-n;\n" + symmetric.table
+    # Area decides; packing can cost more text at low arities.
+    return min(packed, plain, key=grid_rank)
+
+
+def _lookup_reads(weights: tuple[int, ...]) -> str:
+    return "".join("i68*-$2*+" if weight else "i~" for weight in weights)
 
 
 def _constant(inputs: int, bit: str, width: int | None) -> str:
@@ -116,7 +125,13 @@ def _packed_reads(reads: str) -> str:
     return "068*-" + reads.replace("i68*-$2*+", "2*i+")
 
 
-def _packed(reads: str, truth_table: str) -> str:
+def _lookup_cells(table: str) -> str:
+    return packed_cells(table, _WORD, offset=_BASE, complement=True)
+
+
+def _packed(
+    reads: str, truth_table: str, *, pack: Callable[[], str] | None = None
+) -> str:
     """Return one row: the code, then six powers of two, then the packed table.
 
     Cell ``q`` holds entries ``6q`` to ``6q + 5`` complemented, so the row
@@ -137,7 +152,7 @@ def _packed(reads: str, truth_table: str) -> str:
     # Both the converted offset and every float coordinate must stay exact.
     if max(start + 14, start + 6 + (len(truth_table) - 1) // _WORD) > _EXACT:
         return "0" + reads + "1g68*-n;\n" + truth_table
-    cells = packed_cells(truth_table, _WORD, offset=_BASE, complement=True)
+    cells = _lookup_cells(truth_table) if pack is None else pack()
     powers = "".join(chr(64 + (1 << bit)) for bit in range(_WORD))
     return code.ljust(start) + powers + cells
 
@@ -226,7 +241,9 @@ def _number(value: int) -> str:
     return _number(value // 2) + "2*" + ("1+" if value % 2 else "")
 
 
-def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
+def _packed_folded(
+    reads: str, truth_table: str, columns: int, *, pack: Callable[[], str] | None = None
+) -> str:
     """Return the packed table folded: a snake of code over a ``columns`` block.
 
     The six powers of two sit in the row below the code, the packed cells in
@@ -251,7 +268,7 @@ def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
         # The packed float is no longer exact; an unpacked power-of-two fold
         # can split its integer index before converting a smaller quotient.
         return _folded(reads, truth_table, 1 << (columns.bit_length() - 1))
-    cells = packed_cells(truth_table, _WORD, offset=_BASE, complement=True)
+    cells = _lookup_cells(truth_table) if pack is None else pack()
     powers = "".join(chr(64 + (1 << bit)) for bit in range(_WORD))
     snake: list[str] = []
     for offset in range(0, len(body), columns):
@@ -267,27 +284,45 @@ def _packed_folded(reads: str, truth_table: str, columns: int) -> str:
     return "\n".join(snake)
 
 
-def balance_fish(truth_table: str, default: str) -> str:
+def balance_fish(truth_table: str, default: str | None = None) -> str:
     """Minimize rendered side over four packed or precision-safe folds.
 
     Widths lie near ``sqrt(2 * length)`` ([ablations.balance_packed_fold]);
     unpacked folds are reserved for coordinates beyond binary64 precision.
     """
     n = _validate_truth_table(truth_table)
-    candidates = [default]
     if len(set(truth_table)) == 1:
+        bit = truth_table[0]
+        if default is None:
+            default = _constant(n, bit, None)
         # W = 2*ceil(L/(W-2)); the crossing is 1+sqrt(1+2L).
         side = 1 + isqrt(1 + 2 * (2 * n + 3))
-        candidates.append(fish(truth_table, 1))
+        candidates = [default, _constant(n, bit, 1)]
         candidates.extend(
-            fish(truth_table, max(3, width)) for width in range(side - 1, side + 4)
+            _constant(n, bit, max(3, width)) for width in range(side - 1, side + 4)
         )
         return min(candidates, key=balance_score)
     weights, table = input_weights(truth_table, n)
-    reads = "".join("i68*-$2*+" if weight else "i~" for weight in weights)
-    root = (2 * len(_packed(reads, table))) ** 0.5
+    reads = _lookup_reads(weights)
+
+    @cache
+    def pack() -> str:
+        # Precision fallbacks can skip packing entirely.
+        return _lookup_cells(table)
+
+    packed = _packed(reads, table, pack=pack)
+    if default is None:
+        bias = parity_bias(truth_table)
+        plain = "0" + reads + "1g68*-n;\n" + table
+        default = (
+            _default_lookup(truth_table, n, plain, packed)
+            if bias is None
+            else _parity(n, bias)
+        )
+    root = (2 * len(packed)) ** 0.5
+    candidates = [default]
     candidates.extend(
-        _packed_folded(reads, table, max(4, round(root * scale)))
+        _packed_folded(reads, table, max(4, round(root * scale)), pack=pack)
         for scale in (0.9, 1.0, 1.1, 1.2)
     )
     return min(candidates, key=balance_score)
@@ -295,9 +330,9 @@ def balance_fish(truth_table: str, default: str) -> str:
 
 def fish_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return fish(request.table, request.width)
-    return fish(request.table)
+    if request.balance:
+        return balance_fish(request.table)
+    return fish(request.table, request.width)
 
 
 def fish_balance_request(request: BalanceRequest) -> Program:

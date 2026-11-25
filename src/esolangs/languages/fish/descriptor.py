@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.fish.generator", "fish_request"
         ),
         layout_width=True,
+        layout_balance=True,
         # Not a tree: an indexed table read.
         shape=Shape.LOOKUP,
         balance=OperationRef[BalanceRequest, Program](

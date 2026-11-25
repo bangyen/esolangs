@@ -30,6 +30,7 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import (
+    FoldedTree,
     repeated_bank,
     repeated_block,
     repeated_mixed_bank,
@@ -135,20 +136,24 @@ def _painfuck_ordered(table: str, perm: tuple[int, ...]) -> str:
     """
     flipped = table.translate(str.maketrans("01", "10"))
     return min(
-        _painfuck_polarity(table, perm, flip=False),
-        _painfuck_polarity(flipped, perm, flip=True),
+        _painfuck_polarity(table, perm, flip=False, analysis=FoldedTree.build(table)),
+        _painfuck_polarity(
+            flipped, perm, flip=True, analysis=FoldedTree.build(flipped)
+        ),
         key=len,
     )
 
 
-def _painfuck_polarity(table: str, perm: tuple[int, ...], *, flip: bool) -> str:
+def _painfuck_polarity(
+    table: str, perm: tuple[int, ...], *, flip: bool, analysis: FoldedTree
+) -> str:
     """Return the shorter of inline text and the banks.
 
     Banks are same-level, or the mixed union of one-per-depth picks with the
     greatest bank; all stay under a command bound.
     """
-    plain, _ = _painfuck_shared(table, perm, (), (), flip=flip)
-    if repeated_block(table) is None:
+    plain, _ = _painfuck_shared(table, perm, (), (), flip=flip, analysis=analysis)
+    if repeated_block(table, repeats=analysis.repeats) is None:
         return plain
     n = len(perm)
     bound = (3 * n * n + 3) // 4 + 20 * n + 4
@@ -156,11 +161,18 @@ def _painfuck_polarity(table: str, perm: tuple[int, ...], *, flip: bool) -> str:
     # Banks win on majority and thresholds ([ablations.bank_plans]); the
     # one-residual form and the levels plan went ([ablations]).
     plans: list[tuple[tuple[tuple[int, int], ...], tuple[int, ...]]] = []
-    plans.extend(repeated_bank(table, ranked=ranked) for ranked in (False, True))
-    plans.append(repeated_mixed_bank(table))
+    plans.extend(
+        repeated_bank(table, ranked=ranked, repeats=analysis.repeats)
+        for ranked in (False, True)
+    )
+    plans.append(repeated_mixed_bank(table, tree=analysis))
     for blocks, flags in dict.fromkeys(plans):
         if len(blocks) > 1:
-            forms.append(_painfuck_shared(table, perm, blocks, flags, flip=flip))
+            forms.append(
+                _painfuck_shared(
+                    table, perm, blocks, flags, flip=flip, analysis=analysis
+                )
+            )
     return min((code for code, cost in forms if cost <= bound), key=len)
 
 
@@ -171,6 +183,7 @@ def _painfuck_shared(
     flags: tuple[int, ...] = (),
     *,
     flip: bool = False,
+    analysis: FoldedTree | None = None,
 ) -> tuple[str, int]:
     """Emit native flag dispatch and return its maximum command count.
 
@@ -188,6 +201,7 @@ def _painfuck_shared(
         flag_levels=flags,
         binary_leaves=True,
         fold_zero=True,
+        analysis=analysis,
         dialect=FlagDialect(
             _reach,
             "ps",

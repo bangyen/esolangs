@@ -14,7 +14,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.shared_block import ContinuationCost as _Cost
-from esolangs.generation.shared_block import repeated_block, repeated_blocks
+from esolangs.generation.shared_block import FoldedTree, repeated_block, repeated_blocks
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +96,7 @@ def flag_tree_body(
     flip: bool = False,
     dialect: FlagDialect | None = None,
     fold_zero: bool | None = None,
+    analysis: FoldedTree | None = None,
 ) -> tuple[str, int]:
     """Return a flag tree ending at result, and its worst command count.
 
@@ -122,6 +123,7 @@ def flag_tree_body(
         binary_leaves=binary_leaves,
         fold_zero=bool(blocks) if fold_zero is None else fold_zero,
         pos=start,
+        analysis=analysis,
     )
     return tree.emit_all()
 
@@ -168,6 +170,7 @@ class _FlagTree:
         binary_leaves: bool,
         fold_zero: bool,
         pos: int,
+        analysis: FoldedTree | None,
     ) -> None:
         self.table, self.n, self.perm, self.result = truth_table, n, perm, result
         self.blocks, self.pending_levels = blocks, pending_levels
@@ -176,14 +179,16 @@ class _FlagTree:
         self.pos = pos
         self.parts: list[str] = []
         self.count = 0
-        self.ids = subtree_ids(truth_table)
+        self.ids = subtree_ids(truth_table) if analysis is None else analysis.ids
         self.selected = {
             (depth, self.ids[depth][row >> (n - depth)]): i
             for i, (depth, row) in enumerate(blocks)
         }
         if len(self.selected) != len(blocks):
             raise ValueError("deferred definitions must name distinct residuals")
-        self.is_constant = constant_span_test(truth_table)
+        self.is_constant = (
+            constant_span_test(truth_table) if analysis is None else analysis.constant
+        )
 
     def flag(self, i: int) -> int:
         return 2 * self.perm[i] + 1

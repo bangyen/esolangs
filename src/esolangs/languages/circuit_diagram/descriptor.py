@@ -22,6 +22,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.circuit_diagram.generator", "circuit_diagram_request"
         ),
         layout_width=True,
+        layout_balance=True,
         balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.circuit_diagram.generator",
             "circuit_diagram_balance_request",

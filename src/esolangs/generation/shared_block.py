@@ -2,12 +2,28 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.helpers import constant_span_test, subtree_ids
 
 type RepeatedSpans = Sequence[tuple[int, int, int]]
+
+
+@dataclass(frozen=True, slots=True)
+class FoldedTree:
+    """Truth-table data shared by candidate emitters."""
+
+    ids: tuple[tuple[int, ...], ...]
+    repeats: RepeatedSpans
+    constant: Callable[[int, int], bool]
+
+    @classmethod
+    def build(cls, table: str, *, include_single: bool = False) -> FoldedTree:
+        """Index the folded table, retaining singleton spans when requested."""
+        ids = subtree_ids(table)
+        repeats = _repeated_blocks(table, ids=ids, include_single=include_single)
+        return cls(ids, tuple(repeats), constant_span_test(table))
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,10 +54,13 @@ def repeated_block(
     return depth, row
 
 
-def repeated_blocks(table: str) -> tuple[tuple[int, int], ...]:
+def repeated_blocks(
+    table: str, *, repeats: RepeatedSpans | None = None
+) -> tuple[tuple[int, int], ...]:
     """Return the greatest repeated-span residual at each folded tree level."""
     best: dict[int, tuple[int, int]] = {}
-    for depth, row, saving in _repeated_blocks(table):
+    found = _repeated_blocks(table) if repeats is None else repeats
+    for depth, row, saving in found:
         if depth not in best or saving > best[depth][1]:
             best[depth] = row, saving
     return tuple((depth, row) for depth, (row, _) in best.items())
@@ -92,7 +111,11 @@ def repeated_bank(
 
 
 def repeated_mixed_bank(
-    table: str, *, reserve_last: bool = False, ranked: bool = True
+    table: str,
+    *,
+    reserve_last: bool = False,
+    ranked: bool = True,
+    tree: FoldedTree | None = None,
 ) -> tuple[tuple[tuple[int, int], ...], tuple[int, ...]]:
     """Union the one-per-depth picks with the greatest same-level bank.
 
@@ -103,10 +126,13 @@ def repeated_mixed_bank(
     neither a single-level bank nor the one-per-depth picks can.
     """
     n = len(table).bit_length() - 1
-    ids = subtree_ids(table)
-    banked, _ = repeated_bank(table, reserve_last=reserve_last, ranked=ranked)
+    ids = subtree_ids(table) if tree is None else tree.ids
+    repeats = _repeated_blocks(table, ids=ids) if tree is None else tree.repeats
+    banked, _ = repeated_bank(
+        table, reserve_last=reserve_last, ranked=ranked, repeats=repeats
+    )
     candidates: dict[tuple[int, int], tuple[int, int]] = {}
-    for depth, row in (*repeated_blocks(table), *banked):
+    for depth, row in (*repeated_blocks(table, repeats=repeats), *banked):
         candidates.setdefault((depth, ids[depth][row >> (n - depth)]), (depth, row))
     chosen: list[tuple[int, int]] = []
     flags: list[int] = []

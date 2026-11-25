@@ -19,7 +19,7 @@ Decisions:
 """
 
 from collections.abc import Callable, Sequence
-from functools import partial
+from functools import cache, partial
 from itertools import pairwise
 
 from esolangs.generation.algebraic import affine_form
@@ -35,6 +35,8 @@ from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_block import (
+    FoldedTree,
+    RepeatedSpans,
     _repeated_blocks,
     repeated_bank,
     repeated_blocks,
@@ -110,7 +112,8 @@ def smallfuck(truth_table: str, width: int | None = None) -> str:
 
 
 def _layout(truth_table: str, width: int | None) -> TemplateLayout:
-    natural = in_input_order(truth_table, _smallfuck_ordered)
+    analyze = cache(partial(FoldedTree.build, include_single=True))
+    natural = in_input_order(truth_table, partial(_smallfuck_ordered, analyze=analyze))
     n = _validate_truth_table(truth_table)
     # A chain of ifs is cheap and an else is not, so AND-like tables beat their
     # OR-like duals; the reversed table behind a prologue that flips every
@@ -120,7 +123,12 @@ def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     twins = [
         in_input_order(
             table[::-1] if negate else table,
-            partial(_smallfuck_ordered, negate=negate, complement=complement),
+            partial(
+                _smallfuck_ordered,
+                analyze=analyze,
+                negate=negate,
+                complement=complement,
+            ),
         )
         for table, complement in ((truth_table, False), (flipped, True))
         for negate in (False, True)
@@ -176,6 +184,7 @@ def _smallfuck_ordered(
     table: str,
     perm: tuple[int, ...],
     *,
+    analyze: Callable[[str], FoldedTree] | None = None,
     negate: bool = False,
     complement: bool = False,
 ) -> TemplateLayout:
@@ -188,18 +197,34 @@ def _smallfuck_ordered(
     bound is a cost-model bug and aborts.
     """
     n = len(perm)
+    analysis = (
+        FoldedTree.build(table, include_single=True)
+        if analyze is None
+        else analyze(table)
+    )
+    repeats = [block for block in analysis.repeats if block[2] > 0]
     forms = []
     # Historical pre-Davio measurements.
     # The bank: random 0%, majority +14.1% at n=10; per-level: parity +40-130%.
     plans = dict.fromkeys(
-        [(repeated_blocks(table), ()), repeated_bank(table, ranked=False)]
+        [
+            (repeated_blocks(table, repeats=repeats), ()),
+            repeated_bank(table, ranked=False, repeats=repeats),
+        ]
     )
     # Paired roots: random +15.9/+20.5/+23.2% at n=9/10/11 (12 tables),
     # +5.7% at n=8, 0% below.
-    paired = _paired_roots(table)
+    paired = _paired_roots(table, spans=analysis.repeats)
     band = BAND
     forms.append(
-        _smallfuck_tree(table, perm, band=band, negate=negate, complement=complement)
+        _smallfuck_tree(
+            table,
+            perm,
+            band=band,
+            negate=negate,
+            complement=complement,
+            analysis=analysis,
+        )
     )
     for blocks, flags in plans:
         if blocks:
@@ -207,6 +232,7 @@ def _smallfuck_ordered(
                 _smallfuck_tree(
                     table,
                     perm,
+                    analysis=analysis,
                     shared_blocks=blocks,
                     flag_levels=flags,
                     band=band,
@@ -219,6 +245,7 @@ def _smallfuck_ordered(
             _smallfuck_tree(
                 table,
                 perm,
+                analysis=analysis,
                 paired_roots=paired,
                 band=band,
                 negate=negate,
@@ -232,13 +259,16 @@ def _smallfuck_ordered(
     return min((layout for layout, _ in forms), key=lambda layout: len(layout.source))
 
 
-def _paired_roots(table: str) -> tuple[tuple[int, int], ...]:
+def _paired_roots(
+    table: str, *, spans: RepeatedSpans | None = None
+) -> tuple[tuple[int, int], ...]:
     """Return repeated two-input functions, identifying complements."""
     n = _validate_truth_table(table)
     if n < 4:
         return ()
     pairs: dict[int, tuple[int, int]] = {}
-    for depth, row, saving in _repeated_blocks(table, include_single=True):
+    found = _repeated_blocks(table, include_single=True) if spans is None else spans
+    for depth, row, saving in found:
         if depth == n - 2:
             word = int(table[row : row + 4], 2)
             canonical = min(word, word ^ 15)
@@ -704,6 +734,7 @@ def _smallfuck_tree(
     band: int = BAND,
     negate: bool = False,
     complement: bool = False,
+    analysis: FoldedTree | None = None,
 ) -> tuple[TemplateLayout, int]:
     """Emit one order's template; level ``k`` tests input ``perm[k]``.
 
@@ -721,7 +752,7 @@ def _smallfuck_tree(
     n = _validate_truth_table(truth_table)
     if band != BAND:
         raise ValueError("Davio coefficients require five-level bands")
-    ids = subtree_ids(truth_table)
+    ids = subtree_ids(truth_table) if analysis is None else analysis.ids
     builder = _Builder(STRIDE * n)
     builder.count = len(_INPUT) * n
     if negate:
@@ -752,7 +783,7 @@ def _smallfuck_tree(
         n,
         truth_table,
         perm,
-        constant_span_test(truth_table),
+        constant_span_test(truth_table) if analysis is None else analysis.constant,
         ids,
         builder,
         pending_levels,

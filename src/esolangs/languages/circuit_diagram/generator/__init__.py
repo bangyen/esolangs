@@ -617,9 +617,21 @@ def _projection_wire(truth_table: str, inputs: int) -> str | None:
     return "\n".join(wire if level == used[0] else "-" for level in range(inputs))
 
 
-def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
+class _FoldAnalysis:
+    """Reuse input projection and gate graphs across drawings."""
+
+    def __init__(self) -> None:
+        self.essential = cache(_essential_table)
+        self.dag = cache(_dag)
+
+
+def _circuit_diagram_at(
+    truth_table: str, limit: int | None, *, analysis: _FoldAnalysis | None = None
+) -> str:
     """Render the folded circuit inside an optional gate-column limit."""
-    return _circuit_diagram_model(truth_table, limit, atomic_mux=True).render()
+    return _circuit_diagram_model(
+        truth_table, limit, atomic_mux=True, analysis=analysis
+    ).render()
 
 
 def _circuit_diagram_model(
@@ -630,6 +642,7 @@ def _circuit_diagram_model(
     port_inputs: int | None = None,
     invert: bool = False,
     atomic_mux: bool = False,
+    analysis: _FoldAnalysis | None = None,
 ) -> _Layout:
     """Build a Circuit Diagram program computing the given truth table.
 
@@ -657,11 +670,13 @@ def _circuit_diagram_model(
     # Every input keeps its ``-`` row (the read order), but the fold uses
     # only the essential inputs' rails; an ignored rail drives nothing, as
     # every rail but the first does for a constant table.
-    used, table = _essential_table(truth_table, n)
+    project = _essential_table if analysis is None else analysis.essential
+    graph = _dag if analysis is None else analysis.dag
+    used, table = project(truth_table, n)
     ports = [builder.input_bus() for _ in range(port_inputs)]
     rails = [ports[order[i]] for i in used]
 
-    dag = _dag(table, len(used))
+    dag = graph(table, len(used))
     needed = (
         {
             len(used) - 1 - level
@@ -679,12 +694,24 @@ def _circuit_diagram_model(
     return builder.layout
 
 
-def _linear_shared_layout(table: str, inputs: int, models: list[_Layout]) -> None:
+def _linear_shared_layout(
+    table: str,
+    inputs: int,
+    models: list[_Layout],
+    *,
+    analysis: _FoldAnalysis | None = None,
+) -> None:
     """Append the natural and complement folds to ``models`` for the race."""
-    used, projected = _essential_table(table, inputs)
+    project = _essential_table if analysis is None else analysis.essential
+    used, projected = project(table, inputs)
     models.append(
         _circuit_diagram_model(
-            projected, None, input_order=used, port_inputs=inputs, atomic_mux=True
+            projected,
+            None,
+            input_order=used,
+            port_inputs=inputs,
+            atomic_mux=True,
+            analysis=analysis,
         )
     )
     # Output polarity: a table costs 3.2x its complement when only the
@@ -698,6 +725,7 @@ def _linear_shared_layout(table: str, inputs: int, models: list[_Layout]) -> Non
             port_inputs=inputs,
             invert=True,
             atomic_mux=True,
+            analysis=analysis,
         )
     )
 
@@ -707,7 +735,9 @@ def _narrowest_present(*forms: str | None) -> str:
     return narrowest_grid(*(form for form in forms if form is not None))
 
 
-def _competing_model_circuit(truth_table: str, inputs: int) -> str:
+def _competing_model_circuit(
+    truth_table: str, inputs: int, *, analysis: _FoldAnalysis | None = None
+) -> str:
     """Return the smallest circuit, by area then characters, among the n>=4 layouts.
 
     The natural and complement folds compete against prefix H-layouts and
@@ -720,7 +750,10 @@ def _competing_model_circuit(truth_table: str, inputs: int) -> str:
         return _layout_area(model), layout_source_size(model)
 
     retained: list[_Layout] = []
-    _linear_shared_layout(truth_table, inputs, retained)
+    if analysis is None:
+        _linear_shared_layout(truth_table, inputs, retained)
+    else:
+        _linear_shared_layout(truth_table, inputs, retained, analysis=analysis)
     fallback = selected = select_competing_model(truth_table, inputs)
     best = rank(fallback)
     for model in retained:
@@ -731,6 +764,13 @@ def _competing_model_circuit(truth_table: str, inputs: int) -> str:
 
 
 def circuit_diagram(truth_table: str, width: int | None = None) -> str:
+    """Return the default or width-constrained circuit."""
+    return _generate_circuit(truth_table, width)
+
+
+def _generate_circuit(
+    truth_table: str, width: int | None = None, *, analysis: _FoldAnalysis | None = None
+) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
     See :func:`_circuit_diagram_model` for the construction.  ``width`` asks
@@ -758,8 +798,8 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
         return parity
     # Constants need only the scalar clock gate, not a minterm lattice.
     if width is None and inputs >= _COMPETING_MODEL_MIN_INPUTS:
-        return _competing_model_circuit(truth_table, inputs)
-    flat = _circuit_diagram_at(truth_table, None)
+        return _competing_model_circuit(truth_table, inputs, analysis=analysis)
+    flat = _circuit_diagram_at(truth_table, None, analysis=analysis)
     if width is None or grid_width(flat) <= width:
         return flat
     banded = _circuit_diagram_at(truth_table, width)
@@ -777,7 +817,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     return _narrowest_present(flat, banded, affine)
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(table: str, default: str | None = None) -> str:
     """Defer to the ``balance`` submodule, which imports this one."""
     from esolangs.languages.circuit_diagram.generator.balance import (
         balance_circuit_diagram,  # circular
@@ -788,9 +828,9 @@ def _balance(table: str, default: str) -> str:
 
 def circuit_diagram_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return circuit_diagram(request.table, request.width)
-    return circuit_diagram(request.table)
+    if request.balance:
+        return _balance(request.table)
+    return circuit_diagram(request.table, request.width)
 
 
 def circuit_diagram_balance_request(request: BalanceRequest) -> Program:
