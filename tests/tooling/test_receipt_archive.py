@@ -150,16 +150,14 @@ def test_receipt_steps_bind_their_own_output(tmp_path, monkeypatch) -> None:
         [("probe", command, dict(os.environ))], stream=False
     )
     assert failures == []
-    monkeypatch.setattr(
-        gate,
-        "run_bounded",
-        lambda command, **_: subprocess.CompletedProcess(command, 0, output, ""),
-    )
-    assert gate._rerun_alone(["test_probe.py::test_probe"]) == (0, output)
+    monkeypatch.setattr(gate, "PY", command)
+    status, excerpt = gate._rerun_alone(["test_probe.py::test_probe"])
+    assert status == 0
 
     spooled, retry = (root / step["evidence"]["path"] for step in run.steps)
-    assert spooled.parent == root / "notes/verification"
-    assert retry.parent == root / "notes/verification/receipts/logs"
+    assert spooled.parent == retry.parent == root / "notes/verification"
+    assert spooled != retry
+    assert excerpt == f"[log] {retry}\n{output}"
     assert (
         spooled.read_text(encoding="utf-8")
         == retry.read_text(encoding="utf-8")

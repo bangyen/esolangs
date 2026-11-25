@@ -4,12 +4,14 @@ import io
 import os
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
 from scripts import benchmark as client
 from scripts.verify import process as processes
 from scripts.verify.process import MARKER, spool
+from tests.tooling.script_support import REPO_ROOT, load
 
 
 def test_spool_keeps_complete_small_logs_and_bounded_overflow(tmp_path) -> None:
@@ -22,6 +24,25 @@ def test_spool_keeps_complete_small_logs_and_bounded_overflow(tmp_path) -> None:
     assert path.stat().st_size <= 100
     assert path.read_bytes().endswith(MARKER)
     assert stops == [True]
+
+
+def test_noisy_pytest_retry_fails_with_a_bounded_log(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    gate = load(REPO_ROOT / "scripts/verify/gate.py")
+    monkeypatch.setattr(gate, "ROOT", tmp_path)
+    monkeypatch.setattr(gate, "PY", [sys.executable, "-c", "print('x' * 8192)"])
+    process_module = sys.modules[gate.start_logged.__module__]
+    monkeypatch.setattr(process_module, "MAX_LOG_BYTES", 4096)
+    monkeypatch.setattr(gate, "_duration_only_ids", lambda _: ["demo.py::test_demo"])
+    failures = [("pytest", 1, "original failure")]
+    assert gate._load_verdict(failures) == failures
+    output = capsys.readouterr().out
+    assert "retry log overflow" in output
+    path = Path(output.partition("[log] ")[2].strip())
+    assert path.parent == tmp_path / "notes/verification"
+    assert path.stat().st_size <= 4096
+    assert path.read_bytes().endswith(MARKER)
 
 
 @pytest.mark.medium

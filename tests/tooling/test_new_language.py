@@ -144,6 +144,17 @@ def test_start_requires_an_explicit_command(root: Path, argv: list[str]) -> None
     assert not (root / "src/esolangs/languages").exists()
 
 
+@pytest.mark.parametrize("name", ["CON", "NuL", "COM1", "lPt9"])
+def test_start_refuses_windows_reserved_package_ids(
+    root: Path, capsys: pytest.CaptureFixture[str], name: str
+) -> None:
+    with pytest.raises(SystemExit) as caught:
+        new_language.main(["start", name, "--category", "other"])
+    assert caught.value.code == 2
+    assert f"{name.lower()!r} is reserved on Windows" in capsys.readouterr().err
+    assert not (root / "src/esolangs/languages").exists()
+
+
 def test_registration_ignores_old_generator_locations(root: Path) -> None:
     old = root / "src/esolangs/generation/tiny.py"
     old.parent.mkdir(parents=True)

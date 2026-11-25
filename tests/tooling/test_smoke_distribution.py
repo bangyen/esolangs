@@ -14,6 +14,7 @@ import pytest
 
 import esolangs
 from scripts.ci import release as smoke
+from scripts.windows_paths import windows_reserved_name
 
 
 def test_cli_smoke_failure_exposes_the_child_diagnostic() -> None:
@@ -484,6 +485,19 @@ def test_every_source_path_checks_out_on_windows() -> None:
     refused = sorted(
         str(path.relative_to(src))
         for path in src.rglob("*")
-        if set(path.name) & set('<>:"\\|?*') or path.name.endswith((" ", "."))
+        if windows_reserved_name(path.name)
     )
     assert not refused, refused
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["AuX.py", "cOn .txt", "lpt¹.log", "CONOUT$", "what!?.txt", "file. ", "a\x01"],
+)
+def test_windows_reserved_source_components(name: str) -> None:
+    assert windows_reserved_name(name)
+
+
+@pytest.mark.parametrize("name", ["conlang.py", "module.con", "name.with.dots"])
+def test_windows_legal_source_components(name: str) -> None:
+    assert not windows_reserved_name(name)

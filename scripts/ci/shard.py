@@ -130,7 +130,22 @@ def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
                 cast("bytes", proc.stdout),
                 cast("bytes", proc.stderr),
             )
-        return sorted(set(json.loads(destination.read_text(encoding="utf-8"))))
+        try:
+            nodes = read_evidence_json(destination, kind="pytest collection")
+            if (
+                not isinstance(nodes, list)
+                or not all(isinstance(node, str) and node.strip() for node in nodes)
+                or len(set(nodes)) != len(nodes)
+            ):
+                raise ValueError("expected a list of unique, nonempty test node IDs")
+        except (ValueError, RecursionError) as error:
+            raise _collection_error(
+                marker,
+                f"produced an invalid collection report: {error}",
+                cast("bytes", proc.stdout),
+                cast("bytes", proc.stderr),
+            ) from error
+        return sorted(nodes)
 
 
 def _timing_map(raw: object) -> object:

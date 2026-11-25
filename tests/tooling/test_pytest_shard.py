@@ -1,6 +1,7 @@
 """One shard of a marker band runs its slice and no one else's."""
 
 import re
+import subprocess
 from functools import partial
 from pathlib import Path
 
@@ -106,6 +107,45 @@ def test_invalid_marker_reports_the_error_and_keeps_the_collection_log(
     contents = log.read_text(encoding="utf-8")
     assert "test_collection.py::test_probe" in contents
     assert "Wrong expression passed to '-m'" in contents
+
+
+@pytest.mark.parametrize(
+    "payload", ['{"a":1}', '"abc"', '[""]', '["a","a"]', "[false]", "[", None]
+)
+def test_invalid_collection_reports_keep_the_log_and_prevent_sharding(
+    tmp_path, monkeypatch, capsys, payload
+) -> None:
+    shard = load_script()
+    monkeypatch.setattr(shard, "ROOT", tmp_path)
+
+    def collect(command, **_kwargs):
+        output = Path(command[command.index("--collection-output") + 1])
+        if payload is not None:
+            output.write_text(payload, encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0, b"kept stdout", b"kept stderr")
+
+    monkeypatch.setattr(shard, "run_bounded", collect)
+    manifest = tmp_path / "shard.json"
+    assert (
+        shard.shard_main(
+            [
+                "--marker",
+                "slow",
+                "--shard",
+                "0",
+                "--shards",
+                "1",
+                "--manifest",
+                str(manifest),
+            ]
+        )
+        == 2
+    )
+    assert not manifest.exists()
+    message = capsys.readouterr().err
+    assert "collection for -m 'slow' produced an invalid collection report" in message
+    path = Path(message.partition("[log] ")[2].strip())
+    assert path.read_text(encoding="utf-8") == "kept stdout\nkept stderr"
 
 
 @pytest.mark.parametrize("output", ["manifest", "coverage", "coverage receipt"])

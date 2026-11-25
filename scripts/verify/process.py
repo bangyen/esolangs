@@ -53,7 +53,13 @@ _CLEANUP_LOCK = threading.Lock()
 
 
 def start_logged(
-    cmd: list[str], name: str, env: dict[str, str], root: Path, *, stream: bool
+    cmd: list[str],
+    name: str,
+    env: dict[str, str],
+    root: Path,
+    *,
+    stream: bool,
+    cwd: Path | None = None,
 ) -> subprocess.Popen[str]:
     """Spool complete step output to a unique ignored file; optionally tee it."""
     directory = root / "notes" / "verification"
@@ -64,6 +70,7 @@ def start_logged(
     os.close(fd)
     proc = subprocess.Popen(
         cmd,
+        cwd=cwd,
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

@@ -42,6 +42,7 @@ from docs.catalogue import load as _catalogue_load  # noqa: E402
 from docs.curation import FAME_BACKLINKS  # noqa: E402
 from docs.curation import fragment_row as _curation_fragment  # noqa: E402
 from docs.proof_status import load as _proof_status_load  # noqa: E402
+from windows_paths import windows_reserved_name  # noqa: E402
 
 CATEGORIES = (
     "grid_based",
@@ -194,6 +195,8 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     if removed_ground(name):
         raise ValueError(_readmission(name))
     slug = _slug(name)
+    if windows_reserved_name(slug):
+        raise ValueError(f"{slug!r} is reserved on Windows and cannot name a package")
     proposed = {_folded_spelling(name), _folded_spelling(slug)}
     for owner in LANGUAGES.values():
         for spelling in (owner.name, owner.id, *owner.aliases):

@@ -388,23 +388,26 @@ def _rerun_alone(ids: list[str]) -> tuple[int, str]:
         [*PY, "-m", "pytest", "-q", "-n", "0", "-m", "", *ids]
     )
     started = time.monotonic()
-    result = run_bounded(
+    name = "pytest retry"
+    with start_logged(
         command,
+        name,
+        dict(os.environ, PYTHONPATH=str(ROOT / "src")),
+        ROOT,
+        stream=False,
         cwd=ROOT,
-        env=dict(os.environ, PYTHONPATH=str(ROOT / "src")),
-        capture_output=True,
-        timeout=STEP_DEADLINES[LONG_STEP],
-    )
-    output = (result.stdout or "") + (result.stderr or "")
-    if _ACTIVE_ACCEPTANCE is not None:
-        _ACTIVE_ACCEPTANCE.record(
-            "pytest retry",
-            time.monotonic() - started,
-            result.returncode,
-            output,
-            command=command,
-        )
-    return result.returncode, output
+    ) as proc:
+        output, returncode = _wait_with_heartbeat(proc, name, started)
+        if _ACTIVE_ACCEPTANCE is not None:
+            _ACTIVE_ACCEPTANCE.record(
+                name,
+                time.monotonic() - started,
+                returncode,
+                output,
+                command=command,
+                log_path=logged_path(proc),
+            )
+    return returncode, output
 
 
 def _load_verdict(
@@ -448,6 +451,11 @@ def _load_verdict(
             "rerun the gate on a quiet machine before pushing"
         )
         return [failure for failure in failures if failure[0] != LONG_STEP]
+    if returncode in (124, 125):
+        print(f"[load] pytest: retry {_cause(returncode)}")
+        if rerun_output.startswith("[log] "):
+            print(rerun_output.partition("\n")[0])
+        return failures
     still = failed_ids(rerun_output.splitlines())
     named = still or ids
     print(
@@ -489,7 +497,7 @@ def _wait_with_heartbeat(
         proc,
         name,
         start,
-        STEP_DEADLINES.get(name, DEFAULT_STEP_DEADLINE),
+        STEP_DEADLINES.get(name.removesuffix(" retry"), DEFAULT_STEP_DEADLINE),
         HEARTBEAT_SECONDS,
     )
 
