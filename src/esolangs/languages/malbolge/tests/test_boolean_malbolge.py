@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from pathlib import Path
 
 import pytest
 
@@ -18,7 +17,7 @@ from esolangs.languages.malbolge.generator.isa import _first_free, _g
 from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
 from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
 from esolangs.runtime.io import ScriptedIO
-from scripts.docs.evidence import construct_witness, construction_boundaries
+from scripts.docs.evidence import construction_boundaries
 from tests.support.witness_tables import dense, row_bits
 
 
@@ -36,7 +35,7 @@ class _ReadFirstIO(ScriptedIO):
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     """Run the requested rows, requiring every input and leaving the sentinel."""
     n = len(table).bit_length() - 1
-    program = construct_witness("Malbolge", table, boolean.malbolge)
+    program = boolean.malbolge(table)
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = row_bits(value, n)
@@ -196,7 +195,7 @@ def test_unrestricted_digit_cap_executes_sixteen_inputs() -> None:
     rows = (0, 1, len(table) // 2, len(table) - 1)
     assert _rows(table, rows) == [table[row] for row in rows]
     with pytest.raises(GeneratorCapError, match="does neither"):
-        construct_witness("Malbolge", refused.table(), boolean.malbolge)
+        boolean.malbolge(refused.table())
 
 
 @pytest.mark.medium
@@ -227,7 +226,7 @@ def test_seventeen_weight_constant_builds_and_executes() -> None:
         "".join(classes[row.bit_count()] for row in range(1 << admitted.arity)),
     )
     with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
-        construct_witness("Malbolge", refused.table(), boolean.malbolge)
+        boolean.malbolge(refused.table())
     rows = sorted(
         {0, 1, 2, (1 << 16) - 1, 1 << 16, 2**17 - 2, 2**17 - 1}
         | {1 << j for j in range(17)}
@@ -335,38 +334,3 @@ def test_seventeen_projection_prefers_last_ignored_position() -> None:
     table = "".join(bit * 2 for bit in base) * 2
     expected = _digits._render_build(table[::2], _digits._digits(16, drain_last=True))
     assert boolean.malbolge(table) == expected
-
-
-@pytest.mark.medium  # three generator processes and a copy of src
-def test_mutant_target_replaces_a_split_generator_helper(tmp_path, capsys, monkeypatch):
-    from scripts import gendiff
-    from tests.tooling.script_support import REPO_ROOT
-
-    monkeypatch.setattr(gendiff, "_checkout", lambda *_: REPO_ROOT / "src")
-    monkeypatch.setattr(gendiff, "_construction_tables", lambda *_: {})
-    target = Path("src/esolangs/languages/malbolge/generator/digits.py")
-    mutant = tmp_path / "digits.py"
-    mutant.write_text(
-        (REPO_ROOT / target).read_text(encoding="utf-8")
-        + "\n_unmutated_digits = _digits_program\n"
-        "def _digits_program(truth_table, n):\n"
-        "    return _unmutated_digits(truth_table[::-1], n)\n",
-        encoding="utf-8",
-    )
-    assert (
-        gendiff.main(
-            [
-                "Malbolge",
-                "--max-n",
-                "1",
-                "--mutant",
-                str(mutant),
-                "--mutant-target",
-                str(target),
-            ]
-        )
-        == 0
-    )
-    output = capsys.readouterr().out
-    assert "0 differ from main" in output
-    assert "control: mutant differs on 12" in output

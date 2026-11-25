@@ -33,7 +33,7 @@ def test_trace_and_timing_keep_artifact_raster_scale(monkeypatch):
 
     monkeypatch.setattr(interpreter, "_prepare_raster", prepare_raster)
     monkeypatch.setattr(interpreter, "_Machine", machine)
-    explicit, commands = tracediff._capture_trace(
+    explicit = tracediff.trace(
         interpreter, (program, ""), frozenset(), runtime=LANGUAGES["Piet"].runtime
     )
     detected = tracediff.trace(
@@ -41,13 +41,12 @@ def test_trace_and_timing_keep_artifact_raster_scale(monkeypatch):
     )
     assert tracediff._halts(explicit)
     assert tracediff._halts(detected)
-    assert commands > 0
     assert explicit[-1][-1] == "8"
     assert detected[-1][-1] == "2"
     assert (
         tracediff._lap(
             interpreter,
-            [((program, ""), commands)],
+            [((program, ""), len(explicit))],
             runtime=LANGUAGES["Piet"].runtime,
         )
         > 0

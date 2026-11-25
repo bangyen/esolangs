@@ -54,7 +54,6 @@ def _backend() -> BackendDefinition:
 
     return BooleanBackend(
         max_inputs=MAX_INPUTS + 1,
-        restricted_from_inputs=MAX_INPUTS + 1,
         arity_guard=check_arity,
         restrictions=(
             "seventeen inputs only for a table that ignores an input "

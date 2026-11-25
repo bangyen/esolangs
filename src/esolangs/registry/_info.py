@@ -1,6 +1,6 @@
 """Public catalog result schema without runtime or compiler imports."""
 
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from reprlib import recursive_repr
 
 from esolangs.registry._contracts import (
@@ -51,19 +51,10 @@ class LanguageInfo:
     examples: tuple[str, ...]
     wiki_url: str
     well_known: bool
-    generator_first_restricted_arity: int | None = field(default=None, kw_only=True)
 
     def __setstate__(self, state: list[object]) -> None:
-        """Restore catalog records, including those predating the arity field."""
-        slots = fields(self)
-        if len(state) == len(slots) - 1:
-            restrictions = next(
-                value
-                for slot, value in zip(slots[:-1], state, strict=True)
-                if slot.name == "generator_restrictions"
-            )
-            state = [*state, 1 if restrictions else None]
-        for slot, value in zip(slots, state, strict=True):
+        """Restore pickles with the current field count."""
+        for slot, value in zip(fields(self), state, strict=True):
             object.__setattr__(self, slot.name, value)
 
     @recursive_repr()

@@ -50,10 +50,7 @@ from esolangs import (
     list_languages,
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
-from esolangs.cli._answer_input import _AnswerTail, _snapshot_answer
-from esolangs.cli._portable_input import _native_binary_format, _portable_pipe_check
 from esolangs.cli.args import (
-    _FLAG_OPTIONS,
     _VALUE_OPTIONS,
     _check_count,
     _copyable_generation_options,
@@ -67,7 +64,6 @@ from esolangs.cli.args import (
     _scale_of,
     _settings_arguments,
     _settings_of,
-    _SettingsArguments,
     _split_positional,
 )
 from esolangs.cli.help import COMMANDS, USAGE, help_text
@@ -80,25 +76,18 @@ from esolangs.cli.hints import (
     _generate_hint,
     _input_sentence,
     _looks_like_a_table,
-    _saved_template_hint,
     _shell_hint,
     _timeout_text,
-    _with_cli_hint,
 )
 from esolangs.cli.io import (
-    _MAX_PROGRAM_BYTES,
     _abandon_output,
-    _bounded_read,
-    _bounded_source_stdin,
     _complete_stderr_writes,
     _complete_stdout_writes,
-    _decode_portable_record,
     _diagnostic,
     _fail,
     _flush_stdout,
     _output_unavailable,
     _read_stdin,
-    _read_truth_table,
     _stdout_is_terminal,
     _StdoutEncodingError,
     _StdoutError,
@@ -132,7 +121,6 @@ from esolangs.runtime._source import native_file_terminator
 from esolangs.runtime._validate import _argument_repr
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import can_render_argument, display_label, is_option
-from esolangs.settings import DialectSettings
 
 
 def describe(language: str, *, catalog: Catalog | None = None) -> LanguageInfo:
@@ -196,11 +184,7 @@ def _metadata_json(record: object) -> str:
 
 
 def _catalog_matches(
-    declaration: LanguageDeclaration,
-    options: dict[str, str],
-    inputs: int | None,
-    *,
-    all_tables: bool,
+    declaration: LanguageDeclaration, options: dict[str, str], inputs: int | None
 ) -> bool:
     """Match declared interfaces and arity caps."""
     if "--source-kind" in options and options["--source-kind"] != (
@@ -222,9 +206,6 @@ def _catalog_matches(
             backend.max_inputs is not None and backend.max_inputs < inputs
         ):
             return False
-        restricted = backend.first_restricted_arity
-        if all_tables and restricted is not None and inputs >= restricted:
-            return False
     return True
 
 
@@ -238,16 +219,13 @@ def _catalog_names(
         if option in options and options[option] not in choices:
             _fail(f"{option} must be one of {', '.join(choices)}")
     inputs = None
-    all_tables = "--all-tables" in flags
-    if all_tables and "--inputs" not in options:
-        _fail("--all-tables requires --inputs")
     if "--inputs" in options:
         try:
             inputs = _decimal_integer(options["--inputs"])
         except ValueError:
-            _fail("--inputs must be a positive integer")
-        if inputs < 1:
-            _fail("--inputs must be a positive integer")
+            _fail("--inputs must be a non-negative integer")
+        if inputs < 0:
+            _fail("--inputs must be a non-negative integer")
     pattern = None
     if "--grep" in options:
         try:
@@ -261,7 +239,7 @@ def _catalog_names(
         lang.name
         for lang in declarations
         if all(test(lang) for test in wanted)
-        and _catalog_matches(lang, options, inputs, all_tables=all_tables)
+        and _catalog_matches(lang, options, inputs)
         and (pattern is None or pattern.search(_spec(lang.name, catalog=catalog)))
     ]
 
@@ -280,7 +258,7 @@ def _listed_name(name: str, *, catalog: Catalog, encoding: str) -> str:
 def _list(rest: list[str]) -> None:
     """Print languages matching the requested capabilities."""
     value_options = _VALUE_OPTIONS["list"]
-    flag_options = _FLAG_OPTIONS["list"]
+    flag_options = {"--details", "--json", *_FLAG_FILTERS}
     rest, options = _pop_options(rest, value_options)
     rest, flags = _pop_flags(rest, flag_options)
     rest = _split_positional(rest, set(), value_options | flag_options)
@@ -349,11 +327,8 @@ def _list(rest: list[str]) -> None:
             )
         )
         limit = facts["generator_max_inputs"]
-        restricted = facts["generator_first_restricted_arity"]
         restriction = facts["generator_restrictions"]
         suffix = f" max-inputs={_argument_repr(limit)}" if limit is not None else ""
-        if restricted is not None:
-            suffix += f" restricted-from={_argument_repr(restricted)}"
         if restriction:
             suffix += f" ({_printable(restriction)})"
         _display(f"{name.ljust(width)}  {marks}{suffix}")
@@ -444,16 +419,20 @@ def _emit_compressed(program: CompressedText, *, plain: bool, ending: str) -> No
         _write_output(program.to_gzip())
 
 
-def _check_generation_output(
-    declaration: LanguageDeclaration, bits: str | None, *, gzip: bool
-) -> None:
-    """Reject output options that the language cannot support."""
+def _generation_bits(
+    declaration: LanguageDeclaration, table: str, bits: str | None, *, gzip: bool
+) -> list[int] | None:
+    """Validate requests that can be refused without constructing source."""
     raster = declaration.runtime.source_kind is SourceKind.RASTER
+    if not declaration.has_backend or (bits is None and not (gzip and raster)):
+        return None
+    from esolangs.generation.helpers import _validate_truth_table
+
+    inputs = _validate_truth_table(table)
     if bits is None:
-        if gzip and raster:
-            _fail("gzip export requires text; rasters use PNG")
-        return
+        _fail("gzip export requires text; rasters use PNG")
     from esolangs.operations.generation import (
+        _check_template_bits,
         _raster_template_error,
         _stdin_template_error,
     )
@@ -462,202 +441,19 @@ def _check_generation_output(
         raise _raster_template_error(
             "raster programs read bits from stdin and cannot be instantiated"
         )
-    if not declaration.parameterized:
-        raise _stdin_template_error(display_label(declaration.name))
-
-
-def _generation_bits(
-    declaration: LanguageDeclaration, table: str, bits: str | None, *, gzip: bool
-) -> list[int] | None:
-    """Check the truth table first when it is already available."""
-    raster = declaration.runtime.source_kind is SourceKind.RASTER
-    if not declaration.has_backend or (bits is None and not (gzip and raster)):
-        return None
-    from esolangs.generation.helpers import _validate_truth_table
-    from esolangs.operations.generation import _check_template_bits
-
-    inputs = _validate_truth_table(table)
-    _check_generation_output(declaration, bits, gzip=gzip)
-    assert bits is not None
     name = display_label(declaration.name)
+    if not declaration.parameterized:
+        raise _stdin_template_error(name)
     return _check_template_bits(name, [int(bit) for bit in bits], inputs)
-
-
-def _check_binary_terminal(language: str, *, raster: bool, gzip: bool) -> None:
-    """Refuse to write PNG or gzip bytes directly to a terminal."""
-    if not _stdout_is_terminal():
-        return
-    alternative = ""
-    if not raster:
-        alternative = " or replace --gzip with --plain" if gzip else " or pass --plain"
-    _fail(
-        f"{display_label(language)} generates "
-        f"{'a PNG' if raster else 'gzip'}; redirect stdout to a file{alternative}"
-    )
-
-
-def _note_export_settings(artifact: Artifact, declaration: LanguageDeclaration) -> None:
-    """Print the settings needed to run native text with its generation dialect."""
-    schema = declaration.runtime.dialect_schema
-    if (
-        isinstance(artifact.source, Raster)
-        or schema is None
-        or artifact.settings is None
-    ):
-        return
-    defaults = schema.defaults
-    overrides = {
-        key: value
-        for key, value in DialectSettings.options(artifact.settings).items()
-        if value != defaults[key]
-    }
-    if overrides:
-        option = shlex.quote(f"--settings={record_dumps(overrides)}")
-        _diagnostic(f"note: pass {option} to esolangs run to restore this dialect\n")
-
-
-def _emit_generated(
-    artifact: Artifact,
-    declaration: LanguageDeclaration,
-    flags: set[str],
-    catalog: Catalog,
-) -> None:
-    """Export the generated record or its native source."""
-    if "--artifact" in flags:
-        from esolangs import to_json
-
-        with _errors():
-            _write_output(to_json(artifact.language, artifact, catalog=catalog) + "\n")
-        return
-    program = artifact.source
-    plain, gzip = "--plain" in flags, "--gzip" in flags
-    raster = isinstance(program, Raster)
-    if plain and raster:
-        _diagnostic("note: --plain has no effect on a raster; it is PNG\n")
-    if gzip or raster or (isinstance(program, CompressedText) and not plain):
-        _check_binary_terminal(artifact.language, raster=raster, gzip=gzip)
-    with _errors():  # A raster renders here, and may exceed the pixel limit.
-        _emit(artifact, plain=plain, gzip=gzip, catalog=catalog)
-    _note_export_settings(artifact, declaration)
-
-
-_PORTABLE_TEMPLATE_HINT = (
-    "regenerate with esolangs generate --artifact and pass the template JSON"
-)
-
-
-def _check_saved_template_format(data: bytes | bytearray, label: str) -> None:
-    """Explain how to obtain retained bindings from native binary source."""
-    if kind := _native_binary_format(data):
-        raise _with_cli_hint(
-            ProgramError(
-                f"{label}: --from-template expects portable JSON. "
-                f"The input is native {kind}."
-            ),
-            _PORTABLE_TEMPLATE_HINT,
-        )
-
-
-def _read_saved_template(
-    path: str, name: str, catalog: Catalog, *, retry_options: list[str]
-) -> TemplateArtifact:
-    """Read a bounded portable document and require retained bindings."""
-    from esolangs.portable import _ArtifactLanguageMismatchError
-
-    label = "stdin" if path == "-" else display_label(path)
-    if path == "-":
-        data = _bounded_source_stdin(
-            None,
-            "",
-            None,
-            _MAX_PROGRAM_BYTES,
-            pipe_check=_portable_pipe_check(
-                "--from-template", lambda: _PORTABLE_TEMPLATE_HINT
-            ),
-        )
-        if len(data) > _MAX_PROGRAM_BYTES:
-            _fail(
-                f"stdin is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB "
-                "template stream limit; pass a template filename"
-            )
-    else:
-        data = _bounded_read(path, None)
-    _check_saved_template_format(data, label)
-    try:
-        artifact = _decode_portable_record(name, path, data, catalog)
-    except ProgramError as error:
-        cause = error.__cause__
-        if isinstance(cause, _ArtifactLanguageMismatchError) and cause.is_template:
-            hint = _saved_template_hint(
-                cause.owner, path, catalog, options=retry_options
-            )
-            raise _with_cli_hint(error, hint) from cause
-        if not isinstance(cause, json.JSONDecodeError):
-            raise
-        raise ProgramError(f"invalid portable template in {label}: {cause}") from error
-    if not isinstance(artifact, TemplateArtifact):
-        _fail(f"{label}: --from-template requires an unfilled portable template")
-    return artifact
-
-
-def _generate_from_template(
-    args: list[str],
-    options: dict[str, str],
-    flags: set[str],
-    *,
-    width: int | None,
-    settings_arguments: _SettingsArguments | None,
-    catalog: Catalog,
-) -> None:
-    """Fill retained bindings through the public API and export the result."""
-    from esolangs import instantiate
-
-    bits = options.get("--bits")
-    if bits is None:
-        _fail("--from-template requires --bits")
-    if "--balance" in flags or "--scale" in options:
-        _fail("--from-template cannot be combined with --balance or --scale")
-    _check_count("generate", args, 1, catalog=catalog)
-    path = options["--from-template"]
-    with _errors():
-        declaration = catalog.languages[catalog.resolve(args[0])]
-        settings = _settings_of(settings_arguments, language=args[0], catalog=catalog)
-        if "--gzip" in flags:
-            _check_binary_terminal(declaration.name, raster=False, gzip=True)
-        retry_options = [f"--bits={bits}", *sorted(flags)]
-        if width is not None:
-            retry_options.append(f"--width={format_integer(width)}")
-        template = _read_saved_template(
-            path,
-            declaration.name,
-            catalog,
-            retry_options=retry_options,
-        )
-    try:
-        filled = instantiate(
-            declaration.name,
-            template,
-            [int(bit) for bit in bits],
-            width=width,
-            settings=settings,
-            catalog=catalog,
-        )
-    except EsolangError as error:
-        label = "stdin" if path == "-" else display_label(path)
-        _fail(f"{label}: {_cli_error_text(error)}")
-    _emit_generated(filled, declaration, flags, catalog)
 
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    from esolangs.operations.generation import (
-        _check_generation_scale,
-        _fill_checked_template,
-        _generate_checked,
-    )
+    from esolangs.operations.generation import _fill_checked_template, _generate_checked
+    from esolangs.settings import DialectSettings
 
     value_options = _VALUE_OPTIONS["generate"] - {"--set"}
-    flag_options = _FLAG_OPTIONS["generate"]
+    flag_options = {"--balance", "--plain", "--gzip"}
     before = rest
     rest, width, bare = _pop_width(rest)
     rest, set_pairs = _pop_set_pairs(rest)
@@ -667,15 +463,11 @@ def _generate(rest: list[str]) -> None:
     gzip = "--gzip" in flags
     if gzip and "--plain" in flags:
         _fail("--gzip and --plain are mutually exclusive")
-    if "--artifact" in flags and flags & {"--plain", "--gzip"}:
-        _fail("--artifact is mutually exclusive with --plain and --gzip")
     scale = _scale_of(options)
     if balance and width is not None:
         _fail("--balance and --width are mutually exclusive")
     bits = options.get("--bits")
-    if bits is not None and (
-        set(bits) - {"0", "1"} or (not bits and "--from-template" not in options)
-    ):
+    if bits is not None and (not bits or set(bits) - {"0", "1"}):
         _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
     rest = _split_positional(
         rest,
@@ -685,19 +477,8 @@ def _generate(rest: list[str]) -> None:
     eaten = _eaten_width_note(before) if width is not None and not bare else ""
     settings_arguments = _settings_arguments(options, set_pairs)
     catalog = get_catalog()
-    if "--from-template" in options:
-        _generate_from_template(
-            rest,
-            options,
-            flags,
-            width=width,
-            settings_arguments=settings_arguments,
-            catalog=catalog,
-        )
-        return
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten, catalog=catalog)
-    language, table_operand = rest
-    table = table_operand
+    language, table = rest
     encoding = _display_encoding(sys.stderr)
 
     def repair_options(target: LanguageDeclaration) -> list[str] | str:
@@ -715,18 +496,6 @@ def _generate(rest: list[str]) -> None:
     try:
         declaration = catalog.languages[catalog.resolve(language)]
         settings = _settings_of(settings_arguments, language=language, catalog=catalog)
-        if table_operand == "-" and declaration.has_backend:
-            _check_generation_output(declaration, bits, gzip=gzip)
-            _check_generation_scale(declaration, scale)
-            raster = declaration.runtime.source_kind is SourceKind.RASTER
-            native_gzip = (
-                declaration.runtime.compressed_source and "--plain" not in flags
-            )
-            if "--artifact" not in flags and (raster or gzip or native_gzip):
-                _check_binary_terminal(declaration.name, raster=raster, gzip=gzip)
-            table = _read_truth_table(
-                declaration, expected_inputs=None if bits is None else len(bits)
-            )
         row = _generation_bits(declaration, table, bits, gzip=gzip)
         # Widthed at both ends, and that is not a mistake.  ``generate``
         # wraps the template (or hands the width to a *layout* language,
@@ -768,39 +537,46 @@ def _generate(rest: list[str]) -> None:
             f"{display_label(artifact.language)} -- "
             f"the generator retains its original layout\n"
         )
-    _emit_generated(artifact, declaration, flags, catalog)
+    if "--plain" in flags and isinstance(program, Raster):
+        _diagnostic("note: --plain has no effect on a raster; it is PNG\n")
+    binary = (
+        gzip
+        or isinstance(program, Raster)
+        or (isinstance(program, CompressedText) and "--plain" not in flags)
+    )
+    if binary and _stdout_is_terminal():
+        # Unary's gzip once landed on a terminal unannounced.
+        alternative = ""
+        if not isinstance(program, Raster):
+            alternative = (
+                " or replace --gzip with --plain" if gzip else " or pass --plain"
+            )
+        _fail(
+            f"{display_label(artifact.language)} generates "
+            f"{'a PNG' if isinstance(program, Raster) else 'gzip'}; "
+            f"redirect stdout to a file{alternative}"
+        )
+    with _errors():  # A raster renders here, and may exceed the pixel limit.
+        _emit(artifact, plain="--plain" in flags, gzip=gzip, catalog=catalog)
     if isinstance(artifact, TemplateArtifact):
-        note = (
-            f"note: this is a template with unfilled {artifact.bindings.char!r} "
-            "input slots"
-        )
-        if "--artifact" in flags:
-            advice = _saved_template_hint(artifact.language, "template.json", catalog)
-            _diagnostic(f"{note}; save it as template.json, then {advice}\n")
-            return
         original = shlex.join(before)
-        fill = "fill them with: esolangs generate --bits <bits>"
-        stdin_hint = (
-            "\nSupply the same truth table again on stdin."
-            if table_operand == "-"
-            else ""
-        )
         if can_render_argument(original, encoding):
-            advice = f"{fill} {original}{stdin_hint}"
+            advice = f"fill them with: esolangs generate --bits <bits> {original}"
         else:
             options_text = repair_options(declaration)
             operand = _as_argument(language, catalog=catalog, encoding=encoding)
             if isinstance(options_text, str):
-                advice = f"rerun generation with --bits. {options_text}{stdin_hint}"
+                advice = f"rerun generation with --bits. {options_text}"
             elif operand is None:
                 advice = "fill them with instantiate() in Python"
             else:
                 flags_text = shlex.join(options_text)
-                tail = " ".join(
-                    part for part in (flags_text, operand, table_operand) if part
-                )
-                advice = f"{fill} {tail}{stdin_hint}"
-        _diagnostic(f"{note}; {advice}\n")
+                tail = " ".join(part for part in (flags_text, operand, table) if part)
+                advice = f"fill them with: esolangs generate --bits <bits> {tail}"
+        _diagnostic(
+            f"note: this is a template with unfilled {artifact.bindings.char!r} "
+            f"input slots; {advice}\n"
+        )
 
 
 def _printable(value: object) -> str:
@@ -839,9 +615,6 @@ def _generator_sentence(facts: LanguageInfo) -> str:
         parts.append("reads input bits from stdin")
     if facts.generator_max_inputs is not None:
         parts.append(f"max {_argument_repr(facts.generator_max_inputs)} inputs")
-    restricted = facts.generator_first_restricted_arity
-    if restricted is not None:
-        parts.append(f"table-dependent from arity {_argument_repr(restricted)}")
     if facts.generator_restrictions:
         parts.append(_printable(facts.generator_restrictions))
     return "; ".join(parts)
@@ -870,7 +643,6 @@ _DETAIL_KEYS = (
     "reads_input",
     "width_effect",
     "generator_max_inputs",
-    "generator_first_restricted_arity",
     "generator_restrictions",
     "input_shape",
     "input_encoding",
@@ -890,9 +662,8 @@ _DETAIL_KEYS = (
 
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
-    flag_options = _FLAG_OPTIONS["describe"]
-    rest, flags = _pop_flags(rest, flag_options)
-    rest = _split_positional(rest, set(), flag_options)
+    rest, flags = _pop_flags(rest, {"--json", "--spec"})
+    rest = _split_positional(rest, set(), {"--json", "--spec"})
     as_json = "--json" in flags
     as_spec = "--spec" in flags
     catalog = get_catalog()
@@ -991,22 +762,13 @@ def _read_answer(rest: list[str]) -> None:
             "halts. A timeout leaves the answer undecided."
         )
     eof = "Ctrl-Z then Enter" if os.name == "nt" else "Ctrl-D (twice on a partial line)"
-    tail = _AnswerTail() if pattern is None else None
     output = _read_stdin(
         hint="; pipe a program's output in, or close stdin",
         terminal_prompt=f"Paste the program's output, then send EOF with {eof}.",
-        snapshot=_snapshot_answer if tail is None else tail.snapshot,
     )
     # NQ's false answer is a space; only absent output is empty stdin.
     try:
-        answer = _read_output_answer(
-            label,
-            output,
-            values,
-            pattern,
-            contract.note,
-            last_character=None if tail is None else tail.last_character,
-        )
+        answer = _read_output_answer(label, output, values, pattern, contract.note)
     except ProgramError as exc:
         # Output with no readable answer is the program's failure, as in run.
         if not output:
@@ -1126,8 +888,6 @@ def _dispatch() -> None:
                 f"unknown command: {display_label(requested)}"
                 f"{_did_you_mean(requested, set(COMMANDS))}"
             )
-        if len(rest) > 1:
-            _fail(f"unexpected argument: {rest[1]!r}")
         encoding = _display_encoding(sys.stdout)
         with _errors():
             page = help_text(rest[0], encoding=encoding) if rest else USAGE

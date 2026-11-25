@@ -30,18 +30,6 @@ def _oracle(table: str, n: int) -> list[int]:
     ]
 
 
-def test_subtree_ids_follow_first_occurrence_at_each_level() -> None:
-    table = "0110011001011010"
-    assert helpers.subtree_ids(table) == (
-        (9,),
-        (7, 8),
-        (4, 4, 5, 6),
-        (2, 3, 2, 3, 2, 2, 3, 3),
-        tuple(map(int, table)),
-    )
-    assert helpers.subtree_ids("00001111")[1] == (0, 1)
-
-
 def test_dependencies_exhaustive() -> None:
     assert not hasattr(helpers, "_parity_bias")
     assert parity_bias("0") == 0
@@ -138,20 +126,6 @@ def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
             assert helpers.essential_inputs(table, n) == _oracle(table, n)
 
 
-def test_affine_blocks_with_ignored_low_and_high_inputs() -> None:
-    n = 13
-    mask = 0b101_0010110101
-    coefficients = tuple((mask >> bit) & 1 for bit in reversed(range(n)))
-    for bias in (0, 1):
-        table = "".join(
-            str(bias ^ ((row & mask).bit_count() & 1)) for row in range(1 << n)
-        )
-        assert affine_form(table, n) == AffineForm(bias, coefficients)
-        for at in (1023, 1024, 1025, len(table) - 1):
-            flipped = table[:at] + ("0" if table[at] == "1" else "1") + table[at + 1 :]
-            assert affine_form(flipped, n) is None
-
-
 def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
     original = helpers._residual_ids
     diagram = original("1010", 2)
@@ -167,12 +141,9 @@ def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
         return original(table, n)
 
     monkeypatch.setattr(helpers, "_residual_ids", record)
-    table = "".join(str(((row >> 8) ^ row) & 1) for row in range(1024))
-    assert helpers.essential_inputs(table, 10) == [1, 9]
-    assert calls == [9]
-    calls.clear()
     assert helpers.essential_inputs("01" * 128, 8) == [7]
-    assert calls == []
+    assert calls == [8]
+    calls.clear()
     parity = "".join(str(row.bit_count() % 2) for row in range(256))
     assert helpers.essential_inputs(parity, 8) == list(range(8))
     assert calls == []

@@ -43,13 +43,12 @@ install-dev:
 # Scoped to the files this branch touched; widens to everything when the diff
 # is unreadable or shared machinery moved.  Use `just test-full` to force the
 # whole tree.  Pass --quiet to suppress successful step output.
-# Use six workers for the commit gate. Explicit PYTEST_ADDOPTS can override it.
 [group('test')]
 [doc('required checks before a commit: lint, types, pytest (branch-scoped)')]
 [no-exit-message]
 [positional-arguments]
 test *args:
-    PYTEST_ADDOPTS="-n 6 ${PYTEST_ADDOPTS:-}" {{PYTHON}} scripts/verify/gate.py "$@"
+    {{PYTHON}} scripts/verify/gate.py "$@"
 
 # local checks over the whole tree, including slow tests
 [group('test')]

@@ -1,7 +1,6 @@
 """Run every committed example program and check its output."""
 
 import sys
-from dataclasses import replace
 from itertools import zip_longest
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from esolangs._cycles import _BranchingStepMachine, _FramedMachine, _TapeMachine
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, _table, resolve
+from esolangs.registry import LANGUAGES, canonical_id, resolve
 from esolangs.vm import (
     make_vm,
     run_until_halt,
@@ -50,8 +49,9 @@ VM_LANGUAGE = {
 # program terminates *before* anything runs it unbounded.
 HALT_CONVENTION = {
     stem
-    for stem, example in BOOLEAN_GENERATED.items()
-    if esolangs.describe(example.language).answer_mode == "termination"
+    for stem in BOOLEAN_GENERATED
+    if esolangs.describe(canonical_id(stem.replace("-", " "))).answer_mode
+    == "termination"
 }
 
 # The command every staleness message names.
@@ -70,9 +70,8 @@ REGENERATE = "`uv run python scripts/docs/generate.py examples`"
 def test_boolean_example_matches_generator(name: str) -> None:
     """Each committed boolean program is what its generator produces today."""
     example = BOOLEAN_GENERATED[name]
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(example.language).examples[0]
-    artifact = example.build(balance=True)
-    program = artifact.source
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
+    program = example.build(balance=True).source
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
     if isinstance(program, CompressedText):
         saved = CompressedText(path.read_bytes())
@@ -80,12 +79,10 @@ def test_boolean_example_matches_generator(name: str) -> None:
             stale
         )
     elif isinstance(program, Raster):
-        # PNG compression differs across platforms.
-        assert esolangs.from_file(example.language, path) == artifact, stale
+        # PNG compression differs across platforms; the pixels are the program.
+        assert Raster.from_png(path.read_bytes()) == program, stale
     else:
-        ending = (
-            "\n" if LANGUAGES[resolve(example.language)].runtime.file_newline else ""
-        )
+        ending = "\n" if LANGUAGES[resolve(name)].runtime.file_newline else ""
         expected = (program + ending).encode("utf-8")
         assert path.read_bytes() == expected, stale
 
@@ -104,7 +101,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
     )
     assert programs.keys() == BOOLEAN_GENERATED.keys()
     for stem, example in BOOLEAN_GENERATED.items():
-        language = example.language
+        language = canonical_id(stem.replace("-", " "))
         expected = generate(language, example.table, balance=True, scale=example.scale)
         if example.fill is not None:
             expected = instantiate(language, expected, example.bits)
@@ -130,54 +127,6 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
     )
 
 
-def test_manifest_uses_declared_bits_with_whitespace_in_stdin(monkeypatch) -> None:
-    from scripts.docs import examples
-
-    example = replace(BOOLEAN_GENERATED[REFERENCE], bits=(1, 0), inputs=(" 10 ",))
-    monkeypatch.setattr(examples, "BOOLEAN_EXAMPLES", {REFERENCE: example})
-    assert "| `10` | ' 10 ' |" in examples.boolean_manifest_text()
-
-
-def test_examples_keep_the_declared_owner_when_the_stem_differs(tmp_path, monkeypatch):
-    from esolangs.generation import examples as records
-    from scripts.docs import examples as writer
-
-    declaration = replace(LANGUAGES[REFERENCE], name="Example Probe", id="owner_probe")
-    catalog = esolangs.Catalog([declaration])
-    monkeypatch.setattr(_table, "CATALOG", catalog)
-    monkeypatch.setattr(records, "LANGUAGES", catalog.languages)
-    examples = records._register()
-    example = examples["example-probe"]
-    assert example.language == declaration.id
-    monkeypatch.setattr(writer, "BOOLEAN_EXAMPLES", examples)
-    monkeypatch.setattr(writer, "LANGUAGES_DIR", tmp_path)
-    writer.write_set("boolean")
-    path = tmp_path / declaration.id / example.filename
-    api = catalog.bind(declaration.name)
-    outcome = api.evaluate(api.from_file(path), example.bits)
-    assert outcome.answer == example.table[int("".join(map(str, example.bits)), 2)]
-    assert f"| `{declaration.id}/{example.filename}` | {declaration.name} |" in (
-        tmp_path / "EXAMPLES.md"
-    ).read_text(encoding="utf-8")
-
-
-def test_examples_reject_duplicate_stems_before_publication(monkeypatch):
-    from esolangs.generation import examples
-
-    base = LANGUAGES[REFERENCE]
-    first = replace(base, name="Example Probe", id="example_probe")
-    second = replace(base, name="Example-Probe", id="alternate_example_probe")
-    catalog = esolangs.Catalog([first, second])
-    monkeypatch.setattr(_table, "CATALOG", catalog)
-    monkeypatch.setattr(examples, "LANGUAGES", catalog.languages)
-    with pytest.raises(
-        ValueError, match="duplicate example stem 'example-probe'"
-    ) as error:
-        examples._register()
-    assert first.id in str(error.value)
-    assert second.id in str(error.value)
-
-
 def test_boolean_examples_cover_every_committed_file() -> None:
     """Every file in examples is accounted for, and vice versa."""
     on_disk = {
@@ -186,8 +135,8 @@ def test_boolean_examples_cover_every_committed_file() -> None:
         if p.suffix in (".txt", ".png", ".gz")
     }
     expected = {
-        f"{example.language}/{example.filename}"
-        for example in BOOLEAN_GENERATED.values()
+        f"{canonical_id(stem.replace('-', ' '))}/{example.filename}"
+        for stem, example in BOOLEAN_GENERATED.items()
     }
     unregistered = sorted(on_disk - expected)
     assert not unregistered, (
@@ -201,11 +150,7 @@ def test_boolean_examples_cover_every_committed_file() -> None:
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
 def test_halt_convention_examples_halt(name: str) -> None:
     """The committed program of a halt-convention language terminates."""
-    path = (
-        BASE_DIR
-        / "src/esolangs"
-        / esolangs.describe(BOOLEAN_GENERATED[name].language).examples[0]
-    )
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
     program = (
         CompressedText(path.read_bytes())
         if path.suffix == ".gz"
@@ -219,7 +164,7 @@ def test_halt_convention_examples_halt(name: str) -> None:
 
 def _halts(name: str, program: str, _inputs: list[str]) -> bool:
     """Whether ``name``'s committed program terminates, by cycle detection."""
-    language = BOOLEAN_GENERATED[name].language
+    language = canonical_id(name.replace("-", " "))
     stdin = BOOLEAN_GENERATED[name].stdin
     return run_until_halt_or_cycle(make_vm(language, program, stdin=stdin))
 
@@ -227,7 +172,7 @@ def _halts(name: str, program: str, _inputs: list[str]) -> bool:
 def test_every_boolean_generator_has_an_example() -> None:
     """Every registered boolean generator has a committed example."""
     registered = {lang.id for lang in LANGUAGES.values() if lang.backend}
-    covered = {example.language for example in BOOLEAN_GENERATED.values()}
+    covered = {canonical_id(stem.replace("-", " ")) for stem in BOOLEAN_GENERATED}
     missing = sorted(registered - covered)
     assert not missing, f"no committed example for {missing}; {CHECK}"
 
@@ -267,12 +212,11 @@ def _prove_halt(vm: object) -> bool:
 @pytest.mark.medium
 def test_boolean_example(name: str) -> None:
     _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
-    example = BOOLEAN_GENERATED[name]
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(example.language).examples[0]
-    stdin = example.stdin
-    program = esolangs.Language(example.language).from_file(path, normalize=True).source
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
+    stdin = BOOLEAN_GENERATED[name].stdin
+    program = esolangs.Language(name).from_file(path, normalize=True).source
     if isinstance(program, Raster):
-        got = esolangs.run(example.language, program, stdin=stdin).output
+        got = esolangs.run(name, program, stdin=stdin).output
     else:
         vm = make_vm(VM_LANGUAGE[_module], program, stdin=stdin)
     if name == "a-painter-ant":
@@ -296,7 +240,7 @@ def test_boolean_example(name: str) -> None:
         # every VM exactly matches each interpreter's public ``run`` behavior.
         vm.step()
         got = vm.output
-    if not example.expected_compared:
+    if not BOOLEAN_GENERATED[name].expected_compared:
         # The constructed 123 template pops through location -2 while
         # merging, and a ``2`` there prints whatever the cell holds --
         # junk bytes that are deliberately not the answer, which is the
@@ -339,121 +283,28 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         # The committed form the staleness test reads back: without the
         # terminator, a regeneration rewrote 110 examples it then failed.
         language = LANGUAGES[resolve(REFERENCE)]
-        written = (
-            tmp_path / "examples" / language.id / f"sample{language.source_suffix}"
-        )
+        written = tmp_path / "examples" / "sample" / f"sample{language.source_suffix}"
         ending = "\n" if language.runtime.file_newline else ""
         assert written.read_text(encoding="utf-8") == "x" + ending
         capsys.readouterr()
         module.write_set("boolean")
 
-        assert capsys.readouterr().out.splitlines() == [
-            f"unchanged {written.relative_to(tmp_path / 'examples')}",
-            "unchanged EXAMPLES.md",
-        ]
+        lines = capsys.readouterr().out.splitlines()
+        assert lines
+        assert all(line.startswith("unchanged") for line in lines if ".txt" in line)
 
-    @pytest.mark.parametrize("phase", ["build", "export", "manifest"])
-    def test_a_staging_failure_leaves_the_published_set_intact(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-        phase: str,
-    ) -> None:
-        module = self._redirect(monkeypatch, tmp_path)
-        program = esolangs.ProgramArtifact("x", REFERENCE)
-        declaration = LANGUAGES[resolve(REFERENCE)]
-        suffix = declaration.source_suffix
-        old_paths = [
-            tmp_path / declaration.id / f"early{suffix}",
-            tmp_path / "EXAMPLES.md",
-        ]
-        for path in old_paths:
-            path.parent.mkdir(exist_ok=True)
-            path.write_bytes(b"previous")
-
-        def fail() -> None:
-            raise RuntimeError(phase)
-
-        def build():
-            yield "early", program
-            if phase == "build":
-                fail()
-            yield "late", program
-
-        export = module.to_file
-
-        def export_program(language, artifact, path, **options):
-            if phase == "export" and path.stem == "late":
-                fail()
-            export(language, artifact, path, **options)
-
-        monkeypatch.setitem(module.SETS, "boolean", build)
-        monkeypatch.setattr(module, "to_file", export_program)
-        monkeypatch.setattr(
-            module, "boolean_manifest_text", fail if phase == "manifest" else str
-        )
-
-        with pytest.raises(RuntimeError, match=phase):
-            module.write_set("boolean")
-        assert sorted(tmp_path.iterdir()) == [old_paths[1], old_paths[0].parent]
-        assert [path.read_bytes() for path in old_paths] == [b"previous"] * 2
-        assert capsys.readouterr().out == ""
-
-    def test_a_publication_failure_restores_the_previous_examples(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
-    ) -> None:
-        module = self._redirect(monkeypatch, tmp_path)
-        api = esolangs.Language(REFERENCE)
-        previous = api.generate("01")
-        replacement = api.generate("10")
-        declaration = LANGUAGES[resolve(REFERENCE)]
-        suffix = declaration.source_suffix
-        stems = ("early", "late")
-        paths = [tmp_path / declaration.id / f"{stem}{suffix}" for stem in stems]
-        for path in paths:
-            path.parent.mkdir(exist_ok=True)
-            api.to_file(previous, path, normalize=True)
-        originals = [path.read_bytes() for path in paths]
-        monkeypatch.setitem(
-            module.SETS, "probe", lambda: iter((stem, replacement) for stem in stems)
-        )
-        replace = Path.replace
-
-        def refuse(path, target):
-            if target == paths[-1]:
-                raise OSError("injected publication failure")
-            return replace(path, target)
-
-        with monkeypatch.context() as patch:
-            patch.setattr(Path, "replace", refuse)
-            with pytest.raises(OSError, match="injected publication failure"):
-                module.write_set("probe")
-        assert [path.read_bytes() for path in paths] == originals
-        assert [api.evaluate(api.from_file(path), [1]).answer for path in paths] == [
-            "1",
-            "1",
-        ]
-        assert {path.name for path in tmp_path.iterdir()} == {declaration.id}
-        assert {path.name for path in paths[0].parent.iterdir()} == {
-            path.name for path in paths
-        }
-        assert capsys.readouterr().out == ""
-
-    def test_a_png_with_the_same_pixels_and_metadata_is_left_alone(
+    def test_a_png_with_the_same_pixels_is_left_alone(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Another zlib's bytes for the same pixels are not a change."""
         from PIL import Image
 
-        from esolangs.raster import png
-
         module = self._redirect(monkeypatch, tmp_path / "examples")
         painted = esolangs.describe(first(source_kind="raster", boolean_generator=True))
         stem = next(
             stem
-            for stem, example in BOOLEAN_GENERATED.items()
-            if example.language == painted.id
+            for stem in BOOLEAN_GENERATED
+            if canonical_id(stem.replace("-", " ")) == painted.id
         )
         program = BOOLEAN_GENERATED[stem].build(balance=True)
         raster = Raster.from_png(program.source.to_png())
@@ -462,75 +313,11 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         )
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", artifact)]))
         module.write_set("boolean")
-        path = tmp_path / "examples" / painted.id / "img.png"
-        original = path.read_bytes()
-        metadata = png.read_metadata(original)
-        assert metadata is not None
+        path = tmp_path / "examples" / "img/img.png"
         Image.open(path).save(path, compress_level=1)
-        recompressed = png.write_metadata(path.read_bytes(), metadata)
-        assert recompressed != original
-        path.write_bytes(recompressed)
+        recompressed = path.read_bytes()
         module.write_set("boolean")
         assert path.read_bytes() == recompressed
-
-    def test_regeneration_repairs_png_arity_without_changing_pixels(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        from dataclasses import replace
-
-        name = first(source_kind="raster", boolean_generator=True)
-        api = esolangs.Language(name)
-        artifact = api.generate("01")
-        module = self._redirect(monkeypatch, tmp_path)
-        monkeypatch.setitem(module.SETS, "probe", lambda: iter([("sample", artifact)]))
-        path = tmp_path / LANGUAGES[name].id / "sample.png"
-        path.parent.mkdir()
-        api.to_file(replace(artifact, input_arity=2), path)
-
-        module.write_set("probe")
-        restored = api.from_file(path)
-        assert restored == artifact
-        for bit in (0, 1):
-            assert api.evaluate(restored, [bit]).answer == str(bit)
-
-    @pytest.mark.parametrize("compressed", [False, True])
-    def test_regeneration_replaces_corrupt_examples(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, compressed: bool
-    ) -> None:
-        name = (
-            next(
-                name
-                for name, lang in LANGUAGES.items()
-                if lang.runtime.compressed_source
-            )
-            if compressed
-            else first(source_kind="raster", boolean_generator=True)
-        )
-        api = esolangs.Language(name)
-        artifact = api.generate("01")
-        module = self._redirect(monkeypatch, tmp_path)
-        monkeypatch.setitem(module.SETS, "probe", lambda: iter([("sample", artifact)]))
-        path = tmp_path / LANGUAGES[name].id / f"sample{LANGUAGES[name].source_suffix}"
-        path.parent.mkdir()
-        path.write_bytes(b"corrupt transport")
-
-        module.write_set("probe")
-        restored = api.from_file(path)
-        for bit in (0, 1):
-            assert api.evaluate(
-                restored, [bit], limits=esolangs.ExecutionLimits(max_steps=200_000)
-            ).answer == str(bit)
-
-    def test_regeneration_replaces_a_manifest_with_invalid_utf8(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        module = self._redirect(monkeypatch, tmp_path)
-        monkeypatch.setitem(module.SETS, "boolean", lambda: iter(()))
-        target = tmp_path / "EXAMPLES.md"
-        target.write_bytes(b"\xff")
-        expected = module.boolean_manifest_text().encode("utf-8")
-        module.write_set("boolean")
-        assert target.read_bytes() == expected
 
     def test_main_with_no_arguments_writes_every_set(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

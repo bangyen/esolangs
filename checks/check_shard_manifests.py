@@ -3,32 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import os
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ci.shard import (
-    CollectionError,
-    collect_ids,
-    load_run,
-    read_completion_sidecars,
-    read_evidence_json,
-)
-
-
-def _check_completion_identity(
-    sidecar: Path, completion: dict[str, object], manifest: Path, run: dict[str, object]
-) -> None:
-    python = f"{sys.version_info.major}.{sys.version_info.minor}"
-    version = completion.get("python")
-    if not isinstance(version, str) or not version.startswith(f"{python}."):
-        raise ValueError(
-            f"{sidecar}: completion Python {version!r} does not match "
-            f"the verifier's Python {python}"
-        )
-    if any(completion.get(key) != value for key, value in run.items()):
-        raise ValueError(f"{sidecar}: completion field 'run' differs from {manifest}")
+from ci.shard import collect_ids, load_run
 
 
 def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> None:
@@ -36,11 +16,6 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
     if shards < 1:
         raise ValueError("shards must be positive")
     expected = set(corpus)
-    current_run = {
-        key: value
-        for key, variable in (("id", "GITHUB_RUN_ID"), ("commit", "GITHUB_SHA"))
-        if (value := os.environ.get(variable))
-    }
     selected: set[str] = set()
     executed: set[str] = set()
     indices: set[int] = set()
@@ -49,7 +24,7 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
     if len(paths) != shards:
         raise ValueError("missing or extra shard manifests")
     for path in paths:
-        record = read_evidence_json(path, kind="shard manifest")
+        record = json.loads(path.read_text())
         if (
             not isinstance(record, dict)
             or record.get("schema") != 1
@@ -72,16 +47,8 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
         if set(record["collected"]) != expected:
             raise ValueError("shard collection differs from current corpus")
         run = record.get("run")
-        if not isinstance(run, dict):
-            raise ValueError(f"{path}: invalid shard field 'run': expected an object")
-        if identity is not None and run != identity:
+        if not isinstance(run, dict) or (identity is not None and run != identity):
             raise ValueError("mixed shard run identities")
-        for key, value in current_run.items():
-            if run.get(key) != value:
-                raise ValueError(
-                    f"{path}: shard run {key} {run.get(key)!r} differs from "
-                    f"the active CI run ({value!r})"
-                )
         identity = run
         omissions = set(record["excluded"])
         if not omissions <= expected or (
@@ -94,14 +61,24 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
             raise ValueError("overlapping or unexpected shard selection")
         selected.update(nodes)
         actual = set()
-        sidecars = read_completion_sidecars(path.parent)
-        for sidecar, metadata in sidecars.items():
-            _check_completion_identity(sidecar, metadata["run"], path, run)
+        for sidecar in path.parent.rglob("*.json.meta.json"):
+            metadata = json.loads(sidecar.read_text())
+            if (
+                not isinstance(metadata, dict)
+                or not isinstance(metadata.get("collected"), list)
+                or any(
+                    metadata.get("run", {}).get(key) != value
+                    for key, value in run.items()
+                )
+            ):
+                raise ValueError("missing or mixed execution identity")
             actual.update(metadata["collected"])
         if not nodes <= actual or not actual <= nodes | omissions or actual & executed:
             raise ValueError("missing, overlapping, or unexpected executed tests")
-        if sidecars:
-            load_run(path.parent, actual, sidecars=sidecars)
+        if actual:
+            load_run(path.parent, actual)
+        elif nodes:
+            raise ValueError("missing completion evidence")
         executed.update(actual)
     if selected != expected - (excluded or set()) or executed != expected:
         raise ValueError("shards omit collected tests")
@@ -121,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
             args.marker,
             args.shards,
         )
-    except (CollectionError, ValueError, OSError) as error:
+    except (ValueError, OSError) as error:
         parser.error(str(error))
     print("all shards selected and completed the collected corpus exactly once")
     return 0

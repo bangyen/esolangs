@@ -1,7 +1,6 @@
 """SLOW ACV MAMMALIAN through the shared API, CLI and machinery."""
 
 import json
-import shlex
 from dataclasses import replace
 from pathlib import Path
 
@@ -11,7 +10,6 @@ import esolangs
 from esolangs import run
 from esolangs.registry import _table
 from tests.support.cli_support import _failure, call_both, run_cli
-from tests.support.reference import REFERENCE
 
 
 @pytest.mark.medium
@@ -23,57 +21,6 @@ def test_mammalian_rejects_unknown_words_before_output(word) -> None:
             f"PRONOUNCE {word}",
             limits=esolangs.ExecutionLimits(execution_timeout=1),
         )
-
-
-@pytest.mark.parametrize("portable", [False, True])
-def test_source_format_retry_keeps_dialect_choices(tmp_path, capsys, portable) -> None:
-    language = esolangs.Language("SLOW ACV MAMMALIAN")
-    source = "SEED " * 255 + "DIGEST PRONOUNCE"
-    path = tmp_path / "sample's program"
-    path.write_text(language.to_json(source) if portable else source, encoding="utf-8")
-    artifact_flag = [] if portable else ["--artifact"]
-    options = ["--settings", '{\n"io_modulus": 255\n}', "--set=io_modulus=256"]
-    output, error = _failure(
-        ["run", *artifact_flag, *options, language.name, str(path)], capsys
-    )
-    assert output == ""
-    retry = shlex.split(error.split("for example: ", 1)[1])
-    assert retry == [
-        "esolangs",
-        "run",
-        *(["--artifact"] if portable else []),
-        '--settings={"io_modulus":256}',
-        language.name,
-        str(path),
-    ]
-    assert call_both(retry[1:], capsys) == (chr(255), "")
-
-
-@pytest.mark.parametrize("portable_flag", [[], ["--artifact"]])
-def test_language_change_does_not_copy_dialect_choices(tmp_path, capsys, portable_flag):
-    path = tmp_path / "other.json"
-    path.write_text(esolangs.to_json(REFERENCE, "+."), encoding="utf-8")
-    _, error = _failure(
-        [
-            "run",
-            *portable_flag,
-            "--set=io_modulus=256",
-            "--max-steps=2",
-            "SLOW ACV MAMMALIAN",
-            str(path),
-        ],
-        capsys,
-    )
-    retry = shlex.split(error.split("for example: ", 1)[1])
-    assert retry == [
-        "esolangs",
-        "run",
-        "--artifact",
-        "--max-steps=2",
-        REFERENCE,
-        str(path),
-    ]
-    assert call_both(retry[1:], capsys) == ("\x01", "")
 
 
 def test_partial_overrides_merge_and_validate(
@@ -162,7 +109,7 @@ def test_partial_overrides_merge_and_validate(
     generated, diagnostic = call_both(
         ["generate", "-s", json.dumps(full.options()), language.name, "01"], capsys
     )
-    assert '--settings={"cell_modulus":255,"io_modulus":256}' in diagnostic
+    assert diagnostic == ""
     assert (
         scope.run(generated, stdin=scope.encode_inputs([1]), settings=full).output
         == "1"

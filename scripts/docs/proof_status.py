@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .anchors import anchors
-from .fragments import AggregateKey, FragmentFingerprint, cached, fingerprint
+from .fragments import AggregateKey, cached, fingerprint
 from .resource_description import ResourceDescriptions, parse_descriptions
 from .writing import write_if_changed as _write_if_changed
 
@@ -125,7 +125,7 @@ def _fragment_row(
 #: validated loads by (source, fingerprint).  The new-language check
 #: loads the full status once per registered language; uncached, each
 #: load re-parsed every fragment and re-checked every evidence anchor.
-_LoadKey = tuple[str, FragmentFingerprint]
+_LoadKey = tuple[str, tuple[tuple[str, int, int], ...]]
 _AGGREGATES: dict[AggregateKey, dict[str, list[dict[str, Any]]]] = {}
 _LOADS: dict[_LoadKey, tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]] = {}
 
@@ -311,19 +311,11 @@ def render_totals(proofs: tuple[ProofRow, ...]) -> str:
     )
 
 
-def splice(text: str, name: str, body: str, *, path: Path) -> str:
+def splice(text: str, name: str, body: str) -> str:
     """Replace the block ``name`` marks in ``text``, keeping the markers."""
     start, end = f"<!-- {name}:START -->", f"<!-- {name}:END -->"
-    first = text.find(start)
-    if first < 0:
-        raise ValueError(f"{path.as_posix()}: missing generated marker {start}")
-    last = text.find(end, first + len(start))
-    if last < 0:
-        raise ValueError(
-            f"{path.as_posix()}: missing generated marker {end} after {start}"
-        )
     block = start + "\n\n" + body + "\n\n" + end
-    return text[:first] + block + text[last + len(end) :]
+    return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
 
 
 def update_docs(root: Path = ROOT) -> bool:
@@ -369,7 +361,7 @@ def update_docs(root: Path = ROOT) -> bool:
     path = root / "docs/proofs/index.md"
     text = path.read_text(encoding="utf-8")
     for marker, lines in tables:
-        text = splice(text, marker, "\n".join(lines), path=path.relative_to(root))
+        text = splice(text, marker, "\n".join(lines))
     return _write_if_changed(path, text, encoding="utf-8")
 
 

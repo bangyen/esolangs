@@ -1,4 +1,0 @@
-src/esolangs/languages/blindfolded_arithmetic/tests/test_blindfolded_arithmetic.py::test_ip_is_the_next_instructions_source_offset
-tests/proofs/test_workspace_formulas.py::test_execution_and_workspace_formulas_hold[Malbolge-2]
-src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[0]
-src/esolangs/languages/flowchart/tests/test_boolean_flowchart.py::test_constant_lookup_reads_without_deque_or_selector[1]

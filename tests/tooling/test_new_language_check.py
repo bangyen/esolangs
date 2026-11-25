@@ -87,7 +87,7 @@ def test_bounds_reports_measurements_and_witnesses(
     monkeypatch.setattr(
         new_language,
         "bounds",
-        lambda _, ns, **_options: [(n, 5 * n + 28, 3**n, 2, "01", "10") for n in ns],
+        lambda _, ns: [(n, 5 * n + 28, 3**n, 2, "01", "10") for n in ns],
     )
     monkeypatch.setattr(new_language, "size_anchors", lambda _: ["anchor control"])
     assert new_language.main(["bounds", _LONGEST]) == 0
@@ -103,7 +103,7 @@ def test_bounds_reports_measurements_and_witnesses(
 def test_bounds_on_a_stub_says_to_implement_it(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    def stub(*_: object, **_options: object) -> None:
+    def stub(*_: object) -> None:
         raise NotImplementedError
 
     monkeypatch.setattr(new_language, "bounds", stub)

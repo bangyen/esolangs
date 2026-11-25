@@ -15,13 +15,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Never
 
 from esolangs.exceptions import ArgumentError, InputExhaustedError
-from esolangs.runtime._input import (
-    CheckedInput,
-    InputFrame,
-    InputSource,
-    _BoundReader,
-    read_input,
-)
+from esolangs.runtime._input import CheckedInput, InputFrame, InputSource, read_input
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.source_hints import syntax_error
 
@@ -470,6 +464,6 @@ def _scripted_io(
         return factory(read_input(stdin, frame=frame))
     if isinstance(stdin, str):
         return factory(stdin)
-    if isinstance(stdin, _BoundReader) and factory is not ScriptedIO:
-        return factory(stdin.stream)
-    return factory(read_input(stdin))
+    if factory is ScriptedIO:
+        return ScriptedIO(read_input(stdin))
+    return factory(stdin.stream)

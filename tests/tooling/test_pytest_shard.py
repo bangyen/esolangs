@@ -1,14 +1,12 @@
 """One shard of a marker band runs its slice and no one else's."""
 
 import re
-import sys
 from functools import partial
 from pathlib import Path
 
 import pytest
 import yaml
 
-from scripts.verify.process import MARKER, MAX_LOG_BYTES
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +35,6 @@ class TestShardIds:
         ids = shard.collect_ids("")
         assert ids == [f"test_collection.py::test_real[{i}]" for i in range(10)]
         assert shard.collect_ids("missing") == []
-        assert not list((tmp_path / "notes/verification").glob("*.log"))
         (tmp_path / "test_broken.py").write_text('raise ValueError("bad collection")')
         with pytest.raises(RuntimeError, match="bad collection"):
             shard.collect_ids("")
@@ -67,364 +64,6 @@ class TestShardIds:
         )
 
 
-@pytest.mark.medium
-def test_timed_out_collection_keeps_partial_log(tmp_path, monkeypatch, capsys):
-    shard = load_script()
-    monkeypatch.setattr(shard, "ROOT", tmp_path)
-    monkeypatch.setattr(shard, "_COLLECTION_TIMEOUT", 2.0)
-    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
-    (tmp_path / "test_blocked.py").write_text(
-        "from time import sleep\n"
-        "print('started importing test_blocked')\n"
-        "sleep(20)\n"
-        "print('finished importing test_blocked')\n",
-        encoding="utf-8",
-    )
-    assert shard.shard_main(["--marker", "", "--shard", "0", "--shards", "1"]) == 2
-    message = capsys.readouterr().err
-    assert "collection for -m '' timed out after 2s" in message
-    log = Path(message.partition("[log] ")[2].strip())
-    contents = log.read_text(encoding="utf-8")
-    assert "started importing test_blocked" in contents
-    assert "finished importing test_blocked" not in contents
-
-
-@pytest.mark.medium
-def test_invalid_marker_reports_the_error_and_keeps_the_collection_log(
-    tmp_path, monkeypatch, capsys
-) -> None:
-    shard = load_script()
-    monkeypatch.setattr(shard, "ROOT", tmp_path)
-    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
-    (tmp_path / "test_collection.py").write_text(
-        "def test_probe():\n    pass\n", encoding="utf-8"
-    )
-    assert shard.shard_main(["--marker", "not (", "--shard", "0", "--shards", "1"]) == 2
-    message = capsys.readouterr().err
-    assert "Wrong expression passed to '-m'" in message
-    assert "Traceback" not in message
-    assert "test_collection.py::test_probe" not in message
-    log = Path(message.partition("[log] ")[2].strip())
-    assert log.parent == tmp_path / "notes/verification"
-    contents = log.read_text(encoding="utf-8")
-    assert "test_collection.py::test_probe" in contents
-    assert "Wrong expression passed to '-m'" in contents
-
-
-@pytest.mark.medium
-def test_noisy_pytest_collection_keeps_a_capped_log(tmp_path, monkeypatch, capsys):
-    shard = load_script()
-    monkeypatch.setattr(shard, "ROOT", tmp_path)
-    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
-    (tmp_path / "test_noisy.py").write_text(
-        f"print('x' * {MAX_LOG_BYTES + 65_536})\ndef test_noisy(): pass\n",
-        encoding="utf-8",
-    )
-    assert shard.shard_main(["--marker", "", "--shard", "0", "--shards", "1"]) == 2
-    diagnostic = capsys.readouterr().err
-    assert "diagnostic byte limit exceeded" in diagnostic
-    log = Path(diagnostic.partition("[log] ")[2].strip())
-    assert log.stat().st_size == MAX_LOG_BYTES
-    assert log.read_bytes().endswith(MARKER)
-
-
-@pytest.mark.parametrize(
-    "payload", ['{"a":1}', '"abc"', '[""]', '["a","a"]', "[false]", "[", None]
-)
-def test_invalid_collection_reports_keep_the_log_and_prevent_sharding(
-    tmp_path, monkeypatch, capsys, payload
-) -> None:
-    shard = load_script()
-    monkeypatch.setattr(shard, "ROOT", tmp_path)
-
-    start = shard.start_logged
-
-    def collect(command, *args, **kwargs):
-        output = Path(command[command.index("--collection-output") + 1])
-        if payload is not None:
-            output.write_text(payload, encoding="utf-8")
-        probe = (
-            "import sys; print('kept stdout', flush=True); "
-            "print('kept stderr', file=sys.stderr)"
-        )
-        return start([sys.executable, "-c", probe], *args, **kwargs)
-
-    monkeypatch.setattr(shard, "start_logged", collect)
-    manifest = tmp_path / "shard.json"
-    assert (
-        shard.shard_main(
-            [
-                "--marker",
-                "slow",
-                "--shard",
-                "0",
-                "--shards",
-                "1",
-                "--manifest",
-                str(manifest),
-            ]
-        )
-        == 2
-    )
-    assert not manifest.exists()
-    message = capsys.readouterr().err
-    assert "collection for -m 'slow' produced an invalid collection report" in message
-    path = Path(message.partition("[log] ")[2].strip())
-    assert path.read_text(encoding="utf-8").splitlines() == [
-        "kept stdout",
-        "kept stderr",
-    ]
-
-
-@pytest.mark.medium
-def test_coverage_shard_reports_missing_tests_without_publishing(
-    tmp_path, monkeypatch, capsys
-) -> None:
-    shard = load_script()
-    monkeypatch.setattr(shard, "ROOT", tmp_path)
-    monkeypatch.setattr(shard.coverage_evidence, "checkout", lambda *_: "state")
-    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
-    (tmp_path / "test_probe.py").write_text(
-        "def test_keep(): pass\ndef test_drop(): pass\n", encoding="utf-8"
-    )
-    data = tmp_path / "coverage.db"
-    receipt = shard.coverage_evidence.sidecar(data)
-    data.write_bytes(b"previous database")
-    receipt.write_bytes(b"previous receipt")
-    assert (
-        shard.shard_main(
-            [
-                "--marker=",
-                "--shard=0",
-                "--shards=1",
-                "--bind-coverage",
-                str(data),
-                "--",
-                "--cov-branch",
-                "--cov=test_probe",
-                "-q",
-                "-k",
-                "keep",
-            ]
-        )
-        == 2
-    )
-    diagnostic = capsys.readouterr().err
-    assert (
-        "coverage shard 0/1: ran a different selection (expected 2 tests, got 1)"
-        in diagnostic
-    )
-    assert "missing: 'test_probe.py::test_drop'" in diagnostic
-    assert data.read_bytes() == b"previous database"
-    assert receipt.read_bytes() == b"previous receipt"
-
-
-@pytest.mark.parametrize("output", ["manifest", "coverage", "coverage receipt"])
-def test_shard_refuses_to_overwrite_timings_before_collection(
-    tmp_path, monkeypatch, capsys, output
-):
-    shard = load_script()
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
-    coverage = tmp_path / ".coverage"
-    timing = (
-        tmp_path / "timings.json"
-        if output == "manifest"
-        else coverage
-        if output == "coverage"
-        else shard.coverage_evidence.sidecar(coverage)
-    )
-    original = b'{"test_probe.py::test_probe":1}\n'
-    timing.write_bytes(original)
-    options = (
-        ["--manifest", str(timing)]
-        if output == "manifest"
-        else ["--bind-coverage", str(coverage), "--", "--cov-branch"]
-    )
-    assert (
-        shard.shard_main(
-            [
-                "--marker",
-                "",
-                "--shard",
-                "0",
-                "--shards",
-                "1",
-                "--durations",
-                timing.name,
-                *options,
-            ]
-        )
-        == 2
-    )
-    diagnostic = capsys.readouterr().err
-    assert "would replace --durations" in diagnostic
-    assert str(timing) in diagnostic
-    assert timing.read_bytes() == original
-
-
-@pytest.mark.parametrize("use_receipt", [False, True])
-def test_shard_refuses_a_manifest_over_coverage_before_collection(
-    tmp_path, monkeypatch, capsys, use_receipt
-) -> None:
-    shard = load_script()
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
-    data = tmp_path / ".coverage"
-    receipt = shard.coverage_evidence.sidecar(data)
-    data.write_bytes(b"existing coverage")
-    receipt.write_bytes(b"existing receipt")
-    manifest = receipt if use_receipt else data
-    assert (
-        shard.shard_main(
-            [
-                "--marker=",
-                "--shard=0",
-                "--shards=1",
-                "--manifest",
-                str(manifest),
-                "--bind-coverage",
-                data.name,
-                "--",
-                "--cov-branch",
-            ]
-        )
-        == 2
-    )
-    diagnostic = capsys.readouterr().err
-    assert "would replace --bind-coverage" in diagnostic
-    assert str(manifest) in diagnostic
-    assert data.read_bytes() == b"existing coverage"
-    assert receipt.read_bytes() == b"existing receipt"
-
-
-@pytest.mark.parametrize(
-    ("option", "recorder", "protected", "equals"),
-    [
-        ("--durations", "timings.json", "timings.json", False),
-        ("--manifest", "timings.json", "timings.json.meta.json", True),
-        ("--manifest", "timings.json", "timings.json.progress.jsonl", False),
-        ("--manifest", "timings.json", "timings.json." + "a" * 64 + ".json", True),
-        ("--bind-coverage", ".coverage", ".coverage", True),
-        (
-            "--bind-coverage receipt",
-            ".coverage.inputs.json",
-            ".coverage.inputs.json",
-            False,
-        ),
-    ],
-)
-def test_shard_protects_its_paths_from_the_pytest_timing_recorder(
-    tmp_path, monkeypatch, capsys, option, recorder, protected, equals
-) -> None:
-    shard = load_script()
-    monkeypatch.setattr(shard, "ROOT", tmp_path)
-    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
-    caller = tmp_path / "caller"
-    caller.mkdir()
-    monkeypatch.chdir(caller)
-    path = tmp_path / protected
-    path.write_bytes(b"existing evidence")
-    output = (
-        [f"--duration-output={recorder}"] if equals else ["--duration-output", recorder]
-    )
-    option_name = option.split()[0]
-    operand = ".coverage" if option.endswith(" receipt") else protected
-    status = shard.shard_main(
-        [
-            "--marker=",
-            "--shard=0",
-            "--shards=1",
-            option_name,
-            f"../{operand}",
-            "--",
-            "--cov-branch",
-            *output,
-        ]
-    )
-    assert status == 2
-    message = capsys.readouterr().err
-    assert f"--duration-output {tmp_path / recorder}" in message
-    assert f"would replace {option}" in message
-    assert path.read_bytes() == b"existing evidence"
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("configured_in_file", [False, True], ids=["override", "ini"])
-def test_shard_guard_checks_the_effective_pytest_recorder_path(
-    tmp_path, monkeypatch, capfd, configured_in_file
-) -> None:
-    shard = load_script()
-    monkeypatch.setattr(shard, "ROOT", tmp_path)
-    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
-    addopts = "--duration-output=timings.json"
-    ini = "[pytest]\n" + (f"addopts = {addopts}\n" if configured_in_file else "")
-    (tmp_path / "pytest.ini").write_text(ini, encoding="utf-8")
-    (tmp_path / "test_probe.py").write_text(
-        "def test_probe(): pass\n", encoding="utf-8"
-    )
-    timing = tmp_path / "timings.json"
-    progress = tmp_path / "timings.json.progress.jsonl"
-    original = b'{"test_probe.py::test_probe":1}\n'
-    timing.write_bytes(original)
-    progress.write_bytes(b"previous progress\n")
-    extra = [] if configured_in_file else ["-o", f"addopts={addopts}"]
-    command = [
-        "--marker=",
-        "--shard=0",
-        "--shards=1",
-        "--durations",
-        str(timing),
-        "--",
-        "-p",
-        "scripts.ci.shard",
-        *extra,
-    ]
-    assert shard.shard_main(command) == pytest.ExitCode.USAGE_ERROR
-    assert "would replace --durations" in capfd.readouterr().err
-    assert timing.read_bytes() == original
-    assert progress.read_bytes() == b"previous progress\n"
-    assert not (tmp_path / "timings.json.meta.json").exists()
-
-    assert shard.shard_main([*command, "--duration-output=report.json"]) == 0
-    assert (tmp_path / "report.json.meta.json").is_file()
-    assert timing.read_bytes() == original
-
-
-def test_stale_exclusions_name_the_nodes_without_replacing_the_manifest(
-    tmp_path, monkeypatch, capsys
-) -> None:
-    shard = load_script()
-    manifest = tmp_path / "shard.json"
-    manifest.write_bytes(b"previous\n")
-    existing = "tests/test_sample.py::test_ok"
-    missing = ["tests/test_sample.py::test_old", "tests/test_sample.py::test_typo"]
-    monkeypatch.setattr(shard, "collect_ids", lambda _: [existing])
-    monkeypatch.setattr(
-        shard.subprocess, "run", lambda *_args, **_kwargs: pytest.fail("ran pytest")
-    )
-    status = shard.shard_main(
-        [
-            "--marker",
-            "",
-            "--shard",
-            "0",
-            "--shards",
-            "1",
-            "--manifest",
-            str(manifest),
-            *(f"--exclude-node={node}" for node in [existing, *missing]),
-        ]
-    )
-    assert status == 2
-    message = capsys.readouterr().err
-    assert message.startswith("--exclude-node: not in the collected corpus:")
-    assert all(node in message for node in missing)
-    assert existing not in message
-    assert "Traceback" not in message
-    assert manifest.read_bytes() == b"previous\n"
-
-
 def test_duration_assignment_improves_longest_shard_and_covers_unknowns() -> None:
     shard = load_script()
     ids = list("abcdefghij")
@@ -442,9 +81,7 @@ def test_duration_assignment_improves_longest_shard_and_covers_unknowns() -> Non
     assert shard.shard_ids(ids, 0, 3, {"stale": 5})
 
 
-@pytest.mark.parametrize(
-    "payload", ["[]", '{"a": -1}', '{"a": true}', '{"a": NaN}', '{"a": 1e-400}']
-)
+@pytest.mark.parametrize("payload", ["[]", '{"a": -1}', '{"a": true}', '{"a": NaN}'])
 def test_bad_durations_are_refused(tmp_path, payload) -> None:
     path = tmp_path / "durations.json"
     path.write_text(payload)
@@ -452,64 +89,13 @@ def test_bad_durations_are_refused(tmp_path, payload) -> None:
         load_script().load_durations(path)
 
 
-def test_shard_reports_an_overflowing_duration_before_collection(
-    tmp_path, monkeypatch, capsys
-):
-    shard = load_script()
-    path = tmp_path / "timings.json"
-    path.write_text(f'{{"test_example": {10**400}}}')
-    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
-    assert (
-        shard.shard_main(
-            [
-                "--marker",
-                "slow",
-                "--shard",
-                "0",
-                "--shards",
-                "1",
-                "--durations",
-                str(path),
-            ]
-        )
-        == 2
-    )
-    message = capsys.readouterr().err
-    assert str(path) in message
-    assert "duration for 'test_example' must be finite positive seconds" in message
-
-
 def test_invalid_shard_arguments_are_refused() -> None:
     with pytest.raises(ValueError, match="invalid shard"):
         load_script().shard_ids([], -1, 2)
 
 
-@pytest.mark.parametrize("option", ["--duraton", "--durat", "-n"])
-def test_only_pytest_options_after_the_separator_are_forwarded(
-    monkeypatch, capsys, option
-) -> None:
-    shard = load_script()
-    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
-    base = ["--marker", "", "--shard", "0", "--shards", "1"]
-    with pytest.raises(SystemExit) as caught:
-        shard.shard_main([*base, option, "0", "--", "-n", "0"])
-    assert caught.value.code == 2
-    assert f"unrecognized arguments: {option} 0" in capsys.readouterr().err
-    selected, forwarded = shard._parse_args([*base, "--", "-n", "0", "--shard", "9"])
-    assert selected.shard == 0
-    assert forwarded == ["-n", "0", "--shard", "9"]
-
-
-@pytest.mark.parametrize(
-    ("excluded", "expected"),
-    [
-        ([], "18.0s (1 tests use median fallback 6.000s)"),
-        (["a"], "4.0s (1 tests use median fallback 2.000s)"),
-        (["a", "b"], "1.0s (1 tests use median fallback 1.000s)"),
-    ],
-)
 def test_shard_reports_estimate_and_unknown_weights(
-    tmp_path, monkeypatch, capsys, excluded, expected
+    tmp_path, monkeypatch, capsys
 ) -> None:
     shard = load_script()
     path = tmp_path / "durations.json"
@@ -531,12 +117,11 @@ def test_shard_reports_estimate_and_unknown_weights(
                 "1",
                 "--durations",
                 str(path),
-                *(f"--exclude-node={node}" for node in excluded),
             ]
         )
         == 0
     )
-    assert expected in capsys.readouterr().out
+    assert "18.0s (1 tests use median fallback 6.000s)" in capsys.readouterr().out
 
 
 def test_progress_survives_without_publishing_complete_evidence(tmp_path) -> None:

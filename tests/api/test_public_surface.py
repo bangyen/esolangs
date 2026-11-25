@@ -3,7 +3,7 @@
 import ast
 import inspect
 import re
-from dataclasses import FrozenInstanceError, fields, replace
+from dataclasses import FrozenInstanceError, fields
 from importlib.resources import files
 from pathlib import Path
 
@@ -123,7 +123,6 @@ class TestPackageSurface:
             "dumps_on_the_post_halt_step",
             "eof_is_a_value",
             "examples",
-            "generator_first_restricted_arity",
             "generator_max_inputs",
             "generator_restrictions",
             "generator_scaling",
@@ -145,21 +144,17 @@ class TestPackageSurface:
             "wiki_url",
         ]
 
-    def test_language_info_loads_the_previous_slot_layout(self) -> None:
+    def test_language_info_requires_the_current_slot_layout(self) -> None:
         import pickle
 
         info = esolangs.describe(REFERENCE)
         assert info.well_known
-        positional = [
-            getattr(info, slot.name) for slot in fields(info) if not slot.kw_only
-        ]
+        legacy = [getattr(info, slot.name) for slot in fields(info)[:-1]]
         with pytest.raises(TypeError, match="well_known"):
-            esolangs.LanguageInfo(*positional[:-1])
+            esolangs.LanguageInfo(*legacy)
         restored = esolangs.LanguageInfo.__new__(esolangs.LanguageInfo)
         with pytest.raises(ValueError, match="shorter"):
-            restored.__setstate__(positional[:-1])
-        restored.__setstate__(positional)
-        assert restored == info
+            restored.__setstate__(legacy)
         assert pickle.loads(pickle.dumps(info)) == info
 
     def test_every_exit_status_is_documented(self) -> None:
@@ -518,16 +513,11 @@ class TestProgramObjectsRefuseMisuse:
     def test_a_portable_setter_surrogate_is_refused(self) -> None:
         import json
 
-        template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
-        assert isinstance(template, esolangs.TemplateArtifact)
-        (zero, one), *remaining = template.bindings.setters
-        bindings = replace(
-            template.bindings, setters=(("\ud800" + zero[1:], one), *remaining)
+        document = json.loads(
+            esolangs.to_json(
+                TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110")
+            )
         )
-        with pytest.raises(esolangs.ProgramError, match="surrogates"):
-            esolangs.to_json(TEMPLATE_LANGUAGE, replace(template, bindings=bindings))
-
-        document = json.loads(esolangs.to_json(TEMPLATE_LANGUAGE, template))
         document["setters"] = [["\ud800", "\udfff"]] * len(document["setters"])
         with pytest.raises(esolangs.ProgramError):
             esolangs.from_json(TEMPLATE_LANGUAGE, json.dumps(document))

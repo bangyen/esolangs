@@ -19,18 +19,13 @@ from __future__ import annotations
 import argparse
 import os
 import shlex
-import signal
 import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
 from pathlib import Path
-from threading import Lock
-from types import FrameType
-from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parents[2]
 # scripts/ holds the sibling `verify`, `docs`, and `ci` packages.
@@ -43,13 +38,10 @@ from verify.failures import (  # noqa: E402
     section_matches,
 )
 from verify.process import (  # noqa: E402
-    logged_path,
     run_bounded,
     start_logged,
-    stop_process_tree,
     wait_with_heartbeat,
 )
-from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN  # noqa: E402
 from verify.receipts import AcceptanceRun  # noqa: E402
 from verify.scope import (  # noqa: E402
     _scope_changed_files,
@@ -270,32 +262,20 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bo
         for name, _ in STEPS:
             print(name)
         sys.exit(0)
+    only = {s.strip() for s in args.only.split(",") if s.strip()} if args.only else None
+    skip = {s.strip() for s in args.skip.split(",") if s.strip()} if args.skip else None
     # A typo'd name used to filter STEPS down to nothing and print the same
     # "all local checks passed" a real green run prints -- a gate that ran
     # zero steps must never look like a gate that passed.
     known = {name for name, _ in STEPS}
-
-    def selection(flag: str, raw: str | None) -> set[str] | None:
-        if raw is None:
-            return None
-        names = {part.strip() for part in raw.split(",") if part.strip()}
-        if not names:
-            parser.error(f"{flag}: expected at least one step name")
-        unknown = sorted(names - known)
+    for flag, names in (("--only", only), ("--skip", skip)):
+        unknown = sorted((names or set()) - known)
         if unknown:
             parser.error(
                 f"{flag}: unknown step(s) {', '.join(unknown)}; "
                 f"--list prints the {len(known)} names"
             )
-        return names
-
-    return (
-        selection("--only", args.only),
-        selection("--skip", args.skip),
-        args.full,
-        args.quiet,
-        args.verbose,
-    )
+    return only, skip, args.full, args.quiet, args.verbose
 
 
 # The step that mutates the working tree.  pre-commit's ruff/ruff-format and
@@ -366,16 +346,6 @@ def _duration_only_ids(output: str) -> list[str] | None:
     return ids
 
 
-def _with_pytest_evidence(command: list[str]) -> list[str]:
-    """Give each receipt's pytest invocation its own completion sidecar."""
-    if _ACTIVE_ACCEPTANCE is None:
-        return command
-    destination = ROOT / "notes" / "verification"
-    destination.mkdir(parents=True, exist_ok=True)
-    directory = Path(tempfile.mkdtemp(prefix="pytest-execution-", dir=destination))
-    return [*command, "-p", PLUGIN, OUTPUT_OPTION, str(directory / "execution.json")]
-
-
 def _rerun_alone(ids: list[str]) -> tuple[int, str]:
     """Rerun the failed tests *ids* alone, serially; return exit and output.
 
@@ -384,30 +354,25 @@ def _rerun_alone(ids: list[str]) -> tuple[int, str]:
     the gate's scoping.  Bounded by the pytest step's own deadline: a rerun
     that needs longer has not exonerated anything.
     """
-    command = _with_pytest_evidence(
-        [*PY, "-m", "pytest", "-q", "-n", "0", "-m", "", *ids]
-    )
+    command = [*PY, "-m", "pytest", "-q", "-n", "0", "-m", "", *ids]
     started = time.monotonic()
-    name = "pytest retry"
-    with start_logged(
+    result = run_bounded(
         command,
-        name,
-        dict(os.environ, PYTHONPATH=str(ROOT / "src")),
-        ROOT,
-        stream=False,
         cwd=ROOT,
-    ) as proc:
-        output, returncode = _wait_with_heartbeat(proc, name, started)
-        if _ACTIVE_ACCEPTANCE is not None:
-            _ACTIVE_ACCEPTANCE.record(
-                name,
-                time.monotonic() - started,
-                returncode,
-                output,
-                command=command,
-                log_path=logged_path(proc),
-            )
-    return returncode, output
+        env=dict(os.environ, PYTHONPATH=str(ROOT / "src")),
+        capture_output=True,
+        timeout=STEP_DEADLINES[LONG_STEP],
+    )
+    output = (result.stdout or "") + (result.stderr or "")
+    if _ACTIVE_ACCEPTANCE is not None:
+        _ACTIVE_ACCEPTANCE.record(
+            "pytest retry",
+            time.monotonic() - started,
+            result.returncode,
+            output,
+            command=command,
+        )
+    return result.returncode, output
 
 
 def _load_verdict(
@@ -439,11 +404,6 @@ def _load_verdict(
     returncode, rerun_output = _rerun_alone(ids)
     if returncode == 0:
         if _ACTIVE_ACCEPTANCE is not None:
-            if not _ACTIVE_ACCEPTANCE.pytest_retry_covers(ids):
-                print(
-                    "[load] pytest: retry did not record a pass for every failed test"
-                )
-                return failures
             _ACTIVE_ACCEPTANCE.accepted_retries.add(LONG_STEP)
         print(
             f"[load] pytest: all {len(ids)} failed tests passed alone: the "
@@ -451,11 +411,6 @@ def _load_verdict(
             "rerun the gate on a quiet machine before pushing"
         )
         return [failure for failure in failures if failure[0] != LONG_STEP]
-    if returncode in (124, 125):
-        print(f"[load] pytest: retry {_cause(returncode)}")
-        if rerun_output.startswith("[log] "):
-            print(rerun_output.partition("\n")[0])
-        return failures
     still = failed_ids(rerun_output.splitlines())
     named = still or ids
     print(
@@ -497,7 +452,7 @@ def _wait_with_heartbeat(
         proc,
         name,
         start,
-        STEP_DEADLINES.get(name.removesuffix(" retry"), DEFAULT_STEP_DEADLINE),
+        STEP_DEADLINES.get(name, DEFAULT_STEP_DEADLINE),
         HEARTBEAT_SECONDS,
     )
 
@@ -529,48 +484,6 @@ def _drop_long_step_after_mutation_failure(
     return rest
 
 
-class _RunningChecks:
-    """Track child processes until their output collectors finish."""
-
-    def __init__(self) -> None:
-        self._lock = Lock()
-        self._children: set[subprocess.Popen[str]] = set()
-        self._cancelled = False
-
-    def start(
-        self, name: str, cmd: list[str], env: dict[str, str], *, stream: bool
-    ) -> subprocess.Popen[str] | None:
-        """Register a new check unless cancellation has started."""
-        with self._lock:
-            if self._cancelled:
-                return None
-            child = start_logged(cmd, name, env, ROOT, stream=stream)
-            self._children.add(child)
-            return child
-
-    def wait(
-        self, child: subprocess.Popen[str], name: str, started: float
-    ) -> tuple[str, int, float, Path]:
-        """Collect a check's output and elapsed time."""
-        output, returncode = _wait_with_heartbeat(child, name, started)
-        with self._lock:
-            self._children.discard(child)
-        return output, returncode, time.monotonic() - started, logged_path(child)
-
-    @contextmanager
-    def stop_on_error(self) -> Iterator[None]:
-        """Stop active checks before the executors join their threads."""
-        try:
-            yield
-        except BaseException:
-            with self._lock:
-                self._cancelled = True
-                children = tuple(self._children)
-            for child in children:
-                stop_process_tree(child)
-            raise
-
-
 def _run_shadow_phase(
     long_step: tuple[str, list[str], dict[str, str]] | None,
     shadow: list[tuple[str, list[str], dict[str, str]]],
@@ -579,52 +492,57 @@ def _run_shadow_phase(
     stream: bool,
     run_serial: Callable[..., None],
     record: Callable[..., None],
-    running: _RunningChecks,
 ) -> list[tuple[str, list[str], dict[str, str]]]:
     """Launch the long step and run the cheap ones in its shadow.
 
     Returns the heavy steps still owed a serial phase: when the shadow
     ran on threads, the heavy steps already ran alongside it.
     """
-    if long_step is None:
-        for step in shadow:
-            run_serial(*step)
-        return heavy
-
+    proc = None
+    long_start = 0.0
     # Nothing to fill the shadow with: run it as an ordinary step, which lets
     # a single-step run (`just test-py`) stream its output live.
-    if not shadow and (stream or not heavy):
+    if long_step is not None and not shadow and (stream or not heavy):
         run_serial(*long_step)
-        return heavy
-
-    with (
-        ThreadPoolExecutor(max_workers=1) as collector,
-        ThreadPoolExecutor(max_workers=2) as checks,
-        running.stop_on_error(),
-    ):
+        long_step = None
+    if long_step is not None:
+        _, cmd, step_env = long_step
         long_start = time.monotonic()
-        proc = running.start(*long_step, stream=False)
-        assert proc is not None
+        proc = start_logged(cmd, LONG_STEP, step_env, ROOT, stream=False)
         print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
+
+    if proc is not None:
+
+        def collect_long(
+            child: subprocess.Popen[str], started: float
+        ) -> tuple[str, int, float]:
+            output, returncode = _wait_with_heartbeat(child, LONG_STEP, started)
+            return output, returncode, time.monotonic() - started
+
         # Drain immediately: waiting until the shadow ends can fill the pipe
         # and stall pytest. The collector also measures its actual finish.
-        pending = collector.submit(running.wait, proc, LONG_STEP, long_start)
-        if stream:
-            for step in shadow:
-                run_serial(*step)
-        else:
+        with ThreadPoolExecutor(max_workers=1) as collector:
+            pending = collector.submit(collect_long, proc, long_start)
+            if stream:
+                for name, cmd, step_env in shadow:
+                    run_serial(name, cmd, step_env)
+            else:
 
-            def run_shadow() -> None:
-                for step in shadow:
-                    run_serial(*step)
+                def run_shadow() -> None:
+                    for step in shadow:
+                        run_serial(*step)
 
-            results = [checks.submit(run_serial, *step) for step in heavy]
-            results.append(checks.submit(run_shadow))
-            for result in results:
-                result.result()
-            heavy = []
-        output, returncode, elapsed, log_path = pending.result()
-    record(LONG_STEP, elapsed, returncode, output, log_path)
+                with ThreadPoolExecutor(max_workers=2) as checks:
+                    results = [checks.submit(run_serial, *step) for step in heavy]
+                    results.append(checks.submit(run_shadow))
+                    for result in results:
+                        result.result()
+                heavy = []
+            output, returncode, elapsed = pending.result()
+        record(LONG_STEP, elapsed, returncode, output)
+    else:
+        for name, cmd, step_env in shadow:
+            run_serial(name, cmd, step_env)
     return heavy
 
 
@@ -652,28 +570,22 @@ def _run_steps(
     failed: list[tuple[str, int, str | None]] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.monotonic()
-    running = _RunningChecks()
 
-    def record(
-        name: str, elapsed: float, returncode: int, output: str, log_path: Path
-    ) -> None:
+    def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
         if _ACTIVE_ACCEPTANCE is not None:
-            _ACTIVE_ACCEPTANCE.record(
-                name, elapsed, returncode, output, log_path=log_path
-            )
+            _ACTIVE_ACCEPTANCE.record(name, elapsed, returncode, output)
         timings.append((name, elapsed))
         if not _report(name, elapsed, returncode, output):
             failed.append((name, returncode, output))
 
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
         start = time.monotonic()
-        with running.stop_on_error():
-            proc = running.start(name, cmd, step_env, stream=stream)
-            if proc is not None:
-                captured, returncode, elapsed, log_path = running.wait(
-                    proc, name, start
-                )
-                record(name, elapsed, returncode, captured, log_path)
+        captured, returncode = _wait_with_heartbeat(
+            start_logged(cmd, name, step_env, ROOT, stream=stream),
+            name,
+            start,
+        )
+        record(name, time.monotonic() - start, returncode, captured)
 
     for name, cmd, step_env in runnable:
         if name == MUTATES_TREE:
@@ -693,7 +605,6 @@ def _run_steps(
         stream=stream,
         run_serial=run_serial,
         record=record,
-        running=running,
     )
 
     # Phase 3: the parallel steps, now that they can have the machine.
@@ -799,8 +710,6 @@ def main() -> int:
         step_env = env
         if only is None and name == LONG_STEP:
             cmd = _pytest_cmd(cmd, full=full, changed=changed)
-        if name == LONG_STEP:
-            cmd = _with_pytest_evidence(cmd)
         runnable.append((name, cmd, step_env))
 
     if "LEAKSWEEP_JOBS" not in env:
@@ -855,24 +764,6 @@ def main() -> int:
     return 0
 
 
-def _terminate(signum: int, _frame: FrameType | None) -> NoReturn:
-    """Unwind active checks with the shell's signal exit status."""
-    raise SystemExit(128 + signum)
-
-
-@contextmanager
-def _handle_sigterm() -> Iterator[None]:
-    """Let the POSIX gate run its cleanup when its PID receives SIGTERM."""
-    if os.name != "posix":
-        yield
-        return
-    previous = signal.signal(signal.SIGTERM, _terminate)
-    try:
-        yield
-    finally:
-        signal.signal(signal.SIGTERM, previous)
-
-
 def cli() -> int:
     """Run the gate and bind its acceptance receipt to the measured inputs."""
     global _ACTIVE_ACCEPTANCE  # noqa: PLW0603
@@ -883,11 +774,7 @@ def cli() -> int:
     )
     _ACTIVE_ACCEPTANCE = receipt
     try:
-        with _handle_sigterm():
-            returncode = main()
-    except KeyboardInterrupt:
-        print("verification interrupted", file=sys.stderr)
-        returncode = 130
+        returncode = main()
     except BaseException:
         path, _ = receipt.finish(None)
         print(f"[receipt] {path}")

@@ -51,7 +51,7 @@ _SHORT_OPTIONS = {"-s": "--settings"}
 
 #: Required-value options, excluding the optional value on ``--width``.
 _VALUE_OPTIONS = {
-    "generate": {"--bits", "--from-template", "--scale", "--settings", "--set"},
+    "generate": {"--bits", "--scale", "--settings", "--set"},
     "list": {"--grep", "--inputs", "--source-kind", "--input-shape", "--answer-mode"},
     "run": {
         "--execution-timeout",
@@ -67,26 +67,10 @@ _VALUE_OPTIONS = {
     },
 }
 
-_FLAG_OPTIONS = {
-    "generate": {"--balance", "--artifact", "--plain", "--gzip"},
-    "list": {
-        "--details",
-        "--json",
-        "--all-tables",
-        "--generator",
-        "--interpreter-only",
-    },
-    "run": {"--isolated", "--artifact"},
-    "describe": {"--json", "--spec"},
-}
-
 
 def _normalize_options(command: str, rest: list[str]) -> list[str]:
-    """Attach required values and reserve recognized options as separate tokens."""
+    """Attach mandatory values so later passes cannot mistake them for flags."""
     names = _VALUE_OPTIONS.get(command, set())
-    reserved = names | _FLAG_OPTIONS.get(command, set()) | _GLOBAL_FLAGS | {"-h", "-V"}
-    if command == "generate":
-        reserved.add("--width")
     normalized: list[str] = []
     i = 0
     while i < len(rest):
@@ -98,17 +82,9 @@ def _normalize_options(command: str, rest: list[str]) -> list[str]:
         canonical = _SHORT_OPTIONS.get(name, name)
         if canonical in names:
             name = canonical
-            if not sep:
-                if i + 1 == len(rest) or rest[i + 1] == "--":
-                    _fail(f"{name} needs a value")
-                following = rest[i + 1]
-                option = following.partition("=")[0]
-                if _SHORT_OPTIONS.get(option, option) in reserved:
-                    _fail(
-                        f"{name} needs a value. Use {name}=VALUE for a literal option."
-                    )
+            if not sep and i + 1 < len(rest) and rest[i + 1] != "--":
                 i += 1
-                sep, inline = "=", following
+                sep, inline = "=", rest[i]
         normalized.append(name + sep + inline)
         i += 1
     return normalized

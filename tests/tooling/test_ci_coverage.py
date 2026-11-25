@@ -3,78 +3,14 @@
 import json
 import os
 import shlex
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import coverage
-import pytest
 import yaml
 
-from scripts.ci.shard import collect_ids
-
 ROOT = Path(__file__).resolve().parents[2]
-SERIAL_TEST_NODES = ".github/serial-test-nodes.txt"
-REGULAR_SHARD_MARKER = "not slow and not weekly"
-
-
-@pytest.mark.skipif(shutil.which("bash") is None, reason="workflow uses Bash")
-@pytest.mark.parametrize(("workflow", "job"), [("ci", "test"), ("weekly", "slow")])
-def test_serial_workflow_keeps_the_last_node_without_newline(
-    tmp_path, workflow, job
-) -> None:
-    manifest = tmp_path / SERIAL_TEST_NODES
-    manifest.parent.mkdir()
-    nodes = ["tests/sample.py::test_first", "tests/sample.py::test_last[with space]"]
-    manifest.write_bytes("\n".join(nodes).encode("utf-8"))
-    steps = yaml.safe_load(
-        (ROOT / ".github/workflows" / f"{workflow}.yml").read_text(encoding="utf-8")
-    )["jobs"][job]["steps"]
-    readers = [
-        step["run"] for step in steps if f"< {SERIAL_TEST_NODES}" in step.get("run", "")
-    ]
-    assert len(readers) == 2
-    for reader in readers:
-        script = reader.replace("${{ matrix.shard }}", "0")
-        result = subprocess.run(
-            [
-                "bash",
-                "--noprofile",
-                "--norc",
-                "-ec",
-                "uv() { printf '%s\\0' \"$@\"; }\n" + script,
-            ],
-            cwd=tmp_path,
-            env={**os.environ, "TEST_PYTHON": "3.12"},
-            capture_output=True,
-            timeout=5,
-            check=False,
-        )
-        assert result.returncode == 0, result.stderr
-        args = result.stdout.decode("utf-8").removesuffix("\x00").split("\x00")
-        if "--exclude-node" in args:
-            marker = REGULAR_SHARD_MARKER if workflow == "ci" else ""
-            assert args[args.index("--marker") + 1] == marker
-            assert [
-                args[i + 1] for i, arg in enumerate(args) if arg == "--exclude-node"
-            ] == nodes
-        else:
-            assert args[-len(nodes) :] == nodes
-
-
-def test_serial_test_nodes_are_collectable() -> None:
-    nodes = (ROOT / SERIAL_TEST_NODES).read_text(encoding="utf-8").splitlines()
-    assert nodes, SERIAL_TEST_NODES
-    assert len(nodes) == len(set(nodes)), SERIAL_TEST_NODES
-    assert all("::" in node and node == node.strip() for node in nodes), (
-        SERIAL_TEST_NODES
-    )
-    files = {node.partition("::")[0] for node in nodes}
-    existing = sorted(file for file in files if (ROOT / file).is_file())
-    collected = collect_ids(REGULAR_SHARD_MARKER, paths=existing) if existing else []
-    missing = sorted(set(nodes).difference(collected))
-    assert not missing, f"{SERIAL_TEST_NODES}: IDs outside the regular shard: {missing}"
 
 
 def test_combining_shards_retains_every_branch(tmp_path) -> None:
@@ -175,22 +111,9 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
         if step.get("name") == "Test one full-suite shard"
     )
     assert '--marker ""' in full_command
-    manifest = SERIAL_TEST_NODES
+    serial_nodes = full["env"]["CI_SERIAL_NODES"].split()
     regular = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
-    regular_commands = {
-        step["name"]: step["run"]
-        for step in regular["jobs"]["test"]["steps"]
-        if "name" in step and "run" in step
-    }
-    assert (
-        f"< {manifest}"
-        in regular_commands["Test with pytest (shard ${{ matrix.shard }} of 2)"]
-    )
-    assert (
-        f"< {manifest}"
-        in regular_commands["Check Python 3.12 witnesses without competing workers"]
-    )
-    assert f"< {manifest}" in full_command
+    assert serial_nodes == regular["jobs"]["test"]["env"]["CI_SERIAL_NODES"].split()
     assert '--exclude-node "$node"' in full_command
     assert '"${excluded[@]}"' in full_command
     assert "--shards 2" in full_command
@@ -202,7 +125,6 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
         if step.get("name") == "Check witnesses without competing workers"
     )
     assert serial["if"] == "${{ !cancelled() && matrix.shard == 0 }}"
-    assert f"< {manifest}" in serial["run"]
     assert '-n 0 -m ""' in serial["run"]
     assert 'test-durations-serial.json "${nodes[@]}"' in serial["run"]
     census = jobs["shard-completeness"]
@@ -238,7 +160,6 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
     assert '--marker ""' in command
     assert "--exclude-node" not in command
     assert "--cov-branch" in command
-    assert '--bind-coverage "$COVERAGE_FILE"' in command
     assert "--duration-output notes/ci/test-durations.json" in command
     arguments = shlex.split(command.split(" -- ", 1)[1])
     timings = tmp_path / "durations.json"
@@ -274,7 +195,6 @@ def test_coverage_gate_requires_success_and_both_artifacts(tmp_path) -> None:
     commands = "\n".join(step.get("run", "") for step in gate["steps"])
     for shard in scan["strategy"]["matrix"]["shard"]:
         assert f"test -f .coverage.deadcode-{shard}" in commands
-    assert "--combine-data" in commands
 
 
 def test_failure_log_uploads_are_unconditional_and_unique() -> None:

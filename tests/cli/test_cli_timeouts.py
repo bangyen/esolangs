@@ -13,16 +13,14 @@ import pytest
 import esolangs
 from esolangs import cli
 from esolangs.cli.help import help_text
-from esolangs.registry import LANGUAGES
 from tests.support.cli_support import _LOOPS, _program, _refused, call_both, call_main
 from tests.support.generator_support import evaluate_generated
-from tests.support.pick import first, languages
+from tests.support.pick import languages
 from tests.support.reference import REFERENCE
 
 _BAD_TIMEOUTS = [
     # A forgotten number blamed the positional it had swallowed.
     ("--execution-timeout brainfuck", "--execution-timeout must be a number"),
-    ("--execution-timeout --artifact brainfuck", "--execution-timeout needs a value"),
     ("--execution-timeout -inf brainfuck", "must be finite"),
     # 1e10 overflowed the source read's thread wait as a raw OverflowError.
     ("--execution-timeout 1e9 brainfuck", "--execution-timeout must be at most"),
@@ -38,37 +36,6 @@ _BAD_TIMEOUTS = [
 def test_a_bad_timeout_is_refused_with_exit_2(args, message, tmp_path, capsys) -> None:
     refused = _refused(f"run {args} prog:,.", tmp_path, capsys, "1\n")
     assert message in refused
-
-
-@pytest.mark.medium
-def test_run_dash_applies_acquisition_timeout_to_idle_pipe() -> None:
-    language = first(parameterized=True)
-    reader, writer = os.pipe()
-    try:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "esolangs",
-                "run",
-                "--execution-timeout",
-                "0.5",
-                language,
-                "-",
-            ],
-            stdin=reader,
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    finally:
-        os.close(reader)
-        os.close(writer)
-    assert result.returncode == 124
-    assert result.stdout == ""
-    assert "stdin did not reach EOF" in result.stderr
-    assert "--execution-timeout" in result.stderr
 
 
 @pytest.mark.medium
@@ -171,12 +138,7 @@ def test_shortest_deadline_applies_to_blocked_stdin(
         monkeypatch.setattr(io.sys.stdin, "read", blocked)
         return io._read_stdin(*args, **kwargs)
 
-    def prepared(_program, *, stdin, **_options):
-        stdin.read()
-
     monkeypatch.setattr("esolangs.cli.run._read_stdin", read_stdin)
-    # Start at the input barrier so worker startup cannot spend this budget.
-    monkeypatch.setattr("esolangs.cli.run._execute_loaded", prepared)
     try:
         with pytest.raises(SystemExit, match=r"^124$"):
             call_main(
@@ -194,30 +156,6 @@ def test_shortest_deadline_applies_to_blocked_stdin(
         assert f"({flag})" in capsys.readouterr().err
     finally:
         release.set()
-
-
-@pytest.mark.medium
-@pytest.mark.parametrize("flags", [[], ["--max-steps", "10"], ["--isolated"]])
-def test_syntax_error_precedes_runtime_stdin(tmp_path: Path, flags: list[str]) -> None:
-    cmd = [
-        sys.executable,
-        "-m",
-        "esolangs",
-        "run",
-        *flags,
-        REFERENCE,
-        _program(tmp_path, "]"),
-    ]
-    with subprocess.Popen(
-        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    ) as child:
-        try:
-            assert child.wait(timeout=3) == 2
-        finally:
-            if child.poll() is None:
-                child.kill()
-        assert child.stderr is not None
-        assert b"unmatched ']'" in child.stderr.read()
 
 
 @pytest.mark.medium
@@ -462,50 +400,3 @@ def test_isolated_options_fail_before_file_or_stdin_reads(
     with pytest.raises(SystemExit, match=r"^2$"):
         call_both(["run", *options, REFERENCE, "missing"], capsys)
     assert "cannot read" not in capsys.readouterr().err
-
-
-def test_framed_stdin_wait_notice_asks_for_rest_of_row(tmp_path) -> None:
-    language = next(
-        name
-        for name, declaration in LANGUAGES.items()
-        if declaration.contract.frame_stdin
-        and declaration.contract.input_shape == "char_stream"
-    )
-    api = esolangs.Language(language)
-    path = tmp_path / "xor.json"
-    path.write_text(api.to_json(api.generate("0110")), encoding="utf-8")
-    script = (
-        "import esolangs.cli.io as io; io._WAITING_NOTICE_AFTER = .1; "
-        "from esolangs.cli import main; main()"
-    )
-    command = [
-        sys.executable,
-        "-c",
-        script,
-        "run",
-        "--artifact",
-        "--execution-timeout",
-        "5",
-        language,
-        str(path),
-    ]
-    row = api.encode_inputs([0, 1]).encode()
-    with subprocess.Popen(
-        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    ) as child:
-        assert child.stdin is not None
-        assert child.stderr is not None
-        assert child.stdout is not None
-        try:
-            child.stdin.write(row[:1])
-            child.stdin.flush()
-            notice = child.stderr.readline()
-            assert b"the input row is incomplete" in notice
-            assert b"send the rest of the row" in notice
-            child.stdin.write(row[1:])
-            child.stdin.flush()
-            assert child.wait(timeout=5) == 0
-            assert api.read_answer(child.stdout.read().decode()) == "1"
-        finally:
-            if child.poll() is None:
-                child.kill()

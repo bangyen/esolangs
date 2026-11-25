@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import json
-from codecs import BOM_UTF8
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack
 from dataclasses import asdict, replace
@@ -34,13 +33,8 @@ from esolangs.outcomes import _is_acquisition_failure, _track_acquisition_failur
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import decode_utf8, destination_path, reserve_staged
-from esolangs.runtime._json import (
-    _json_space,
-    check_record_utf8,
-    record_dumps,
-    record_loads,
-)
+from esolangs.runtime._files import destination_path, reserve_staged
+from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
 from esolangs.runtime._source import (
     ProgramSource,
     _raster_gzip_error,
@@ -62,128 +56,6 @@ from esolangs.settings import (
 )
 
 _FORMAT = "esolangs.program"
-
-
-class _MissingPortableEnvelopeError(ValueError):
-    """The JSON document has no portable format tag."""
-
-
-def _has_portable_tag(document: str) -> bool:
-    """Read complete top-level fields without requiring the rest of the object."""
-    index = _json_space(document, 0)
-    if document[index : index + 1] != "{":
-        return False
-    index = _json_space(document, index + 1)
-    decoder = json.JSONDecoder(parse_int=str)
-    try:
-        while document[index : index + 1] == '"':
-            key, end = decoder.raw_decode(document, index)
-            index = _json_space(document, end)
-            if document[index : index + 1] != ":":
-                return False
-            value, end = decoder.raw_decode(document, _json_space(document, index + 1))
-            if key == "format" and value == _FORMAT:
-                return True
-            index = _json_space(document, end)
-            if document[index : index + 1] != ",":
-                return False
-            index = _json_space(document, index + 1)
-    except (ValueError, RecursionError):
-        return False
-    return False
-
-
-def _portable_record_candidate(data: bytes) -> dict[str, Any] | None:
-    """Recognize a top-level format tag even when strict decoding rejects it."""
-    if _FORMAT.encode("ascii") not in data and b"\\u" not in data:
-        return None
-    try:
-        document = decode_utf8(data)
-    except UnicodeDecodeError:
-        return None
-    try:
-        value = record_loads(document)
-    except RecursionError as error:
-        if _has_portable_tag(document):
-            raise ValueError("portable JSON is nested too deeply") from error
-        return None
-    except ValueError:
-        if _has_portable_tag(document):
-            raise
-        return None
-    if not isinstance(value, dict) or value.get("format") != _FORMAT:
-        return None
-    _check_portable_fields(value)
-    if not isinstance(value["language"], str):
-        raise ValueError("language must be a string")
-    if not isinstance(value["source"], str):
-        raise ValueError("source must be a string")
-    if value["kind"] not in ("text", "png", "gzip", "template"):
-        raise ValueError("unknown source kind")
-    return value
-
-
-def _portable_bom_error(label: str) -> ProgramError:
-    return with_hint(
-        ProgramError(f"{label}: portable JSON starts with a UTF-8 BOM"),
-        "remove the UTF-8 BOM from the portable JSON and retry",
-    )
-
-
-def _portable_file_record(data: bytes, label: str) -> dict[str, Any] | None:
-    """Detect a portable file before passing its bytes to a native loader."""
-    start = 0
-    while data.startswith(BOM_UTF8, start):
-        start += len(BOM_UTF8)
-    document = data[start:]
-    if not document.lstrip().startswith(b"{"):
-        return None
-    try:
-        record = _portable_record_candidate(document)
-    except ValueError as error:
-        if start:
-            raise _portable_bom_error(label) from error
-        raise ProgramError(f"{label}: invalid portable program: {error}") from error
-    if record is not None and start:
-        raise _portable_bom_error(label)
-    return record
-
-
-def _check_portable_fields(value: dict[str, Any]) -> None:
-    """Validate the envelope before interpreting its language or source."""
-    fields = {"format", "version", "language", "settings", "kind", "source"}
-    kind = value.get("kind")
-    if kind == "gzip":
-        fields.add("limits")
-    if kind == "png" and "scale" in value:
-        fields.add("scale")
-    if kind == "template":
-        fields |= {"char", "setters", "spans"}
-        if "generation_width" in value:
-            fields.add("generation_width")
-    elif "input_arity" in value:
-        fields.add("input_arity")
-    error_type = (
-        ValueError if value.get("format") == _FORMAT else _MissingPortableEnvelopeError
-    )
-    if set(value) != fields:
-        raise error_type("unexpected or missing fields")
-    if (
-        value["format"] != _FORMAT
-        or type(value["version"]) is not int
-        or value["version"] != 1
-    ):
-        raise error_type("unsupported program format or version")
-
-
-class _ArtifactLanguageMismatchError(ValueError):
-    def __init__(self, requested: str, owner: str, *, is_template: bool) -> None:
-        super().__init__(
-            f"program language must be {display_label(requested)}"
-            f"; artifact records {display_label(owner)}"
-        )
-        self.owner = owner
-        self.is_template = is_template
 
 
 def _terminated_text(
@@ -434,7 +306,9 @@ def to_json(
         else:
             document.update(kind="text", source=str(body))
     try:
-        check_record_utf8(document)
+        # The check ``from_json`` makes: a lone surrogate dumped as a
+        # ``\ud800`` escape, which it then refused.
+        record_dumps(document, ensure_ascii=False).encode("utf-8")
     except UnicodeEncodeError as error:
         raise ProgramError(f"program is not valid UTF-8 text: {error}") from error
     return record_dumps(document, sort_keys=True)
@@ -490,14 +364,12 @@ def _load_png(
     catalog: Catalog,
 ) -> ProgramArtifact[Raster]:
     """Restore a ``png`` document's raster."""
-    from esolangs.operations.source import positive_metadata_field, read_png_source
+    from esolangs.operations.source import positive_metadata_field, read_png_metadata
 
     arity = positive_metadata_field(value, "input_arity")
     scale = positive_metadata_field(value, "scale")
     data = base64.b64decode(value["source"], validate=True)
-    scan, (png_settings, png_scale, png_arity) = read_png_source(
-        name, data, catalog=catalog
-    )
+    png_settings, png_scale, png_arity = read_png_metadata(name, data, catalog=catalog)
     settings = _decode_settings(value["settings"], name, catalog=catalog)
     # Native writers use null for settings and scale they do not supply.
     if png_settings is not None and png_settings != settings:
@@ -512,11 +384,7 @@ def _load_png(
         raise ValueError("conflicting PNG and document input_arity")
     dialect_options(name, settings, catalog=catalog)
     return ProgramArtifact(
-        Raster._from_png(scan),  # noqa: SLF001 - reuse the validated chunk scan
-        name,
-        settings=settings,
-        scale=scale,
-        input_arity=arity,
+        Raster.from_png(data), name, settings=settings, scale=scale, input_arity=arity
     )
 
 
@@ -655,19 +523,30 @@ def from_json(
     try:
         value = record_loads(document)
         if not isinstance(value, dict):
-            raise _MissingPortableEnvelopeError("document must be an object")
-        _check_portable_fields(value)
-        kind = value["kind"]
-        origin = value["language"]
-        owner = (
-            resolve_origin(origin, catalog=catalog) if isinstance(origin, str) else None
-        )
-        if owner is None:
+            raise ValueError("document must be an object")
+        fields = {"format", "version", "language", "settings", "kind", "source"}
+        kind = value.get("kind")
+        if kind == "gzip":
+            fields.add("limits")
+        if kind == "png" and "scale" in value:
+            fields.add("scale")
+        if kind == "template":
+            fields |= {"char", "setters", "spans"}
+            if "generation_width" in value:
+                fields.add("generation_width")
+        elif "input_arity" in value:
+            fields.add("input_arity")
+        if set(value) != fields:
+            raise ValueError("unexpected or missing fields")
+        if (
+            value["format"] != _FORMAT
+            or type(value["version"]) is not int
+            or value["version"] != 1
+        ):
+            raise ValueError("unsupported program format or version")
+        owner = value["language"]
+        if not isinstance(owner, str) or resolve_origin(owner, catalog=catalog) != name:
             raise ValueError(f"program language must be {display_label(name)}")
-        if owner != name:
-            raise _ArtifactLanguageMismatchError(
-                name, owner, is_template=kind == "template"
-            )
         if not isinstance(value["source"], str):
             raise ValueError("source must be a string")
         # Strict UTF-8 everywhere, as a program file is read: a JSON

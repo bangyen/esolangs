@@ -2,50 +2,18 @@
 
 import json
 import os
-import shlex
 import subprocess
 import sys
 from dataclasses import asdict
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 import esolangs
-from tests.support.cli_support import _failure, call_both, call_main
+from tests.support.cli_support import call_both, call_main
 from tests.support.generator_support import evaluate_generated
 from tests.support.pick import first, languages, one_where
 from tests.support.reference import REFERENCE
-
-
-@pytest.mark.parametrize("portable", [False, True])
-def test_run_suggests_a_runnable_command_when_operands_are_swapped(
-    tmp_path: Path, monkeypatch, capsys, *, portable: bool
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    path = "--first 'draft'.bf"
-    source = esolangs.to_json(REFERENCE, "+.") if portable else "+."
-    Path(path).write_text(source, encoding="utf-8")
-    flags = ["--artifact"] if portable else []
-    with monkeypatch.context() as probe:
-        probe.setattr(
-            "esolangs.cli.run._read_program",
-            lambda *_a, **_k: pytest.fail("read source"),
-        )
-        output, error = _failure(
-            ["run", "--max-steps", "5", *flags, "--", path, REFERENCE], capsys
-        )
-    assert output == ""
-    assert "the language comes before the program file" in error
-    retry = shlex.split(error.split(" Try ", 1)[1])
-    assert retry == ["esolangs", "run", *flags, "--max-steps=5", REFERENCE, "--", path]
-    assert call_main(retry[1:], capsys) == "\x01"
-
-
-def test_run_swapped_stdin_suggests_a_file_for_a_language_that_reads_input(capsys):
-    _out, error = _failure(["run", "--artifact", "-", REFERENCE], capsys)
-    assert "Save the program as program.json so stdin can carry its input" in error
-    assert f"Try esolangs run --artifact {REFERENCE} program.json" in error
 
 
 # 5.2s over 33 tests: drives the CLI as a subprocess.
@@ -113,7 +81,7 @@ class TestJsonOutput:
             shape = "template" if facts.parameterized else facts.input_shape
             want = {key: getattr(facts, key) for key in row} | {"input_shape": shape}
             assert row == json.loads(json.dumps(want))  # a tuple prints as a list
-            assert {"id", "boolean_generator", "parameterized", "examples"} <= set(row)
+            assert {"boolean_generator", "parameterized", "examples"} <= set(row)
 
     def test_list_json_agrees_with_the_marker_column(
         self, capsys: pytest.CaptureFixture[str]

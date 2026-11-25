@@ -39,13 +39,11 @@ sys.path.append(str(REPO_ROOT))  # for the sibling checks.generator_sizes
 
 from benchmark import evidence_session, measure  # noqa: E402
 from docs.evidence import construction_boundaries  # noqa: E402
-from docs.fragments import FRAGMENT  # noqa: E402
 
 import esolangs  # noqa: E402
 from checks import generator_sizes  # noqa: E402
 from esolangs.registry import LANGUAGES  # noqa: E402
 from esolangs.registry._certification import load as load_certification  # noqa: E402
-from esolangs.runtime._files import destination_path, reserve_staged, write_staged  # noqa: E402
 
 
 def benchmark_tables() -> tuple[str, ...]:
@@ -105,47 +103,16 @@ def control_tables(name: str) -> tuple[str, ...]:
     return custom or TABLES
 
 
-def _measure_checked(
-    name: str,
-    table: str,
-    *,
-    repeat: int,
-    row: int,
-    all_rows: bool = False,
-    sample_rows: tuple[int, ...] | None = None,
-) -> dict[str, Any]:
-    record = measure(
-        name,
-        table,
-        repeat=repeat,
-        row=row,
-        step_cap=STEP_CAP,
-        all_rows=all_rows,
-        sample_rows=sample_rows,
-    )
-    for result in record.get("executions", [record]):
-        if result["matches"] is not True:
-            failed_row = result.get("row")
-            raise ValueError(
-                f"{record['language']} [{record['truth_table']}] row {failed_row}: "
-                f"{result['execution_status']}, expected {result['expected_answer']}, "
-                f"got {result['actual_answer']}; reproduce with: uv run python "
-                f"scripts/benchmark.py {shlex.quote(record['language'])} "
-                f"{record['truth_table']} --row {failed_row} "
-                f"--step-cap {STEP_CAP} --repeat {repeat}"
-            )
-    return record
-
-
 def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
     """Return one full benchmark record per (language, table), timings and all."""
     with evidence_session():
         records = [
-            _measure_checked(
+            measure(
                 name,
                 table,
                 repeat=repeat,
                 row=(1 << (len(table).bit_length() - 1)) - 1,
+                step_cap=STEP_CAP,
                 all_rows=True,
             )
             # An interpreter-only language has no generated size to record.
@@ -161,17 +128,36 @@ def sweep(*, repeat: int = 1) -> list[dict[str, Any]]:
         # promises to emit once -- the timings snapshot rejects those.
         measured = {(record["language"], record["truth_table"]) for record in records}
         records.extend(
-            _measure_checked(
+            measure(
                 name,
                 table,
                 repeat=repeat,
                 row=len(table) - 1,
+                step_cap=STEP_CAP,
                 sample_rows=(0, 1, len(table) // 2, len(table) - 1),
             )
             for name in BOUNDARIES
             for table in boundary_tables(name)
             if (name, table) not in measured
         )
+    for record in records:
+        failed = next(
+            (
+                row
+                for row in record.get("executions", [record])
+                if row["matches"] is not True
+            ),
+            None,
+        )
+        if failed is not None:
+            raise ValueError(
+                f"{record['language']} [{record['truth_table']}] "
+                f"row {failed.get('row')}: "
+                f"{failed['execution_status']}, expected {failed['expected_answer']}, "
+                f"got {failed['actual_answer']}; reproduce with: uv run python "
+                f"scripts/benchmark.py {shlex.quote(record['language'])} "
+                f"{record['truth_table']} --row {failed.get('row')}"
+            )
     return records
 
 
@@ -225,11 +211,13 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     if old.get("schema") != new["schema"]:
         return [f"baseline schema {old.get('schema')!r}, expected {SCHEMA}"]
     was, is_ = old.get("records", {}), new["records"]
+    # The record keys are the corpus: a changed table set would otherwise read
+    # as a diff in every language.
     moved = sorted(
         name for name in set(was) & set(is_) if set(was[name]) != set(is_[name])
     )
     if moved:
-        lines.append(f"baseline corpus changed for {', '.join(moved)}; re-record it")
+        return [f"baseline corpus changed for {', '.join(moved)}; re-record it"]
     for name in sorted(set(was) | set(is_)):
         if name not in was:
             lines.append(f"{name}: not in the baseline (new language?)")
@@ -237,8 +225,12 @@ def differences(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
         if name not in is_:
             lines.append(f"{name}: in the baseline but not in the registry")
             continue
-        for table in sorted(was[name].keys() & is_[name].keys()):
-            before, after = was[name][table], is_[name][table]
+        for table in sorted(set(was[name]) | set(is_[name])):
+            # Both sides are read with .get: a record missing a table has to
+            # report as a difference, not raise -- a gate that crashes on an
+            # incomplete sweep says nothing about the sweep it did finish.
+            before = was[name].get(table, {})
+            after = is_[name].get(table, {})
             lines.extend(
                 f"{name} [{table}] {field}: {before.get(field)} -> {after.get(field)}"
                 for field in sorted(set(before) | set(after))
@@ -260,42 +252,20 @@ def main(argv: list[str] | None = None) -> int:
         "--repeat", type=int, default=1, help="timing samples per record"
     )
     args = parser.parse_args(argv)
-    if args.repeat < 1:
-        parser.error("--repeat must be positive")
-
-    target = None
-    if args.timings is not None:
-        try:
-            resolved = args.timings.resolve()
-            packages = generator_sizes.PACKAGES
-            fragments = (packages / lang.id / FRAGMENT for lang in LANGUAGES.values())
-            if any(resolved == fragment.resolve() for fragment in fragments):
-                raise ValueError("timing output would replace a language baseline")
-            args.timings.parent.mkdir(parents=True, exist_ok=True)
-            target = destination_path(resolved)
-            # Clean up the preflight file before fingerprinting the checkout.
-            with reserve_staged(target):
-                pass
-        except (OSError, ValueError, RuntimeError) as error:
-            parser.error(f"--timings {args.timings}: {error}")
 
     records = sweep(repeat=args.repeat)
-    if target is not None:
-        try:
-            payload = json.dumps(records, indent=1, sort_keys=True) + "\n"
-            write_staged(target, (payload.encode("utf-8"),))
-        except (OSError, ValueError) as error:
-            parser.error(f"--timings {args.timings}: {error}")
+    if args.timings is not None:
+        args.timings.parent.mkdir(parents=True, exist_ok=True)
+        args.timings.write_text(
+            json.dumps(records, indent=1, sort_keys=True) + "\n", encoding="utf-8"
+        )
         print(f"wrote {args.timings}")
     measured = baseline(records)
     if args.update:
         count = sum(len(rows) for rows in measured["records"].values())
-        try:
-            changed = generator_sizes.write_fragments(
-                generator_sizes.PACKAGES, LANGUAGES.values(), measured["records"]
-            )
-        except (OSError, ValueError) as error:
-            parser.exit(1, f"could not update generator baselines: {error}\n")
+        changed = generator_sizes.write_fragments(
+            generator_sizes.PACKAGES, LANGUAGES.values(), measured["records"]
+        )
         if changed:
             print(
                 f"wrote the package-fragment baseline: {count} generator measurements"

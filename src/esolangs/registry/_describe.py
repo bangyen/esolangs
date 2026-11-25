@@ -72,7 +72,6 @@ class _CatalogFacts(TypedDict):
     """Fields shared by ``describe`` and ``list --json --details``."""
 
     name: str
-    id: str
     generator_scaling: str | None
     well_known: bool
     source_kind: SourceForm
@@ -85,7 +84,6 @@ class _CatalogFacts(TypedDict):
     boolean_generator: bool
     parameterized: bool
     generator_max_inputs: int | None
-    generator_first_restricted_arity: int | None
     generator_restrictions: str | None
     examples: tuple[str, ...]
 
@@ -132,7 +130,6 @@ def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFa
         )
     return {
         "name": lang.name,
-        "id": lang.id,
         "generator_scaling": _SCALING.get(lang.id) if packaged else None,
         "well_known": _well_known(lang),
         "source_kind": lang.runtime.source_kind.value,
@@ -145,9 +142,6 @@ def _catalog_facts(lang: LanguageDeclaration, *, catalog: Catalog) -> _CatalogFa
         "boolean_generator": backend is not None,
         "parameterized": lang.parameterized,
         "generator_max_inputs": backend.max_inputs if backend is not None else None,
-        "generator_first_restricted_arity": backend.first_restricted_arity
-        if backend is not None
-        else None,
         "generator_restrictions": (backend.restrictions or None)
         if backend is not None
         else None,
@@ -166,9 +160,8 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
           docstring), ``dialect_settings`` (runtime defaults and choices).
         - Generation: ``boolean_generator``; ``generator_max_inputs``, an
           explicit arity cap (None: none declared, or no generator);
-          ``generator_first_restricted_arity``, where table-dependent
-          limits may start (None: none declared); ``generator_restrictions``,
-          their explanation; ``generator_shape``, the growth class ``"tree"``,
+          ``generator_restrictions``, further table-dependent budgets (None:
+          none); ``generator_shape``, the construction growth class ``"tree"``,
           ``"reducing"`` or ``"lookup"`` (None without a generator);
           ``parameterized``, a template filled by :func:`instantiate`
           (``reads_input`` false).
@@ -214,6 +207,7 @@ def describe(language: str, *, catalog: "Catalog | None" = None) -> _LanguageInf
         **_catalog_facts(lang, catalog=catalog),
         dialect_settings=dialect_choices(name, catalog=catalog),
         spec=_spec(name, catalog=catalog),
+        id=lang.id,
         reads_input=reads_input,
         input_encoding=contract.alphabet if reads_input else None,
         answer_pattern=answer_pattern_text(name, contract.answer_pattern),

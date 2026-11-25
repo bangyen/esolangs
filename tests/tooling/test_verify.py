@@ -4,13 +4,11 @@ import errno
 import io
 import os
 import re
-import signal
 import subprocess
 import sys
 import threading
 import time
 import tomllib
-from contextlib import suppress
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -21,7 +19,7 @@ import pytest
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
-from tests.tooling.receipt_support import _checkout, check_receipt_controls
+from tests.tooling.receipt_support import check_receipt_controls
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -34,70 +32,6 @@ load_script = partial(load, SCRIPT)
 
 def load_scope() -> Any:
     return load(SCOPE_SCRIPT)
-
-
-@pytest.mark.skipif(os.name != "posix", reason="POSIX pre-push hook")
-def test_pre_push_checks_the_actual_commit_in_a_clean_checkout(tmp_path) -> None:
-    checkout = _checkout(tmp_path / "checkout")
-
-    def git(*args):
-        return subprocess.check_output(
-            ["git", *args], cwd=checkout, text=True, timeout=5
-        ).strip()
-
-    old = git("rev-parse", "HEAD")
-    gate = checkout / "scripts/verify/gate.py"
-    gate.parent.mkdir(parents=True)
-    gate.write_text(
-        "import os\nfrom pathlib import Path\nprint('gate ran')\n"
-        "if os.environ.get('CHANGE_INPUT'):\n"
-        "    Path('program.py').write_text('changed during checks')\n",
-        encoding="utf-8",
-    )
-    git("add", "scripts/verify/gate.py")
-    git(
-        "-c",
-        "user.name=Hook Test",
-        "-c",
-        "user.email=test@example.com",
-        "commit",
-        "-qm",
-        "Install gate probe",
-    )
-    head = git("rev-parse", "HEAD")
-
-    def push(commit, **env):
-        ref = f"refs/heads/main {commit} refs/heads/main {old}\n"
-        return subprocess.run(
-            ["sh", str(REPO_ROOT / ".githooks/pre-push")],
-            input=ref,
-            cwd=checkout,
-            env={**os.environ, "PY": sys.executable, **env},
-            text=True,
-            capture_output=True,
-            timeout=5,
-            check=False,
-        )
-
-    wrong = push(old)
-    assert wrong.returncode == 1
-    assert f"but HEAD is {head}" in wrong.stderr
-    assert "gate ran" not in wrong.stdout
-    untracked = checkout / "new.py"
-    untracked.touch()
-    dirty = push(head)
-    assert dirty.returncode == 1
-    assert "clean checkout" in dirty.stderr
-    assert "gate ran" not in dirty.stdout
-    assert push("0" * len(head)).returncode == 0
-    untracked.unlink()
-    clean = push(head)
-    assert clean.returncode == 0
-    assert "gate ran" in clean.stdout
-    changed = push(head, CHANGE_INPUT="1")
-    assert changed.returncode == 1
-    assert "gate ran" in changed.stdout
-    assert "clean checkout" in changed.stderr
 
 
 class TestPytestScopeCollects:
@@ -619,64 +553,6 @@ def test_companion_checks_share_one_serial_lane(monkeypatch) -> None:
     assert {name for name, _ in timings} == {"pytest", "first", "second"}
 
 
-@pytest.mark.medium
-@pytest.mark.skipif(os.name != "posix", reason="deliver signals to the gate PID")
-@pytest.mark.parametrize("signum", [signal.SIGINT, signal.SIGTERM])
-def test_interrupt_reaps_parallel_checks_before_shutdown(tmp_path, signum) -> None:
-    checkout = _checkout(tmp_path / "checkout")
-    driver = f"""
-import sys
-from pathlib import Path
-sys.path.insert(0, {str(SCRIPT.parents[1])!r})
-from verify import gate
-gate.ROOT = Path({str(checkout)!r})
-markers = Path({str(tmp_path)!r})
-child = '''import os, sys, time
-from pathlib import Path
-Path(sys.argv[1]).write_text(str(os.getpid()))
-time.sleep(60)
-'''
-steps = [
-    (name, [sys.executable, "-c", child, str(markers / name)], {{}})
-    for name in ("pytest", "shadow", "queued")
-]
-def main():
-    gate._run_steps(steps, stream=False)
-    return 0
-
-gate.main = main
-sys.exit(gate.cli())
-"""
-    markers = [tmp_path / name for name in ("pytest", "shadow", "queued")]
-    with subprocess.Popen(
-        [sys.executable, "-c", driver],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        start_new_session=True,
-    ) as gate:
-        try:
-            deadline = time.monotonic() + 3
-            while time.monotonic() < deadline and not all(
-                marker.exists() and marker.read_text() for marker in markers[:2]
-            ):
-                time.sleep(0.01)
-            pids = [int(marker.read_text()) for marker in markers[:2]]
-            gate.send_signal(signum)
-            output, _ = gate.communicate(timeout=2)
-            assert gate.returncode == 128 + signum, output
-            assert not markers[-1].exists()
-            for pid in pids:
-                with pytest.raises(ProcessLookupError):
-                    os.kill(pid, 0)
-        finally:
-            if gate.poll() is None:
-                gate.kill()
-            for marker in markers:
-                if marker.exists() and (pid := marker.read_text()):
-                    with suppress(ProcessLookupError):
-                        os.killpg(int(pid), signal.SIGKILL)
-
-
 @pytest.mark.parametrize(
     ("stream", "shadow"), [(False, False), (True, False), (False, True)]
 )
@@ -1101,18 +977,6 @@ def test_colocated_test_changes_run_directly_and_helpers_widen(
     verify = colocated_scope
     test = "src/esolangs/languages/target/tests/test_target.py"
     assert verify._pytest_scope([test]) == [test]
-    consumer = "src/esolangs/languages/target/tests/test_boolean_target.py"
-    (verify.ROOT / consumer).write_text("from . import test_target\n")
-    assert verify._pytest_scope([test]) == [consumer, test]
-    downstream = "tests/generators/test_contracts.py"
-    (verify.ROOT / downstream).write_text(
-        "from esolangs.languages.target.tests import test_boolean_target\n"
-    )
-    assert verify._pytest_scope([test]) == [consumer, test, downstream]
-    (verify.ROOT / "tests/generators/helper.py").write_text(
-        "from . import test_contracts\n"
-    )
-    assert verify._pytest_scope([test]) == verify.WHOLE_SUITE
     assert (
         verify._pytest_scope(["src/esolangs/languages/target/tests/__init__.py"])
         == verify.WHOLE_SUITE

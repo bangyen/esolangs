@@ -4,27 +4,21 @@ from __future__ import annotations
 
 import argparse
 import pathlib
-import sys
 from collections.abc import Iterator
 from itertools import zip_longest
 from tempfile import TemporaryDirectory
 
-# Keep direct script invocation able to find the sibling docs package.
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-
-from docs.writing import publish_generated
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
-from esolangs.exceptions import ProgramError
-from esolangs.generation.examples import BOOLEAN_EXAMPLES
-from esolangs.operations.source import read_png_source
+from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
 from esolangs.portable import to_file
-from esolangs.raster import Raster, png
-from esolangs.registry import get_catalog
+from esolangs.raster import Raster
+from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.runtime._program import Program
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
+_BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 LANGUAGES_DIR = ROOT / "src" / "esolangs" / "languages"
 
 
@@ -32,6 +26,45 @@ def boolean_programs() -> Iterator[tuple[str, ProgramArtifact[Program]]]:
     """Yield ``(stem, program)`` for every boolean example."""
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         yield stem, example.build(balance=True)
+
+
+def _display_name(stem: str) -> str:
+    """Return the registry display name for an example's filename stem."""
+    return _BY_ID.get(canonical_id(stem.replace("-", " ")), stem)
+
+
+def _logical_row(stem: str, example: BooleanExample) -> str:
+    """Return the input row as plain bits, however the language spells it.
+
+    The Input column shows the *encoded* stdin, which made this table
+    unusable for judging an example programmatically: a reader had to work
+    back from encoded characters or a decimal row index to plain bits.
+    A template language already records its bits; a reading one does not.
+    Recover its row by encoding each candidate and keeping the match.
+
+    That search is also a check.  There are only ``2**n`` candidates and
+    exactly one can match, so a stored input that no row encodes to is a
+    disagreement between the committed example and ``encode_inputs`` -- and
+    it is reported here rather than written as a confident wrong row.
+    """
+    import esolangs
+
+    if example.fill is not None:
+        return "".join(str(bit) for bit in example.bits)
+    inputs = list(example.inputs)
+    if not inputs:
+        return "(none)"
+    name = _display_name(stem)
+    arity = len(example.table).bit_length() - 1
+    for row in range(2**arity):
+        candidate = [(row >> (arity - 1 - i)) & 1 for i in range(arity)]
+        encoded = esolangs.encode_inputs(name, candidate).strip().split("\n")
+        if encoded == inputs:
+            return "".join(str(b) for b in candidate)
+    raise AssertionError(
+        f"{stem}: no input row encodes to {inputs!r}; the committed example "
+        f"and encode_inputs disagree"
+    )
 
 
 def boolean_manifest_text() -> str:
@@ -44,7 +77,6 @@ def boolean_manifest_text() -> str:
     only thing an example is for.  Generated from the same entries the
     programs are, so the two cannot disagree.
     """
-    catalog = get_catalog()
     rows = [
         "# What each boolean example computes",
         "",
@@ -67,27 +99,25 @@ def boolean_manifest_text() -> str:
         "| Program | Language | Table | Row | Input | Expected output |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
-    for _stem, example in sorted(BOOLEAN_EXAMPLES.items()):
-        row = "".join(str(bit) for bit in example.bits)
+    for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         if example.fill is not None:
-            given = "embedded " + row
+            given = "embedded " + "".join(str(b) for b in example.bits)
         else:
             given = (
                 " ".join(
-                    value
-                    if value.isprintable() and value == value.strip()
-                    else repr(value)
+                    value if value.isprintable() else repr(value)
                     for value in example.inputs
                 )
                 or "(none)"
             )
+        row = _logical_row(stem, example)
         if not example.expected_compared:
             expected = "not the answer -- see note"
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
             f"| `{example.language}/{example.filename}` | "
-            f"{catalog.resolve(example.language)} | `{example.table}` | "
+            f"{_display_name(stem)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )
     if any(e.note for e in BOOLEAN_EXAMPLES.values()):
@@ -96,6 +126,24 @@ def boolean_manifest_text() -> str:
             if example.note:
                 rows.append(f"- **{stem}** -- {example.note}")
     return "\n".join(rows) + "\n"
+
+
+def write_boolean_manifest() -> None:
+    """Write the manifest to disk.
+
+    Split from the text so a test can compare the committed file against
+    what this would produce without regenerating every program to find
+    out.  Nothing checked the manifest at all until then, so a note added
+    to a language left the committed table describing the one before it.
+    """
+    path = LANGUAGES_DIR / "EXAMPLES.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = boolean_manifest_text()
+    if path.exists() and path.read_text(encoding="utf-8") == text:
+        print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
+        return
+    path.write_text(text, encoding="utf-8")
+    print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
 
 
 SETS = {
@@ -108,46 +156,32 @@ def _same_program(
 ) -> bool:
     """Whether the file holding ``existing`` already is ``generated``.
 
-    Compare PNG pixels and source metadata independently of zlib encoding.
+    A raster compares by pixels, not bytes: the PNG encoder's zlib differs
+    between Pillow builds, so a byte comparison rewrote every committed
+    image on any machine but the one that last wrote it, with nothing in it
+    changed.  The pixels are the program, which is what the tests compare.
     """
     if existing is None:
         return False
     generated = artifact.source
     if isinstance(generated, Raster):
-        try:
-            scan, _ = read_png_source(
-                artifact.language, existing, catalog=get_catalog()
-            )
-            return (
-                scan.metadata == png.read_metadata(encoded)
-                and Raster._from_png(scan) == generated  # noqa: SLF001
-            )
-        except ProgramError:
-            return False
+        return Raster.from_png(existing) == generated
     if isinstance(generated, CompressedText):
-        try:
-            saved = CompressedText(existing)
-        except ProgramError:
-            return False
+        saved = CompressedText(existing)
         return all(a == b for a, b in zip_longest(saved.chunks(), generated.chunks()))
     return existing == encoded
 
 
 def write_set(name: str) -> None:
-    """Stage the whole example set before replacing any published file."""
-    build = SETS[name]
-    catalog = get_catalog()
-    LANGUAGES_DIR.mkdir(parents=True, exist_ok=True)
-    with TemporaryDirectory(dir=LANGUAGES_DIR, prefix=".examples-") as temporary:
-        staging = pathlib.Path(temporary)
-        pending: list[pathlib.Path] = []
-        for stem, generated in build():
-            language = catalog.languages[generated.language]
-            relative = pathlib.Path(language.id) / f"{stem}{language.source_suffix}"
-            path = LANGUAGES_DIR / relative
-            existing = path.read_bytes() if path.exists() else None
-            staged = staging / relative
-            staged.parent.mkdir(parents=True, exist_ok=True)
+    """Write one example directory from its generators, reporting each file."""
+    for stem, generated in SETS[name]():
+        directory = LANGUAGES_DIR / canonical_id(stem.replace("-", " "))
+        directory.mkdir(parents=True, exist_ok=True)
+        suffix = LANGUAGES[generated.language].source_suffix
+        path = directory / f"{stem}{suffix}"
+        existing = path.read_bytes() if path.exists() else None
+        with TemporaryDirectory(dir=directory) as temporary:
+            staged = pathlib.Path(temporary) / path.name
             compressed = isinstance(generated.source, CompressedText)
             to_file(
                 generated.language,
@@ -156,23 +190,13 @@ def write_set(name: str) -> None:
                 gzip=compressed,
                 normalize=not compressed,
             )
-            if _same_program(existing, staged.read_bytes(), generated):
-                staged.unlink()
-            pending.append(relative)
-        if name == "boolean":
-            relative = pathlib.Path("EXAMPLES.md")
-            path = LANGUAGES_DIR / relative
-            contents = boolean_manifest_text().encode("utf-8")
-            if not path.exists() or path.read_bytes() != contents:
-                (staging / relative).write_bytes(contents)
-            pending.append(relative)
-
-        published = publish_generated(staging, LANGUAGES_DIR, paths=pending)
-        for relative in dict.fromkeys(pending):
-            if LANGUAGES_DIR / relative in published:
-                print(f"wrote     {relative}")
+            if not _same_program(existing, staged.read_bytes(), generated):
+                staged.replace(path)
+                print(f"wrote     {path.relative_to(LANGUAGES_DIR)}")
             else:
-                print(f"unchanged {relative}")
+                print(f"unchanged {path.relative_to(LANGUAGES_DIR)}")
+    if name == "boolean":
+        write_boolean_manifest()
 
 
 def examples_main(argv: list[str] | None = None) -> int:

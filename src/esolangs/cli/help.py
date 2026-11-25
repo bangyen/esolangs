@@ -65,13 +65,14 @@ USAGE = """usage: esolangs <command> [...]
 commands:
   Generator-made (the API invents source from a truth table):
     generate [--width [N] | --balance] [--bits BITS] [--scale N]
-             [--settings JSON] [--set KEY=VALUE] [--plain | --gzip | --artifact]
-             [--from-template FILE] <language> [<truth-table>]
-                                generate a program or fill a saved template
+             [--settings JSON] [--set KEY=VALUE] [--plain | --gzip]
+             <language> <truth-table>
+                                print a program computing a truth table
+                                (--width wraps it; --bits fills a template)
   Caller-supplied (you supply the program):
     run [--execution-timeout S] [--total-timeout S] [--preparation-timeout S]
         [--isolated] [--max-output N] [--max-memory BYTES] [--max-steps N]
-        [--seed N] [--scale N] [--settings JSON] [--set KEY=VALUE] [--artifact]
+        [--seed N] [--scale N] [--settings JSON] [--set KEY=VALUE]
         <language> <file>
                                 run a program through its interpreter
   Contract adapters (your data in, checked data out):
@@ -82,7 +83,7 @@ commands:
   Catalog:
     list [--details] [--json] [--generator | --interpreter-only]
          [--grep REGEX] [--source-kind KIND] [--input-shape SHAPE]
-         [--answer-mode MODE] [--inputs N [--all-tables]]
+         [--answer-mode MODE] [--inputs N]
                                 list languages matching their capabilities
     describe [--json] [--spec] <language>
                                 print how that language reads its input and
@@ -132,7 +133,7 @@ example:
     "list": """usage: esolangs list [--details] [--json]
                      [--generator | --interpreter-only] [--grep REGEX]
                      [--source-kind KIND] [--input-shape SHAPE]
-                     [--answer-mode MODE] [--inputs N [--all-tables]]
+                     [--answer-mode MODE] [--inputs N]
 
 List matching languages, one per line, well-known first (`--json` keeps
 the Python API's name order). Filters combine with AND; filter on
@@ -159,10 +160,8 @@ options:
               (generated programs embed their input bits in source)
   --answer-mode MODE
               output, dump, or termination
-  --inputs N  generators whose declared cap permits N inputs (N >= 1);
+  --inputs N  generators whose declared cap permits N inputs (N >= 0);
               table-dependent restrictions can still refuse generation
-  --all-tables
-              with --inputs, require support for every table at that arity
   --grep REGEX
               select languages whose spec (`describe --spec`) matches,
               case-insensitively
@@ -175,20 +174,15 @@ examples:
 """,
     "generate": """usage: esolangs generate [--width [N] | --balance] [--bits BITS]
                          [--scale N] [--settings JSON] [--set KEY=VALUE]
-                         [--plain | --gzip | --artifact] <language> <truth-table>
-       esolangs generate --from-template FILE --bits BITS [--width [N]]
-                         [--settings JSON] [--set KEY=VALUE]
-                         [--plain | --gzip | --artifact] <language>
+                         [--plain | --gzip] <language> <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
 The table is a binary string of length 2**n indexed by the inputs, most
 significant first, so its length sets the input count: 0110 is two-input
-XOR, 10010110 is three-input.  Use - for <truth-table> to read it from
-stdin as UTF-8 through EOF, ignoring surrounding whitespace.
-
-`esolangs describe <language>` shows how the program takes inputs and
-prints the result.
+XOR, 10010110 is three-input.  How the program takes its inputs and
+prints the result depends on the language; `esolangs describe <language>`
+says (one input per line, adjacent bit characters, and so on).
 
 Some generators embed the inputs in source. They return a *template* with
 one placeholder run per input, as long as its replacement. Fill the template
@@ -204,22 +198,17 @@ options:
                per input, and print the runnable program.  Substituting them
                by hand does not work: each language spells a set-input its
                own way, and a 0/1 in the slot is a different program.
-  --from-template FILE
-               fill a saved portable JSON template using --bits. Use - to
-               read the template from stdin. Supply a language and omit
-               the truth table. Use --width to rewrap where supported.
   --scale N    enlarge raster pixels by N after layout (default 1).
   -s, --settings JSON
                dialect overrides; describe lists supported settings.
   --set KEY=VALUE
                one dialect override without JSON, repeatable and applied
                after --settings. The last value for each key wins.
-  --plain      export compressed text as ordinary source text. By default,
-               compressed text is written as gzip and rasters as PNG.
-  --gzip       export any text program as gzip.
+  --plain      export compressed text as ordinary source text.  Without it,
+               compressed text is written as gzip.  A raster is always PNG
+               -- binary bytes, so redirect it to a file.
+  --gzip       export any text program as gzip; excludes --plain.
                Raster programs retain PNG and reject this option.
-  --artifact   export portable JSON with dialect settings and applicable
-               input metadata. Pass --artifact to run that file.
   --balance    pick the layout fitting the smallest on-screen square: text
                minimizes max(columns, 2 * rows) (a cell is about twice as
                tall as wide), a raster max(width, height). Ties prefer shorter
@@ -244,17 +233,14 @@ examples:
     "run": """usage: esolangs run [--execution-timeout S] [--total-timeout S]
                     [--preparation-timeout S] [--isolated] [--max-output N]
                     [--max-memory BYTES] [--max-steps N] [--seed N]
-                    [--scale N] [--settings JSON] [--set KEY=VALUE] [--artifact]
+                    [--scale N] [--settings JSON] [--set KEY=VALUE]
                     <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
-Use - as <program-file> to read source from stdin for interpreters that
-take no runtime input. Use ./- for a file named -.
-Interpreters with input support receive piped stdin as UTF-8 through EOF.
-If the artifact records the input arity and the language supports framed
-input, a complete row suffices even when the pipe stays open. The
-interpreter uses its own character, number, or string reads.
+The program is read from <program-file>. Interpreters with input support
+receive piped stdin as UTF-8, read through EOF. They consume it verbatim
+using the language's character, number, or string reads.
 For generated Boolean programs, `esolangs encode-inputs` spells the input
 characters, numeric tokens, or lines.
 
@@ -273,7 +259,6 @@ exit codes: 0 ran, 1 the program broke or its output cannot be encoded,
 ran out (time, steps, output, memory), 130 interrupted.
 
 options:
-  --artifact         load a runnable portable JSON artifact.
   --isolated         run in a subprocess. The default total is 30 seconds
                      plus any --execution-timeout.
   --max-output N     cap output in Unicode characters (including zero); implies

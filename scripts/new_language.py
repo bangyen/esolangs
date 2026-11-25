@@ -11,8 +11,8 @@ to add; ``tests/tooling/test_new_language.py`` runs it over the registry,
 so the list cannot drift from what the suite enforces.  Once the list is
 empty it runs the seconds-long tests ``finish`` would otherwise fail late.
 ``bounds`` measures resource maxima and their witnesses.
-``finish`` checks for missing integration points before regenerating
-committed artifacts and running the full ``verify/gate.py`` gate.
+``finish`` regenerates every committed artifact and runs the full
+``verify/gate.py`` gate.
 """
 
 from __future__ import annotations
@@ -24,8 +24,6 @@ import keyword
 import shlex
 import subprocess
 import sys
-import tempfile
-from contextlib import ExitStack, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -42,7 +40,6 @@ from docs.catalogue import load as _catalogue_load  # noqa: E402
 from docs.curation import FAME_BACKLINKS  # noqa: E402
 from docs.curation import fragment_row as _curation_fragment  # noqa: E402
 from docs.proof_status import load as _proof_status_load  # noqa: E402
-from windows_paths import windows_reserved_name  # noqa: E402
 
 CATEGORIES = (
     "grid_based",
@@ -189,21 +186,9 @@ def _readmission(name: str) -> str:
 
 def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
-    from esolangs.registry import LANGUAGES
-    from esolangs.registry._catalog import _folded_spelling
-
     if removed_ground(name):
         raise ValueError(_readmission(name))
     slug = _slug(name)
-    if windows_reserved_name(slug):
-        raise ValueError(f"{slug!r} is reserved on Windows and cannot name a package")
-    proposed = {_folded_spelling(name), _folded_spelling(slug)}
-    for owner in LANGUAGES.values():
-        for spelling in (owner.name, owner.id, *owner.aliases):
-            if _folded_spelling(spelling) in proposed:
-                raise ValueError(
-                    f"{spelling!r} is already registered to {owner.name!r}"
-                )
     package = ROOT / "src/esolangs/languages" / slug
     # JSON's string escapes also work inside the generated Python docstrings.
     escaped_name = json.dumps(name, ensure_ascii=False)[1:-1]
@@ -239,7 +224,7 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     namespace = package.parent / "__init__.py"
     if not namespace.exists():
         files[namespace] = '"""Language-owned interpreters and generators."""\n'
-    collisions = [path for path in files if path.exists() or path.is_symlink()]
+    collisions = [path for path in files if path.exists()]
     collisions += [
         path
         for path in (
@@ -247,60 +232,16 @@ def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
             ROOT / "src/esolangs/runtime" / slug,
             ROOT / "src/esolangs/generation" / slug,
         )
-        if path.exists() or path.is_symlink()
+        if path.exists()
     ]
 
     if collisions:
         joined = ", ".join(str(path.relative_to(ROOT)) for path in collisions)
         raise FileExistsError(f"refusing to overwrite {joined}")
-    _publish_scaffold(package.parent, files)
+    for path, text in files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
     return list(files)
-
-
-def _remove_empty(path: Path) -> None:
-    with suppress(OSError):
-        path.rmdir()
-
-
-def _scaffold_directory(path: Path, rollback: ExitStack) -> None:
-    if path.is_dir():
-        return
-    _scaffold_directory(path.parent, rollback)
-    try:
-        path.mkdir()
-    except FileExistsError:
-        if not path.is_dir():
-            raise
-    else:
-        rollback.callback(_remove_empty, path)
-
-
-def _remove_published(path: Path, staged: Path) -> None:
-    with suppress(FileNotFoundError, NotADirectoryError):
-        if path.samefile(staged):
-            path.unlink()
-
-
-def _publish_scaffold(parent: Path, files: dict[Path, str]) -> None:
-    """Stage all stubs and roll back only the files this call published."""
-    with ExitStack() as directories:
-        for path in files:
-            _scaffold_directory(path.parent, directories)
-        with (
-            tempfile.TemporaryDirectory(prefix=".scaffold-", dir=parent) as scratch,
-            ExitStack() as published,
-        ):
-            staged = {}
-            for index, (path, text) in enumerate(files.items()):
-                source = Path(scratch) / str(index)
-                source.write_text(text, encoding="utf-8")
-                staged[path] = source
-            for path, source in staged.items():
-                # Publish atomically and fail if a concurrent writer owns the path.
-                path.hardlink_to(source)
-                published.callback(_remove_published, path, source)
-            published.pop_all()
-        directories.pop_all()
 
 
 def _interpreter_stub(escaped_name: str) -> str:
@@ -795,12 +736,7 @@ def sources(name: str) -> list[str]:
     return found
 
 
-_BOUNDS_STEP_CAP = 2_000_000
-
-
-def bounds(
-    name: str, arities: range, *, announce: bool = False
-) -> list[tuple[int, int, int, int, str, str]]:
+def bounds(name: str, arities: range) -> list[tuple[int, int, int, int, str, str]]:
     """Return ``(n, worst steps, worst bits, size, steps' table, bits' table)``.
 
     Over the tables the formula tests use, so a stated bound that matches
@@ -816,27 +752,10 @@ def bounds(
     tables, measure = measurement.tables, measurement.measure
     rows = []
     for n in arities:
-        worst = {}
-        size = 0
-        witnesses = tables(name, n)
-        if announce:
-            row_count = sum(map(len, witnesses))
-            print(
-                f"  n={n}: {len(witnesses):,} witnesses, "
-                f"up to {row_count:,} row executions",
-                flush=True,
-            )
-        for table in witnesses:
-            program = esolangs.generate(name, table)
-            worst[table] = measure(
-                name,
-                table,
-                written=True,
-                program=program,
-                check_answers=True,
-                step_cap=_BOUNDS_STEP_CAP,
-            )
-            size = max(size, source_units(program.source))
+        worst = {t: measure(name, t, written=True) for t in tables(name, n)}
+        size = max(
+            source_units(esolangs.generate(name, t).source) for t in tables(name, n)
+        )
         steps = max(worst, key=lambda t: worst[t][0])
         bits = max(worst, key=lambda t: worst[t][1])
         # Mean program size per row: ``size`` covers 2**n rows.
@@ -875,36 +794,14 @@ def size_anchors(name: str) -> list[str]:
     return lines
 
 
-def _bounds_language(name: str, max_n: int) -> LanguageDeclaration:
-    """Check the requested arity and generator before building any witnesses."""
-    from esolangs.registry import LANGUAGES, resolve
+def _print_bounds(name: str, max_n: int) -> None:
+    """Print measured resource maxima, witnesses and size anchors."""
+    import esolangs
 
-    if max_n < 1:
-        raise ValueError("--max-n must be positive")
-    declaration = LANGUAGES[resolve(name)]
-    backend = declaration.backend
-    if backend is None:
-        raise ValueError(f"{declaration.name} has no Boolean generator")
-    backend.check_arity(declaration.name, max_n)
-    return declaration
-
-
-def _print_bounds(declaration: LanguageDeclaration, max_n: int) -> None:
-    """Print the workload, measured resource maxima, witnesses and size anchors."""
-    from esolangs.registry import SourceKind
-
-    name = declaration.name
-    print(
-        f"{name}: arities 1 through {max_n}, up to "
-        f"2**{max_n} row executions per witness at the largest arity",
-        flush=True,
-    )
     # Steps feed the ledger's Execution cell, bits its Workspace cell
     # (peak written state); chars/row stays flat for an O(T) generator.
-    rows = bounds(name, range(1, max_n + 1), announce=True)
-    units = (
-        "pixels" if declaration.runtime.source_kind is SourceKind.RASTER else "chars"
-    )
+    rows = bounds(name, range(1, max_n + 1))
+    units = "pixels" if esolangs.describe(name).source_kind == "raster" else "chars"
     print(f"n  Execution  Workspace  {units}/row  witness tables (steps, bits)")
     for n, steps, bits, per_row, by_steps, by_bits in rows:
         print(f"{n:<2} {steps:>9}  {bits:>9}  {per_row:>9}  {by_steps} {by_bits}")
@@ -919,20 +816,22 @@ def _print_bounds(declaration: LanguageDeclaration, max_n: int) -> None:
 
 
 def finish(name: str) -> int:
-    """Check readiness before regenerating committed artifacts and verifying.
+    """Regenerate every committed artifact, then run the full gate.
 
     Several minutes on a laptop: run it in the background.
     """
     gaps = check(name)
     if gaps:
         _report(name, gaps)
+        print("running the gate anyway, to list every other failure")
+    gate = _gate()
     if _curation(name).get("unassessed"):
         print(
             f"{name}: curation unassessed; before merging, replace "
             "`unassessed = true` in its language.toml with backlinks = <the "
             'wiki\'s "What links here" count>'
         )
-    return 1 if gaps else _gate()
+    return 1 if gaps else gate
 
 
 def _curation(name: str) -> dict[str, Any]:
@@ -1065,19 +964,10 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as exc:
             parser.error(f"{exc}; a new one starts with: just new-language")
     if args.command == "bounds":
-        from esolangs import ProgramError
-
         try:
-            declaration = _bounds_language(args.name, args.max_n)
-        except ValueError as exc:
-            measure.error(str(exc))
-        try:
-            _print_bounds(declaration, args.max_n)
+            _print_bounds(args.name, args.max_n)
         except NotImplementedError:
             print(f"{args.name}: implement the generator first", file=sys.stderr)
-            return 1
-        except ProgramError as exc:
-            print(exc, file=sys.stderr)
             return 1
         return 0
     if args.command == "check":
@@ -1112,7 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
         return finish(args.name)
     try:
         paths = scaffold(args.name, args.category, generator=not args.interpreter_only)
-    except (ValueError, OSError) as exc:
+    except (ValueError, FileExistsError) as exc:
         parser.error(str(exc))
     for path in paths:
         print(f"created {path.relative_to(ROOT)}")

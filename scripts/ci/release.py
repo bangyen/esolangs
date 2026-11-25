@@ -5,29 +5,19 @@ from __future__ import annotations
 import argparse
 import gzip
 import importlib.util
-import json
+import io
 import os
-import re
-import shutil
 import signal
-import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
-import zlib
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack, contextmanager
 from functools import cache
 from itertools import islice
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
-
-# Release notes also run from a source checkout without the package installed.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from docs.anchors import atx_heading, mask_hidden
-from docs.writing import PublicationRecoveryError, replace_batch
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from esolangs import LanguageInfo
@@ -35,171 +25,72 @@ if TYPE_CHECKING:
 ROOT = Path(__file__).resolve().parents[2]
 
 
-class _StrictTarInfo(tarfile.TarInfo):
-    @classmethod
-    def fromtarfile(cls, archive: tarfile.TarFile) -> Self:
-        """Refuse bad member headers that tarfile would treat as end of archive."""
-        offset = archive.fileobj.tell()
-        try:
-            return super().fromtarfile(archive)
-        # Typeshed declares their base HeaderError but not these subclasses.
-        except tarfile.EmptyHeaderError as error:  # type: ignore[attr-defined]
-            raise tarfile.ReadError(
-                f"missing TAR end marker at byte {offset}"
-            ) from error
-        except (
-            tarfile.InvalidHeaderError,  # type: ignore[attr-defined]
-            tarfile.TruncatedHeaderError,  # type: ignore[attr-defined]
-        ) as error:
-            raise tarfile.ReadError(
-                f"invalid TAR header at byte {offset}: {error}"
-            ) from error
-
-
-@contextmanager
-def _staged_normalization(
-    path: Path, epoch: int, *, retained: set[Path] | None = None
-) -> Iterator[tuple[Path, Path]]:
-    """Normalize an archive into a temporary directory on its own filesystem."""
-    path = path.resolve(strict=True)
-    fixed_metadata = {"mtime", "atime", "ctime", "uid", "gid", "uname", "gname"}
-    scratch = tempfile.TemporaryDirectory(dir=path.parent, delete=False)
-    directory = Path(scratch.name)
-    try:
-        staged = directory / "normalized"
-        with (
-            gzip.open(path, "rb") as uncompressed,
-            tarfile.open(
-                fileobj=uncompressed, mode="r:", tarinfo=_StrictTarInfo
-            ) as source,
-            staged.open("wb") as stream,
-            gzip.GzipFile(
-                filename="", mode="wb", fileobj=stream, mtime=epoch
-            ) as compressed,
-            tarfile.open(
-                fileobj=compressed, mode="w|", format=tarfile.PAX_FORMAT
-            ) as target,
-        ):
-            for member in source:
-                member.mtime = epoch
-                member.uid = member.gid = 0
-                member.uname = member.gname = ""
-                # PAX values take precedence over these tar header fields.
-                member.pax_headers = {
-                    key: value
-                    for key, value in member.pax_headers.items()
-                    if key not in fixed_metadata
-                }
-                target.addfile(
-                    member, source.extractfile(member) if member.isfile() else None
-                )
-            # TarFile stops after one zero block. Check the other and drain
-            # the padding to validate both the TAR ending and the gzip trailer.
-            zero_block = bytes(tarfile.BLOCKSIZE)
-            if uncompressed.read(tarfile.BLOCKSIZE) != zero_block:
-                raise tarfile.ReadError(
-                    "invalid TAR end marker: expected two zero blocks"
-                )
-            while padding := uncompressed.read(64 * 1024):
-                if padding.strip(b"\0"):
-                    raise tarfile.ReadError("nonzero data after TAR end marker")
-        staged.chmod(stat.S_IMODE(path.stat().st_mode))
-        yield path, staged
-    finally:
-        if retained is None or directory not in retained:
-            scratch.cleanup()
-
-
 def normalize(path: Path, epoch: int) -> None:
     """Preserve payloads while fixing gzip and tar metadata deterministically."""
-    with _staged_normalization(path, epoch) as (path, staged):
-        staged.replace(path)
+    buffer = io.BytesIO()
+    with (
+        tarfile.open(path, "r:gz") as source,
+        tarfile.open(fileobj=buffer, mode="w", format=tarfile.PAX_FORMAT) as target,
+    ):
+        for member in source.getmembers():
+            member.mtime = epoch
+            member.uid = member.gid = 0
+            member.uname = member.gname = ""
+            member.pax_headers = {
+                key: value
+                for key, value in member.pax_headers.items()
+                if key not in {"mtime", "atime", "ctime"}
+            }
+            target.addfile(
+                member, source.extractfile(member) if member.isfile() else None
+            )
+    with (
+        path.open("wb") as stream,
+        gzip.GzipFile(
+            filename="", mode="wb", fileobj=stream, mtime=epoch
+        ) as compressed,
+    ):
+        compressed.write(buffer.getvalue())
 
 
 def normalize_main(argv: list[str]) -> int:
     """Normalize every archive named on the command line to SOURCE_DATE_EPOCH."""
-    parser = argparse.ArgumentParser(
-        prog="release.py normalize", description=normalize_main.__doc__
-    )
-    parser.add_argument(
-        "archives", nargs="+", type=Path, help="source .tar.gz archives"
-    )
-    args = parser.parse_args(argv)
-    # A gzip header stores mtime as an unsigned 32-bit integer.
-    max_epoch = 2**32 - 1
-    message = f"SOURCE_DATE_EPOCH must be an integer between 0 and {max_epoch}"
-    try:
-        epoch = int(os.environ.get("SOURCE_DATE_EPOCH", ""))
-    except ValueError:
-        parser.error(message)
-    if not 0 <= epoch <= max_epoch:
-        parser.error(message)
-    retained: set[Path] = set()
-    with ExitStack() as scratch:
-        pending: dict[Path, tuple[Path, Path, Path | None]] = {}
-        for archive in args.archives:
-            try:
-                path, staged = scratch.enter_context(
-                    _staged_normalization(archive, epoch, retained=retained)
-                )
-                if path in pending:
-                    continue
-                backup = staged.with_name("original")
-                shutil.copy2(path, backup)
-                pending[path] = staged, path, backup
-            except (OSError, EOFError, tarfile.TarError, zlib.error) as error:
-                parser.exit(1, f"{archive}: {error}\n")
-        try:
-            replace_batch(list(pending.values()))
-        except OSError as error:
-            if isinstance(error, PublicationRecoveryError):
-                retained.update(backup.parent for backup in error.backups)
-            parser.exit(1, f"{error}\n")
+    epoch = int(os.environ["SOURCE_DATE_EPOCH"])
+    for name in argv:
+        normalize(Path(name), epoch)
     return 0
 
 
 def notes(version: str, changelog: str) -> str:
     """Return the ``## version`` section of ``changelog``, heading dropped.
 
-    A missing, empty or repeated version section raises.
+    A missing or empty section raises: a release without notes is a tag that
+    skipped the changelog step.
     """
-    title = version.removeprefix("v")
-    heading = f"## {title}"
+    heading = f"## {version.removeprefix('v')}"
     lines = changelog.splitlines()
-    visible = mask_hidden("\n".join(lines)).split("\n")
-    sections = [
-        (index, atx[1])
-        for index, line in enumerate(visible)
-        if (atx := atx_heading(line)) is not None and atx[0] == 2
-    ]
-    matches = [index for index, text in sections if text == title]
-    if not matches:
+    if heading not in lines:
         raise SystemExit(f"docs/CHANGELOG.md has no {heading!r} section")
-    if len(matches) > 1:
-        positions = ", ".join(str(index + 1) for index in matches)
-        raise SystemExit(f"docs/CHANGELOG.md repeats {heading!r} at lines {positions}")
-    start = matches[0] + 1
-    end = next((index for index, _ in sections if index >= start), len(lines))
-    body = "\n".join(lines[start:end])
-    if not mask_hidden(body, code_blocks=False).strip():
+    start = lines.index(heading) + 1
+    end = next(
+        (i for i in range(start, len(lines)) if lines[i].startswith("## ")),
+        len(lines),
+    )
+    body = "\n".join(lines[start:end]).strip()
+    if not body:
         raise SystemExit(f"docs/CHANGELOG.md's {heading!r} section is empty")
-    return re.sub(r"\A(?:[ \t]*\n)+|(?:\n[ \t]*)+\Z", "", body) + "\n"
+    return body + "\n"
 
 
 def _cli(args: list[str], stdin: str = "") -> str:
-    try:
-        result = subprocess.run(
-            [sys.executable, "-I", "-m", "esolangs", *args],
-            input=stdin,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=True,
-        )
-    except subprocess.CalledProcessError as error:
-        if error.stderr:
-            error.add_note(error.stderr.rstrip())
-        raise
+    result = subprocess.run(
+        [sys.executable, "-I", "-m", "esolangs", *args],
+        input=stdin,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
     return result.stdout
 
 
@@ -283,19 +174,17 @@ def _first_languages(wanted: Callable[[LanguageInfo], object], count: int) -> li
     )
 
 
-def smoke(*, image_extra: bool = False, image_only: bool = False) -> None:
+def smoke(*, image_extra: bool = False) -> None:
     """Check installed resources and behaviour outside the source checkout."""
     import esolangs
 
     package = Path(esolangs.__file__).resolve().parent
-    image_extra = image_extra or image_only
-    _smoke_extras(image_extra=image_extra)
-    if not image_only:
-        _smoke_install(package)
-        _smoke_files()
-        _smoke_deadlines()
-    _smoke_generators(package, image_extra=image_extra, raster_only=image_only)
+    _smoke_install(package)
+    _smoke_generators(package, image_extra=image_extra)
+    _smoke_files()
     _smoke_rasters(image_extra=image_extra)
+    _smoke_deadlines()
+    _smoke_extras(image_extra=image_extra)
 
 
 def _smoke_install(package: Path) -> None:
@@ -340,57 +229,31 @@ def _smoke_install(package: Path) -> None:
         ),
         "the bounded runner accepted a diverging program",
     )
-    _smoke_quickstart()
-
-
-def _smoke_quickstart() -> None:
-    """Execute the README's Bash and compare its documented output."""
     executable = Path(sys.executable).with_name(
         "esolangs.exe" if sys.platform == "win32" else "esolangs"
     )
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    quickstart = readme.partition("\n## Try it\n")[2].partition("\n## ")[0]
-    example = re.search(
-        r"^```bash\n(.*?)^```\n\s*^```text\n(.*?)^```$",
-        quickstart,
-        re.MULTILINE | re.DOTALL,
+    entrypoint = subprocess.run(
+        [str(executable), "list"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
     )
-    assert example is not None, "README quickstart needs Bash and output blocks"
-    script, expected = example.groups()
-    assert executable.is_file(), executable
-    path = os.pathsep.join((str(executable.parent), os.environ.get("PATH", "")))
-    with tempfile.TemporaryDirectory() as temporary:
-        result = subprocess.run(
-            ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
-            cwd=temporary,
-            env={**os.environ, "PATH": path},
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == expected, (result.stdout, expected)
+    assert "brainfuck" in entrypoint.stdout
 
 
-def _smoke_generators(
-    package: Path, *, image_extra: bool, raster_only: bool = False
-) -> None:
+def _smoke_generators(package: Path, *, image_extra: bool) -> None:
     """Run every generator in its own process and check its shipped examples."""
     import esolangs
 
     for name in esolangs.list_languages():
         facts = esolangs.describe(name)
-        if facts.boolean_generator and (
-            not raster_only or facts.source_kind == "raster"
-        ):
+        if facts.boolean_generator:
             _generator_process(name, image_extra=image_extra)
             assert facts.examples, name
             for filename in facts.examples:
                 assert not Path(filename).is_absolute(), filename
                 assert (package / filename).is_file(), filename
-    if raster_only:
-        return
     examples = esolangs.describe("brainfuck").examples
     assert examples
     example = package / examples[0]
@@ -410,9 +273,7 @@ def _smoke_files() -> None:
 
     with tempfile.TemporaryDirectory() as temporary:
         source = Path(temporary) / "xor.txt"
-        source.write_text(
-            _cli(["generate", "brainfuck", "-"], "0110\n"), encoding="utf-8"
-        )
+        source.write_text(_cli(["generate", "brainfuck", "0110"]), encoding="utf-8")
         for row in range(4):
             stdin = esolangs.encode_inputs("brainfuck", [row >> 1, row & 1])
             assert (
@@ -450,86 +311,6 @@ def _smoke_files() -> None:
             assert diagnostic in result.stderr, result
         source.write_text(",>,<.", encoding="utf-8")
         assert _evaluate("brainfuck", source, timeout=None, inputs=2) == "0011"
-        _smoke_portable_artifact(source.with_suffix(".json"))
-        _smoke_saved_template(source.parent)
-
-
-def _smoke_portable_artifact(target: Path) -> None:
-    """Round-trip a portable program with a nondefault dialect in the CLI."""
-    import esolangs
-
-    def overrides(facts: LanguageInfo) -> Iterator[tuple[str, str | int]]:
-        return (
-            (key, value)
-            for key, setting in facts.dialect_settings.items()
-            for value in setting["choices"]
-            if value != setting["default"]
-        )
-
-    (language,) = _first_languages(
-        lambda facts: (
-            facts.source_kind == "text"
-            and not facts.parameterized
-            and facts.answer_mode == "output"
-            and next(overrides(facts), None) is not None
-        ),
-        1,
-    )
-    key, value = next(overrides(esolangs.describe(language)))
-    table = "0110"
-    document = _cli(
-        [
-            "generate",
-            "--artifact",
-            "--settings",
-            json.dumps({key: value}),
-            language,
-            table,
-        ]
-    )
-    artifact = esolangs.from_json(language, document)
-    assert isinstance(artifact, esolangs.ProgramArtifact)
-    assert artifact.input_arity == 2
-    assert artifact.settings is not None
-    assert artifact.settings.options()[key] == value
-    target.write_text(document, encoding="utf-8")
-    for row, expected in enumerate(table):
-        stdin = esolangs.encode_inputs(language, [row >> 1, row & 1])
-        output = _cli(["run", "--artifact", language, str(target)], stdin)
-        assert esolangs.read_answer(language, output) == expected, (language, row)
-
-
-def _smoke_saved_template(directory: Path) -> None:
-    """Save one XOR template and fill and run every row through the installed CLI."""
-    import esolangs
-
-    (language,) = _first_languages(
-        lambda facts: facts.parameterized and facts.answer_mode == "output",
-        1,
-    )
-    table = "0110"
-    template = directory / "xor template.json"
-    template.write_text(
-        _cli(["generate", "--artifact", language, table]), encoding="utf-8"
-    )
-    filled = directory / "filled.json"
-    for row, expected in enumerate(table):
-        filled.write_text(
-            _cli(
-                [
-                    "generate",
-                    "--from-template",
-                    str(template),
-                    "--bits",
-                    f"{row:02b}",
-                    "--artifact",
-                    language,
-                ]
-            ),
-            encoding="utf-8",
-        )
-        output = _cli(["run", "--artifact", language, str(filled)])
-        assert esolangs.read_answer(language, output) == expected, (language, row)
 
 
 def _smoke_rasters(*, image_extra: bool) -> None:
@@ -666,19 +447,13 @@ def _smoke_extras(*, image_extra: bool) -> None:
 def smoke_main(argv: list[str] | None = None) -> None:
     """Run the artifact smoke check with or without its optional extra."""
     parser = argparse.ArgumentParser(description=__doc__)
-    image = parser.add_mutually_exclusive_group()
-    image.add_argument("--image", action="store_true", help="full check with Pillow")
-    image.add_argument(
-        "--image-only", action="store_true", help="check PNG after the full wheel pass"
-    )
+    parser.add_argument("--image", action="store_true")
     parser.add_argument("--language", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.language is not None:
-        if args.image_only:
-            parser.error("--image-only cannot be combined with --language")
         _generator(args.language, image_extra=args.image)
         return
-    smoke(image_extra=args.image, image_only=args.image_only)
+    smoke(image_extra=args.image)
     print("installed distribution smoke check passed")
 
 

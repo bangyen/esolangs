@@ -4,10 +4,8 @@ import io
 import json
 import os
 import shlex
-import subprocess
 import sys
 from ast import literal_eval
-from codecs import BOM_UTF8
 from dataclasses import replace
 from io import StringIO
 from pathlib import Path
@@ -32,304 +30,6 @@ from tests.support.cli_support import (
 )
 from tests.support.pick import one, one_where
 from tests.support.reference import REFERENCE
-
-
-@pytest.mark.parametrize(
-    "language", [REFERENCE, *one(source_kind="raster", boolean_generator=True)]
-)
-def test_native_rejection_suggests_running_portable_json(tmp_path, capsys, language):
-    api = esolangs.Language(language)
-    document = api.to_json(api.generate("01"))
-    path = tmp_path / "owner's portable program.json"
-    path.write_text(document, encoding="utf-8")
-    output, error = _failure(["run", language, str(path)], capsys)
-    assert output == ""
-    assert "use --artifact to run portable JSON" in error
-    command = shlex.split(error.split("for example: ", 1)[1].strip())
-    assert command == ["esolangs", "run", "--artifact", language, str(path)]
-    for bit in (0, 1):
-        output, error = call_both(command[1:], capsys, stdin=api.encode_inputs([bit]))
-        assert api.read_answer(output) == str(bit)
-        assert error == ""
-
-    if language != REFERENCE:
-        value = json.loads(document)
-        value["format"] = {"name": value["format"]}
-        path.write_text(json.dumps(value), encoding="utf-8")
-        _, error = _failure(["run", language, str(path)], capsys)
-        assert "--artifact" not in error
-
-
-@pytest.mark.parametrize("source", ['"+."', '{"example":"+."}'])
-def test_artifact_run_suggests_the_native_command_for_json_shaped_source(
-    tmp_path, capsys, source
-):
-    path = tmp_path / "native source.bf"
-    path.write_text(source, encoding="utf-8")
-    output, error = _failure(["run", "--artifact", REFERENCE, str(path)], capsys)
-    assert not output
-    assert "remove --artifact" in error
-    retry = shlex.split(error.split("for example: ", 1)[1])
-    assert retry == ["esolangs", "run", REFERENCE, str(path)]
-    assert call_main(retry[1:], capsys) == "\x01"
-
-
-@pytest.mark.parametrize(
-    ("payload", "diagnostic"),
-    [
-        (b" \t\r\nH", b"expects a portable JSON object"),
-        (b"\x1f\x8b", b"the input is native gzip"),
-        (b"\x89PNG\r\n\x1a\n", b"the input is native PNG"),
-    ],
-)
-def test_artifact_run_rejects_native_source_before_eof(payload, diagnostic) -> None:
-    with subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "esolangs",
-            "run",
-            "--artifact",
-            "--max-steps=8",
-            "HQ9+",
-            "-",
-        ],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    ) as child:
-        assert child.stdin is not None
-        assert child.stdout is not None
-        assert child.stderr is not None
-        try:
-            child.stdin.write(payload)
-            child.stdin.flush()
-            assert child.wait(timeout=5) == 2
-            assert child.stdout.read() == b""
-            error = child.stderr.read()
-            assert diagnostic in error
-            assert b"remove --artifact" in error
-            assert b"esolangs run --max-steps=8 HQ9+ -" in error
-        finally:
-            if child.poll() is None:
-                child.kill()
-
-
-def test_artifact_run_waits_for_eof_on_a_valid_pipe() -> None:
-    api = esolangs.Language("HQ9+")
-    document = api.to_json(api.from_source("H")).encode("utf-8")
-    with subprocess.Popen(
-        [sys.executable, "-m", "esolangs", "run", "--artifact", api.name, "-"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    ) as child:
-        assert child.stdin is not None
-        assert child.stdout is not None
-        assert child.stderr is not None
-        try:
-            child.stdin.write(b" \t\r\n" + document)
-            child.stdin.flush()
-            with pytest.raises(subprocess.TimeoutExpired):
-                child.wait(timeout=0.2)
-            child.stdin.close()
-            assert child.wait(timeout=5) == 0
-            assert child.stdout.read() == b"Hello, world!\n"
-            assert child.stderr.read() == b""
-        finally:
-            if child.poll() is None:
-                child.kill()
-
-
-@pytest.mark.parametrize("source_mode", ["missing flag", "native", "wrong language"])
-def test_source_retry_keeps_the_requested_execution_limits(
-    tmp_path, capsys, source_mode
-) -> None:
-    path = tmp_path / "owner's program.json"
-    source = "+" * 65 + ".+."
-    native = source_mode == "native"
-    path.write_text(source if native else esolangs.to_json(REFERENCE, source))
-    initial_mode = [] if source_mode == "missing flag" else ["--artifact"]
-    retry_mode = [] if native else ["--artifact"]
-    language = REFERENCE
-    if source_mode == "wrong language":
-        (language,) = one_where(
-            lambda facts: facts.name != REFERENCE,
-            source_kind="text",
-            boolean_generator=True,
-        )
-    options = ["--max-output", "1", "--total-timeout=10", "--isolated"]
-    output, error = _failure(
-        ["run", *initial_mode, *options, language, str(path)], capsys
-    )
-    assert output == ""
-    retry = shlex.split(error.split("for example: ", 1)[1])
-    assert retry[:2] == ["esolangs", "run"]
-    assert retry[-2:] == [REFERENCE, str(path)]
-    assert set(retry[2:-2]) == {
-        *retry_mode,
-        "--max-output=1",
-        "--total-timeout=10",
-        "--isolated",
-    }
-    output, error = _failure(retry[1:], capsys, code=124)
-    assert output == "A"
-    assert "output limit exceeded" in error
-
-
-@pytest.mark.parametrize(
-    ("flag", "declarations"),
-    [
-        (
-            "--seed=1",
-            [
-                lang
-                for lang in LANGUAGES.values()
-                if lang.runtime.random and lang.has_backend and not lang.parameterized
-            ][:1],
-        ),
-        (
-            "--scale=2",
-            [
-                lang
-                for lang in LANGUAGES.values()
-                if lang.runtime.capabilities.supports_scale and lang.has_backend
-            ][:1],
-        ),
-    ],
-)
-def test_same_language_source_retry_keeps_seed_and_scale(
-    tmp_path, capsys, flag, declarations
-) -> None:
-    if not declarations:
-        pytest.skip("no matching generator")
-    api = esolangs.Language(declarations[0].name)
-    path = tmp_path / "program.json"
-    program = api.generate("01", scale=2) if flag == "--scale=2" else api.generate("01")
-    path.write_text(api.to_json(program), encoding="utf-8")
-    output, error = _failure(["run", flag, api.name, str(path)], capsys)
-    assert not output
-    retry = shlex.split(error.split("for example: ", 1)[1])
-    assert retry == ["esolangs", "run", "--artifact", flag, api.name, str(path)]
-    answer, _ = call_both(retry[1:], capsys, stdin=api.encode_inputs([1]))
-    assert api.read_answer(answer) == "1"
-
-
-@pytest.mark.parametrize("duplicate", [False, True])
-def test_native_run_keeps_json_with_only_a_similar_format_marker(
-    tmp_path, capsys, duplicate
-):
-    api = esolangs.Language(REFERENCE)
-    value = json.loads(api.to_json(api.from_source("+.")))
-    path = tmp_path / "native.json"
-    document = json.dumps(
-        {"format": value["format"] + "_other", "language": value["language"]}
-    )
-    if duplicate:
-        document = document[:-1] + ',"version":1,"version":1}'
-    path.write_text(document, encoding="utf-8")
-    output, error = call_both(["run", REFERENCE, str(path)], capsys, stdin="AAA")
-    assert output == "\x00"
-    assert error == ""
-
-
-@pytest.mark.parametrize(
-    ("field", "duplicate"), [("version", "1"), ("format", '"other"')]
-)
-def test_native_run_refuses_duplicate_fields_in_tagged_artifacts(
-    tmp_path, capsys, field, duplicate
-) -> None:
-    record = esolangs.to_json(REFERENCE, "+.").rstrip()
-    if field == "format":
-        record = record.replace("esolangs.program", r"esolangs.\u0070rogram")
-    path = tmp_path / "duplicate.json"
-    path.write_text(
-        record[:-1] + f",{json.dumps(field)}:{duplicate}" + "}", encoding="utf-8"
-    )
-    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="AAAAAAAA")
-    assert not output
-    assert str(path) in error
-    assert f"invalid portable program: duplicate field: {field}" in error
-
-
-@pytest.mark.parametrize("field", ["settings", "language", "source"])
-def test_native_run_rejects_a_tagged_artifact_with_missing_fields(
-    tmp_path, capsys, field
-) -> None:
-    record = json.loads(esolangs.to_json(REFERENCE, "+."))
-    del record[field]
-    path = tmp_path / "incomplete.json"
-    path.write_text(json.dumps(record), encoding="utf-8")
-    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="A")
-    assert not output
-    assert str(path) in error
-    assert "invalid portable program: unexpected or missing fields" in error
-    _, explicit = _failure(["run", "--artifact", REFERENCE, str(path)], capsys)
-    assert "remove --artifact" not in explicit
-
-
-@pytest.mark.parametrize(
-    "document",
-    [
-        '{"format":"esolangs.program"',
-        '{"settings":{"other":[1]},"format":"esolangs.program","source":',
-        r'{"\u0066ormat":"esolangs.\u0070rogram","source":',
-    ],
-)
-def test_native_run_stops_truncated_portable_json(tmp_path, capsys, document):
-    path = tmp_path / "truncated.json"
-    path.write_text(document, encoding="utf-8")
-    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="A")
-    assert output == ""
-    assert f"{path}: invalid portable program:" in error
-
-
-def test_native_run_ignores_a_truncated_nested_format_tag(tmp_path, capsys):
-    path = tmp_path / "native.bf"
-    path.write_text('{"other":{"format":"esolangs.program"', encoding="utf-8")
-    output, error = call_both(["run", REFERENCE, str(path)], capsys)
-    assert (output, error) == ("\x00", "")
-
-
-@pytest.mark.parametrize("bom_count", [1, 2])
-def test_run_reports_a_bom_before_parsing_portable_json(tmp_path, capsys, bom_count):
-    path = tmp_path / "portable.json"
-    record = esolangs.to_json(REFERENCE, "+.").encode("utf-8")
-    path.write_bytes(BOM_UTF8 * bom_count + record)
-    for flags in ([], ["--artifact"]):
-        output, error = _failure(
-            ["run", *flags, REFERENCE, str(path)], capsys, stdin="A"
-        )
-        assert output == ""
-        assert str(path) in error
-        assert "remove the UTF-8 BOM" in error
-        assert "remove --artifact" not in error
-    path.write_bytes(record)
-    assert call_main(["run", "--artifact", REFERENCE, str(path)], capsys) == "\x01"
-
-
-def test_a_bom_prefixed_native_program_keeps_its_source_behavior(tmp_path, capsys):
-    path = tmp_path / "native.bf"
-    path.write_bytes(BOM_UTF8 + b"{+.}")
-    assert call_main(["run", REFERENCE, str(path)], capsys) == "\x01"
-
-
-@pytest.mark.parametrize("escaped_format", [False, True])
-def test_native_run_stops_a_portable_record_for_an_unavailable_language(
-    tmp_path, capsys, escaped_format
-) -> None:
-    record = json.loads(esolangs.to_json(REFERENCE, "+++++."))
-    record["language"] = "UnavailableDialect"
-    document = json.dumps(record)
-    if escaped_format:
-        document = document.replace(record["format"], r"esolangs.\u0070rogram")
-    path = tmp_path / "unavailable.json"
-    path.write_text(document, encoding="utf-8")
-
-    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="A")
-    assert output == ""
-    assert "portable JSON artifact for unavailable language UnavailableDialect" in error
-
 
 #: A language whose input bits are not spelled 0 and 1, if one is registered.
 _SPELLED = one_where(lambda d: d.input_encoding != ("0", "1"), reads_input=True)
@@ -620,27 +320,24 @@ def test_encode_template_refusal_points_to_cli_generation(capsys, language) -> N
 
 
 @pytest.mark.parametrize(
-    ("args", "reason"),
+    "args",
     [
-        (["--bits", "", REFERENCE, "01"], "must be a string of 0s and 1s"),
-        (["--bits", "two", REFERENCE, "01"], "must be a string of 0s and 1s"),
-        (["--bits", REFERENCE, "01"], "must be a string of 0s and 1s"),
-        (["--bits=--width", REFERENCE, "01"], "must be a string of 0s and 1s"),
-        (["--bits", "--width", "2", REFERENCE, "01"], "needs a value"),
+        ["", REFERENCE, "01"],
+        ["two", REFERENCE, "01"],
+        [REFERENCE, "01"],
+        ["--width", "2", REFERENCE, "01"],
     ],
 )
-def test_bad_bits_are_refused_before_synthesis(
-    capsys, monkeypatch, args, reason
-) -> None:
+def test_bad_bits_are_refused_before_synthesis(capsys, monkeypatch, args) -> None:
     from esolangs.operations import generation
 
     def unused(*_args, **_kwargs):
         pytest.fail("invalid --bits launched generation")
 
     monkeypatch.setattr(generation, "_generate_checked", unused)
-    out, err = _failure(["generate", *args], capsys)
+    out, err = _failure(["generate", "--bits", *args], capsys)
     assert out == ""
-    assert err.startswith(f"--bits {reason}")
+    assert "--bits must be a string of 0s and 1s" in err
 
 
 @pytest.mark.parametrize("language", one(answer_mode="termination"))

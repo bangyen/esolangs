@@ -27,6 +27,8 @@ from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import (
     LANGUAGES,
+    LanguageDeclaration,
+    canonical_id,
     example_stems,
     resolve,
 )
@@ -52,16 +54,14 @@ class BooleanExample:
     ``generator(table)`` produces the program (or the template ``fill``
     instantiates with ``bits``); ``interpreter`` is the dotted module,
     ``split`` passes lines, ``kwargs`` extra ``run()`` ints (``seed`` becomes
-    a ``Seeded`` where the language is random); ``bits`` are the input row,
-    ``inputs`` are encoded stdin chunks, and ``expected`` is the whole stdout.
+    a ``Seeded`` where the language is random); ``inputs`` are encoded stdin
+    chunks; ``expected`` is the whole stdout.
     """
 
     generator: Generator
     table: str
     interpreter: str
     expected: str
-    #: Canonical registry ID.
-    language: str
     inputs: tuple[str, ...] = ()
     #: Whether ``expected`` is the program's actual output.  False where the
     #: answer is the *halt* and the bytes written on the way out are junk:
@@ -124,6 +124,11 @@ class BooleanExample:
     def filename(self) -> str:
         """Return the example filename in the language's source format."""
         return self.stem + LANGUAGES[resolve(self.language)].source_suffix
+
+    @property
+    def language(self) -> str:
+        """Return the canonical id of the language ``stem`` names."""
+        return canonical_id(self.stem.replace("-", " "))
 
     def build(
         self, width: int | None = DEFAULT_WIDTH, *, balance: bool = False
@@ -210,8 +215,6 @@ def _reader(
     generator: Generator,
     interpreter: str,
     *,
-    language: str,
-    bits: tuple[int, ...],
     table: str = AND2,
     inputs: tuple[str, ...] = ("0", "1"),
     expected: str = "0",
@@ -228,9 +231,7 @@ def _reader(
         table=table,
         interpreter=interpreter,
         expected=expected,
-        language=language,
         inputs=inputs,
-        bits=bits,
         split=split,
         kwargs=kwargs,
     )
@@ -240,7 +241,6 @@ def _embedded(
     generator: Generator,
     interpreter: str,
     *,
-    language: str,
     setters: Callable[[str, int], Setters],
     char: str = TEMPLATE_CHAR,
     table: str = AND2,
@@ -256,7 +256,6 @@ def _embedded(
         table=table,
         interpreter=interpreter,
         expected=expected,
-        language=language,
         bits=bits,
         fill=_fill_from(setters, char),
         setters=setters,
@@ -278,28 +277,28 @@ def _fill_from(
     return fill
 
 
-def _register() -> dict[str, BooleanExample]:
+# Example file stem -> how that example is built and run; see ``_stem``.
+BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
+
+
+def _stem(lang: LanguageDeclaration) -> str:
+    """Return the stem shared with catalog metadata."""
+    return example_stems()[lang.id]
+
+
+def _register() -> None:
     from esolangs.operations.boolean_io import encode_inputs
 
-    examples: dict[str, BooleanExample] = {}
-    stems = example_stems()
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
     # ``_reader`` takes, backend bindings, and the committed invocation.
     for lang in LANGUAGES.values():
         if lang.backend is None or lang.runtime.interpreter is None:
             continue
-        stem = stems[lang.id]
-        if previous := examples.get(stem):
-            raise ValueError(
-                f"duplicate example stem {stem!r} for "
-                f"{previous.language!r} and {lang.id!r}"
-            )
         spec = lang.example
         if lang.backend.template is not None:
             example = _embedded(
                 lang.backend.entrypoint,
                 lang.runtime.interpreter,
-                language=lang.id,
                 table=spec.table,
                 bits=spec.bits,
                 setters=lang.backend.template.bindings,
@@ -313,9 +312,7 @@ def _register() -> dict[str, BooleanExample]:
             example = _reader(
                 lang.backend.entrypoint,
                 lang.runtime.interpreter,
-                language=lang.id,
                 table=spec.table,
-                bits=spec.bits,
                 inputs=(stdin,)
                 if lang.contract.input_shape == "char_stream"
                 else tuple(stdin.splitlines()),
@@ -323,16 +320,15 @@ def _register() -> dict[str, BooleanExample]:
                 split=lang.runtime.split,
                 kwargs=spec.kwargs,
             )
-        examples[stem] = replace(
+        stem = _stem(lang)
+        BOOLEAN_EXAMPLES[stem] = replace(
             example,
             stem=stem,
             scale=spec.scale,
             expected_compared=spec.expected_compared,
         )
-    return examples
 
 
-# Example file stem -> how that example is built and run.
-BOOLEAN_EXAMPLES = _register()
+_register()
 
 __all__ = ["AND2", "BOOLEAN_EXAMPLES", "BooleanExample"]

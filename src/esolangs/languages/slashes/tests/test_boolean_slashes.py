@@ -142,10 +142,7 @@ def _check_cli_fill_dialect(capsysbinary, monkeypatch) -> None:
         )
         main()
         source, diagnostics = capsysbinary.readouterr()
-        if mode == "slow":
-            assert b'--settings={"mode":"slow"}' in diagnostics
-        else:
-            assert not diagnostics
+        assert not diagnostics
         assert calls == [{"mode": mode}]
         calls.clear()
         settings = api.settings(mode=mode)

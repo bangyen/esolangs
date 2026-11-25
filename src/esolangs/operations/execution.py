@@ -8,7 +8,7 @@ from esolangs.limits import ExecutionLimits
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
-from esolangs.runtime._acquire import DeferredInput, PendingInput, bind_prepared_input
+from esolangs.runtime._acquire import PendingInput, bind_prepared_input
 from esolangs.runtime._controller import ExecutionController
 from esolangs.runtime._execution import (
     check_seed_for,
@@ -222,12 +222,9 @@ def _execute_invocation(
             scale=scale,
             catalog=catalog,
             module_loader=interpreter_module,
-            bind_machine=_has_backing_type(stdin, DeferredInput),
             _loaded=_loaded,
         )
     if max_steps is not None:
-        if _has_backing_type(stdin, DeferredInput):
-            checked = stdin.read()
         if isinstance(checked, PendingInput):
             assert prepared is not None
             checked = checked.snapshot(frame=prepared._input_frame)  # noqa: SLF001

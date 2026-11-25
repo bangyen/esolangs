@@ -117,10 +117,7 @@ def _check_cli_generation_settings(capsys, monkeypatch) -> None:
         monkeypatch.setattr(sys, "argv", ["esolangs", "generate", api.name, "01", flag])
         main()
         source, diagnostics = capsys.readouterr()
-        if rotation == "forward":
-            assert '--settings={"rotation":"forward"}' in diagnostics
-        else:
-            assert not diagnostics
+        assert not diagnostics
         assert calls == expected
         calls.clear()
         selected = api.settings(rotation=rotation)

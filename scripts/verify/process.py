@@ -53,13 +53,7 @@ _CLEANUP_LOCK = threading.Lock()
 
 
 def start_logged(
-    cmd: list[str],
-    name: str,
-    env: dict[str, str],
-    root: Path,
-    *,
-    stream: bool,
-    cwd: Path | None = None,
+    cmd: list[str], name: str, env: dict[str, str], root: Path, *, stream: bool
 ) -> subprocess.Popen[str]:
     """Spool complete step output to a unique ignored file; optionally tee it."""
     directory = root / "notes" / "verification"
@@ -70,7 +64,6 @@ def start_logged(
     os.close(fd)
     proc = subprocess.Popen(
         cmd,
-        cwd=cwd,
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -112,11 +105,6 @@ def start_logged(
     log.reader.start()
     _LOGS[proc] = log
     return proc
-
-
-def logged_path(proc: subprocess.Popen[str]) -> Path:
-    """Return the spool path assigned by the parent process."""
-    return _LOGS[proc].path
 
 
 def excerpt(proc: subprocess.Popen[str]) -> str:
@@ -251,21 +239,19 @@ def run_bounded(
     check: bool = False,
     stdout: int | None = None,
     stderr: int | None = None,
-    stdin_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Run a bounded subprocess and clean up its process tree if interrupted."""
+    """Run preflight probes with the same descendant cleanup as check steps."""
     with subprocess.Popen(
         cmd,
         start_new_session=os.name == "posix",
         cwd=cwd,
         env=env,
         text=text,
-        stdin=subprocess.PIPE if stdin_text is not None else None,
         stdout=subprocess.PIPE if capture_output else stdout,
         stderr=subprocess.PIPE if capture_output else stderr,
     ) as proc:
         try:
-            output, error = proc.communicate(input=stdin_text, timeout=timeout)
+            output, error = proc.communicate(timeout=timeout)
         except BaseException:
             stop_process_tree(proc)
             raise

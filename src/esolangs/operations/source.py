@@ -34,7 +34,6 @@ from esolangs.runtime.source_hints import (
     display_label,
     program_error_context,
     source_read_error,
-    with_hint,
 )
 from esolangs.settings import (
     DialectSettings,
@@ -91,7 +90,7 @@ def read_png_artifact(
     name = catalog.resolve(language)
     if not _settings_validated:
         dialect_options(name, settings, catalog=catalog)
-    scan, (retained, scale, arity) = read_png_source(
+    retained, scale, arity = read_png_metadata(
         name, data, catalog=catalog, checked_settings=settings
     )
     if retained is not None and retained is not settings:
@@ -101,11 +100,7 @@ def read_png_artifact(
             dialect_options(name, retained, catalog=catalog)
     merged = _merge_settings(name, retained, settings, catalog=catalog)
     return ProgramArtifact(
-        Raster._from_png(scan),  # noqa: SLF001 - reuse the validated chunk scan
-        name,
-        settings=merged,
-        scale=scale,
-        input_arity=arity,
+        Raster.from_png(data), name, settings=merged, scale=scale, input_arity=arity
     )
 
 
@@ -124,13 +119,13 @@ def _png_metadata_errors() -> Iterator[None]:
             ) from error
 
 
-def read_png_source(
+def read_png_metadata(
     name: str,
     data: bytes,
     *,
     catalog: Catalog,
     checked_settings: DialectSettings | None = None,
-) -> tuple[png.PNGScan, tuple[DialectSettings | None, int | None, int | None]]:
+) -> tuple[DialectSettings | None, int | None, int | None]:
     """Validate native claims before opening the image or calling its dialect."""
     from esolangs.portable import _decode_settings
 
@@ -138,10 +133,9 @@ def read_png_source(
         raise _text_raster_error(name, "a PNG")
     check_raster_gzip(name, data)
     with _png_metadata_errors():
-        scan = png.scan_source(data)
-        metadata = scan.metadata
+        metadata = png.read_metadata(data)
         if metadata is None:
-            return scan, (None, None, None)
+            return None, None, None
         png.check_source_fields(metadata)
         origin = metadata["language"]
         if origin is not None and not isinstance(origin, str):
@@ -156,7 +150,7 @@ def read_png_source(
             catalog=catalog,
             checked_settings=checked_settings,
         )
-        return scan, (settings, scale, arity)
+        return settings, scale, arity
 
 
 def read_artifact(
@@ -232,20 +226,6 @@ def _read_source_artifact(
 ) -> ProgramArtifact[Program]:
     """Load a container after its explicit settings have been checked."""
     value, path = _read_container(program)
-    # The CLI checks its bounded snapshots separately to render shell hints.
-    if (
-        path is not None
-        and isinstance(value, bytes)
-        and not _has_backing_type(program, _FileSource)
-    ):
-        from esolangs.portable import _portable_file_record
-
-        label = display_label(path)
-        if _portable_file_record(value, label) is not None:
-            raise with_hint(
-                ProgramError(f"{label} contains a portable JSON artifact"),
-                "pass the file's UTF-8 text and recorded language to from_json",
-            )
     if isinstance(value, bytes) and (
         value.startswith(b"\x89PNG\r\n\x1a\n")
         or catalog.languages[name].runtime.source_kind is SourceKind.RASTER
@@ -371,7 +351,7 @@ def from_file(
     Gzip and PNG are detected by content. ``normalize=True`` applies the
     language's native file newline policy. Imports retain the original
     gzip bytes when the source text is unchanged. PNG can retain the
-    input arity and canonical owner. Use ``from_json`` for portable JSON text.
+    input arity and canonical owner.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.

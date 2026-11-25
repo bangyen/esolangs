@@ -16,21 +16,14 @@ that computes the table, and runs it for you.
 
 ## Try it
 
-Install with `pip install esolangs`, then run the example in Bash.
-
 ```bash
+pip install esolangs
 esolangs generate brainfuck 0110 > xor.bf
-for i in 00 01 10 11; do
-  printf '%s' "$i" | esolangs run --execution-timeout 5 brainfuck xor.bf
-  printf ' <- %s\n' "$i"
-done
-```
-
-```text
-0 <- 00
-1 <- 01
-1 <- 10
-0 <- 11
+for i in 00 01 10 11; do printf $i | esolangs run --execution-timeout 5 brainfuck xor.bf; echo " <- $i"; done
+# 0 <- 00
+# 1 <- 01
+# 1 <- 10
+# 0 <- 11
 ```
 
 `0110` is a *truth table*: the outputs for inputs `00, 01, 10, 11`, in that

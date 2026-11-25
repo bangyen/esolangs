@@ -6,8 +6,6 @@ from pathlib import Path
 import pytest
 
 from scripts import new_language
-from tests.support.pick import first
-from tests.support.reference import REFERENCE
 
 
 @pytest.fixture
@@ -125,33 +123,11 @@ def test_scaffold_refuses_an_existing_namespace_module(root: Path) -> None:
     assert not target.with_suffix("").exists()
 
 
-@pytest.mark.parametrize("name", ["Slashalash", "SLASHALASH!"])
-def test_start_rejects_names_and_ids_owned_by_a_language_alias(
-    root: Path, capsys: pytest.CaptureFixture[str], name: str
-) -> None:
-    with pytest.raises(SystemExit) as caught:
-        new_language.main(["start", name, "--category", "other"])
-    assert caught.value.code == 2
-    assert "'Slashalash' is already registered to '///'" in capsys.readouterr().err
-    assert not (root / "src/esolangs/languages").exists()
-
-
 @pytest.mark.parametrize("argv", [[], ["Tiny", "--category", "other"]])
 def test_start_requires_an_explicit_command(root: Path, argv: list[str]) -> None:
     with pytest.raises(SystemExit) as caught:
         new_language.main(argv)
     assert caught.value.code == 2
-    assert not (root / "src/esolangs/languages").exists()
-
-
-@pytest.mark.parametrize("name", ["CON", "NuL", "COM1", "lPt9"])
-def test_start_refuses_windows_reserved_package_ids(
-    root: Path, capsys: pytest.CaptureFixture[str], name: str
-) -> None:
-    with pytest.raises(SystemExit) as caught:
-        new_language.main(["start", name, "--category", "other"])
-    assert caught.value.code == 2
-    assert f"{name.lower()!r} is reserved on Windows" in capsys.readouterr().err
     assert not (root / "src/esolangs/languages").exists()
 
 
@@ -183,7 +159,7 @@ def test_check_flags_a_leftover_placeholder_test(root: Path) -> None:
     ) in {(gap.where, gap.fix) for gap in gaps}
 
 
-def test_finish_reports_open_steps_before_regenerating(
+def test_finish_still_runs_the_gate_past_open_steps(
     root: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     fragment = root / "src/esolangs/languages/tiny/language.toml"
@@ -191,115 +167,11 @@ def test_finish_reports_open_steps_before_regenerating(
     fragment.write_text("[curation]\nunassessed = true\n")
     gap = new_language.Gap("somewhere", "do it")
     monkeypatch.setattr(new_language, "check", lambda _: [gap])
-    monkeypatch.setattr(new_language, "_gate", lambda: pytest.fail("ran the gate"))
+    ran = []
+    monkeypatch.setattr(new_language, "_gate", lambda: ran.append(1) or 0)
     assert new_language.finish("Tiny") == 1
-    output = capsys.readouterr().out
-    assert "somewhere" in output
-    assert "do it" in output
-    assert "curation unassessed" in output
-
-
-@pytest.mark.parametrize("gate_status", [0, 1])
-def test_finish_verifies_a_ready_language(monkeypatch, gate_status):
-    monkeypatch.setattr(new_language, "check", lambda _: [])
-    monkeypatch.setattr(new_language, "_curation", lambda _: {})
-    monkeypatch.setattr(new_language, "_gate", lambda: gate_status)
-    assert new_language.finish("Tiny") == gate_status
-
-
-def test_bounds_generates_each_measured_table_once(monkeypatch: pytest.MonkeyPatch):
-    import esolangs
-    from tests.proofs.measurement import tables
-
-    generate = esolangs.generate
-    generated = []
-
-    def observe(name, table, **options):
-        generated.append(table)
-        return generate(name, table, **options)
-
-    monkeypatch.setattr(esolangs, "generate", observe)
-    (result,) = new_language.bounds(REFERENCE, range(1, 2))
-    assert generated == list(tables(REFERENCE, 1))
-    assert result[0] == 1
-
-
-def test_bounds_refuses_a_wrong_answer(monkeypatch, capsys):
-    import esolangs
-
-    program = esolangs.generate(REFERENCE, "00")
-    monkeypatch.setattr(esolangs, "generate", lambda *_a, **_kw: program)
-    assert new_language.main(["bounds", REFERENCE, "--max-n", "1"]) == 1
-    captured = capsys.readouterr()
-    assert f"{REFERENCE} [01] row 1: expected 1, got 0" in captured.err
-    assert "witness tables (steps, bits)" not in captured.out
-
-
-def test_bounds_reports_the_row_when_a_witness_loops(monkeypatch, capsys):
-    import esolangs
-
-    loop = esolangs.from_source(REFERENCE, "+[]")
-    monkeypatch.setattr(esolangs, "generate", lambda *_a, **_kw: loop)
-    monkeypatch.setattr(new_language, "_BOUNDS_STEP_CAP", 12)
-    assert new_language.main(["bounds", REFERENCE, "--max-n", "1"]) == 1
-    assert (
-        f"{REFERENCE} [01] row 0: exceeded the 12-command limit"
-        in capsys.readouterr().err
-    )
-
-
-@pytest.mark.parametrize(
-    "contract", [{"dumps_on_the_post_halt_step": True}, {"steppable_to_answer": False}]
-)
-def test_checked_bounds_read_dumps_without_changing_counts(contract):
-    from esolangs import ProgramError
-    from tests.proofs.measurement import measure
-
-    name = first(boolean_generator=True, **contract)
-    checked = measure(name, "01", written=True, check_answers=True)
-    assert checked == measure(name, "01", written=True)
-    with pytest.raises(ProgramError, match=r"\[01\] row 0: exceeded"):
-        measure(name, "01", written=True, check_answers=True, step_cap=1)
-
-
-def test_bounds_rejects_impossible_arity_before_measuring(monkeypatch, capsys):
-    from esolangs.exceptions import GeneratorCapError
-    from esolangs.registry import LANGUAGES
-
-    declaration, cap = next(
-        (lang, lang.backend.max_inputs)
-        for lang in LANGUAGES.values()
-        if lang.backend is not None and lang.backend.max_inputs is not None
-    )
-    assert declaration.backend is not None
-    assert cap is not None
-    with pytest.raises(GeneratorCapError) as limit:
-        declaration.backend.check_arity(declaration.name, cap + 1)
-    monkeypatch.setattr(new_language, "bounds", lambda *_a, **_kw: pytest.fail("sweep"))
-    for max_n, error in [
-        (0, "--max-n must be positive"),
-        (cap + 1, str(limit.value)),
-    ]:
-        with pytest.raises(SystemExit) as caught:
-            new_language.main(["bounds", declaration.name, "--max-n", str(max_n)])
-        assert caught.value.code == 2
-        assert error in capsys.readouterr().err
-
-
-def test_bounds_announces_row_work_before_generation(monkeypatch, capsys):
-    import esolangs
-
-    generate = esolangs.generate
-    reported = []
-
-    def observe(name, table, **options):
-        reported.append(capsys.readouterr().out)
-        return generate(name, table, **options)
-
-    monkeypatch.setattr(esolangs, "generate", observe)
-    monkeypatch.setattr(new_language, "size_anchors", lambda _: [])
-    assert new_language.main(["bounds", REFERENCE, "--max-n", "1"]) == 0
-    assert "n=1: 4 witnesses, up to 8 row executions" in reported[0]
+    assert ran == [1]
+    assert "curation unassessed" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("gate_status", [0, 1])
@@ -385,44 +257,3 @@ def test_scaffold_collision_is_atomic(root: Path) -> None:
     assert not (package / "interpreter.py").exists()
     assert not (root / "src/esolangs/runtime/tiny.py").exists()
     assert (package / "__init__.py").read_text() == "owned"
-
-
-def test_scaffold_can_retry_after_a_blocked_parent(root: Path, capsys) -> None:
-    package = root / "src/esolangs/languages/tiny"
-    package.mkdir(parents=True)
-    blocker = package / "tests"
-    blocker.write_text("owned")
-    with pytest.raises(SystemExit) as caught:
-        new_language.main(["start", "Tiny", "--category", "other"])
-    assert caught.value.code == 2
-    assert str(blocker) in capsys.readouterr().err
-    assert list(package.iterdir()) == [blocker]
-
-    preserved = blocker.rename(package / "original.txt")
-    assert all(path.is_file() for path in new_language.scaffold("Tiny", "other"))
-    assert preserved.read_text() == "owned"
-
-
-def test_scaffold_rolls_back_if_publishing_a_later_stub_fails(
-    root: Path, monkeypatch
-) -> None:
-    package = root / "src/esolangs/languages/tiny"
-    package.mkdir(parents=True)
-    previous = package / "original.txt"
-    previous.write_text("owned")
-    publish = Path.hardlink_to
-
-    def fail_on_descriptor(path, source):
-        if path.name == "descriptor.py":
-            assert (package / "interpreter.py").is_file()
-            raise PermissionError("cannot publish descriptor")
-        publish(path, source)
-
-    with monkeypatch.context() as scoped:
-        scoped.setattr(Path, "hardlink_to", fail_on_descriptor)
-        with pytest.raises(PermissionError, match="cannot publish descriptor"):
-            new_language.scaffold("Tiny", "other")
-    assert list(package.iterdir()) == [previous]
-    assert previous.read_text() == "owned"
-    assert not list(package.parent.glob(".scaffold-*"))
-    assert all(path.is_file() for path in new_language.scaffold("Tiny", "other"))

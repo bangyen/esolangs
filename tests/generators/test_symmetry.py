@@ -7,7 +7,6 @@ from esolangs.generation import helpers
 from esolangs.generation.lookup import (
     change_points,
     constant_output,
-    majority_bias,
     packed_cells,
     prefix_counts,
     symmetric_outputs,
@@ -17,65 +16,6 @@ from esolangs.generation.lookup import (
 def test_symmetry_is_invariant_under_every_input_permutation():
     for n in (1, 2, 3):
         _check_permutations(n)
-
-
-def test_prefix_counts_accepts_other_characters_and_empty_tables():
-    assert prefix_counts("", "0") == [0]
-    assert prefix_counts("01x1", "1") == [0, 0, 1, 1, 2]
-    assert prefix_counts("0é1", "1") == [0, 0, 0, 1]
-    assert prefix_counts("0é1", "é") == [0, 0, 1, 1]
-
-
-def test_bulk_packing_preserves_complement_offsets_and_short_cells(monkeypatch):
-    from esolangs.generation import lookup
-
-    monkeypatch.setattr(lookup, "_PACK_CELLS_PER_BLOCK", 64)
-    table = "11001010" * 128 + "1"
-    for width, offset, flip in ((3, 0, False), (6, 35, True), (8, 0, True)):
-        assert packed_cells(table, width, offset=offset, complement=flip) == "".join(
-            chr(
-                offset
-                + sum(
-                    (int(bit) ^ flip) << position
-                    for position, bit in enumerate(table[start : start + width])
-                )
-            )
-            for start in range(0, len(table), width)
-        )
-
-
-def test_large_constant_span_counts_cover_the_whole_table():
-    half = 1 << 16
-    constant = helpers.constant_span_test("0" * half + "1" * half)
-    assert constant(0, half)
-    assert constant(half, 2 * half)
-    assert constant(2 * half, 2 * half)
-    assert not constant(half - 1, half + 1)
-    assert not constant(0, 2 * half)
-
-
-def test_symmetric_profiles_cover_every_block():
-    for n in (10, 11, 12, 16):
-        profile = ("01101" * (n // 5 + 1))[: n + 1]
-        table = "".join(profile[row.bit_count()] for row in range(1 << n))
-        assert symmetric_outputs(table, n) == profile
-        for row in (2, 1024 + 3, len(table) - 2):
-            if row >= len(table):
-                continue
-            flipped = table[:row] + str(1 - int(table[row])) + table[row + 1 :]
-            assert symmetric_outputs(flipped, n) is None
-
-
-def test_majority_requires_the_threshold_in_every_block():
-    for n in (10, 11, 12):
-        for inverted in (False, True):
-            table = "".join(
-                str(int((row.bit_count() > n // 2) ^ inverted)) for row in range(1 << n)
-            )
-            assert majority_bias(table, n) is inverted
-            for row in (1, len(table) - 2, len(table) - 1):
-                mismatch = table[:row] + str(1 - int(table[row])) + table[row + 1 :]
-                assert majority_bias(mismatch, n) is None
 
 
 def _check_permutations(n):

@@ -11,11 +11,10 @@ import select
 import stat
 import sys
 import threading
-from codecs import BOM_UTF8, IncrementalEncoder, lookup
+from codecs import IncrementalEncoder, lookup
 from collections.abc import Buffer, Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager, nullcontext, suppress
 from contextvars import ContextVar, copy_context
-from dataclasses import replace
 from encodings.utf_8 import IncrementalDecoder as UTF8Decoder
 from encodings.utf_8_sig import IncrementalDecoder as UTF8SigDecoder
 from errno import EAGAIN
@@ -30,37 +29,26 @@ from io import (
     TextIOWrapper,
     UnsupportedOperation,
 )
-from json import JSONDecodeError
 from math import ceil
 from time import monotonic, sleep
 from typing import BinaryIO, NoReturn, TextIO, cast
 
-from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
-from esolangs.cli._portable_input import _native_binary_format, _portable_pipe_check
-from esolangs.cli._table_input import _TruthTablePipeCheck
+from esolangs.artifacts import ProgramArtifact
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
     _display_encoding,
     _exit_code,
-    _native_run_hint,
-    _portable_run_hint,
-    _run_source_command,
-    _RunRetry,
-    _saved_template_hint,
     _timeout_text,
-    _with_cli_hint,
 )
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
     ExecutionBudgetError,
     ProgramError,
-    TemplateError,
 )
 from esolangs.operations.source import _check_program
-from esolangs.portable import _portable_bom_error, _portable_file_record
-from esolangs.registry import Catalog, LanguageDeclaration, get_catalog
+from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._files import (
     _BLOCK,
     StreamReadTimeoutError,
@@ -74,7 +62,6 @@ from esolangs.runtime._files import (
     stream_read_deadline,
 )
 from esolangs.runtime._input import (
-    InputFrame,
     _bind_input_reader,
     _unreadable_input,
     input_read_error,
@@ -84,17 +71,8 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._source import _FileSource, _open_program_path
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
-from esolangs.runtime.source_hints import (
-    display_label,
-    program_error_context,
-    source_read_error,
-)
-from esolangs.settings import (
-    DialectSettings,
-    _check_dialect_conflicts,
-    _merge_settings,
-    dialect_options,
-)
+from esolangs.runtime.source_hints import display_label, source_read_error
+from esolangs.settings import DialectSettings
 
 #: How long a blocking stdin read waits before it says that it is waiting.
 #: Shorter than the run notice: a read that has not finished is far more
@@ -166,60 +144,23 @@ def _read_program(
     settings: DialectSettings | None = None,
     catalog: Catalog | None = None,
     _settings_validated: bool = False,
-    portable: bool = False,
-    retry: _RunRetry | None = None,
 ) -> ProgramArtifact[Program]:
-    """Read native source or a portable record under the acquisition deadline."""
+    """Read a native source snapshot under the acquisition deadline."""
     deadline = None if timeout is None else monotonic() + timeout
     catalog = get_catalog(catalog)
-    retry = retry or _RunRetry(language, settings=settings)
     gzip_native = catalog.languages[language].runtime.compressed_source
-    label = "stdin" if path == "-" else display_label(path)
-    max_bytes = _MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES
-    if path == "-":
-
-        def native_hint() -> str:
-            return _native_run_hint(
-                language, path, catalog, retry.options_for(language)
-            )
-
-        pipe_check = (
-            _portable_pipe_check("--artifact", native_hint) if portable else None
-        )
-        data = _bounded_source_stdin(
-            timeout, timeout_flag, deadline, max_bytes, pipe_check=pipe_check
-        )
-        if len(data) > max_bytes:
-            retry_options = retry.options_for(language)
-            hint = "save the program to a file and pass its filename to esolangs run"
-            filename = "program.json" if portable else "program"
-            if command := _run_source_command(
-                language, filename, catalog, portable=portable, options=retry_options
-            ):
-                hint = f"save the program as {filename} and run `{command}`"
-            elif retry_options:
-                hint += " with the original execution options"
-            _fail(
-                f"stdin is larger than the {max_bytes // 1024} KiB program stream limit"
-                f"\nhint: {hint}"
-            )
-    else:
-        data = _bounded_read(
-            path,
-            timeout,
-            timeout_flag=timeout_flag,
-            directory=directory,
-            deadline=deadline,
-            max_bytes=max_bytes,
-        )
+    label = display_label(path)
+    data = _bounded_read(
+        path,
+        timeout,
+        timeout_flag=timeout_flag,
+        directory=directory,
+        deadline=deadline,
+        max_bytes=_MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES,
+    )
 
     def decode() -> ProgramArtifact[Program]:
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
-            if portable:
-                return _load_portable_source(
-                    language, path, data, settings, catalog, retry
-                )
-            _reject_portable_source(data, path, label, catalog, retry)
             return _check_program(
                 language,
                 _FileSource(label, data),
@@ -247,123 +188,6 @@ def _read_program(
         _fail(exc)
 
 
-def _reject_portable_source(
-    data: bytes, path: str, label: str, catalog: Catalog, retry: _RunRetry
-) -> None:
-    """Stop a portable envelope from reaching a native interpreter."""
-    from esolangs.registry._catalog import resolve_origin
-
-    if (record := _portable_file_record(data, label)) is None:
-        return
-    recorded = record["language"]
-    message = f"{label} contains a portable JSON artifact"
-    if (owner := resolve_origin(recorded, catalog=catalog)) is None:
-        raise ProgramError(
-            f"{message} for unavailable language {display_label(recorded)}"
-        )
-    if record["kind"] == "template":
-        raise _with_cli_hint(
-            TemplateError("unfilled portable template"),
-            _saved_template_hint(owner, path, catalog),
-        )
-    raise _with_cli_hint(
-        ProgramError(message),
-        _portable_run_hint(
-            owner,
-            path,
-            catalog,
-            "use --artifact to run portable JSON",
-            retry.options_for(owner),
-        ),
-    )
-
-
-def _load_portable_source(
-    language: str,
-    path: str,
-    data: bytes,
-    settings: DialectSettings | None,
-    catalog: Catalog,
-    retry: _RunRetry,
-) -> ProgramArtifact[Program]:
-    """Restore runnable JSON and combine any explicit compatible choices."""
-    from esolangs.portable import (
-        _ArtifactLanguageMismatchError,
-        _MissingPortableEnvelopeError,
-    )
-
-    label = "stdin" if path == "-" else display_label(path)
-    if kind := _native_binary_format(data):
-        raise _with_cli_hint(
-            ProgramError(
-                f"{label}: --artifact expects portable JSON; the input is native {kind}"
-            ),
-            _native_run_hint(language, path, catalog, retry.options_for(language)),
-        )
-    try:
-        artifact = _decode_portable_record(language, path, data, catalog)
-    except ProgramError as error:
-        cause = error.__cause__
-        if isinstance(cause, _ArtifactLanguageMismatchError):
-            if cause.is_template:
-                hint = _saved_template_hint(cause.owner, path, catalog)
-            else:
-                hint = _portable_run_hint(
-                    cause.owner,
-                    path,
-                    catalog,
-                    "pass the artifact's recorded language to esolangs run --artifact",
-                    retry.options_for(cause.owner),
-                )
-            raise _with_cli_hint(error, hint) from cause
-        if not isinstance(cause, (JSONDecodeError, _MissingPortableEnvelopeError)):
-            raise
-        hint = _native_run_hint(language, path, catalog, retry.options_for(language))
-        raise _with_cli_hint(error, f"if this is a native program, {hint}") from error
-    if isinstance(artifact, TemplateArtifact):
-        raise _with_cli_hint(
-            TemplateError(f"{label}: unfilled portable template"),
-            _saved_template_hint(artifact.language, path, catalog),
-        )
-    retained = artifact.settings
-    if settings is not None and retained is not None:
-        _check_dialect_conflicts(retained, settings)
-    merged = _merge_settings(language, retained, settings, catalog=catalog)
-    dialect_options(
-        language,
-        merged,
-        catalog=catalog,
-        validate_defaults=True,
-        _sparse_validated=True,
-    )
-    return artifact if merged is retained else replace(artifact, settings=merged)
-
-
-def _decode_portable_record(
-    language: str, path: str, data: bytes, catalog: Catalog
-) -> Artifact:
-    """Read a portable program or template document under the caller's bounds."""
-    from esolangs import from_json
-
-    label = "stdin" if path == "-" else display_label(path)
-    if data.startswith(BOM_UTF8):
-        raise _portable_bom_error(label)
-    try:
-        document = decode_utf8(data)
-    except UnicodeDecodeError as error:
-        raise source_read_error("stdin" if path == "-" else path, error) from error
-    try:
-        return from_json(language, document, catalog=catalog)
-    except ProgramError as error:
-        cause = error.__cause__
-        message = (
-            f"invalid portable program: {cause}"
-            if isinstance(cause, JSONDecodeError)
-            else str(error)
-        )
-        raise program_error_context(f"{label}: {message}", error) from cause
-
-
 def _note(message: str) -> None:
     """Write one advisory line to stderr, without Python's warning framing."""
     _diagnostic(f"{message}\n")
@@ -373,7 +197,7 @@ def _slurp_thread[SlurpT](
     work: Callable[[], SlurpT],
     deadline: float | None,
     *,
-    stdin_notice: str | None = None,
+    stdin_hint: str | None = None,
     on_timeout: Callable[[], NoReturn],
 ) -> SlurpT:
     """Accept a reader's result or exception only before the deadline.
@@ -399,7 +223,7 @@ def _slurp_thread[SlurpT](
         if isinstance(exc.__context__, KeyboardInterrupt):
             raise exc.__context__ from None
         raise
-    notice_at = None if stdin_notice is None else monotonic() + _WAITING_NOTICE_AFTER
+    notice_at = None if stdin_hint is None else monotonic() + _WAITING_NOTICE_AFTER
     # Poll the join so Python can handle signals delivered to the reader.
     while reader.is_alive():
         now = monotonic()
@@ -411,7 +235,7 @@ def _slurp_thread[SlurpT](
                 _diagnostic(
                     "still waiting for input on stdin after "
                     f"{_WAITING_NOTICE_AFTER:.0f}s; "
-                    f"{stdin_notice}\n",
+                    f"nothing has closed it{stdin_hint}\n",
                     ready_only=True,
                 )
                 notice_at = None
@@ -518,22 +342,17 @@ def _wait_for_pipe_data(deadline: float | None) -> None:
 
 
 def _read_pipe_without_poll(
-    stream: BufferedReader,
-    fd: int,
-    deadline: float | None,
-    size: int | None,
-    pipe_check: Callable[[bytes, bytearray], None] | None,
+    stream: BufferedReader, fd: int, deadline: float | None
 ) -> bytes:
     """Drain an anonymous pipe where poll is unavailable, including Windows."""
     blocking = os.get_blocking(fd)
     data = bytearray()
-    while size is None or len(data) < size:
+    while True:
         _time_remaining(deadline)
-        width = _BLOCK if size is None else min(_BLOCK, size - len(data))
         if blocking:
             os.set_blocking(fd, False)
         try:
-            chunk: bytes | None = stream.read(width)
+            chunk: bytes | None = stream.read(_BLOCK)
         except BlockingIOError:
             chunk = None
         finally:
@@ -545,52 +364,40 @@ def _read_pipe_without_poll(
             continue
         chunk = _binary_chunk(chunk)
         if not chunk:
-            break
+            return bytes(data)
         data.extend(chunk)
-        if pipe_check is not None:
-            pipe_check(chunk, data)
-    return bytes(data)
 
 
-def _read_buffered_stdin(
-    stream: BufferedReader,
-    deadline: float | None,
-    *,
-    size: int | None = None,
-    pipe_check: Callable[[bytes, bytearray], None] | None = None,
-) -> bytes:
+def _read_buffered_stdin(stream: BufferedReader, deadline: float | None) -> bytes:
     """Drain buffered bytes without holding the stdin lock across a pipe wait."""
     _time_remaining(deadline)
     raw = stream.raw
     if not isinstance(raw, FileIO):
-        return read_snapshot(stream, size=size)
+        return read_snapshot(stream)
     _time_remaining(deadline)
     fd = raw.fileno()
     _time_remaining(deadline)
     mode = os.fstat(fd).st_mode
     if stat.S_ISREG(mode):
-        if size == 1:
-            return stream.read1(1)
-        return read_snapshot(stream, size=size)
+        return read_snapshot(stream)
     if not hasattr(select, "poll"):
         if stat.S_ISFIFO(mode):
-            return _read_pipe_without_poll(stream, fd, deadline, size, pipe_check)
-        return read_snapshot(raw, size=size)
+            return _read_pipe_without_poll(stream, fd, deadline)
+        return read_snapshot(raw)
     if not os.get_blocking(fd):
-        return read_snapshot(stream, size=size)
+        return read_snapshot(stream)
     poller = select.poll()
     poller.register(fd, select.POLLIN)
     data = bytearray()
-    while size is None or len(data) < size:
+    while True:
         remaining = _time_remaining(deadline)
         timeout = None if remaining is None else min(ceil(remaining * 1000), 2**31 - 1)
         if not poller.poll(timeout):
             continue
         _time_remaining(deadline)
         # read1 consumes buffered bytes or performs at most one ready read.
-        width = _BLOCK if size is None else min(_BLOCK, size - len(data))
         try:
-            chunk: bytes | None = stream.read1(width)
+            chunk: bytes | None = stream.read1(_BLOCK)
         except BlockingIOError:
             chunk = None
         if chunk is None:
@@ -598,50 +405,8 @@ def _read_buffered_stdin(
             continue
         chunk = _binary_chunk(chunk)
         if not chunk:
-            break
+            return bytes(data)
         data.extend(chunk)
-        if pipe_check is not None:
-            pipe_check(chunk, data)
-    return bytes(data)
-
-
-def _bounded_source_stdin(
-    timeout: float | None,
-    timeout_flag: str,
-    deadline: float | None,
-    max_bytes: int,
-    *,
-    pipe_check: Callable[[bytes, bytearray], None] | None = None,
-) -> bytes:
-    """Read native source bytes from stdin under the program stream bounds."""
-    waited = _READ_DEADLINE if timeout is None else timeout
-    if deadline is None:
-        deadline = monotonic() + waited
-    size = max_bytes + 1
-
-    def read() -> bytes:
-        stdin = sys.stdin
-        if stdin is None:
-            return b""
-        with stream_read_deadline(deadline):
-            _time_remaining(deadline)
-            stream: BinaryIO | None = getattr(stdin, "buffer", None)
-            if isinstance(stream, BufferedReader):
-                return _read_buffered_stdin(
-                    stream, deadline, size=size, pipe_check=pipe_check
-                )
-            if stream is not None:
-                return _binary_chunk(read_snapshot(stream, size=size))
-            return read_snapshot(stdin, size=size).encode("utf-8")
-
-    def on_timeout() -> NoReturn:
-        bound = f" ({timeout_flag})" if timeout_flag else ""
-        _fail(f"stdin did not reach EOF within {waited:g}s{bound}", _TIMEOUT_EXIT)
-
-    try:
-        return _slurp_thread(read, deadline, on_timeout=on_timeout)
-    except (OSError, TypeError, ValueError) as exc:
-        _fail(exc if isinstance(exc, ProgramError) else source_read_error("stdin", exc))
 
 
 @contextmanager
@@ -662,16 +427,12 @@ def _override_io_method(
             del attributes[name]
 
 
-def _read_stdin_bytes(
-    stream: BinaryIO,
-    deadline: float | None,
-    *,
-    size: int | None = None,
-    pipe_check: Callable[[bytes, bytearray], None] | None = None,
-) -> bytes:
-    if isinstance(stream, BufferedReader):
-        return _read_buffered_stdin(stream, deadline, size=size, pipe_check=pipe_check)
-    value = read_snapshot(stream, size=size)
+def _read_stdin_bytes(stream: BinaryIO, deadline: float | None) -> bytes:
+    value = (
+        _read_buffered_stdin(stream, deadline)
+        if isinstance(stream, BufferedReader)
+        else read_snapshot(stream)
+    )
     return _binary_chunk(value)
 
 
@@ -735,10 +496,7 @@ def _read_prefetched_stdin(stdin: TextIOWrapper, stream: BinaryIO, data: bytes) 
 
 
 def _read_wrapped_stdin(
-    stdin: TextIOWrapper,
-    stream: BinaryIO,
-    deadline: float | None,
-    pipe_check: Callable[[bytes, bytearray], None] | None,
+    stdin: TextIOWrapper, stream: BinaryIO, deadline: float | None
 ) -> str:
     try:
         # Setting the same error handler distinguishes a fresh wrapper from
@@ -749,7 +507,7 @@ def _read_wrapped_stdin(
         # suffix with its current state while no further I/O can block.
         data = _read_stdin_bytes(stream, deadline)
         return _read_prefetched_stdin(stdin, stream, data)
-    return decode_utf8(_read_stdin_bytes(stream, deadline, pipe_check=pipe_check))
+    return decode_utf8(_read_stdin_bytes(stream, deadline))
 
 
 def _custom_text_reader(stdin: TextIOWrapper) -> bool:
@@ -761,30 +519,9 @@ def _custom_text_reader(stdin: TextIOWrapper) -> bool:
     )
 
 
-def _snapshot_frame(stdin: TextIO, deadline: float | None, frame: InputFrame) -> str:
-    """Read a complete record without waiting for a fresh CLI pipe to close."""
-    if _has_backing_type(stdin, TextIOWrapper) and not _custom_text_reader(stdin):
-        try:
-            TextIOWrapper.reconfigure(stdin, errors=stdin.errors)
-        except UnsupportedOperation:
-            pass  # A prefetched wrapper must keep its decoder state.
-        else:
-            stream = stdin.buffer
-            return frame.read_units(lambda: _read_stdin_bytes(stream, deadline, size=1))
-    return _managed_stdin_text(read_input(stdin, frame=frame), stdin)
-
-
-def _snapshot_stdin(
-    stdin: TextIO,
-    deadline: float | None,
-    frame: InputFrame | None = None,
-    *,
-    pipe_check: Callable[[bytes, bytearray], None] | None = None,
-) -> str:
+def _snapshot_stdin(stdin: TextIO, deadline: float | None) -> str:
     _time_remaining(deadline)
     with stream_read_deadline(deadline):
-        if frame is not None:
-            return _snapshot_frame(stdin, deadline, frame)
         if _has_backing_type(stdin, TextIOWrapper):
             if _custom_text_reader(stdin):
                 # Bypassing this reader can lose text it already decoded.
@@ -799,7 +536,7 @@ def _snapshot_stdin(
         if stream is None:
             raise _unreadable_input(stdin)
         if _has_backing_type(stdin, TextIOWrapper) and hasattr(stream, "__dict__"):
-            return _read_wrapped_stdin(stdin, stream, deadline, pipe_check)
+            return _read_wrapped_stdin(stdin, stream, deadline)
         return decode_utf8(_read_stdin_bytes(stream, deadline))
 
 
@@ -830,9 +567,6 @@ def _read_stdin(
     *,
     timeout_flag: str = "",
     terminal_prompt: str | None = None,
-    frame: InputFrame | None = None,
-    pipe_check: Callable[[bytes, bytearray], None] | None = None,
-    snapshot: Callable[[TextIO, float | None], str] | None = None,
 ) -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
@@ -845,15 +579,12 @@ def _read_stdin(
     deadline = None if timeout is None else monotonic() + timeout
 
     def _read_text() -> str:
-        if snapshot is not None:
-            return snapshot(stdin, deadline)
-        return _snapshot_stdin(stdin, deadline, frame, pipe_check=pipe_check)
+        return _snapshot_stdin(stdin, deadline)
 
     def _on_timeout() -> NoReturn:
         bound = f" ({timeout_flag})" if timeout_flag else ""
-        end = "the end of the input row" if frame is not None else "EOF"
         _fail(
-            f"stdin did not reach {end} within {timeout:g}s{bound}{hint}",
+            f"stdin did not reach EOF within {timeout:g}s{bound}{hint}",
             _TIMEOUT_EXIT,
         )
 
@@ -876,14 +607,7 @@ def _read_stdin(
             if deadline is None
             else lambda: _read_probed(terminal=_probe_stdin(stdin, deadline))
         )
-        waiting = (
-            "the input row is incomplete"
-            if frame is not None
-            else "nothing has closed it"
-        )
-        return _slurp_thread(
-            read, deadline, stdin_notice=waiting + hint, on_timeout=_on_timeout
-        )
+        return _slurp_thread(read, deadline, stdin_hint=hint, on_timeout=_on_timeout)
     except UnicodeDecodeError as exc:
         _fail(input_read_error(exc))
     except ExecutionBudgetError as exc:
@@ -896,29 +620,6 @@ def _read_stdin(
         _fail(exc, _exit_code(exc))
     except (OSError, TypeError, ValueError) as exc:
         _fail(input_read_error(exc))
-
-
-def _read_truth_table(
-    declaration: LanguageDeclaration | None = None,
-    *,
-    expected_inputs: int | None = None,
-    timeout: float | None = None,
-    timeout_flag: str = "",
-) -> str:
-    """Read a UTF-8 table, allowing one leading BOM and outer whitespace."""
-    return (
-        _read_stdin(
-            timeout,
-            hint="; finish the truth table or close stdin",
-            timeout_flag=timeout_flag,
-            terminal_prompt="Enter a truth table, then signal EOF.\n",
-            pipe_check=_TruthTablePipeCheck(
-                declaration, expected_inputs=expected_inputs
-            ),
-        )
-        .removeprefix("\ufeff")
-        .strip()
-    )
 
 
 class _StdoutError(Exception):

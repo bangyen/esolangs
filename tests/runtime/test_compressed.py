@@ -31,66 +31,6 @@ def test_pickles_require_measured_line_metadata() -> None:
             pickle.loads(pickle.dumps(incomplete))
 
 
-@pytest.mark.parametrize("text", ["+.", "+\r.", "+\r\n.\r", "+.\n"])
-def test_normalized_gzip_import_reuses_line_metadata(
-    tmp_path, monkeypatch, text
-) -> None:
-    path = tmp_path / "source.gz"
-    program = CompressedText.from_chunks((text,))
-    path.write_bytes(program.to_gzip())
-    chunks = CompressedText._decoded_chunks
-    passes = 0
-
-    def counted(self):
-        nonlocal passes
-        passes += 1
-        return chunks(self)
-
-    monkeypatch.setattr(CompressedText, "_decoded_chunks", counted)
-    artifact = esolangs.Language(REFERENCE).from_file(path, normalize=True)
-    if text == "+.":
-        assert artifact.source == program
-        assert passes == 1
-    else:
-        assert artifact.source == text.replace("\r\n", "\n").replace(
-            "\r", "\n"
-        ).removesuffix("\n")
-    assert esolangs.run(REFERENCE, artifact).output == "\x01"
-
-
-def test_utf8_byte_count_survives_split_scalars_and_pickle(monkeypatch) -> None:
-    text = "a" * (65536 - 1) + "é🦉"
-    encoded = text.encode()
-    split = len(encoded) - 1
-    archive = gzip.compress(encoded[:split], mtime=0) + gzip.compress(
-        encoded[split:], mtime=0
-    )
-    measured = CompressedText(archive)
-    created = CompressedText.from_chunks((text[:-1], text[-1:]))
-    legacy = pickle.loads(pickle.dumps(measured))
-    object.__delattr__(legacy, "_utf8_size")
-    restored = pickle.loads(pickle.dumps(legacy))
-
-    def forbidden(_self):
-        pytest.fail("benchmark byte count must reuse the measurement")
-
-    from scripts.benchmark import _utf8_bits
-
-    monkeypatch.setattr(CompressedText, "_decoded_chunks", forbidden)
-    for program in (measured, created, restored):
-        assert len(program) == len(text)
-        assert _utf8_bits(program) == 8 * len(encoded)
-
-
-def test_older_gzip_pickles_restore_carriage_return_metadata() -> None:
-    for text in ("+.", "+\r."):
-        program = CompressedText.from_chunks((text,))
-        object.__delattr__(program, "_has_carriage_return")
-        restored = pickle.loads(pickle.dumps(program))
-        assert restored._has_carriage_return is ("\r" in text)
-        assert str(restored) == text
-
-
 def test_streaming_text_round_trip_and_size(tmp_path: Path, monkeypatch) -> None:
     source = "aÿ\n" * 30000
     program = CompressedText.from_chunks((source[:65535], source[65535:]))

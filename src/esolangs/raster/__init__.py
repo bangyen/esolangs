@@ -310,13 +310,9 @@ class Raster:
         :class:`~esolangs.exceptions.ProgramError`; data that is not
         bytes-like is an :class:`~esolangs.exceptions.ArgumentError`.
         """
-        return cls._from_png(png._backing_bytes(data))  # noqa: SLF001
-
-    @classmethod
-    def _from_png(cls, source: bytes | png.PNGScan) -> Raster:
-        """Decode already acquired PNG data with the raster error contract."""
+        payload = png._backing_bytes(data)  # noqa: SLF001
         try:
-            decoded = png._rgb_rows(source)  # noqa: SLF001
+            decoded = png._rgb_rows(payload)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then
             # ``__post_init__`` rejects the empty rows, which is still a bad
             # PNG rather than a caller error.

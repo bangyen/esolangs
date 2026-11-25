@@ -9,7 +9,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.registry import _table
-from tests.support.cli_support import _failure, call_both
+from tests.support.cli_support import call_both
 from tests.support.dialect_support import Unreadable, foreign_settings
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -141,57 +141,16 @@ def test_foreign_language_guard_precedes_retained_choices() -> None:
         run("Brainfuck", source)
 
 
-def test_short_settings_flag(capsys, tmp_path) -> None:
+def test_short_settings_flag(capsys) -> None:
     settings = '{"expression_syntax":"postfix"}'
     output, error = call_both(["generate", "-s", settings, "Alight", "0110"], capsys)
-    assert f"'--settings={settings}'" in error
+    assert error == ""
     expected = esolangs.generate(
         "Alight",
         "0110",
         settings=esolangs.Language("Alight").settings(expression_syntax="postfix"),
     )
     assert output.rstrip("\n") == expected.source
-    path = tmp_path / "xor.txt"
-    path.write_text(output)
-    assert call_both(
-        ["run", f"--settings={settings}", "Alight", str(path)], capsys, stdin="01"
-    ) == ("1", "")
-
-
-def test_portable_cli_retains_dialect_and_arity(capsys, tmp_path) -> None:
-    api = esolangs.Language("Alight")
-    document, diagnostic = call_both(
-        [
-            "generate",
-            "--artifact",
-            "--set",
-            "expression_syntax=postfix",
-            api.name,
-            "0110",
-        ],
-        capsys,
-    )
-    assert diagnostic == ""
-    artifact = api.from_json(document)
-    assert isinstance(artifact, esolangs.ProgramArtifact)
-    assert artifact.input_arity == 2
-    assert (
-        artifact.settings
-        == api.generate(
-            "0110", settings=api.settings(expression_syntax="postfix")
-        ).settings
-    )
-    path = tmp_path / "xor.json"
-    path.write_text(document, encoding="utf-8")
-    command = ["run", "--artifact", api.name, str(path)]
-    for row, expected in enumerate("0110"):
-        assert call_both(command, capsys, api.encode_inputs([row // 2, row % 2])) == (
-            expected,
-            "",
-        )
-    output, error = _failure([*command, "--set", "expression_syntax=infix"], capsys)
-    assert not output
-    assert "written with expression_syntax='postfix'" in error
 
 
 class TestBreakAtChecksTheKindOfPosition:

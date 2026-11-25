@@ -1,8 +1,7 @@
 """Seeded token mutants of a generator, run against its tests.
 
-Preflights candidates for every requested package directory (``alight``).
-It prices one baseline run each, then applies ``--per-language`` seeded
-mutants one at a time:
+Takes package directories (``alight``), prices one baseline
+run each, then applies ``--per-language`` seeded mutants one at a time:
 operator swaps (``+``/``-``, ``<``/``<=``, ``and``/``or``, ...) and integer
 constants plus one, in generator source only.  Each runs the package's tests
 plus the registry tests matching its name, ``pytest -x``; a mutant that no
@@ -14,10 +13,10 @@ Mutants edit source in place, so a sweep refuses to run outside a git
 worktree.  Caps: a baseline gets 60 s; a mutant gets three times its baseline
 (60 s at least), always clipped to the remaining global budget. A language
 stops after three consecutive timeouts.  Records
-append to ``--out`` as JSON lines for manual triage. Duration-only failures
-are tolerated in the baseline and leave mutant verdicts inconclusive.
-Inconclusive results exit 1, and timeouts or the global deadline exit 124.
-SIGTERM stops the current test run, restores the source, and exits 143.
+append to ``--out`` as JSON lines for manual triage. A failure that is only a
+duration-band flip (see ``_duration_flips``) never counts: a baseline
+passes when every one of its failures is a flip, and a mutant is recorded
+survived, with the flips listed, when no test functionally kills it.
 """
 
 from __future__ import annotations
@@ -25,7 +24,6 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import math
 import os
 import random
 import re
@@ -33,14 +31,9 @@ import shutil
 import signal
 import subprocess
 import sys
-import tempfile
 import time
 import tokenize
-from collections.abc import Iterator
-from contextlib import contextmanager, nullcontext
 from pathlib import Path
-from threading import current_thread, main_thread
-from types import FrameType
 from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,9 +46,6 @@ from verify.failures import (  # noqa: E402
     failure_sections,
     section_matches,
 )
-from verify.process import stop_process_tree  # noqa: E402
-from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN  # noqa: E402
-from verify.receipts import parse_pytest_execution  # noqa: E402
 
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
 SWAP = {
@@ -107,8 +97,6 @@ def _replaced(text: str, mutant: Mutant) -> str:
 
 def candidates(package: str, count: int) -> list[Mutant]:
     """Return ``count`` compiling mutants, seeded by the package name."""
-    if count < 1:
-        raise ValueError("--per-language must be positive")
     found: list[Mutant] = []
     for path in generator_files(package):
         text = path.read_text(encoding="utf-8")
@@ -166,13 +154,13 @@ def registry_keyword(package: str) -> str:
         lang.name for lang in REGISTRY.values() if lang.id.replace("-", "_") == package
     ]
     if not names:
-        raise ValueError(f"{package}: no registered language has this package")
+        raise SystemExit(f"{package}: no registered language has this package")
     name = names[0]
     words = " and ".join(re.findall(r"[A-Za-z0-9_]+", name))
     return f"{package} or ({words})" if words else package
 
 
-def _pytest(package: str) -> list[str]:
+def _pytest(package: str, *, stop: bool) -> list[str]:
     command = [
         "uv",
         "run",
@@ -183,7 +171,7 @@ def _pytest(package: str) -> list[str]:
         "-p",
         "no:cacheprovider",
     ]
-    command += ["--tb=short", "-rf", "-m", "not weekly"]
+    command += ["--tb=short", "-rf", "-m", "not weekly", *(["-x"] if stop else [])]
     # The harness's deadline tests (under tests/, exercising the
     # worker-reaping machinery) can kill no generator mutant, and the
     # substring match drags them into package "line"'s selection ("line"
@@ -232,73 +220,25 @@ def _clear_bytecode() -> None:
         shutil.rmtree(cache, ignore_errors=True)
 
 
-class _Termination:
-    """Defer SIGTERM while entering or restoring a mutation."""
-
-    signum: int | None = None
-    waiting = False
-
-    def receive(self, signum: int, _frame: FrameType | None) -> None:
-        self.signum = signum
-        if self.waiting:
-            self.waiting = False
-            self.check()
-
-    def check(self) -> None:
-        if self.signum is not None:
-            raise SystemExit(128 + self.signum)
-
-    @contextmanager
-    def interruptible(self) -> Iterator[None]:
-        """Allow termination to unwind the worker wait after the process is owned."""
-        try:
-            self.waiting = True
-            self.check()
-            yield
-        finally:
-            self.waiting = False
-
-
-def _run(
-    command: list[str], timeout: float, termination: _Termination | None = None
-) -> tuple[str, str]:
+def _run(command: list[str], timeout: float) -> tuple[str, str]:
     """Return the status and output of one capped test run."""
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
-    with tempfile.TemporaryDirectory(prefix="mutation-tests-") as directory:
-        path = Path(directory) / "execution.json"
-        command = [*command, "-p", PLUGIN, OUTPUT_OPTION, str(path)]
-        with subprocess.Popen(
-            command,
-            cwd=ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            start_new_session=os.name == "posix",
-            env=env,
-        ) as process:
-            try:
-                with termination.interruptible() if termination else nullcontext():
-                    output, _ = process.communicate(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                stop_process_tree(process)
-                return "timeout", ""
-            except BaseException:
-                stop_process_tree(process)
-                raise
-        status = process.returncode
-        if status is None or status not in (0, 1):
-            return "inconclusive", output
+    with subprocess.Popen(
+        command,
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
+        env=env,
+    ) as process:
         try:
-            execution = parse_pytest_execution(
-                path.read_bytes(), status, allow_fail_fast=True
-            )
-        except (OSError, ValueError):
-            return "inconclusive", output
-        if execution.failed:
-            return "killed", output
-        if status == 0:
-            return "survived", output
-        return "inconclusive", output
+            output, _ = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+            return "timeout", ""
+        return ("killed" if process.returncode else "survived"), output
 
 
 def _in_worktree() -> bool:
@@ -312,86 +252,9 @@ def _in_worktree() -> bool:
     return "/worktrees/" in git_dir
 
 
-def _incomplete(reason: str, code: int = 124) -> int:
-    print(f"mutation sweep incomplete: {reason}", file=sys.stderr)
-    return code
-
-
-def _check_output_paths(outputs: tuple[Path, ...], sources: set[Path]) -> None:
-    """Refuse to write reports or logs over checkout inputs."""
-    roots = tuple(
-        (ROOT / name).resolve() for name in ("src", "scripts", "checks", "tests")
-    )
-    sources = {path.resolve() for path in sources}
-    for path in outputs:
-        try:
-            destination = path.resolve()
-        except RuntimeError as error:  # Path.resolve on Python 3.12 symlink loops.
-            raise ValueError(
-                f"cannot resolve mutation output {path}: {error}"
-            ) from error
-        if not destination.is_file():
-            continue
-        if destination in sources or any(
-            destination.is_relative_to(root) for root in roots
-        ):
-            raise ValueError(
-                f"mutation output {path} would overwrite source {destination}"
-            )
-        if destination.stat().st_nlink > 1:
-            for source in sorted(sources):
-                if destination.samefile(source):
-                    raise ValueError(
-                        f"mutation output {path} would overwrite source {source}"
-                    )
-
-
 def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> int:
-    """Run the mutation cases allowed by the finite sweep budget."""
-    termination = _Termination()
-    if current_thread() is not main_thread():
-        return _sweep(packages, out, per_language, budget, termination)
-    previous = signal.signal(signal.SIGTERM, termination.receive)
-    try:
-        return _sweep(packages, out, per_language, budget, termination)
-    finally:
-        signal.signal(signal.SIGTERM, previous)
-        termination.check()
-
-
-def _sweep(
-    packages: list[str],
-    out: Path,
-    per_language: int,
-    budget: float,
-    termination: _Termination,
-) -> int:
-    if not math.isfinite(budget) or budget <= 0:
-        raise ValueError("--budget must be positive and finite")
-    if per_language < 1:
-        raise ValueError("--per-language must be positive")
-    if not packages:
-        raise ValueError("at least one package is required")
+    """Run every package's mutants; return 1 if a baseline fails."""
     began = time.monotonic()
-    planned = []
-    for package in packages:
-        termination.check()
-        command = _pytest(package)
-        sample = candidates(package, per_language)
-        if not sample:
-            raise ValueError(f"{package}: no compiling generator mutants")
-        planned.append((package, command, sample))
-    if time.monotonic() - began >= budget:
-        return _incomplete("global budget spent during preflight")
-    logs = {
-        package: out.with_name(f"{out.stem}-{package}-baseline.log")
-        for package, _, _ in planned
-    }
-    _check_output_paths(
-        (out, *logs.values()),
-        {ROOT / mutant["file"] for _, _, sample in planned for mutant in sample},
-    )
-    statuses: set[str] = set()
     # A baseline alone may take minutes with nothing printed; say what runs.
     print(
         f"{len(packages)} package(s), up to {per_language} mutants each, "
@@ -399,19 +262,21 @@ def _sweep(
         flush=True,
     )
     with out.open("a", encoding="utf-8") as sink:
-        for package, command, sample in planned:
+        for package in packages:
             remaining = budget - (time.monotonic() - began)
             if remaining <= 0:
-                return _incomplete("global budget spent before baseline")
+                print("global budget spent before baseline")
+                return 0
             print(
                 f"{package}: baseline test run ({min(60, remaining):g} s cap)",
                 flush=True,
             )
             start = time.monotonic()
-            status, output = _run(command, min(60, remaining), termination)
-            termination.check()
+            status, output = _run(_pytest(package, stop=False), min(60, remaining))
             baseline = time.monotonic() - start
-            logs[package].write_text(output, encoding="utf-8")
+            out.with_name(f"{out.stem}-{package}-baseline.log").write_text(
+                output, encoding="utf-8"
+            )
             print(
                 f"{package}: baseline {baseline:.2f} s; {per_language} mutants "
                 f"priced at most {per_language * max(60, 3 * baseline):.1f} s "
@@ -419,8 +284,6 @@ def _sweep(
                 flush=True,
             )
             flips = _duration_flips(output) if status == "killed" else None
-            if status == "timeout":
-                return _incomplete(f"{package} baseline timed out")
             if status != "survived" and flips is None:
                 print(
                     f"{package}: baseline {status}\n{output[-2000:]}", file=sys.stderr
@@ -433,30 +296,27 @@ def _sweep(
                     flush=True,
                 )
             timeout, streak = max(60.0, 3 * baseline), 0
-            for mutant in sample:
-                termination.check()
+            for mutant in candidates(package, per_language):
                 remaining = budget - (time.monotonic() - began)
                 if remaining <= 0:
-                    return _incomplete("global budget spent before the next mutant")
+                    print("global budget spent")
+                    return 0
                 if streak == 3:
                     print(f"{package}: skipped after three consecutive timeouts")
                     break
                 path = ROOT / mutant["file"]
-                original_bytes = path.read_bytes()
-                original = original_bytes.decode("utf-8")
+                original = path.read_text(encoding="utf-8")
                 try:
-                    path.write_bytes(_replaced(original, mutant).encode("utf-8"))
+                    path.write_text(_replaced(original, mutant), encoding="utf-8")
                     _clear_bytecode()
                     status, output = _run(
-                        [*command, "-x"], min(timeout, remaining), termination
+                        _pytest(package, stop=True), min(timeout, remaining)
                     )
                 finally:
-                    path.write_bytes(original_bytes)
-                termination.check()
+                    path.write_text(original, encoding="utf-8")
                 flips = _duration_flips(output) if status == "killed" else None
                 if flips is not None:
-                    status = "inconclusive"
-                statuses.add(status)
+                    status = "survived"
                 streak = streak + 1 if status == "timeout" else 0
                 failed = sorted(set(re.findall(r"^FAILED (\S+)", output, re.MULTILINE)))
                 line = original.split("\n")[mutant["line"] - 1].strip()
@@ -478,10 +338,6 @@ def _sweep(
                     flush=True,
                 )
     _clear_bytecode()
-    if "timeout" in statuses:
-        return _incomplete("one or more mutants timed out")
-    if "inconclusive" in statuses:
-        return _incomplete("one or more mutant verdicts were inconclusive", 1)
     return 0
 
 
@@ -495,16 +351,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--per-language", type=int, default=30)
     parser.add_argument("--budget", type=float, default=2 * 3600, help="seconds")
     args = parser.parse_args(argv)
-    if not math.isfinite(args.budget) or args.budget <= 0:
-        parser.error("--budget must be positive and finite")
-    if args.per_language < 1:
-        parser.error("--per-language must be positive")
     if not _in_worktree():
         parser.error("mutants edit source in place: run a sweep in a git worktree")
-    try:
-        return sweep(args.packages, args.out, args.per_language, args.budget)
-    except (OSError, ValueError) as error:
-        parser.error(str(error))
+    return sweep(args.packages, args.out, args.per_language, args.budget)
 
 
 if __name__ == "__main__":

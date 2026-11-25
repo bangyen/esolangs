@@ -19,7 +19,7 @@ from esolangs.languages.circuit_diagram.generator.hpool import (
 from esolangs.languages.circuit_diagram.interpreter import _compile, _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
-from scripts.docs.evidence import construct_witness, construction_boundaries
+from scripts.docs.evidence import construction_boundaries
 from tests.support.screen_support import ignore
 from tests.support.witness_tables import dense
 
@@ -96,7 +96,7 @@ def test_public_dense_candidates_beat_minterms_without_relaxing_contracts(
     assert len(routed) == int(witness.arity == 9)
     if routed:
         _execute(table, model.render(), (0, 1, 128, 255, 256, 511))
-    code = construct_witness("Circuit Diagram", table, circuit_diagram)
+    code = circuit_diagram(table)
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) <= prod(model.bounds())
     assert prod(model.bounds()) < prod(_h_term_layout(table).bounds())
@@ -110,7 +110,7 @@ def test_projected_pool_reads_every_original_port_in_order(ignored) -> None:
     core = dense(8)
     table = ignore(core, ignored)
     model = _large_pool_layout(core, input_order=kept, port_inputs=9)
-    code = construct_witness("Circuit Diagram", table, circuit_diagram)
+    code = circuit_diagram(table)
     lines = code.splitlines()
     assert len(lines) * max(map(len, lines)) <= prod(model.bounds())
     _execute(table, code)

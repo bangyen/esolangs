@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import builtins
 import contextlib
 import hashlib
@@ -19,21 +20,21 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import asdict, fields, is_dataclass
+from dataclasses import fields, is_dataclass
 from fractions import Fraction
-from functools import cache, partial
+from functools import cache
 from itertools import chain, compress
 from operator import is_not
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 
-# Pin the package and development tools before the driver or worker imports them.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-sys.path.insert(1, str(Path(__file__).resolve().parent))
-sys.path.insert(2, str(Path(__file__).resolve().parents[1]))
+# scripts/ holds the sibling `verify` package. Redundant when run as
+# `python scripts/benchmark.py` (the script's directory is already first),
+# but required when imported as `scripts.benchmark`, e.g. by tests.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# The repository root, for the test-support alarm guard.
+sys.path.insert(1, str(Path(__file__).resolve().parents[1]))
 
-import benchmark_options
-from benchmark_options import BenchmarkDeadline, check_piped_rows
 from source_units import source_units
 from verify.process import (
     EXCERPT_BYTES,
@@ -42,32 +43,25 @@ from verify.process import (
     spool,
     stop_process_tree,
 )
-from verify.receipts import file_fingerprint
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs._cycles import _halt_or_cycle_result
 from esolangs.artifacts import Artifact
-from esolangs.cli.args import _settings_arguments, _settings_of
-from esolangs.cli.io import _read_truth_table
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.operations.generation import _check_generation_scale
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._info import LanguageInfo
-from esolangs.runtime._json import record_dumps
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime._validate import check_timeout, check_width
+from esolangs.runtime._validate import check_timeout
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
-from esolangs.settings import dialect_options
-from esolangs.vm import SnapshotVM, _capture_workspace, complete_vm
+from esolangs.vm import (
+    SnapshotVM,
+    _capture_workspace,
+    complete_vm,
+    run_until_halt_or_cycle,
+)
 from tests.support.execution import run_guard
-
-_SCRIPT = Path(__file__).resolve()
-_ROOT = _SCRIPT.parents[1]
-if Path(esolangs.__file__ or "").resolve().parent != _ROOT / "src/esolangs":
-    raise ImportError("benchmark imported esolangs from another checkout")
 
 _TEXT_TYPES = (str, bytes, bytearray)
 _CONTAINER_TYPES = (tuple, list, frozenset, set)
@@ -83,54 +77,16 @@ def artifact_hash(program: esolangs.Program) -> str:
             digest.update(chunk.encode("utf-8"))
         return digest.hexdigest()
     if isinstance(program, str):
-        return hashlib.sha256(b"text\0" + program.encode("utf-8")).hexdigest()
-    digest = hashlib.sha256(b"rgb\0[")
-    previous = None
-    for row in program.rows:
-        if previous is not None:
-            digest.update(b",")
-        # Scaled rasters repeat the same immutable row object.
-        if row is not previous:
-            packed = json.dumps(row, separators=(",", ":")).encode()
-            previous = row
-        digest.update(packed)
-    digest.update(b"]")
-    return digest.hexdigest()
-
-
-def artifact_digests(artifact: Artifact) -> tuple[str, str]:
-    """Hash source, then bind its digest to the artifact's retained metadata."""
-    digest = artifact_hash(artifact.source)
-    record: dict[str, Any] = {
-        "version": 1,
-        "source_sha256": digest,
-        "language": artifact.language,
-        "settings": None if artifact.settings is None else artifact.settings.options(),
-    }
-    if isinstance(artifact, esolangs.TemplateArtifact):
-        record.update(
-            kind="template",
-            char=artifact.bindings.char,
-            setters=artifact.bindings.setters,
-            spans=artifact.spans,
-            generation_width=artifact.generation_width,
-        )
+        payload = b"text\0" + program.encode("utf-8")
     else:
-        record.update(
-            kind="program", scale=artifact.scale, input_arity=artifact.input_arity
-        )
-        if isinstance(artifact.source, esolangs.CompressedText):
-            limits = artifact.source.limits
-            record.update(
-                kind="gzip", limits=None if limits is None else asdict(limits)
-            )
-    return digest, hashlib.sha256(
-        record_dumps(record, sort_keys=True).encode("ascii")
-    ).hexdigest()
+        payload = b"rgb\0" + json.dumps(program.rows, separators=(",", ":")).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def source_identity(timeout: float = 60) -> dict[str, Any]:
     """Identify the checkout; refuse evidence without readable Git state."""
+    root = Path(__file__).resolve().parents[1]
+
     check_timeout(timeout)
     deadline = time.monotonic() + timeout
 
@@ -139,7 +95,7 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
             bytes,
             run_bounded(
                 ["git", *args],
-                cwd=_ROOT,
+                cwd=root,
                 capture_output=True,
                 check=True,
                 text=False,
@@ -152,13 +108,10 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
         git("ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
     ):
         if name:
-            path = _ROOT / os.fsdecode(name)
-            entry = file_fingerprint(path)
-            if entry is None:
-                raise ValueError(f"cannot fingerprint untracked input {str(path)!r}")
             untracked.update(name + b"\0")
-            untracked.update(entry["mode"].encode("ascii"))
-            untracked.update(bytes.fromhex(entry["sha256"]))
+            untracked.update(
+                hashlib.sha256((root / os.fsdecode(name)).read_bytes()).digest()
+            )
     return {
         "untracked_sha256": untracked.hexdigest(),
         "commit": git("rev-parse", "HEAD").decode().strip(),
@@ -166,17 +119,8 @@ def source_identity(timeout: float = 60) -> dict[str, Any]:
         "tracked_diff_sha256": hashlib.sha256(
             git("diff", "HEAD", "--binary")
         ).hexdigest(),
-        "checkout": str(_ROOT),
+        "checkout": str(root),
     }
-
-
-def _request_identity(deadline: BenchmarkDeadline) -> dict[str, Any]:
-    remaining = deadline.remaining()
-    try:
-        return source_identity(timeout=min(60, remaining))
-    except subprocess.TimeoutExpired:
-        deadline.remaining()
-        raise
 
 
 @cache
@@ -213,15 +157,6 @@ _EVIDENCE: ContextVar[dict[str, Any] | None] = ContextVar(
 )
 
 
-class _CheckoutChangedError(RuntimeError):
-    """Benchmark evidence cannot be published after checkout inputs change."""
-
-    def __init__(self) -> None:
-        super().__init__(
-            "checkout changed during benchmark. Rerun once the checkout is stable."
-        )
-
-
 @contextmanager
 def evidence_session() -> Iterator[None]:
     """Check checkout state once around a sweep, before publishing its records."""
@@ -232,7 +167,7 @@ def evidence_session() -> Iterator[None]:
     try:
         yield
         if source_identity() != identity:
-            raise _CheckoutChangedError
+            raise RuntimeError("checkout changed during benchmark")
     finally:
         worker.close()
         _WORKER.reset(worker_token)
@@ -246,7 +181,7 @@ def _bits(row: int, inputs: int) -> list[int]:
 def _utf8_bits(program: esolangs.Program) -> int | None:
     """Return a text program's UTF-8 size in bits; None for a raster."""
     if isinstance(program, esolangs.CompressedText):
-        return 8 * program._utf8_size  # noqa: SLF001 - measured during gzip I/O
+        return 8 * sum(len(chunk.encode("utf-8")) for chunk in program.chunks())
     if isinstance(program, str):
         return 8 * len(program.encode("utf-8"))
     return None
@@ -487,30 +422,28 @@ def _execute(
     cap: int,
     timeout: float | None,
     *,
-    width: int | None = None,
     track_store: bool = False,
     facts: LanguageInfo | None = None,
-    digests: tuple[str, str] | None = None,
-    prepare: Callable[[], esolangs.PreparedProgram] | None = None,
+    source_digest: str | None = None,
 ) -> dict[str, Any]:
     if facts is None:
         facts = esolangs.describe(language)
     bits = _bits(row, len(table).bit_length() - 1)
     source: esolangs.ProgramArtifact[esolangs.Program]
     if isinstance(program, esolangs.TemplateArtifact):
-        source, stdin = esolangs.instantiate(language, program, bits, width=width), ""
+        source, stdin = esolangs.instantiate(language, program, bits), ""
     else:
-        # Generation validated the table, and the row uses exactly its arity.
-        source, stdin = program, esolangs.encode_inputs(language, bits)
+        source, stdin = (
+            program,
+            esolangs.encode_inputs(language, bits, truth_table=table),
+        )
     supported = facts.steppable_to_answer
     if track_store and facts.answer_mode == "termination":
         raise ValueError("store tracking requires a halting-answer language")
-    source_digest, record_digest = (
-        artifact_digests(source) if digests is None else digests
-    )
     result: dict[str, Any] = {
-        "artifact_sha256": source_digest,
-        "record_sha256": record_digest,
+        "artifact_sha256": source_digest
+        if source_digest is not None
+        else artifact_hash(source.source),
         "row": row,
         "expected_answer": table[row],
         "actual_answer": None,
@@ -530,36 +463,24 @@ def _execute(
     }
 
     def drive(*_args: object) -> None:
-        prepared = None if prepare is None else prepare()
         if not supported:
-            outcome = (
-                esolangs.run(language, source, stdin=stdin)
-                if prepared is None
-                else prepared.run(stdin=stdin)
-            )
+            output = esolangs.run(language, source, stdin=stdin).output
             result["execution_status"] = "halted"
-            result["actual_answer"] = esolangs.read_answer(language, outcome.output)
+            result["actual_answer"] = esolangs.read_answer(language, output)
             return
-
-        def make_vm() -> VM:
-            if prepared is None:
-                return debugger_api.make_vm(language, source, stdin=stdin)
-            return prepared.make_vm(stdin=stdin)
-
-        vm = make_vm()
+        vm = debugger_api.make_vm(language, source, stdin=stdin)
         terminating = facts.answer_mode == "termination"
         if terminating:
-            decision = _halt_or_cycle_result(vm, limit=cap)
-            if not decision.halts or decision.commands is not None:
-                answer = "halts" if decision.halts else "diverges"
-                result.update(
-                    commands=decision.commands if decision.halts else None,
-                    execution_status="halted" if decision.halts else "cycle",
-                    actual_answer=str(facts.answer_encoding.index(answer)),
+            halted = run_until_halt_or_cycle(vm, limit=cap)
+            if not halted:
+                result["execution_status"] = "cycle"
+                result["actual_answer"] = str(
+                    list(facts.answer_encoding).index("diverges")
                 )
                 return
-            # Replay branching halts whose proof has no live command count.
-            vm = make_vm()
+            # The detector unwraps the VM; replay a halt to retain the
+            # baseline's wrapper-step count, excluding its post-halt dump.
+            vm = debugger_api.make_vm(language, source, stdin=stdin)
 
         written = WrittenState(_capture_workspace(vm)) if track_store else None
 
@@ -591,7 +512,7 @@ def _execute(
             result["execution_status"] = "step_cap"
         elif terminating:
             result["execution_status"] = "halted"
-            result["actual_answer"] = str(facts.answer_encoding.index("halts"))
+            result["actual_answer"] = str(list(facts.answer_encoding).index("halts"))
         else:
             try:
                 output = complete_vm(vm, max_steps=0)
@@ -623,14 +544,9 @@ def _measure(
     sample_rows: tuple[int, ...] | None = None,
     timeout: float | None = 30.0,
     track_store: bool = False,
-    width: int | None = None,
-    balance: bool = False,
-    scale: int | None = None,
-    settings: esolangs.DialectSettings | None = None,
     _progress: Callable[[str], None] | None = None,
-    _on_row: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
-    """Time stable generation and check the selected input rows."""
+    """Benchmark the last timed artifact; optionally check every input row."""
     if repeat < 1 or step_cap < 1:
         raise ValueError("repeat and step_cap must be positive")
     if not 0 <= row < len(table):
@@ -647,68 +563,35 @@ def _measure(
         _progress("generation")
     timings: list[int] = []
     program: Artifact | None = None
-    digests: tuple[str, str] | None = None
-    for sample in range(1, repeat + 1):
+    for _ in range(repeat):
         started = time.perf_counter_ns()
-        program = esolangs.generate(
-            language,
-            table,
-            width=width,
-            balance=balance,
-            scale=scale,
-            settings=settings,
-        )
+        program = esolangs.generate(language, table)
         source_units(program.source)
         timings.append(time.perf_counter_ns() - started)
-        measured = artifact_digests(program)
-        if digests is None:
-            digests = measured
-        elif measured != digests:
-            raise esolangs.ProgramError(
-                f"generation repeat {sample} differs from repeat 1"
-            )
     assert program is not None
-    assert digests is not None
     facts = esolangs.describe(language)
-    source = program.source
-    raster = None
-    if isinstance(source, esolangs.Raster):
-        assert isinstance(program, esolangs.ProgramArtifact)
-        raster = {
-            "width": len(source.rows[0]),
-            "height": len(source.rows),
-            "scale": program.scale,
-        }
+    digest = artifact_hash(program.source)
     rows = range(len(table)) if all_rows else sample_rows or (row,)
-    # The first executed row pays for preparation under its existing deadline.
-    prepare = (
-        cache(partial(esolangs.prepare, language, program))
-        if len(rows) > 1 and isinstance(program, esolangs.ProgramArtifact)
-        else None
-    )
     executions = []
     for at in rows:
         if _progress is not None:
             _progress("execution")
-        execution = _execute(
-            language,
-            program,
-            table,
-            at,
-            step_cap,
-            timeout,
-            width=width,
-            track_store=track_store,
-            facts=facts,
-            digests=None if facts.parameterized else digests,
-            prepare=prepare,
+        executions.append(
+            _execute(
+                language,
+                program,
+                table,
+                at,
+                step_cap,
+                timeout,
+                track_store=track_store,
+                facts=facts,
+                source_digest=None if facts.parameterized else digest,
+            )
         )
-        executions.append(execution)
-        if _on_row is not None:
-            _on_row(execution)
     selected = next(item for item in executions if item["row"] == row)
     if _EVIDENCE.get() is None and source_identity() != identity:
-        raise _CheckoutChangedError
+        raise RuntimeError("checkout changed during benchmark")
     return {
         "schema": 6,
         "provenance": {
@@ -717,22 +600,16 @@ def _measure(
             "platform": platform.platform(),
             "machine": platform.machine(),
             "cpu": cpu_model(),
-            "harness": 2,
-            "generated_artifact_sha256": digests[0],
-            "generated_record_sha256": digests[1],
+            "harness": 1,
+            "generated_artifact_sha256": digest,
         },
         "track_store": track_store,
         "language": facts.name,
         "truth_table": table,
         "inputs": len(table).bit_length() - 1,
         "source_kind": facts.source_kind,
-        "source_units": source_units(source),
-        "source_unit": "pixels" if raster is not None else "characters",
-        "source_utf8_bits": _utf8_bits(source),
-        "raster": raster,
-        "generation_options": {"width": width, "balance": balance, "scale": scale},
-        "settings": None if program.settings is None else program.settings.options(),
-        "generation_ns_first": timings[0],
+        "source_units": source_units(program.source),
+        "source_utf8_bits": _utf8_bits(program.source),
         "generation_ns_best": min(timings),
         "generation_ns_median": int(statistics.median(timings)),
         "step_cap": step_cap,
@@ -760,20 +637,11 @@ def measure(
     timeout: float | None = 30.0,
     track_store: bool = False,
     generation_timeout: float | None = 30.0,
-    width: int | None = None,
-    balance: bool = False,
-    scale: int | None = None,
-    settings: esolangs.DialectSettings | None = None,
-    deadline: BenchmarkDeadline | None = None,
 ) -> dict[str, Any]:
-    """Bound the request and each phase in a reusable supervised worker."""
-    if all_rows and sample_rows is not None:
-        raise esolangs.ArgumentError("all_rows and sample_rows are mutually exclusive")
+    """Bound generation and each execution row in a reusable supervised worker."""
     check_timeout(timeout)
     check_timeout(generation_timeout)
-    deadline = deadline or BenchmarkDeadline()
-    choices = None if settings is None else dialect_options(language, settings)
-    identity = _EVIDENCE.get() or _request_identity(deadline)
+    identity = _EVIDENCE.get() or source_identity()
     worker = _WORKER.get() or Worker()
     arguments = {
         "language": language,
@@ -785,20 +653,12 @@ def measure(
         "sample_rows": sample_rows,
         "timeout": timeout,
         "track_store": track_store,
-        "width": width,
-        "balance": balance,
-        "scale": scale,
-        "settings": choices,
     }
     try:
-        result = worker.measure(
-            arguments, identity, generation_timeout, budget=deadline
-        )
-        if _EVIDENCE.get() is None and _request_identity(deadline) != identity:
-            raise _CheckoutChangedError
-        deadline.remaining()
+        result = worker.measure(arguments, identity, generation_timeout)
+        if _EVIDENCE.get() is None and source_identity() != identity:
+            raise RuntimeError("checkout changed during benchmark")
         result["generation_timeout"] = generation_timeout
-        result["total_timeout"] = deadline.seconds
         return result
     finally:
         if _WORKER.get() is None:
@@ -807,105 +667,70 @@ def measure(
 
 def main(argv: list[str] | None = None) -> int:
     """Print the evidence; fail if any requested row is wrong or undecided."""
-    parser = benchmark_options.argument_parser(__doc__ or "")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("language")
+    parser.add_argument(
+        "truth_table",
+        help="one output bit per input row, 2**n of them: 0110 is two-input XOR",
+    )
+    parser.add_argument("--repeat", type=int, default=3)
+    parser.add_argument("--row", type=int)
+    parser.add_argument("--step-cap", type=int, default=2_000_000)
+    bounds = parser.add_mutually_exclusive_group()
+    bounds.add_argument("--timeout", type=float, default=30.0)
+    bounds.add_argument(
+        "--no-timeout", action="store_const", dest="timeout", const=None
+    )
+    parser.add_argument("--generation-timeout", type=float, default=30.0)
+    parser.add_argument("--all-rows", action="store_true")
+    parser.add_argument(
+        "--track-store",
+        action="store_true",
+        help="sample stores; languages with a payload split report integers too",
+    )
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
         parser.error("--repeat and --step-cap must be positive")
-    if any(row < 0 for row in args.row or ()):
-        parser.error("--row must be nonnegative")
+    # Here, not in the worker: a typo there surfaced as a traceback.
     try:
-        declaration = LANGUAGES[resolve(args.language)]
-        check_timeout(args.timeout, "--timeout")
-        check_timeout(args.generation_timeout, "--generation-timeout")
-        deadline = BenchmarkDeadline(args.total_timeout)
-        check_width(args.width)
-        _check_generation_scale(declaration, args.scale)
+        args.language = resolve(args.language)
+        _validate_truth_table(args.truth_table)
     except ValueError as exc:
         parser.error(str(exc))
-    if (backend := declaration.backend) is None:
-        parser.error(f"{declaration.name} has no Boolean generator")
-    if args.track_store and declaration.contract.answer_mode == "termination":
-        parser.error("--track-store requires a halting-answer language")
-    if args.settings and len(args.settings) != 1:
-        parser.error("--settings may appear only once")
-    options = {"--settings": args.settings[0]} if args.settings else {}
-    settings = _settings_of(
-        _settings_arguments(options, args.set), language=declaration.name
+    row = len(args.truth_table) - 1 if args.row is None else args.row
+    if not 0 <= row < len(args.truth_table):
+        parser.error(f"--row must be in [0, {len(args.truth_table) - 1}]")
+    result = measure(
+        args.language,
+        args.truth_table,
+        repeat=args.repeat,
+        row=row,
+        step_cap=args.step_cap,
+        all_rows=args.all_rows,
+        timeout=args.timeout,
+        generation_timeout=args.generation_timeout,
+        track_store=args.track_store,
     )
-    try:
-        table = args.truth_table
-        if table == "-":
-            check_piped_rows(parser, args.row, declaration.name, backend.max_inputs)
-            table = _read_truth_table(
-                declaration,
-                timeout=deadline.remaining(),
-                timeout_flag="--total-timeout",
-            )
-        try:
-            backend.check_arity(declaration.name, _validate_truth_table(table))
-        except ValueError as exc:
-            parser.error(str(exc))
-        rows = args.row or [len(table) - 1]
-        if any(not 0 <= row < len(table) for row in rows):
-            parser.error(f"--row must be in [0, {len(table) - 1}]")
-        sample = tuple(dict.fromkeys(rows)) if args.row else None
-        count = len(table) if args.all_rows else len(sample or rows)
-        print(
-            f"{declaration.name}: benchmarking {count} row(s)",
-            file=sys.stderr,
-            flush=True,
-        )
-        result = measure(
-            declaration.name,
-            table,
-            repeat=args.repeat,
-            row=rows[-1],
-            step_cap=args.step_cap,
-            all_rows=args.all_rows,
-            sample_rows=sample,
-            timeout=args.timeout,
-            generation_timeout=args.generation_timeout,
-            track_store=args.track_store,
-            width=args.width,
-            balance=args.balance,
-            scale=args.scale,
-            settings=settings,
-            deadline=deadline,
-        )
-        payload = json.dumps(result, indent=2, sort_keys=True)
-        deadline.remaining()
-    except (esolangs.ArgumentError, esolangs.GeneratorCapError) as exc:
-        parser.error(str(exc))
-    except (
-        esolangs.ExecutionTimeoutError,
-        esolangs.ProgramError,
-        _CheckoutChangedError,
-    ) as exc:
-        print(exc, file=sys.stderr)
-        for note in getattr(exc, "__notes__", ()):
-            if note.startswith("[log] "):
-                print(note.partition("\n")[0], file=sys.stderr)
-        return 1
-    print(payload)
+    print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
 
 
-def _worker_error(message: dict[str, Any]) -> Exception:
-    """Recover the exception class from a worker error record."""
-    error = message["error"]
-    if (
-        set(message) != {"error"}
-        or not isinstance(error, dict)
-        or set(error) != {"type", "message"}
-        or not all(isinstance(value, str) for value in error.values())
-    ):
-        return RuntimeError("invalid benchmark worker error")
-    cls = getattr(
-        esolangs, error["type"], getattr(builtins, error["type"], RuntimeError)
-    )
-    if not isinstance(cls, type) or not issubclass(cls, Exception):
-        cls = RuntimeError
-    return cls(error["message"])
+def _post(
+    messages: queue.Queue[str | None], stopped: threading.Event, record: str | None
+) -> None:
+    """Queue ``record`` for the waiting caller, giving up once ``stopped``.
+
+    Takes the queue and event, not the worker: a restart rebinds both, and a
+    thread from the old process must not post into the new one's queue.
+    """
+    while not stopped.is_set():
+        try:
+            messages.put(record, timeout=0.05)
+            return
+        except queue.Full:
+            pass
 
 
 class Worker:
@@ -913,7 +738,11 @@ class Worker:
 
     def __init__(self, command: list[str] | None = None) -> None:
         """Spawn ``command``, or this module's worker by default."""
-        self.command = command or [sys.executable, str(_SCRIPT), "--worker"]
+        self.command = command or [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--worker",
+        ]
         self.process: subprocess.Popen[str] | None = None
         self.messages: queue.Queue[str | None] = queue.Queue(maxsize=1)
         self.stopped = threading.Event()
@@ -928,7 +757,7 @@ class Worker:
         if self.process is None:
             self.messages = queue.Queue(maxsize=1)
             self.stopped = threading.Event()
-            directory = _ROOT / "notes" / "benchmarks"
+            directory = Path(__file__).resolve().parents[1] / "notes" / "benchmarks"
             directory.mkdir(parents=True, exist_ok=True)
             fd, filename = tempfile.mkstemp(
                 prefix="worker-", suffix=".log", dir=directory
@@ -945,7 +774,7 @@ class Worker:
                     text=True,
                     encoding="utf-8",
                     start_new_session=os.name == "posix",
-                    cwd=_ROOT,
+                    cwd=Path(__file__).resolve().parents[1],
                 )
             except BaseException:
                 self.log_path.unlink(missing_ok=True)
@@ -985,7 +814,7 @@ class Worker:
                                 }
                             }
                         )
-                    benchmark_options.post_record(messages, stopped, line)
+                    _post(messages, stopped, line)
                     if line is None or oversized:
                         break
 
@@ -1019,46 +848,23 @@ class Worker:
             if check_log and self.log_overflow.is_set():
                 raise RuntimeError("benchmark diagnostic byte limit exceeded")
 
-    def _receive(
-        self,
-        phase: str,
-        limit: float | None,
-        deadline: float | None,
-        budget: BenchmarkDeadline,
-    ) -> dict[str, Any]:
-        """Read one worker record within both the phase and request deadlines."""
-        line = budget.wait_for_record(self.messages, phase, limit, deadline)
-        if self.log_overflow.is_set():
-            raise RuntimeError("benchmark diagnostic byte limit exceeded")
-        if line is None:
-            raise RuntimeError("benchmark worker exited without evidence")
-        message = json.loads(line)
-        if not isinstance(message, dict):
-            raise RuntimeError("invalid benchmark worker record")
-        return message
-
     def measure(
         self,
         arguments: dict[str, Any],
         identity: dict[str, Any],
         generation_timeout: float | None,
-        *,
-        budget: BenchmarkDeadline | None = None,
     ) -> dict[str, Any]:
         """Measure one request through the worker, killing its tree on a deadline."""
-        budget = budget or BenchmarkDeadline()
-        budget.remaining()
         process = self.start()
         phase, limit = "generation", generation_timeout
         deadline = None if limit is None else time.monotonic() + limit
         generated = False
         executed = 0
-        rows = (
-            range(len(arguments.get("table", "")))
+        expected = (
+            len(arguments.get("table", ""))
             if arguments.get("all_rows")
-            else arguments.get("sample_rows") or (arguments.get("row", 0),)
+            else len(arguments.get("sample_rows") or (0,))
         )
-        executions: list[dict[str, Any]] = []
         try:
             messages, stopped = self.messages, self.stopped
 
@@ -1074,12 +880,27 @@ class Worker:
                     failure = json.dumps(
                         {"error": {"type": type(error).__name__, "message": str(error)}}
                     )
-                    benchmark_options.post_record(messages, stopped, failure)
+                    _post(messages, stopped, failure)
 
             self.writer = threading.Thread(target=send, daemon=True)
             self.writer.start()
             while True:
-                message = self._receive(phase, limit, deadline, budget)
+                remaining = (
+                    None if deadline is None else max(0.0, deadline - time.monotonic())
+                )
+                try:
+                    line = self.messages.get(timeout=remaining)
+                except queue.Empty:
+                    raise esolangs.ExecutionTimeoutError(
+                        f"benchmark {phase} deadline exceeded ({limit:g}s)"
+                    ) from None
+                if self.log_overflow.is_set():
+                    raise RuntimeError("benchmark diagnostic byte limit exceeded")
+                if line is None:
+                    raise RuntimeError("benchmark worker exited without evidence")
+                message = json.loads(line)
+                if not isinstance(message, dict):
+                    raise RuntimeError("invalid benchmark worker record")
                 if "phase" in message:
                     next_phase = message["phase"]
                     if (
@@ -1091,7 +912,7 @@ class Worker:
                     elif (
                         next_phase == "execution"
                         and generated
-                        and executed == len(executions) < len(rows)
+                        and executed < expected
                         and type(message.get("index")) is int
                         and message["index"] == executed
                         and set(message) == {"phase", "index"}
@@ -1102,36 +923,34 @@ class Worker:
                         deadline = None if limit is None else time.monotonic() + limit
                     else:
                         raise RuntimeError("invalid benchmark worker phase transition")
-                elif "execution" in message:
-                    entry = message["execution"]
-                    if (
-                        set(message) != {"execution"}
-                        or executed != len(executions) + 1
-                        or not isinstance(entry, dict)
-                        or type(entry.get("row")) is not int
-                        or entry["row"] != rows[len(executions)]
-                    ):
-                        raise RuntimeError("unexpected benchmark worker row")
-                    executions.append(entry)
                 elif "result" in message:
-                    result = message["result"]
                     if (
                         not generated
-                        or len(executions) != len(rows)
+                        or executed != expected
                         or set(message) != {"result"}
-                        or not isinstance(result, dict)
-                        or {"executions", "truth_table"} & result.keys()
+                        or not isinstance(message["result"], dict)
                     ):
                         raise RuntimeError(
                             "premature or invalid benchmark worker result"
                         )
-                    return {
-                        **result,
-                        "executions": executions,
-                        "truth_table": arguments["table"],
-                    }
+                    return dict(message["result"])
                 elif "error" in message:
-                    raise _worker_error(message)
+                    error = message["error"]
+                    if (
+                        set(message) != {"error"}
+                        or not isinstance(error, dict)
+                        or set(error) != {"type", "message"}
+                        or not all(isinstance(value, str) for value in error.values())
+                    ):
+                        raise RuntimeError("invalid benchmark worker error")
+                    cls = getattr(
+                        esolangs,
+                        error["type"],
+                        getattr(builtins, error["type"], RuntimeError),
+                    )
+                    if not isinstance(cls, type) or not issubclass(cls, Exception):
+                        cls = RuntimeError
+                    raise cls(error["message"])
                 else:
                     raise RuntimeError("invalid benchmark worker record")
         except BaseException as error:
@@ -1152,16 +971,13 @@ def _worker_main() -> None:
 
     execution = 0
 
-    def send(message: dict[str, Any]) -> None:
-        print(json.dumps(message), file=protocol, flush=True)
-
     def progress(phase: str) -> None:
         nonlocal execution
         message: dict[str, str | int] = {"phase": phase}
         if phase == "execution":
             message["index"] = execution
             execution += 1
-        send(message)
+        print(json.dumps(message), file=protocol, flush=True)
 
     for line in sys.stdin:
         execution = 0
@@ -1171,25 +987,15 @@ def _worker_main() -> None:
             arguments = request["arguments"]
             timeout = arguments["timeout"]
             arguments["timeout"] = None
-            if (choices := arguments.get("settings")) is not None:
-                arguments["settings"] = esolangs.Language(
-                    arguments["language"]
-                ).settings(**choices)
             with contextlib.redirect_stdout(sys.stderr):
-                result = _measure(
-                    **arguments,
-                    _progress=progress,
-                    _on_row=lambda row: send({"execution": row}),
-                )
-            # Rows travel as they finish. The parent already has the table.
-            del result["executions"], result["truth_table"]
+                result = _measure(**arguments, _progress=progress)
             result["timeout"] = timeout
             message = {"result": result}
         except Exception as error:
             message = {"error": {"type": type(error).__name__, "message": str(error)}}
         finally:
             _EVIDENCE.reset(token)
-        send(message)
+        print(json.dumps(message), file=protocol, flush=True)
 
 
 if __name__ == "__main__":

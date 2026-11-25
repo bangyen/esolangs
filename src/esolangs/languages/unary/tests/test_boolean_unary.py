@@ -10,7 +10,7 @@ from esolangs.languages.brainfuck.interpreter import _Machine as BFMachine
 from esolangs.languages.unary.generator import _decoded, unary
 from esolangs.languages.unary.interpreter import _Machine, decode
 from esolangs.runtime.io import ScriptedIO
-from scripts.docs.evidence import construct_witness, construction_boundaries
+from scripts.docs.evidence import construction_boundaries
 from tests.support.generator_support import evaluate_generated
 
 
@@ -93,8 +93,8 @@ def test_source_cap_refuses_before_materialization(table: str) -> None:
 def test_compressed_budget_admits_nine_reads_but_blocks_raw_export() -> None:
     admitted, refused = construction_boundaries("Unary")["unrolled_input_cap"]
     with pytest.raises(esolangs.GeneratorCapError, match="max-inputs=9"):
-        construct_witness("Unary", refused.table(), unary)
-    source = construct_witness("Unary", admitted.table(), unary)
+        unary(refused.table())
+    source = unary(admitted.table())
     assert len(source) == 230_087_533
     assert len(source.to_gzip()) == 223_664
     assert decode(source) == "," * 9

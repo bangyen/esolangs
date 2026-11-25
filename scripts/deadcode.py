@@ -1,8 +1,8 @@
 """Generator lines and branch arms that no test reaches, against a baseline.
 
 A scan runs every band (fast, medium and slow) under branch coverage, or
-reads current coverage previously saved with ``--data``. It lists the generator
-lines and branch arms that never executed. Entries are keyed by source text,
+reads ``--data`` when it exists, and lists the generator lines and branch
+arms that never executed.  Entries are keyed by source text, not line number,
 so unrelated edits do not churn ``deadcode_known.toml``; a scan exits 1 on any
 entry the baseline lacks.  ``--update`` rewrites the baseline after triage:
 each kept entry is reachable only past the tested arities or is a guard.
@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -31,9 +30,6 @@ from pathlib import Path
 from typing import Any
 
 from mutants import registry_keyword
-from verify import coverage as evidence
-from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN
-from verify.receipts import digest
 
 from esolangs.registry import LANGUAGES as REGISTRY
 from esolangs.registry import resolve
@@ -43,10 +39,9 @@ LANGUAGES = ROOT / "src" / "esolangs" / "languages"
 KNOWN = Path(__file__).parent / "baselines/deadcode_known.toml"
 
 
-def _collect(data: Path, packages: list[str]) -> list[str]:
+def _collect(data: Path, packages: list[str]) -> None:
     """Run the suite, or ``packages``' tests, under branch coverage into ``data``."""
     env = {**os.environ, "COVERAGE_FILE": str(data)}
-    env.pop("PYTEST_ADDOPTS", None)
     cmd = [sys.executable, "-m", "pytest", "-q", "-m", "", "-n", "4"]
     cmd += ["--cov", "--cov-branch", "--cov-report="]
     if packages:
@@ -65,101 +60,11 @@ def _collect(data: Path, packages: list[str]) -> list[str]:
             flush=True,
         )
     try:
-        with tempfile.TemporaryDirectory(prefix="deadcode-execution-") as temporary:
-            execution = Path(temporary) / "pytest.json"
-            subprocess.run(
-                [*cmd, "-p", PLUGIN, OUTPUT_OPTION, str(execution)],
-                cwd=ROOT,
-                env=env,
-                check=True,
-            )
-            return evidence.completed(execution)
+        subprocess.run(cmd, cwd=ROOT, env=env, check=True)
     except subprocess.CalledProcessError:
         # A later --data run must not accept this incomplete collection.
         data.unlink(missing_ok=True)
         raise
-
-
-def _combine(data: Path, shards: list[Path], state: str) -> list[str]:
-    """Combine private, verified copies of a complete coverage partition."""
-    with tempfile.TemporaryDirectory(prefix="deadcode-shards-") as directory:
-        staged, ordered = _verified_shards(Path(directory), shards, state)
-        subprocess.run(
-            [sys.executable, "-m", "coverage", "combine", "--keep", *map(str, staged)],
-            cwd=ROOT,
-            env={**os.environ, "COVERAGE_FILE": str(data)},
-            check=True,
-        )
-    return ordered
-
-
-def _verified_shards(
-    directory: Path, shards: list[Path], state: str
-) -> tuple[list[Path], list[str]]:
-    """Verify the staged bytes and return their complete test selection."""
-    staged: list[Path] = []
-    indices: set[int] = set()
-    nodes: set[str] = set()
-    catalogue = None
-    for number, shard in enumerate(shards):
-        snapshot = directory / f".coverage.{number}"
-        shutil.copyfile(shard, snapshot)
-        selection = evidence.read(shard, state, snapshot=snapshot)
-        index = selection.get("shard")
-        selected = selection.get("nodes")
-        if (
-            type(index) is not int
-            or not 0 <= index < len(shards)
-            or index in indices
-            or selection.get("shards") != len(shards)
-            or not isinstance(selected, list)
-            or not selected
-            or any(not isinstance(node, str) for node in selected)
-            or not nodes.isdisjoint(selected)
-        ):
-            raise ValueError(f"invalid or overlapping coverage shard {shard}")
-        collected = selection.get("collected")
-        if not isinstance(collected, str) or catalogue not in (None, collected):
-            raise ValueError(f"coverage shard {shard} has a different test collection")
-        catalogue = collected
-        indices.add(index)
-        nodes.update(selected)
-        staged.append(snapshot)
-    ordered = sorted(nodes)
-    if evidence.fingerprint(ordered) != catalogue:
-        raise ValueError("coverage shards do not cover the full test collection")
-    return staged, ordered
-
-
-def _saved_report(
-    data: Path, packages: list[str], shards: list[Path]
-) -> dict[str, set[str]]:
-    """Read only coverage bound to this checkout and requested test scope."""
-    outputs = (data, *shards)
-    state = evidence.checkout(ROOT, *outputs)
-    if shards or not data.exists():
-        with tempfile.TemporaryDirectory(prefix=".coverage.", dir=data.parent) as stage:
-            staged = Path(stage) / ".coverage"
-            nodes = (
-                _combine(staged, shards, state)
-                if shards
-                else _collect(staged, packages)
-            )
-            if evidence.checkout(ROOT, *outputs) != state:
-                raise ValueError("checkout inputs changed during coverage collection")
-            evidence.publish(
-                staged, data, state, {"packages": packages, "nodes": nodes}
-            )
-    before = digest(data)
-    selection = evidence.read(data, state)
-    if selection.get("packages") != packages or not selection.get("nodes"):
-        raise ValueError(
-            f"coverage in {data} was collected for a different test selection"
-        )
-    found = _entries(_report(data, packages))
-    if digest(data) != before or evidence.checkout(ROOT, *outputs) != state:
-        raise ValueError("coverage inputs changed while preparing the report")
-    return found
 
 
 def _report(data: Path, packages: list[str]) -> dict[str, dict[str, Any]]:
@@ -173,25 +78,7 @@ def _report(data: Path, packages: list[str]) -> dict[str, dict[str, Any]]:
         cmd = [sys.executable, "-m", "coverage", "json", "-q", "-o", str(out)]
         cmd += ["--data-file", str(data), "--include", include]
         subprocess.run(cmd, cwd=ROOT, check=True)
-        report = json.loads(out.read_text(encoding="utf-8"))
-    if report["meta"]["branch_coverage"] is not True:
-        raise ValueError("generator coverage must include branch data")
-    files: dict[str, dict[str, Any]] = report["files"]
-    expected = {
-        path.resolve()
-        for package in packages or ["*"]
-        for pattern in (f"{package}/generator.py", f"{package}/generator/**/*.py")
-        for path in LANGUAGES.glob(pattern)
-        if path.is_file()
-    }
-    missing = sorted(expected - {(ROOT / name).resolve() for name in files})
-    if missing:
-        preview = ", ".join(str(path.relative_to(LANGUAGES)) for path in missing[:3])
-        ellipsis = ", ..." if len(missing) > 3 else ""
-        raise ValueError(
-            f"coverage is missing {len(missing)} generator source files: "
-            f"{preview}{ellipsis}"
-        )
+        files: dict[str, dict[str, Any]] = json.loads(out.read_text())["files"]
     return files
 
 
@@ -242,44 +129,21 @@ def main() -> int:
     parser.add_argument(
         "--data",
         type=Path,
-        help=".coverage file and receipt: read them, or collect if missing",
+        help=".coverage file: read it, or collect into it if missing",
     )
-    parser.add_argument("--combine-data", nargs="+", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--update", action="store_true", help="rewrite the baseline")
     parser.add_argument("languages", nargs="*", help="scan only these")
     args = parser.parse_args()
     try:
-        packages = sorted(
-            {REGISTRY[resolve(n)].id.replace("-", "_") for n in args.languages}
-        )
+        packages = [REGISTRY[resolve(n)].id.replace("-", "_") for n in args.languages]
     except ValueError as exc:
         parser.error(str(exc))
     if packages and args.update:
         parser.error("--update rewrites the whole-tree baseline: name no languages")
-    try:
-        data = args.data.resolve() if args.data is not None else None
-        shards = [path.resolve() for path in args.combine_data or ()]
-        if shards and (data is None or packages):
-            parser.error(
-                "--combine-data requires a --data destination and no languages"
-            )
-        if data is None:
-            with tempfile.TemporaryDirectory(prefix="deadcode-") as temporary:
-                found = _saved_report(Path(temporary) / ".coverage", packages, [])
-        else:
-            inputs = {
-                path.resolve(): path
-                for shard in shards
-                for path in (shard, evidence.sidecar(shard))
-            }
-            for output in (data, evidence.sidecar(data)):
-                if inputs and (source := inputs.get(output.resolve())) is not None:
-                    parser.error(
-                        f"coverage output {output} would replace input {source}"
-                    )
-            found = _saved_report(data, packages, shards)
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
-        parser.error(str(exc))
+    data = args.data or Path(tempfile.mkdtemp()) / ".coverage"
+    if not data.exists():
+        _collect(data, packages)
+    found = _entries(_report(data, packages))
     if args.update:
         _dump(found)
         print(f"{sum(map(len, found.values()))} entries in {len(found)} files")

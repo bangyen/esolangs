@@ -11,14 +11,11 @@ import inspect
 import pathlib
 import re
 import shlex
-import shutil
-import tempfile
 import typing
 
 import esolangs
 from docs.curation import update_well_known, well_known
 from docs.proof_status import splice, update_catalogue, update_docs
-from docs.writing import generated_sources, publish_generated
 from docs.writing import write_if_changed as _write_if_changed
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 
@@ -41,18 +38,12 @@ def main() -> int:
 
         if args.args:
             parser.error("anchors takes no arguments")
-        try:
-            update_source_anchors()
-            return 0
-        except (OSError, ValueError) as error:
-            parser.exit(1, f"{error}\n")
+        update_source_anchors()
+        return 0
     if args.target == "docs":
         if args.args:
             parser.error("docs takes no arguments")
-        try:
-            return docs_main()
-        except (OSError, ValueError) as error:
-            parser.exit(1, f"{error}\n")
+        return docs_main()
     if args.target == "examples":
         from docs.examples import examples_main
 
@@ -426,9 +417,8 @@ def update_usage(root: pathlib.Path = ROOT) -> bool:
     """Rewrite the generated tables in docs/usage.md between their markers."""
     path = root / "docs" / "usage.md"
     text = path.read_text()
-    relative = path.relative_to(root)
-    text = splice(text, "INPUT-SHAPES", render_input_shapes_section(), path=relative)
-    text = splice(text, "PUBLIC-API", render_api_section(), path=relative)
+    text = splice(text, "INPUT-SHAPES", render_input_shapes_section())
+    text = splice(text, "PUBLIC-API", render_api_section())
     return _write_if_changed(path, text)
 
 
@@ -440,7 +430,7 @@ def update_limitations(root: pathlib.Path = ROOT) -> bool:
         ("RASTER-SOURCES", render_raster_section),
         ("COLLECTION-SIZE", render_collection_size_section),
     ):
-        text = splice(text, name, render(), path=path.relative_to(root))
+        text = splice(text, name, render())
     return _write_if_changed(path, text)
 
 
@@ -455,41 +445,50 @@ def update_readme(root: pathlib.Path = ROOT) -> bool:
         ("XOR-EXAMPLE", render_xor_section),
         ("WELL-KNOWN", render_well_known_section),
     ):
-        text = splice(text, name, render(), path=path.relative_to(root))
+        text = splice(text, name, render())
     changed = _write_if_changed(path, text)
     catalog = root / "docs" / "languages.md"
     catalog_text = splice(
-        catalog.read_text(),
-        "IMPLEMENTED",
-        render_languages_section(),
-        path=catalog.relative_to(root),
+        catalog.read_text(), "IMPLEMENTED", render_languages_section()
     )
     return _write_if_changed(catalog, catalog_text) or changed
 
 
 def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
-    """Render every generated section before replacing checkout files."""
-    updates = (
-        (update_docs, "updated the generated tables of docs/proofs/index.md"),
-        (update_catalogue, "updated the packaged scaling catalogue"),
-        (update_well_known, "updated the packaged well-known list"),
-        (update_readme, "updated the generated sections of README.md"),
-        (update_usage, "updated the generated tables of docs/usage.md"),
-        (update_limitations, "updated the generated paragraphs of docs/limitations.md"),
+    """Write every generated documentation section."""
+    unchanged = 0
+
+    def report(line: str, *, changed: bool) -> None:
+        nonlocal unchanged
+        if changed:
+            print(line)
+        else:
+            unchanged += 1
+
+    report(
+        "updated the generated tables of docs/proofs/index.md",
+        changed=update_docs(output_root),
     )
-    with tempfile.TemporaryDirectory(
-        prefix=".docs-render-", dir=output_root
-    ) as temporary:
-        staging = pathlib.Path(temporary)
-        for relative, path in generated_sources(output_root):
-            staged = staging / relative
-            staged.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(path, staged)
-        messages = [message for update, message in updates if update(staging)]
-        publish_generated(staging, output_root)
-    for message in messages:
-        print(message)
-    unchanged = len(updates) - len(messages)
+    report(
+        "updated the packaged scaling catalogue",
+        changed=update_catalogue(output_root),
+    )
+    report(
+        "updated the packaged well-known list",
+        changed=update_well_known(output_root),
+    )
+    report(
+        "updated the generated sections of README.md",
+        changed=update_readme(output_root),
+    )
+    report(
+        "updated the generated tables of docs/usage.md",
+        changed=update_usage(output_root),
+    )
+    report(
+        "updated the generated paragraphs of docs/limitations.md",
+        changed=update_limitations(output_root),
+    )
     if unchanged:
         print(f"{unchanged} generated artifacts already up to date")
     return 0

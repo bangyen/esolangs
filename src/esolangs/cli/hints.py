@@ -6,7 +6,6 @@ import shlex
 import sys
 from collections.abc import Callable, Iterable
 from contextlib import suppress
-from dataclasses import dataclass
 from difflib import get_close_matches
 
 from esolangs import LanguageInfo
@@ -24,8 +23,6 @@ from esolangs.registry import (
     get_catalog,
 )
 from esolangs.registry._contracts import CHAR_STREAMS
-from esolangs.runtime._json import record_dumps
-from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime.source_hints import (
     can_render_argument,
     display_label,
@@ -34,21 +31,11 @@ from esolangs.runtime.source_hints import (
     shell_argument,
     syntax_repair,
 )
-from esolangs.settings import DialectSettings
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
 #: a program error's 1, which it shared. A timeout leaves termination
 #: undecided; it does not establish a Boolean answer.
 _TIMEOUT_EXIT = 124
-
-
-class _CliHint(str):
-    """A note already written for the CLI, with literal shell arguments."""
-
-
-def _with_cli_hint[E: Exception](error: E, hint: str) -> E:
-    error.add_note(_CliHint(f"hint: {hint}"))
-    return error
 
 
 def _exit_code(exc: EsolangError) -> int:
@@ -68,37 +55,33 @@ def _cli_error_text(
     exc: BaseException, *, language: str | None = None, catalog: Catalog | None = None
 ) -> str:
     """Render notes using CLI flags, preserving the original diagnostic."""
-    repair = None
+    message = str(exc)
+    render: Callable[[str], str] | None = None
     if language is not None and catalog is not None:
         name = catalog.resolve(language)
         argument = shell_argument(name)
         if argument is not None and not can_render_argument(
             name, _display_encoding(sys.stderr)
         ):
-            repair = (
-                f"hint: {syntax_repair(argument)}",
-                f"hint: {syntax_repair(_as_argument(name, catalog=catalog))}",
-            )
+            original = f"hint: {syntax_repair(argument)}"
+            replacement = f"hint: {syntax_repair(_as_argument(name, catalog=catalog))}"
 
-    def render(note: str) -> str:
-        if isinstance(note, _CliHint):
-            return note
-        if repair is not None and note == repair[0]:
-            return repair[1]
-        for parameter, flag in (
-            ("timeout=5.0", "--execution-timeout 5.0"),
-            ("scale=1", "--scale 1"),
-            ("omit scale", "omit --scale"),
-            ("use scale 1", "use --scale 1"),
-            ("width=80", "--width 80"),
-            ("seed=0", "--seed 0"),
-            ("omit seed", "omit --seed"),
-            ("integer bits to instantiate()", "0/1 digits to --bits"),
-        ):
-            note = note.replace(parameter, flag)
-        return note
+            def render(note: str) -> str:
+                return replacement if note == original else note
 
-    return error_text(exc, render_hint=render)
+    notes = error_text(exc, render_hint=render)[len(message) :]
+    for parameter, flag in (
+        ("timeout=5.0", "--execution-timeout 5.0"),
+        ("scale=1", "--scale 1"),
+        ("omit scale", "omit --scale"),
+        ("use scale 1", "use --scale 1"),
+        ("width=80", "--width 80"),
+        ("seed=0", "--seed 0"),
+        ("omit seed", "omit --seed"),
+        ("integer bits to instantiate()", "0/1 digits to --bits"),
+    ):
+        notes = notes.replace(parameter, flag)
+    return message + notes
 
 
 def _notes(exc: BaseException) -> str:
@@ -147,119 +130,6 @@ def _template_hint(
         f"{head}fill them with: esolangs generate --bits <bits> "
         f"{operand} <table>{notes}"
     )
-
-
-def _saved_template_hint(
-    language: str,
-    path: str,
-    catalog: Catalog,
-    *,
-    options: Iterable[str] = ("--bits", "BITS", "--artifact"),
-) -> str:
-    """Suggest filling the existing artifact with a shell-ready filename."""
-    encoding = _display_encoding(sys.stderr)
-    operand = _as_argument(language, catalog=catalog, encoding=encoding)
-    if operand is None or not can_render_argument(path, encoding):
-        return (
-            "fill the saved template with esolangs generate --from-template and --bits"
-        )
-    command = shlex.join(("esolangs", "generate", f"--from-template={path}", *options))
-    return f"fill the saved template, for example: {command} {operand}"
-
-
-@dataclass(frozen=True)
-class _RunRetry:
-    """Carry the options applicable to a replacement run command."""
-
-    language: str
-    execution: tuple[str, ...] = ()
-    source: tuple[str, ...] = ()
-    settings: DialectSettings | None = None
-
-    def options_for(self, language: str) -> tuple[str, ...]:
-        """Retain interpreter-specific options when the language matches."""
-        if language != self.language:
-            return self.execution
-        options = self.execution + self.source
-        if self.settings is not None:
-            choices = record_dumps(DialectSettings.options(self.settings))
-            options += (f"--settings={choices}",)
-        return options
-
-
-def _run_source_command(
-    language: str,
-    path: str,
-    catalog: Catalog,
-    *,
-    portable: bool = False,
-    options: tuple[str, ...] = (),
-) -> str | None:
-    """Render a run command when its operands are printable."""
-    encoding = _display_encoding(sys.stderr)
-    operand = _as_argument(language, catalog=catalog, encoding=encoding)
-    filename = shell_argument(path, encoding=encoding)
-    if (
-        operand is None
-        or filename is None
-        or any(not can_render_argument(option, encoding) for option in options)
-    ):
-        return None
-    if operand.startswith("-- "):
-        filename = filename.removeprefix("-- ")
-    flags = ("--artifact", *options) if portable else options
-    command = shlex.join(("esolangs", "run", *flags))
-    return f"{command} {operand} {filename}"
-
-
-def _native_run_hint(
-    language: str, path: str, catalog: Catalog, options: tuple[str, ...]
-) -> str:
-    hint = "remove --artifact to run native source"
-    command = _run_source_command(language, path, catalog, options=options)
-    return _source_retry_hint(hint, command, options)
-
-
-def _swapped_run_hint(
-    language: str,
-    path: str,
-    catalog: Catalog,
-    *,
-    portable: bool,
-    options: tuple[str, ...],
-) -> str | None:
-    """Suggest the filename after the language when the operands look reversed."""
-    try:
-        declaration = catalog.languages[catalog.resolve(language)]
-    except UnknownLanguageError:
-        return None
-    hint = "the language comes before the program file."
-    if path == "-" and _runtime_reads_stdin(declaration.runtime):
-        path = "program.json" if portable else "program"
-        hint += f" Save the program as {path} so stdin can carry its input."
-    command = _run_source_command(
-        language, path, catalog, portable=portable, options=options
-    )
-    return f"{hint} Try {command}" if command is not None else hint
-
-
-def _portable_run_hint(
-    owner: str, path: str, catalog: Catalog, hint: str, options: tuple[str, ...]
-) -> str:
-    save = path == "-" and _runtime_reads_stdin(catalog.languages[owner].runtime)
-    command = _run_source_command(
-        owner, "program.json" if save else path, catalog, portable=True, options=options
-    )
-    if save and command:
-        return f"save the artifact as program.json and run {command}"
-    return _source_retry_hint(hint, command, options)
-
-
-def _source_retry_hint(hint: str, command: str | None, options: tuple[str, ...]) -> str:
-    """Retain the original execution options even without a rendered command."""
-    if command is not None:
-        return f"{hint}, for example: {command}"
-    return f"{hint}. Keep the original execution options." if options else hint
 
 
 #: The flag that raises each bound ``run`` can report.

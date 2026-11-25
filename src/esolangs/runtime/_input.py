@@ -51,41 +51,20 @@ class InputFrame:
 
     def read(self, bound: _BoundReader) -> str:
         """Read up to the record boundary without taking a byte from its tail."""
-        return self.read_units(
-            lambda: read_snapshot(bound.stream, reader=bound.read, size=1)
-        )
-
-    def read_units(self, read: Callable[[], str | bytes]) -> str:
-        """Read a frame, accepting one leading UTF-8 BOM on binary transport."""
-        decoder = getincrementaldecoder("utf-8-sig")()
+        decoder = getincrementaldecoder("utf-8")()
         remaining = self.units
         parts: list[str] = []
         binary = False
-        consumed = 0
         while remaining:
-            value = read()
+            value = read_snapshot(bound.stream, reader=bound.read, size=1)
             if _has_backing_type(value, str):
                 if binary:
                     raise TypeError("stdin stream changed from bytes to text")
                 char = str.__str__(value)
             elif _has_backing_type(value, bytes):
-                if not binary and parts:
-                    decoder = getincrementaldecoder("utf-8")()
                 binary = True
                 data = bytes.__bytes__(value)
-                consumed += len(data)
-                try:
-                    char = decoder.decode(data, final=not data)
-                    if not data:
-                        # utf-8-sig can leave an incomplete BOM buffered at EOF.
-                        pending, _ = decoder.getstate()
-                        if pending:
-                            char += pending.decode("utf-8")
-                except UnicodeDecodeError as error:
-                    # The decoder includes any buffered prefix in its error.
-                    raise input_read_error(
-                        error, byte_offset=consumed - len(error.object)
-                    ) from error
+                char = decoder.decode(data, final=not data)
                 if data and not char:
                     continue
             else:
@@ -108,14 +87,7 @@ class _BoundReader:
     read: Callable[..., str | bytes | None]
 
 
-@dataclass(frozen=True, slots=True)
-class _DecodedBytes:
-    """Keep byte provenance after eager validation of a literal input."""
-
-    text: str
-
-
-type CheckedInput = str | _BoundReader | _DecodedBytes
+type CheckedInput = str | _BoundReader
 
 _STANDARD_STREAMS = (
     BufferedRandom,
@@ -177,18 +149,17 @@ def check_input(source: InputSource) -> CheckedInput:
     if _has_backing_type(source, str):
         return str.__str__(source)
     if _has_backing_type(source, bytes):
-        return _DecodedBytes(_decode_input(source))
+        return _decode_input(source)
     checked = _bind_input_reader(cast("IO[str] | IO[bytes]", source))
     if checked is None:
         raise _unreadable_input(source)
     return checked
 
 
-def input_read_error(detail: Exception | str, *, byte_offset: int = 0) -> ArgumentError:
+def input_read_error(detail: Exception | str) -> ArgumentError:
     """Build a stdin error with the repair shared by Python and the CLI."""
     if isinstance(detail, UnicodeDecodeError):
-        offset = byte_offset + detail.start
-        detail = f"not text (invalid {detail.encoding.upper()} at byte {offset})"
+        detail = f"not text (invalid {detail.encoding.upper()} at byte {detail.start})"
     return with_hint(
         ArgumentError(f"cannot read stdin: {detail}"),
         ("open the input stream for reading and encode binary input as UTF-8"),
@@ -209,17 +180,10 @@ def read_input(
     bound = (
         source
         if _has_backing_type(source, _BoundReader)
-        or _has_backing_type(source, _DecodedBytes)
         else check_input(cast("InputSource", source))
     )
     if isinstance(bound, str):
         return bound if frame is None else frame.prefix(bound)
-    if isinstance(bound, _DecodedBytes):
-        return (
-            bound.text
-            if frame is None
-            else frame.prefix(bound.text.removeprefix("\ufeff"))
-        )
     try:
         if frame is not None:
             return frame.read(bound)

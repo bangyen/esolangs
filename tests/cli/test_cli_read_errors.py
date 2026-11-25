@@ -5,7 +5,6 @@ from __future__ import annotations
 import io
 import os
 import select
-import shlex
 import signal
 import subprocess
 import sys
@@ -27,72 +26,7 @@ from esolangs.cli.io import (
     _write_output,
 )
 from esolangs.registry import _table
-from tests.support.cli_support import _failure
-from tests.support.pick import first
 from tests.support.reference import REFERENCE
-
-
-@pytest.mark.parametrize("kind", ["text", "gzip", "PNG"])
-def test_portable_run_suggests_native_command(tmp_path, capsys, kind) -> None:
-    language = (
-        first(source_kind="raster", boolean_generator=True)
-        if kind == "PNG"
-        else REFERENCE
-    )
-    api = esolangs.Language(language)
-    path = tmp_path / "xor program"
-    api.to_file(api.generate("0110"), path, gzip=kind == "gzip")
-
-    output, error = _failure(["run", "--artifact", language, str(path)], capsys)
-    assert output == ""
-    assert "remove --artifact" in error
-    assert f"esolangs run {shlex.quote(language)} {shlex.quote(str(path))}" in error
-    if kind != "text":
-        assert f"the input is native {kind}" in error
-    else:
-        assert "invalid portable program" in error
-
-
-def test_portable_run_reports_the_recorded_language(tmp_path, capsys) -> None:
-    owner = first(source_kind="raster", boolean_generator=True)
-    api = esolangs.Language(owner)
-    path = tmp_path / "owner's program.json"
-    path.write_text(api.to_json(api.generate("0110")), encoding="utf-8")
-
-    output, error = _failure(["run", "--artifact", REFERENCE, str(path)], capsys)
-    assert output == ""
-    assert f"program language must be {REFERENCE}" in error
-    assert f"artifact records {owner}" in error
-    command = error.split("for example: ", 1)[1].strip()
-    assert shlex.split(command) == ["esolangs", "run", "--artifact", owner, str(path)]
-
-
-def test_generate_rejects_oversized_pipe_before_eof() -> None:
-    language = next(
-        name
-        for name, lang in _table.LANGUAGES.items()
-        if lang.runtime.compressed_source
-    )
-    cap = esolangs.describe(language).generator_max_inputs
-    assert cap is not None
-    with subprocess.Popen(
-        [sys.executable, "-m", "esolangs", "generate", "--artifact", language, "-"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    ) as child:
-        assert child.stdin is not None
-        assert child.stdout is not None
-        assert child.stderr is not None
-        try:
-            child.stdin.write(b"\xef\xbb\xbf \t" + b"0" * ((1 << cap) + 1))
-            child.stdin.flush()
-            assert child.wait(timeout=5) == 2
-            assert child.stdout.read() == b""
-            assert f"max-inputs={cap}".encode() in child.stderr.read()
-        finally:
-            if child.poll() is None:
-                child.kill()
 
 
 @pytest.mark.parametrize("raw", [b"\xff", b"\x80"])
@@ -558,7 +492,7 @@ from esolangs.cli import io, main
 
 read = io._read_buffered_stdin
 
-def signal_reader(*args, **kwargs):
+def signal_reader(*args):
     target = threading.get_ident()
     assert target != threading.main_thread().ident
 
@@ -569,7 +503,7 @@ def signal_reader(*args, **kwargs):
     sender = threading.Timer(0.2, interrupt)
     sender.daemon = True
     sender.start()
-    return read(*args, **kwargs)
+    return read(*args)
 
 io._read_buffered_stdin = signal_reader
 main()

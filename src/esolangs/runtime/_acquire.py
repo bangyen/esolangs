@@ -12,19 +12,11 @@ from esolangs.runtime._input import (
     CheckedInput,
     InputFrame,
     InputSource,
-    _BoundReader,
     check_input,
     read_input,
 )
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
-
-
-@dataclass(frozen=True, slots=True)
-class DeferredInput:
-    """CLI input to acquire once the interpreter has prepared the source."""
-
-    read: Callable[[], str]
 
 
 def preparation_expired(*, partial_output: str = "") -> ExecutionTimeoutError:
@@ -103,9 +95,7 @@ class PendingInput:
         )
 
 
-def bind_prepared_input(
-    stdin: InputSource, timeout: float
-) -> CheckedInput | PendingInput:
+def bind_prepared_input(stdin: InputSource, timeout: float) -> str | PendingInput:
     """Decode bytes or bind a reader under the preparation deadline."""
     if _has_backing_type(stdin, str):
         return read_input(stdin)
@@ -123,4 +113,4 @@ def bind_prepared_input(
         clock=monotonic,
         context=context,
     )
-    return bound if isinstance(bound.checked, _BoundReader) else bound.checked
+    return bound.checked if isinstance(bound.checked, str) else bound

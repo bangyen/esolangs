@@ -18,22 +18,13 @@ hides this using [`describe`](#describe) metadata.
 
 See each command’s `--help` for option details.
 
-To read a truth table from a file, run
-`esolangs generate brainfuck - < table.txt`. The `-` operand reads UTF-8
-from stdin through EOF and ignores surrounding whitespace.
-For interpreters that take no runtime input, `run LANGUAGE -` reads source
-from stdin. For example, pipe `esolangs generate --bits 01 Trml 0110` into
-`esolangs run Trml -`.
-
 | Option | Commands | Does |
 | --- | --- | --- |
 | `--width [N]` | generate | wrap or lay out to N columns (default 80); what it does per language is `describe`'s `width_effect` |
 | `--balance` | generate | pick the layout fitting the smallest on-screen square; excludes `--width` |
 | `--bits BITS` | generate | fill a template's input slots, printing a runnable program |
-| `--from-template FILE` | generate | fill a saved portable JSON template with `--bits`. Use `-` for stdin |
 | `--plain` | generate | write compressed text as plain text instead of gzip |
 | `--gzip` | generate | compress any text export; excludes `--plain` and raster PNGs |
-| `--artifact` | generate, run | export or load portable JSON with its settings and input metadata |
 | `--scale N` | generate, run | enlarge raster pixels after layout; on `run`, override the detected scale |
 | `-s`, `--settings JSON` | generate, run | dialect overrides as JSON |
 | `--set KEY=VALUE` | generate, run | one dialect override, repeatable, applied after `--settings` |
@@ -52,8 +43,7 @@ from stdin. For example, pipe `esolangs generate --bits 01 Trml 0110` into
 | `--source-kind KIND` | list | text or raster source |
 | `--input-shape SHAPE` | list | stdin interface, or template for embedded inputs |
 | `--answer-mode MODE` | list | output, dump, or termination |
-| `--inputs N` | list | declared generator cap permits N (at least one); table restrictions still apply |
-| `--all-tables` | list | with `--inputs N`, require support for every table at that arity |
+| `--inputs N` | list | declared generator cap permits N; table restrictions still apply |
 | `--spec` | describe | print the interpreter's own description of the language |
 
 `list --json --details` uses the filter's `input_shape` value. Template
@@ -111,18 +101,6 @@ for artifacts with inputs embedded in source.
 Use `to_json` and `from_json` to retain settings and template bindings.
 Native exports contain the program and, for PNG, raster metadata.
 Export templates after filling them.
-
-Use `--artifact` to save and run the same portable records from the CLI.
-Fill a saved template with `generate --from-template FILE --bits BITS`.
-
-```bash
-esolangs generate --artifact --set expression_syntax=postfix Alight 0110 > xor.json
-esolangs encode-inputs Alight 01 | esolangs run --artifact Alight xor.json
-
-esolangs generate --artifact Trml 0110 > xor.template.json
-esolangs generate --from-template xor.template.json --bits 01 --artifact Trml > row.json
-esolangs run --artifact Trml row.json
-```
 
 ```python
 from pathlib import Path
@@ -400,10 +378,8 @@ Use `encode_inputs` to build stdin; it and this table use `describe`.
 [`EXAMPLES.md`](../src/esolangs/languages/EXAMPLES.md) lists each example’s
 input row and encoding.
 
-`esolangs run` reads piped stdin as UTF-8 through EOF. If the artifact
-records the input arity and the language supports framed input, a complete
-row suffices even when the pipe stays open. The interpreter reads the
-text as usual (`ab` reads as two bits in brainfuck).
+`esolangs run` reads piped stdin through EOF as UTF-8 for interpreters with
+input support and passes the text verbatim (`ab` reads as two bits in brainfuck).
 Piped text from `generate`, `encode-inputs`, `run`, and `read-answer` also uses UTF-8.
 
 ## Templates
@@ -450,8 +426,6 @@ defaults. Create overrides with
 `esolangs.Language("Alight").settings(expression_syntax="postfix")`, then pass
 them as `settings=` to `generate`, `run` or `make_debugger`. On the CLI, use
 `--settings JSON` or the repeatable `--set KEY=VALUE`.
-When exporting native text with overrides, `generate` prints the matching
-`run` option on stderr.
 
 Generated artifacts retain dialect defaults and overrides. Explicit
 `settings=` can add choices. A conflicting choice raises `ProgramError`.
@@ -598,16 +572,7 @@ just benchmark brainfuck 0110 --all-rows
 The JSON report holds rendered size, generation time, halt steps, expected
 and actual answers, and execution status. Wrong or undecided rows fail;
 unsupported stepping is distinct from a cap or timeout.
-`source_unit` labels `source_units` as characters or pixels. Raster records
-also give the image's pixel width and height and its declared scale in `raster`.
-`generation_ns_first` records the first sample in the worker request. Best
-and median include subsequent samples, which can reuse cached work.
 
-- Use `--width N` or `--balance` to measure a layout, and `--scale N` to
-  measure scaled raster source. The request appears in `generation_options`.
-- Read a large table from a file with `just benchmark brainfuck - --row 0 < table.txt`.
-- Multi-row benchmarks prepare shared source once.
-  The first row's timeout covers preparation, and each row uses fresh state.
 - The row timeout defaults to 30 seconds. `--no-timeout` disables the
   signal guard for Windows or worker threads.
 - `just sizes` checks the committed size and step baseline and requires each
@@ -624,7 +589,6 @@ shows the `gen`, `tmpl`, `ex`, `int`, and `known` markers. Fields include:
 | `source_kind` | `"text"`, or `"raster"` for an image |
 | `state_model` | its category: register, tape, stack, grid, queue, program, variables or other |
 | `generator_shape` | its generator’s construction growth: tree, reducing or lookup; None without a generator |
-| `generator_first_restricted_arity` | first input count with possible table restrictions; None when none are declared |
 | `input_shape`, `input_encoding` | how input is fed; None unless `reads_input` |
 | `answer_mode`, `answer_encoding` | where the answer lands (`"output"`, `"dump"` or `"termination"`) and its `(zero, one)` form |
 | `width_effect` | what `width` does: `"layout"`, `"wrap"` or `"none"` |

@@ -2,8 +2,6 @@
 
 import importlib
 import os
-import shutil
-import subprocess
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -201,138 +199,12 @@ def test_a_machine_that_draws_traces_the_same_every_time(tmp_path: Path) -> None
     assert len(events[-1][1]) == 5
 
 
-def test_timing_uses_completed_commands_and_excludes_parse_failures() -> None:
-    module = tracediff._load(_INTERPRETER, "command_counts")
-    programs = [("+.", ""), ("]", ""), ("+,", "")]
-    traces = [
-        tracediff._capture_trace(module, program, frozenset(), runtime=_runtime())
-        for program in programs
-    ]
-    assert [commands for _, commands in traces] == [2, 0, 1]
-    assert tracediff._timing_work(
-        (program, commands)
-        for program, (_, commands) in zip(programs, traces, strict=True)
-    ) == [(programs[0], 2), (programs[2], 1)]
-    tracediff._lap(module, [(programs[0], 2), (programs[2], 1)], runtime=_runtime())
-    with pytest.raises(ValueError, match="halted before"):
-        tracediff._lap(module, [(programs[0], 3)], runtime=_runtime())
-
-
 def test_an_error_records_the_state_it_leaves() -> None:
     """A draft moving its pointer before a failing read passed an error-only diff."""
     module = tracediff._load(_INTERPRETER, "tracediff_error")
     *_, last = tracediff.trace(module, ("+,", ""), frozenset(), runtime=_runtime())
     assert last[:2] == ("error", "InputExhaustedError")
     assert last[-1][:2] == (1, 0)  # still on the ``,``, pointer unmoved
-
-
-def test_cli_rejects_an_error_only_corpus(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(tracediff, "corpus", lambda *_: [("]", "")])
-    assert tracediff.main([REFERENCE, "--random", "0"]) == 1
-    captured = capsys.readouterr()
-    assert "0 halt cleanly" in captured.out
-    assert "no matching clean halt or declared cycle" in captured.err
-
-
-@pytest.mark.parametrize(
-    ("args", "message"),
-    [
-        (
-            ["--old", "nosuch-trace-baseline"],
-            "--old 'nosuch-trace-baseline' does not resolve",
-        ),
-        (["--random", "-1"], "--random must be nonnegative"),
-    ],
-)
-def test_trace_arguments_are_checked_before_corpus(monkeypatch, capsys, args, message):
-    monkeypatch.setattr(tracediff, "corpus", lambda *_: pytest.fail("corpus"))
-    with pytest.raises(SystemExit) as caught:
-        tracediff.main([REFERENCE, *args])
-    assert caught.value.code == 2
-    assert message in capsys.readouterr().err
-
-
-def test_trace_rejects_an_oversized_corpus_before_checkout(monkeypatch, capsys):
-    monkeypatch.setattr(tracediff, "_checkout", lambda *_: pytest.fail("checkout"))
-    with pytest.raises(SystemExit) as caught:
-        tracediff.main([REFERENCE, "--random", "1000000000"])
-    assert caught.value.code == 2
-    assert "--random must be at most 10,000" in capsys.readouterr().err
-
-
-def test_trace_deadline_covers_the_entire_sweep(monkeypatch, capsys):
-    def time_out(command, *, timeout, cwd):
-        assert command[2:] == ["--sweep", REFERENCE, "--random", "0", "--speed"]
-        assert timeout == tracediff._SWEEP_TIMEOUT
-        assert cwd == REPO_ROOT
-        raise subprocess.TimeoutExpired(command, timeout)
-
-    monkeypatch.setattr(tracediff, "run_bounded", time_out)
-    assert (
-        tracediff.main([REFERENCE, "--random", "0", "--speed"], supervise=True) == 124
-    )
-    assert "trace sweep" in capsys.readouterr().err
-
-
-def test_last_command_records_its_output_and_halt(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(tracediff, "LIMIT", 2)
-    module = tracediff._load(_INTERPRETER, "boundary_halt")
-    program = ("+.", "")
-    events, commands = tracediff._capture_trace(
-        module, program, frozenset(), runtime=_runtime()
-    )
-    assert commands == 2
-    assert len(events) == 3
-    assert tracediff._halts(events)
-    assert events[-1][-1] == "\x01"
-    report = tracediff._compare(
-        module, module, [program], frozenset(), runtime=_runtime()
-    )
-    assert report.differences == []
-    assert report.halting == 1
-    assert report.witnessed
-
-    source = _INTERPRETER.read_text(encoding="utf-8")
-    assert "byte = chr(tape[ptr])" in source
-    path = tmp_path / "final_command.py"
-    path.write_text(source.replace("byte = chr(tape[ptr])", "byte = chr(0)"))
-    mutant = tracediff._load(path, "boundary_mutant")
-    [(changed, step, before, after)] = tracediff.differences(
-        module, mutant, [program], runtime=_runtime()
-    )
-    assert changed == program
-    assert step == 2
-    assert before[-1] == "\x01"
-    assert after[-1] == "\x00"
-
-
-def test_comparison_counts_traces_once_and_accepts_an_explicit_cycle(
-    monkeypatch,
-) -> None:
-    trace = tracediff._capture_trace
-    calls = 0
-
-    def counted(*args, **kwargs):
-        nonlocal calls
-        calls += 1
-        return trace(*args, **kwargs)
-
-    monkeypatch.setattr(tracediff, "_capture_trace", counted)
-    module = tracediff._load(_INTERPRETER, "bounded_cycle")
-    programs = [("+[]", "")]
-    for allow_cycles in (False, True):
-        report = tracediff._compare(
-            module,
-            module,
-            programs,
-            frozenset(),
-            runtime=_runtime(),
-            allow_cycles=allow_cycles,
-        )
-        assert report.differences == []
-        assert report.halting == 0
-        assert report.witnessed is allow_cycles
-    assert calls == 4
 
 
 def test_views_include_inherited_properties_and_respect_overrides():
@@ -383,8 +255,7 @@ def prepare_machine(code, options):
 """
 
 
-def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path, monkeypatch):
-    monkeypatch.setattr(tracediff, "LIMIT", 1)
+def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path):
     path = tmp_path / "post_halt.py"
     path.write_text(_POST_HALT)
     timestamp = path.stat().st_mtime_ns
@@ -418,72 +289,6 @@ def test_declared_completion_finalizes_and_keeps_the_final_state(tmp_path, monke
         )
 
 
-@pytest.mark.medium
-def test_cli_compares_each_revisions_nested_parser(tmp_path, monkeypatch, capsys):
-    name, parser = next(
-        (name, path)
-        for name, module in INTERPRETERS.items()
-        if (
-            path := REPO_ROOT / "src" / Path(*module.split(".")) / "_parse.py"
-        ).is_file()
-        and "def _tokens(" in path.read_text()
-    )
-    api = esolangs.Language(name)
-    artifact = api.generate("0110")
-    programs = [(artifact, api.encode_inputs([0, 1]))]
-    monkeypatch.setattr(tracediff, "corpus", lambda *_: programs)
-
-    scratch_parser = tmp_path / "changed_parser.py"
-    scratch_parser.write_text(
-        parser.read_text()
-        + "\ndef _tokens(line):\n    raise ValueError('nested parser control')\n"
-    )
-    relative = parser.relative_to(REPO_ROOT)
-    assert (
-        tracediff.main(
-            [name, "--mutant", str(scratch_parser), "--mutant-target", str(relative)]
-        )
-        == 0
-    )
-    assert "control: mutant differs on 1" in capsys.readouterr().out
-
-    def old_revision(_ref, scratch):
-        source = shutil.copytree(REPO_ROOT / "src", scratch / "src")
-        shutil.copyfile(scratch_parser, scratch / relative)
-        return source
-
-    monkeypatch.setattr(tracediff, "_checkout", old_revision)
-    assert tracediff.main([name]) == 1
-    output = capsys.readouterr().out
-    assert "nested parser control" in output
-
-
-@pytest.mark.medium
-def test_unchanged_trace_control_ignores_a_different_baseline(
-    tmp_path, monkeypatch, capsys
-):
-    current = _INTERPRETER.read_bytes()
-    mutant = tmp_path / "unchanged.py"
-    mutant.write_bytes(current)
-    baseline = current + (
-        b"\n_prior_prepare = prepare_machine\n"
-        b"def prepare_machine(source, options):\n"
-        b"    return _prior_prepare('+++.' if source == '+.' else source, options)\n"
-    )
-
-    def snapshot(_ref, scratch):
-        return tracediff._mutated(baseline, _INTERPRETER, scratch)
-
-    monkeypatch.setattr(tracediff, "_checkout", snapshot)
-    monkeypatch.setattr(tracediff, "corpus", lambda *_: [("+.", ""), ("++.", "")])
-    assert (
-        tracediff.main([REFERENCE, "--old", "snapshot", "--mutant", str(mutant)]) == 1
-    )
-    output = capsys.readouterr().out
-    assert "2 halt cleanly), 1 differ from snapshot" in output
-    assert "control: mutant differs on 0" in output.splitlines()
-
-
 def test_cli_uses_declared_post_halt_policy_for_mutant_controls(
     tmp_path, monkeypatch, capsys
 ):
@@ -512,24 +317,6 @@ def test_cli_uses_declared_post_halt_policy_for_mutant_controls(
     assert "0 differ from main" in output
     control = next(line for line in output.splitlines() if line.startswith("control:"))
     assert int(control.rsplit(" ", 1)[-1]) > 0
-
-
-def test_cli_checks_ignored_views_against_both_revisions(monkeypatch, capsys) -> None:
-    baseline = _INTERPRETER.read_bytes()
-    baseline += b"\n_Machine.legacy_probe_view = property(lambda self: 0)\n"
-
-    def snapshot(_ref, scratch):
-        return tracediff._mutated(baseline, _INTERPRETER, scratch)
-
-    monkeypatch.setattr(tracediff, "_checkout", snapshot)
-    monkeypatch.setattr(tracediff, "corpus", lambda *_: [("+.", "")])
-    assert tracediff.main([REFERENCE, "--ignore-views", "legacy_probe_view, ip"]) == 0
-    assert "1 halt cleanly), 0 differ from main" in capsys.readouterr().out
-
-    assert tracediff.main([REFERENCE, "--ignore-views", "legacy_probe_view, typo"]) == 2
-    output = capsys.readouterr()
-    assert output.out == ""
-    assert output.err.strip() == "--ignore-views: unknown public VM view(s): 'typo'"
 
 
 def test_speed_does_not_reward_an_inherited_warm_cache(tmp_path, monkeypatch):

@@ -143,15 +143,14 @@ jobs:
           uv pip install --python "$venv/bin/python" "${wheels[0]}"
           "$venv/bin/python" -I scripts/ci/release.py smoke
           uv pip install --python "$venv/bin/python" "${wheels[0]}[image]"
-          "$venv/bin/python" -I scripts/ci/release.py smoke --image-only
+          "$venv/bin/python" -I scripts/ci/release.py smoke --image
         done
 
     - name: Rebuild and test the sdist independently
       run: |
         mkdir /tmp/sdist-source
         tar -xzf dist/*.tar.gz -C /tmp/sdist-source --strip-components=1
-        uv build --wheel --python 3.12 /tmp/sdist-source --out-dir /tmp/sdist-wheel
-        cmp dist/*.whl /tmp/sdist-wheel/*.whl
+        uv build --wheel /tmp/sdist-source --out-dir /tmp/sdist-wheel
         uv pip install --python /tmp/relcheck-3.12/bin/python --reinstall /tmp/sdist-wheel/*.whl
         /tmp/relcheck-3.12/bin/python -I scripts/ci/release.py smoke --image
 

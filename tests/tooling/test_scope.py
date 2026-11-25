@@ -99,56 +99,6 @@ class TestWidensToEverything:
         assert scope._scoped_cmd("pytest", ["pytest"], ["docs/usage.md"]) is None
 
 
-def test_interpreter_scope_uses_both_pytest_filename_patterns(tmp_path, monkeypatch):
-    scope = load_script()
-    monkeypatch.setattr(scope, "ROOT", tmp_path)
-    package = Path("src/esolangs/languages/sample")
-    local = package / "tests"
-    (tmp_path / local / "nested").mkdir(parents=True)
-    collected = [local / "test_prefix.py", local / "nested/suffix_test.py"]
-    for path in [*collected, local / "helper.py"]:
-        (tmp_path / path).touch()
-    selected = scope._pytest_scope([(package / "interpreter.py").as_posix()])
-    assert isinstance(selected, list)
-    assert set(selected) == set(scope.INTERPRETER_CONTRACT_TESTS) | {
-        path.as_posix() for path in collected
-    }
-
-
-@pytest.mark.parametrize("workflow", ["ci.yml", "weekly.yml", "release.yml"])
-def test_workflow_only_change_runs_its_pytest_suites(workflow) -> None:
-    scope = load_script()
-    changed = [f".github/workflows/{workflow}"]
-    assert scope.widens_to_everything(changed) is None
-    assert scope._scoped_cmd("pytest", ["pytest"], changed) == [
-        "pytest",
-        "tests/tooling/test_ci_coverage.py",
-        "tests/tooling/test_ci_setup.py",
-        "tests/tooling/test_pytest_shard.py",
-    ]
-    assert scope.local_tooling_deselections(changed) == []
-
-
-def test_readme_only_change_runs_the_quickstart() -> None:
-    scope = load_script()
-    changed = ["README.md"]
-    assert scope.widens_to_everything(changed) is None
-    assert scope._scoped_cmd("pytest", ["pytest"], changed) == [
-        "pytest",
-        "tests/tooling/test_readme_quickstart.py",
-    ]
-
-
-def test_serial_manifest_change_runs_its_pytest_suite() -> None:
-    scope = load_script()
-    changed = [".github/serial-test-nodes.txt"]
-    assert scope.widens_to_everything(changed) is None
-    assert scope._scoped_cmd("pytest", ["pytest"], changed) == [
-        "pytest",
-        "tests/tooling/test_ci_coverage.py",
-    ]
-
-
 def test_empty_branch_diff_does_not_fall_back_to_previous_commit() -> None:
     scope = load_script()
     responses = [
@@ -185,19 +135,6 @@ def test_missing_local_main_uses_remote_main() -> None:
     with mock.patch.object(scope.subprocess, "run", side_effect=responses) as run:
         assert scope.changed_files() == ["src/esolangs/vm.py"]
     assert run.call_args_list[1].args[0][-1] == "origin/main...HEAD"
-
-
-@pytest.mark.parametrize(
-    "error", [subprocess.TimeoutExpired(["git", "status"], 60), OSError()]
-)
-def test_git_status_failure_widens_the_gate(error, monkeypatch):
-    scope = load_script()
-    monkeypatch.delenv("VERIFY_FULL", raising=False)
-    diff = subprocess.CompletedProcess([], 0, stdout=b"docs/usage.md\x00")
-    with mock.patch.object(scope.subprocess, "run", side_effect=[diff, error]):
-        whole, reason = scope._scope_plan(full=False)
-    assert whole
-    assert reason == "no diff available"
 
 
 def test_whole_tree_pre_commit_reaches_untracked_files() -> None:

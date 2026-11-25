@@ -8,7 +8,6 @@ from typing import NoReturn, TextIO, cast
 
 from esolangs import ExecutionLimits
 from esolangs.cli.args import (
-    _FLAG_OPTIONS,
     _VALUE_OPTIONS,
     _check_count,
     _errors,
@@ -25,15 +24,11 @@ from esolangs.cli.args import (
     _timeout_of,
 )
 from esolangs.cli.hints import (
-    _BOUND_FLAGS,
     _TIMEOUT_EXIT,
     _cli_error_text,
     _exit_code,
-    _RunRetry,
-    _swapped_run_hint,
     _template_hint,
     _timeout_text,
-    _with_cli_hint,
 )
 from esolangs.cli.io import (
     _emit_partial,
@@ -51,7 +46,6 @@ from esolangs.exceptions import (
     EsolangError,
     ExecutionBudgetError,
     TemplateError,
-    UnknownLanguageError,
 )
 from esolangs.operations.execution import (
     _execute_loaded,
@@ -59,17 +53,29 @@ from esolangs.operations.execution import (
     default_total,
 )
 from esolangs.registry import Catalog, get_catalog
-from esolangs.runtime._acquire import DeferredInput
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._files import _source_directory
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import _acquisition_started_at, check_memory
-from esolangs.runtime._prepared import _artifact_input_frame, _runtime_reads_stdin
+from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime._source import check_scale_for
 from esolangs.runtime.memory import format_integer
 from esolangs.runtime.source_hints import display_label
 
 _INPUT_HINT = "; send the input this program needs, or close stdin"
+
+
+class _DeferredStdin:
+    """Wait for in-process runtime validation before reading stdin."""
+
+    def __init__(self, notices: ExitStack | None) -> None:
+        self._notices = notices
+
+    def read(self) -> str:
+        text = _read_stdin(hint=_INPUT_HINT)
+        if self._notices is not None:
+            self._notices.enter_context(_unbounded_notice("run"))
+        return text
 
 
 def _remaining(timeout: float | None, elapsed: float, flag: str) -> float | None:
@@ -111,8 +117,7 @@ def _run(rest: list[str]) -> None:
             options["--max-steps"], "--max-steps", kind="a non-negative integer"
         )
         _nonnegative(max_steps, "--max-steps", options["--max-steps"])
-    flag_options = _FLAG_OPTIONS["run"]
-    rest, flags = _pop_flags(rest, flag_options)
+    rest, flags = _pop_flags(rest, {"--isolated"})
     isolated = "--isolated" in flags
     max_output = None
     if "--max-output" in options:
@@ -144,45 +149,33 @@ def _run(rest: list[str]) -> None:
     worker_total = default_total(total, timeout) if worker else None
     # File and stdin share the tightest acquisition budget. Execution gets
     # its own execution_timeout after the worker has prepared the program.
-    bounds = [
-        (bound, flag)
-        for bound, flag in (
-            (worker_total, "--total-timeout"),
-            (preparation, "--preparation-timeout"),
-            (timeout, "--execution-timeout"),
-        )
-        if bound is not None
-    ]
-    acquisition, flag = min(bounds, default=(None, ""), key=lambda pair: pair[0])
-    rest = _split_positional(rest, set(), value_options | flag_options | {"--set"})
+    acquisition, flag = min(
+        (
+            (bound, flag)
+            for bound, flag in (
+                (worker_total, "--total-timeout"),
+                (preparation, "--preparation-timeout"),
+                (timeout, "--execution-timeout"),
+            )
+            if bound is not None
+        ),
+        default=(None, ""),
+        key=lambda pair: pair[0],
+    )
+    rest = _split_positional(rest, set(), value_options | {"--set", "--isolated"})
     seed = _seed_of(options)
     scale = _scale_of(options)
     settings_arguments = _settings_arguments(options, set_pairs)
     catalog = get_catalog()
     _check_count("run", rest, 2, catalog=catalog)
     language, path = rest
-    directory = _source_directory(path) if path and path != "-" else None
+    directory = _source_directory(path) if path else None
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
-    try:
+    with _errors():
         declaration = catalog.languages[catalog.resolve(language)]
-    except UnknownLanguageError as lookup_error:
-        hint = _swapped_run_hint(
-            path,
-            language,
-            catalog,
-            portable="--artifact" in flags,
-            options=(
-                *sorted(flags - {"--artifact"}),
-                *(f"{option}={value}" for option, value in options.items()),
-                *(f"--set={pair}" for pair in set_pairs),
-            ),
-        )
-        if hint is not None:
-            _with_cli_hint(lookup_error, hint)
-        _fail(lookup_error)
     if max_memory is not None:
         try:
             check_memory(max_memory, isolated=True)
@@ -195,25 +188,6 @@ def _run(rest: list[str]) -> None:
         # Match execution's order for source options and seed.
         check_scale_for(declaration.name, scale, catalog=catalog)
         check_seed_for(declaration.name, seed, catalog=catalog)
-    reads_stdin = _runtime_reads_stdin(declaration.runtime)
-    if path == "-" and reads_stdin:
-        _fail(
-            "this interpreter uses stdin for program input; "
-            "pass a program file and pipe its input to stdin"
-        )
-    retry_options = (
-        *(
-            f"{flag}={value}"
-            for flag, value in options.items()
-            if flag in _BOUND_FLAGS.values()
-        ),
-        *(("--isolated",) if isolated else ()),
-    )
-    source_options = tuple(
-        f"{flag}={format_integer(value)}"
-        for flag, value in (("--seed", seed), ("--scale", scale))
-        if value is not None
-    )
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
@@ -226,53 +200,25 @@ def _run(rest: list[str]) -> None:
         settings=settings,
         catalog=catalog,
         _settings_validated=True,
-        portable="--artifact" in flags,
-        retry=_RunRetry(declaration.name, retry_options, source_options, settings),
     )
+    reads_stdin = _runtime_reads_stdin(declaration.runtime)
     unbounded = not worker and max_steps is None
     stdin: InputSource = ""
     try:
         if scale is None and program.scale is not None:
             check_scale_for(declaration.name, program.scale, catalog=catalog)
+        if reads_stdin and worker:
+            stdin = _read_stdin(
+                _remaining(acquisition, monotonic() - started, flag),
+                _INPUT_HINT,
+                timeout_flag=flag,
+            )
     except EsolangError as acquisition_error:
         _fail_run(acquisition_error, language, catalog)
-    source_elapsed = monotonic() - started
-    frame = _artifact_input_frame(program, catalog)
-    _remaining(acquisition, source_elapsed, flag)
+    _remaining(acquisition, monotonic() - started, flag)
     with ExitStack() as notices, _acquisition_started_at(started):
-        if reads_stdin:
-
-            def read_stdin() -> str:
-                elapsed = monotonic() - started
-                # Charge interpreter preparation to the total and preparation
-                # bounds. The execution budget only charges I/O acquisition.
-                remaining, input_flag = min(
-                    (
-                        (
-                            bound
-                            - (
-                                source_elapsed
-                                if option == "--execution-timeout"
-                                else elapsed
-                            ),
-                            option,
-                        )
-                        for bound, option in bounds
-                    ),
-                    default=(None, ""),
-                    key=lambda pair: pair[0],
-                )
-                text = _read_stdin(
-                    _remaining(remaining, 0, input_flag),
-                    _INPUT_HINT if frame is None else "; send the rest of the row",
-                    timeout_flag=input_flag,
-                    frame=frame,
-                )
-                if unbounded:
-                    notices.enter_context(_unbounded_notice("run"))
-                return text
-
-            stdin = cast("TextIO", DeferredInput(read_stdin))
+        if reads_stdin and not worker:
+            stdin = cast("TextIO", _DeferredStdin(notices if unbounded else None))
         elif unbounded:
             notices.enter_context(_unbounded_notice("run"))
         outcome = _execute_loaded(
@@ -299,13 +245,16 @@ def _run(rest: list[str]) -> None:
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
-        label = "stdin" if path == "-" else display_label(path)
-        _note(f"note: {label} contains no source, so there was no program to run")
+        _note(
+            f"note: {display_label(path)} contains no source, "
+            "so there was no program to run"
+        )
     # A program that printed nothing is a legal program, and also what you
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a
     # pipe still receives exactly the empty output.
     if not output and _stdout_is_terminal():
-        container = "stdin" if path == "-" else "the file"
-        detail = f" ({container} contains no source)" if empty else ""
-        _note(f"{display_label(language)}: the program ran and printed nothing{detail}")
+        _note(
+            f"{display_label(language)}: the program ran and printed nothing"
+            f"{' (the file contains no source)' if empty else ''}"
+        )

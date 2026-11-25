@@ -39,17 +39,16 @@ def record_loads(document: str) -> Any:
 
 
 def check_record_utf8(value: Any) -> None:
-    """Check UTF-8 text in a record without serializing it."""
+    """Check text in a decoded JSON record without re-encoding its numbers."""
     pending = [value]
     while pending:
         item = pending.pop()
-        if isinstance(item, str):
-            if not str.isascii(item) and _SURROGATES.search(item):
-                str.encode(item, "utf-8")
+        if isinstance(item, str) and _SURROGATES.search(item):
+            item.encode("utf-8")
         elif isinstance(item, dict):
             pending.extend(item)
             pending.extend(item.values())
-        elif isinstance(item, (list, tuple)):
+        elif isinstance(item, list):
             pending.extend(item)
 
 
@@ -353,7 +352,7 @@ def worker_object(pairs: list[tuple[str, Any]]) -> Any:
     return text
 
 
-def _json_space(text: str, index: int) -> int:
+def _worker_space(text: str, index: int) -> int:
     while index < len(text) and text[index] in " \t\r\n":
         index += 1
     return index
@@ -368,7 +367,7 @@ def worker_loads(text: str) -> Any:
     index = 0
     while pending:
         operation, item = pending.pop()
-        index = _json_space(text, index)
+        index = _worker_space(text, index)
         character = text[index : index + 1]
         if operation == "value":
             if character == "[":
@@ -408,7 +407,7 @@ def worker_loads(text: str) -> Any:
                     "Expecting property name enclosed in double quotes", text, index
                 )
             key, index = decoder.raw_decode(text, index)
-            index = _json_space(text, index)
+            index = _worker_space(text, index)
             if text[index : index + 1] != ":":
                 raise json.JSONDecodeError("Expecting ':' delimiter", text, index)
             index += 1
@@ -425,7 +424,7 @@ def worker_loads(text: str) -> Any:
                 pending.append(("object_key", pairs))
             else:
                 raise json.JSONDecodeError("Expecting ',' delimiter", text, index)
-    index = _json_space(text, index)
+    index = _worker_space(text, index)
     if index != len(text):
         raise json.JSONDecodeError("Extra data", text, index)
     return values[0]

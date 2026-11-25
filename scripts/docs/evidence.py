@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import random
 import re
 import textwrap
@@ -14,8 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from esolangs.registry import LANGUAGES
-
-from .writing import publish_bytes
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
 _RULES = frozenset(
@@ -100,21 +97,6 @@ class ConstructionBoundary:
     witnesses: tuple[TableWitness, ...]
     benchmark: bool
     test: str | None
-    width: int | None = None
-    balance: bool = False
-
-    def generation_options(self) -> dict[str, int | bool]:
-        """Return the layout request for each witness in this construction."""
-        if self.width is not None:
-            return {"width": self.width}
-        return {"balance": True} if self.balance else {}
-
-
-def construct_witness[T](
-    _language: str, table: str, constructor: Callable[[str], T]
-) -> T:
-    """Exercise a witness through a generator's low-level constructor."""
-    return constructor(table)
 
 
 def construction_boundaries(
@@ -141,26 +123,12 @@ def construction_records(language: str) -> dict[str, ConstructionBoundary]:
         if (
             not label.isidentifier()
             or not isinstance(record, dict)
-            or set(record) - {"test", "width", "balance"} != {"tables", "benchmark"}
+            or set(record) - {"test"} != {"tables", "benchmark"}
             or type(record["benchmark"]) is not bool
             or not isinstance(record["tables"], list)
             or not record["tables"]
         ):
             raise ValueError(f"{path}: invalid construction boundary {label!r}")
-        width = record.get("width")
-        balance = record.get("balance", False)
-        if (
-            ("width" in record and (type(width) is not int or width < 1))
-            or type(balance) is not bool
-            or (width is not None and balance)
-        ):
-            raise ValueError(
-                f"{path}: invalid layout for construction boundary {label!r}"
-            )
-        if record["benchmark"] and (width is not None or balance):
-            raise ValueError(
-                f"{path}: size baselines use default layouts for {label!r}"
-            )
         test = (
             _owned_boundary_test(path, label, record.get("test"))
             if "test" in record or not record["benchmark"]
@@ -177,9 +145,7 @@ def construction_records(language: str) -> dict[str, ConstructionBoundary]:
             witnesses.append(witness)
         if record["benchmark"]:
             measured.update(witnesses)
-        found[label] = ConstructionBoundary(
-            tuple(witnesses), record["benchmark"], test, width=width, balance=balance
-        )
+        found[label] = ConstructionBoundary(tuple(witnesses), record["benchmark"], test)
     return found
 
 
@@ -389,7 +355,7 @@ def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str
 
 def update_source_anchors(*, root: Path = PACKAGES, check: bool = False) -> bool:
     """Refresh docstring views; emitted size and execution checks stay independent."""
-    changes: dict[Path, bytes] = {}
+    changes: list[tuple[Path, str]] = []
     for language, declaration in LANGUAGES.items():
         if declaration.backend is None:
             continue
@@ -403,9 +369,9 @@ def update_source_anchors(*, root: Path = PACKAGES, check: bool = False) -> bool
             generator_raises(language),
         )
         if source != rendered:
-            changes[path.resolve()] = rendered.replace("\n", os.linesep).encode("utf-8")
-    return (
-        bool(changes)
-        if check
-        else publish_bytes(changes, lock=root / ".anchors-publish")
-    )
+            changes.append((path, rendered))
+    # Validate every view before changing any file.
+    if not check:
+        for path, rendered in changes:
+            path.write_text(rendered, encoding="utf-8")
+    return bool(changes)
