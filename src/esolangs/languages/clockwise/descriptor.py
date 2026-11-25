@@ -11,7 +11,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.registry._backend import BooleanBackend, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -24,9 +24,6 @@ def _backend() -> BackendDefinition:
         layout_balance=True,
         # Not a tree: a countdown stops on the entry's own column.
         shape=Shape.LOOKUP,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.clockwise.generator", "clockwise_balance_request"
-        ),
         no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
         grid=True,
     )

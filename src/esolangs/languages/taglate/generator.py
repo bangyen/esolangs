@@ -123,12 +123,10 @@ def _taglate_raw(truth_table: str) -> str:
     if len(set(truth_table)) == 1:
         return truth_table[0] + "\n" + "h" * n + "i"
     used = essential_inputs(truth_table, n)
-    if 0 < len(used) < n:
-        reduced = _taglate_raw(read_at(truth_table, used, n))
-        return _with_discards(reduced, used, n)
-    if n == 1:
-        return _affine(truth_table)
-    return _full_layout(truth_table, n)
+    kept = len(used)
+    table = read_at(truth_table, used, n) if kept < n else truth_table
+    program = _affine(table) if kept == 1 else _full_layout(table, kept)
+    return _with_discards(program, used, n) if kept < n else program
 
 
 def _seed_commands(seed: str) -> str:

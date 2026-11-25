@@ -29,7 +29,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.lookup import packed_cells
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.befunge.descriptor import check_arity as _check_cap
@@ -373,8 +373,3 @@ def befunge_request(request: GenerationRequest) -> Program:
     if request.balance:
         return balance_befunge(request.table)
     return befunge(request.table, request.width)
-
-
-def befunge_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return balance_befunge(request.table, request.text_source())

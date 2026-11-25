@@ -25,6 +25,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.piet.generator", "piet_request"
         ),
         layout_width=True,
+        layout_balance=True,
         balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.piet.generator", "piet_balance_request"
         ),

@@ -28,10 +28,12 @@ def test_layout_cache_evicts_and_passes_through_oversized_images() -> None:
     cache = LayoutCache(900)
     calls = []
 
-    @cache.memoize
-    def build(key: str) -> Raster:
+    def render(key: str) -> Raster:
         calls.append(key)
         return Raster((((0, 0, 0),),)).upscaled(32 if key == "large" else 1)
+
+    def build(key: str) -> Raster:
+        return cache.get_or_build(render, key, lambda: render(key))
 
     assert build("a") is build("a")
     assert build("large") is not build("large")
@@ -49,13 +51,15 @@ def test_layout_cache_reuses_a_fill_during_build() -> None:
     images = iter((first, winner))
     cache = LayoutCache(900)
 
-    @cache.memoize
-    def build(key: str) -> Raster:
+    def render(key: str) -> Raster:
         image = next(images)
         # Fill the same key before the outer build can store its result.
         if image is first:
             assert build(key) is winner
         return image
+
+    def build(key: str) -> Raster:
+        return cache.get_or_build(render, key, lambda: render(key))
 
     assert build("a") is winner
     assert build("a") is winner
@@ -233,7 +237,10 @@ def test_balance_raster_retains_layout() -> None:
 
     catalog = CATALOG.with_language(
         replace(
-            LANGUAGES["Piet"], backend=replace(LANGUAGES["Piet"].backend, balance=None)
+            LANGUAGES["Piet"],
+            backend=replace(
+                LANGUAGES["Piet"].backend, balance=None, layout_balance=False
+            ),
         ),
     )
     default = esolangs.generate("Piet", "0110", catalog=catalog).source

@@ -13,6 +13,8 @@ Size:
     4+bl(2n+3-b)+bl(2n-1)+bl(n) written bits; packing can reduce the area.
 """
 
+from functools import cached_property
+
 from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.generation.lookup import packed_cells
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
@@ -31,6 +33,7 @@ from esolangs.languages.piet.generator.operations import (
     _OUT_NUMBER,
     _ROLL,
     _SUBTRACT,
+    _candidates,
     _literal_product,
     _majority_count,
     _next_colour,
@@ -48,24 +51,55 @@ from esolangs.runtime._program import Program
 _layouts = LayoutCache(4 * 1024 * 1024)
 
 
-@_layouts.memoize
-def _generate(truth_table: str) -> Raster:
-    """Return a Piet raster computing ``truth_table``."""
-    inputs = _validate_truth_table(truth_table)
-    return strip(_operations(truth_table, inputs), _INITIAL, _next_colour)
+class _ProgramPlan:
+    """Share analysis and operations within one layout request."""
+
+    def __init__(self, table: str) -> None:
+        self.table = table
+        self.inputs = _validate_truth_table(table)
+
+    @cached_property
+    def projection(self) -> tuple[list[int], str]:
+        essential = essential_inputs(self.table, self.inputs)
+        return essential, read_at(self.table, essential, self.inputs)
+
+    @cached_property
+    def candidates(self) -> list[list[_Operation]]:
+        return _candidates(self.table, self.inputs, projection=self.projection)
+
+    @cached_property
+    def bounded(self) -> list[_Operation]:
+        return _bounded_operations(self.table, candidates=self.candidates)
+
+
+def _generate(truth_table: str, *, plan: _ProgramPlan | None = None) -> Raster:
+    """Return the cached strip computing ``truth_table``."""
+
+    def build() -> Raster:
+        if plan is None:
+            operations = _operations(truth_table, _validate_truth_table(truth_table))
+        else:
+            operations = _operations(
+                truth_table, plan.inputs, candidates=plan.candidates
+            )
+        return strip(operations, _INITIAL, _next_colour)
+
+    return _layouts.get_or_build(_generate, truth_table, build)
 
 
 def _area(image: Raster) -> int:
     return len(image.rows) * len(image.rows[0])
 
 
-def _smallest(truth_table: str) -> Raster:
+def _smallest(truth_table: str, *, plan: _ProgramPlan | None = None) -> Raster:
     """Return the strip, or the least-area packed layout.
 
     The strip wins a tie; see [ablations.area_default].
     """
-    flat = _generate(truth_table)
-    packed = smallest(_bounded_operations(truth_table), flat)
+    if plan is None:
+        plan = _ProgramPlan(truth_table)
+    flat = _generate(truth_table, plan=plan)
+    packed = smallest(plan.bounded, flat)
     return packed if _area(packed) < _area(flat) else flat
 
 
@@ -117,12 +151,17 @@ def _chunks(
     return [*operations, op(_OUT_NUMBER)]
 
 
-@_layouts.memoize
-def _default(table: str) -> Raster:
+def _default(table: str, *, plan: _ProgramPlan | None = None) -> Raster:
+    """Return the cached default layout."""
+    return _layouts.get_or_build(
+        _default, table, lambda: _render_default(plan or _ProgramPlan(table))
+    )
+
+
+def _render_default(plan: _ProgramPlan) -> Raster:
     """Use triple strips past the proved command crossover; retain linear families."""
-    inputs = _validate_truth_table(table)
-    essential = essential_inputs(table, inputs)
-    reduced = read_at(table, essential, inputs)
+    inputs = plan.inputs
+    essential, reduced = plan.projection
     # The worst-command bound crosses at m=4: 96 -> 68.
     # At m=3, 00011111 actually loses39 ->56.
     # This command-admitted rule can enlarge individual tables.
@@ -134,7 +173,7 @@ def _default(table: str) -> Raster:
         )
         or _majority_count(reduced, essential, inputs) is not None
     ):
-        return _smallest(table)
+        return _smallest(plan.table, plan=plan)
     complement = reduced.translate(str.maketrans("01", "10"))
     operations = min(
         (
@@ -149,7 +188,9 @@ def _default(table: str) -> Raster:
     return strip(operations, _INITIAL, _next_colour)
 
 
-def _balance(truth_table: str, default: Raster) -> Raster:
+def _balance(
+    truth_table: str, default: Raster, *, plan: _ProgramPlan | None = None
+) -> Raster:
     """Balance the legacy strip, keeping the default when it is squarer.
 
     Before triple strips, seeding with the packed default left it
@@ -157,7 +198,11 @@ def _balance(truth_table: str, default: Raster) -> Raster:
     n=7 and parity / majority -14% to -26% at n=7..9
     ([ablations.balance_strip_seed]).
     """
-    return min(balance(truth_table, _generate(truth_table)), default, key=_raster_score)
+    seed = _generate(truth_table, plan=plan)
+    operations = None if plan is None else plan.bounded
+    return min(
+        balance(truth_table, seed, operations=operations), default, key=_raster_score
+    )
 
 
 def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raster:
@@ -169,9 +214,10 @@ def piet(truth_table: str, width: int | None = None, *, scale: int = 1) -> Raste
 
 def piet_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return piet(request.table, request.width)
-    return piet(request.table)
+    if request.balance:
+        plan = _ProgramPlan(request.table)
+        return _balance(request.table, _default(request.table, plan=plan), plan=plan)
+    return piet(request.table, request.width)
 
 
 def piet_balance_request(request: BalanceRequest) -> Program:

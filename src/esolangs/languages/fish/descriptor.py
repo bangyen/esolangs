@@ -11,7 +11,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.registry._backend import BooleanBackend, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -24,9 +24,6 @@ def _backend() -> BackendDefinition:
         layout_balance=True,
         # Not a tree: an indexed table read.
         shape=Shape.LOOKUP,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.fish.generator", "fish_balance_request"
-        ),
         no_wrap="a row is a codebox row and the lookup table is indexed by column",
         grid=True,
     )

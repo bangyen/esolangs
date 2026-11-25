@@ -50,10 +50,14 @@ def _improves(candidate: tuple[int, int, int], ceiling: tuple[int, int, int]) ->
     return candidate[1] <= ceiling[1] and candidate < ceiling
 
 
-def _bounded_operations(table: str) -> list[_Operation]:
+def _bounded_operations(
+    table: str, *, candidates: list[list[_Operation]] | None = None
+) -> list[_Operation]:
     """Replace the depth push by doubling; blocks use at most two cells."""
+    if candidates is None:
+        candidates = _candidates(table, _validate_truth_table(table))
     options = []
-    for operations in _candidates(table, _validate_truth_table(table)):
+    for operations in candidates:
         result = []
         for operation in operations:
             if operation.size > 2:
@@ -227,13 +231,16 @@ def _balanced_plan(
     return selected
 
 
-def balance(table: str, default: Raster) -> Raster:
+def balance(
+    table: str, default: Raster, *, operations: list[_Operation] | None = None
+) -> Raster:
     """Balance folded paths, retaining the old area ceiling."""
     # Seed 20261009, 200 random tables/arity: n=7 area 255101 -> 228867;
     # n=8 441706 -> 322460 codels. Exhaustive n=3: 79068 -> 64572.
     # Two-row bends, seed 20261011, 200 tables/arity: n=8 area 323319 ->
     # 279358 (-13.60%); black codels 212010 -> 165729. n=3: 62663 -> 56465.
-    operations = _bounded_operations(table)
+    if operations is None:
+        operations = _bounded_operations(table)
     old = _balanced_plan(operations, default, compact=False)
     compact = _balanced_plan(operations, default, compact=True)
     default_score = _raster_score(default)

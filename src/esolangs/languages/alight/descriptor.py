@@ -28,7 +28,7 @@ def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") ->
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.registry._backend import BooleanBackend, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -41,9 +41,6 @@ def _backend() -> BackendDefinition:
         layout_balance=True,
         # Not a tree: a Horner row index into a string literal.
         shape=Shape.LOOKUP,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.alight.generator", "alight_balance_request"
-        ),
         no_wrap="a command is a word walked cell by cell; a row end cuts it",
     )
 

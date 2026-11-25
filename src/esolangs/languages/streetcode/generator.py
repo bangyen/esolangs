@@ -62,7 +62,7 @@ from esolangs.generation.helpers import (
     input_weights,
 )
 from esolangs.generation.lookup import constant_output
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
@@ -1016,8 +1016,3 @@ def streetcode_request(request: GenerationRequest) -> Program:
     if request.balance:
         return _balance(request.table)
     return streetcode(request.table, request.width)
-
-
-def streetcode_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())

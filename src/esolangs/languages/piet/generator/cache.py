@@ -2,7 +2,6 @@
 
 from collections import OrderedDict
 from collections.abc import Callable
-from functools import wraps
 from sys import getsizeof
 from threading import Lock
 
@@ -30,40 +29,36 @@ class LayoutCache:
             self._entries.clear()
             self._used = 0
 
-    def memoize(self, builder: Builder) -> Builder:
-        """Retain recent layouts within the cache's byte estimate."""
-
-        @wraps(builder)
-        def render(table: str) -> Raster:
-            key = builder, table
-            with self._lock:
-                cached = self._entries.get(key)
-                if cached is not None:
-                    self._entries.move_to_end(key)
-                    return cached[0]
-
-            image = builder(table)
-            # Charge shared rows and pixels independently, so reuse can
-            # only make this estimate more conservative.
-            weight = (
-                256
-                + getsizeof(table)
-                + getsizeof(image)
-                + getsizeof(image.rows)
-                + sum(getsizeof(row) + len(row) * _PIXEL_BYTES for row in image.rows)
-            )
-            if weight > self._limit:
-                return image
-            with self._lock:
-                cached = self._entries.get(key)
-                if cached is not None:
-                    self._entries.move_to_end(key)
-                    return cached[0]
-                while self._used + weight > self._limit:
-                    _, (_, evicted) = self._entries.popitem(last=False)
-                    self._used -= evicted
-                self._entries[key] = image, weight
-                self._used += weight
+    def get_or_build(
+        self, builder: Builder, table: str, build: Callable[[], Raster]
+    ) -> Raster:
+        """Cache by layout builder and table without retaining the request's plan."""
+        key = builder, table
+        with self._lock:
+            cached = self._entries.get(key)
+            if cached is not None:
+                self._entries.move_to_end(key)
+                return cached[0]
+        image = build()
+        # Charge shared rows and pixels independently, so reuse can
+        # only make this estimate more conservative.
+        weight = (
+            256
+            + getsizeof(table)
+            + getsizeof(image)
+            + getsizeof(image.rows)
+            + sum(getsizeof(row) + len(row) * _PIXEL_BYTES for row in image.rows)
+        )
+        if weight > self._limit:
             return image
-
-        return render
+        with self._lock:
+            cached = self._entries.get(key)
+            if cached is not None:
+                self._entries.move_to_end(key)
+                return cached[0]
+            while self._used + weight > self._limit:
+                _, (_, evicted) = self._entries.popitem(last=False)
+                self._used -= evicted
+            self._entries[key] = image, weight
+            self._used += weight
+        return image

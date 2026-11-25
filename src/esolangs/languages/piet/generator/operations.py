@@ -116,7 +116,12 @@ def _majority_count(
     return operations
 
 
-def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
+def _candidates(
+    truth_table: str,
+    inputs: int,
+    *,
+    projection: tuple[list[int], str] | None = None,
+) -> list[list[_Operation]]:
     """Return literal products, a majority count, or the plain lookup.
 
     Every input is read, but only the essential ones index the table: an
@@ -133,8 +138,11 @@ def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
         )
         operations.append(_Operation(_OUT_NUMBER))
         return [operations]
-    essential = essential_inputs(truth_table, inputs)
-    truth_table = read_at(truth_table, essential, inputs)
+    if projection is None:
+        essential = essential_inputs(truth_table, inputs)
+        truth_table = read_at(truth_table, essential, inputs)
+    else:
+        essential, truth_table = projection
     direct = [
         found
         for summed in (False, True)
@@ -153,9 +161,13 @@ def _candidates(truth_table: str, inputs: int) -> list[list[_Operation]]:
     ]
 
 
-def _operations(truth_table: str, inputs: int) -> list[_Operation]:
+def _operations(
+    truth_table: str, inputs: int, *, candidates: list[list[_Operation]] | None = None
+) -> list[_Operation]:
     """Return the shortest strip of commands for the table."""
-    return min(_candidates(truth_table, inputs), key=_area)
+    if candidates is None:
+        candidates = _candidates(truth_table, inputs)
+    return min(candidates, key=_area)
 
 
 def _area(operations: list[_Operation]) -> int:
