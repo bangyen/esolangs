@@ -1,5 +1,6 @@
 """Executed tests for the Underload promise-tree generator."""
 
+from collections.abc import Iterable
 from dataclasses import replace
 
 import pytest
@@ -19,10 +20,11 @@ from tests.support.generator_support import measure_run, run_filled, verify_gene
 from tests.support.witness_tables import witnesses
 
 
-def _run(table: str, row: int, width: int | None = None) -> str:
+def _check_rows(template: str, table: str, rows: Iterable[int]) -> None:
     n = len(table).bit_length() - 1
-    template = underload(table, width)
-    return run_filled(run, template, underload_setters(template, n), row, n)
+    setters = underload_setters(template, n)
+    for row in rows:
+        assert run_filled(run, template, setters, row, n) == table[row]
 
 
 @pytest.mark.medium
@@ -33,7 +35,7 @@ def test_wrapped_templates_execute_every_three_input_table(width: int) -> None:
         assert max(map(len, template.split("\n"))) <= max(7, width)
         if width >= 5:
             assert template.replace("\n", "") == underload(table)
-        assert "".join(_run(table, row, width) for row in range(8)) == table
+        _check_rows(template, table, range(8))
 
 
 @pytest.mark.medium
@@ -68,7 +70,7 @@ def test_first_eight_tables_through_three_inputs(n: int) -> None:
     width = 1 << n
     for value in range(min(8, 1 << width)):
         table = f"{value:0{width}b}"
-        assert "".join(_run(table, row) for row in range(width)) == table
+        _check_rows(underload(table), table, range(width))
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
@@ -96,7 +98,7 @@ def test_repeated_subtrees_are_carried_and_no_table_grows() -> None:
         assert (sum(plain), sum(shared)) == (before, after)
         assert all(s <= p for s, p in zip(shared, plain, strict=True))
     for table in five_input_sample()[::10]:
-        assert "".join(_run(table, row) for row in range(32)) == table
+        _check_rows(underload(table), table, range(32))
     for n in (4, 6):
         for value in (0x6996, 0x1234ABCD5678EF01):
             table = format(value % 2**2**n, f"0{2**n}b")
@@ -241,8 +243,7 @@ def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
 def test_short_selectors_execute_larger_carried_trees(n: int) -> None:
     for table in [format(0x6996 % 2 ** (2**n), f"0{2**n}b"), "0110" * 2 ** (n - 2)]:
         for width in [1, 4]:
-            for row in [0, 1, 2**n // 3, 2**n - 1]:
-                assert _run(table, row, width) == table[row]
+            _check_rows(underload(table, width), table, (0, 1, 2**n // 3, 2**n - 1))
 
 
 def underload_plain(truth_table: str) -> str:
@@ -288,7 +289,9 @@ def _check_terminal_drops() -> None:
                     pairs = underload_setters(template, n)
                     assert len(set(pairs)) == 1
                     for row in (0, 1, (1 << n) - 1):
-                        assert _run(candidate, row, width) == candidate[row]
+                        assert (
+                            run_filled(run, template, pairs, row, n) == candidate[row]
+                        )
     table = "0" * 127 + "1"
     mutant = "1" + table[1:]
     assert not _terminal_family(mutant, 7)

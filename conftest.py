@@ -20,6 +20,7 @@ from tests.support.duration_policy import (
 )
 
 _COST_CHECKS = pytest.StashKey[bool]()
+_FULL_COLLECTION = pytest.StashKey[list[str]]()
 
 # The thread timeout cannot stop a GIL-held operation; this backstop can.
 pytest_plugins = ["tests.support.gil_watchdog"]
@@ -87,9 +88,24 @@ def _drop_hook_git_env() -> None:
 _drop_hook_git_env()
 
 
-def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Give every test its hard stop and require evidence for weekly cost."""
-    # The nested collection probe took 2.64s alone, 22.8s under late pool load.
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Record the complete collection and give every test its hard stop."""
+    if (
+        config.args_source is pytest.Config.ArgsSource.TESTPATHS
+        and config.args == ["tests", "src/esolangs/languages"]
+        and not any(
+            config.getoption(option)
+            for option in ("ignore", "ignore_glob", "lf", "pyargs")
+        )
+        and set(config.getoption("override_ini") or ())
+        <= {"strict_markers=true", "strict_config=true"}
+    ):
+        # Capture before -m, -k and --deselect remove cases from the budget.
+        config.stash[_FULL_COLLECTION] = sorted({item.nodeid for item in items})
+    # Scoped runs still collect the budget separately, early in the worker pool.
     items.sort(key=lambda item: not item.nodeid.startswith("tests/tooling/"))
     for item in items:
         markers = {marker.name for marker in item.iter_markers()}
@@ -100,6 +116,12 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         if item.get_closest_marker("timeout") is not None:
             continue
         item.add_marker(pytest.mark.timeout(hard_ceiling(markers)))
+
+
+@pytest.fixture
+def full_collection(pytestconfig: pytest.Config) -> list[str] | None:
+    """Return the unfiltered repository node IDs when this run collected them."""
+    return pytestconfig.stash.get(_FULL_COLLECTION, None)
 
 
 #: CPU time the call phase spent, read back when its band is checked.

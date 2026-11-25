@@ -62,8 +62,9 @@ def sstack(truth_table: str) -> str:
     for blocks in dict.fromkeys(banks):
         if len(blocks) > 1:
             result = _sstack_shared(truth_table, blocks)
-            if result is not None:
-                forms.append(result)
+            # The bank fits in n - depth labels and n <= 62 for a str.
+            assert result is not None
+            forms.append(result)
     admitted = min((program for program, cost in forms if cost <= 7 * n + 3), key=len)
     bank = best_binary_bank(truth_table, _sstack_tree, 7 * n + 3, len(admitted))
     return admitted if bank is None else bank[0]

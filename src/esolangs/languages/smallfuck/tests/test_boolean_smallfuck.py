@@ -38,18 +38,15 @@ from tests.support.screen_support import corpus
 from tests.support.witness_tables import dense, witnesses
 
 
-def _run(table: str, row: int) -> str:
-    n = len(table).bit_length() - 1
-    return run_filled(run, smallfuck(table), [PAIR] * n, row, n)
-
-
 @pytest.mark.parametrize("n", range(1, 4))
 def test_first_eight_tables_through_three_inputs(n: int) -> None:
     """The remaining 248 tables killed no additional mutant."""
     width = 1 << n
     for value in range(min(8, 1 << width)):
         table = f"{value:0{width}b}"
-        assert "".join(_run(table, row) for row in range(width)) == table
+        template = smallfuck(table)
+        for row, bit in enumerate(table):
+            assert run_filled(run, template, [PAIR] * n, row, n) == bit
 
 
 def test_setters_are_equal_width_and_embedded_once() -> None:
@@ -93,8 +90,9 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     assert sum(len(smallfuck(f"{value:08b}")) for value in range(256)) == 30627
     for code in range(256):
         table = f"{code:08b}"
+        template = smallfuck(table)
         for row, expected in enumerate(table):
-            assert _run(table, row) == expected
+            assert run_filled(run, template, [PAIR] * 3, row, 3) == expected
 
     table = multiple_tables()[0]
     template = esolangs.generate("Smallfuck", table)
@@ -370,7 +368,8 @@ def test_davio_weights_use_spare_band_cells(
     ):
         with monkeypatch.context() as fault:
             fault.setattr(boolean, name, broken)
-            assert _run(table, row) != expected
+            n = len(table).bit_length() - 1
+            assert run_filled(run, smallfuck(table), [PAIR] * n, row, n) != expected
 
 
 @pytest.mark.parametrize(

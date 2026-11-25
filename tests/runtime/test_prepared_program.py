@@ -5,6 +5,7 @@ from contextvars import ContextVar
 from dataclasses import replace
 from io import BytesIO, StringIO
 from pathlib import Path
+from queue import Queue
 from threading import Event, Thread
 from time import monotonic
 from types import ModuleType
@@ -926,29 +927,37 @@ def test_longest_execution_timeout_leaves_time_for_worker_startup() -> None:
 
 @pytest.mark.medium
 def test_an_execution_budget_outlasts_the_default_total() -> None:
-    """``run(timeout=33)`` stopped at the flat 30-second total, worded "30.0"."""
+    """An implicit total includes startup time beyond the execution budget."""
     from esolangs.operations import execution
+    from esolangs.runtime import _isolated
 
     with patch.object(execution, "_ISOLATED_TIMEOUT", 3.0):
-        stopped = esolangs.Language(REFERENCE).execute(
-            "+[]", limits=esolangs.ExecutionLimits(execution_timeout=4.0)
-        )
+        total = execution.default_total(None, 4.0)
+        assert total == 7.0
+        explicit = execution.default_total(3.0, 4.0)
+    for deadline, bound in ((total, "execution_timeout"), (explicit, "total_timeout")):
+        records = Queue()
+        records.put('{"prepared":true}\n')
+        with patch.object(_isolated, "monotonic", side_effect=(0.0, 0.0, 5.0)):
+            stopped = _isolated._read_worker_output(None, records, deadline, None, 4.0)
+        assert stopped.bound == bound
+
+    source = "+.[]"
+    api = esolangs.Language(REFERENCE)
+    limits = esolangs.ExecutionLimits(execution_timeout=0.5)
+    with patch.object(execution, "_ISOLATED_TIMEOUT", 1.0):
+        stopped = api.execute(source, limits=limits)
         assert stopped.bound == "execution_timeout"
-        with pytest.raises(esolangs.ExecutionTimeoutError, match=r"4\.0-second") as e:
-            esolangs.run(
-                REFERENCE,
-                "+[]",
-                limits=esolangs.ExecutionLimits(execution_timeout=4.0),
-                isolated=True,
-            )
+        assert stopped.observation.output == "\x01"
+        with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.5-second") as e:
+            esolangs.run(REFERENCE, source, limits=limits, isolated=True)
         assert e.value.bound == "execution_timeout"
-        # The default total said "timeout", a parameter never passed.
-        with pytest.raises(esolangs.ExecutionTimeoutError) as e:
-            esolangs.run(REFERENCE, "+[]", isolated=True)
+        assert e.value.partial_output == "\x01"
+        with pytest.raises(esolangs.ExecutionTimeoutError, match=r"1\.0-second") as e:
+            esolangs.run(REFERENCE, source, isolated=True)
         assert e.value.bound == "total_timeout"
-    # PreparedProgram.run passed timeout as the whole-call deadline, in process:
-    # this never stopped.
-    stuck = esolangs.Language(REFERENCE).prepare("+[]")
-    with pytest.raises(esolangs.ExecutionTimeoutError, match=r"1\.0-second") as e:
-        stuck.run(limits=esolangs.ExecutionLimits(execution_timeout=1.0))
+        assert e.value.partial_output == "\x01"
+    with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.5-second") as e:
+        api.prepare(source).run(limits=limits)
     assert e.value.bound == "execution_timeout"
+    assert e.value.partial_output == "\x01"

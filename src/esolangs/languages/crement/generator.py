@@ -185,7 +185,9 @@ def _preset_template(table: str, n: int) -> list[_Line]:
             position[ref] = _HEADER_LINES + 2 * level
         else:
             position[ref] = end
-            end += 1 + (zero != z0) + (one != o0)
+            # Parity swaps its children. Distinct threshold needs
+            # yield distinct residuals in each slot.
+            end += 3
 
     def address(ref: int) -> int:
         return (_LOOP + 1 if ref else _HALT + 1) if ref < 2 else position[ref]
@@ -197,11 +199,13 @@ def _preset_template(table: str, n: int) -> list[_Line]:
         if (zero, one) == (z0, o0):
             continue
         cell = _HEADER_LINES + 2 * level
-        if one != o0:
-            body.append(("+A", str(cell), str(address(one) - 1)))
-        if zero != z0:
-            body.append(("+A", str(cell + 1), str(address(zero) - 1)))
-        body.append(("+J", str(cell), "1"))
+        body.extend(
+            (
+                ("+A", str(cell), str(address(one) - 1)),
+                ("+A", str(cell + 1), str(address(zero) - 1)),
+                ("+J", str(cell), "1"),
+            )
+        )
     testers: list[_Line] = []
     for name in range(n):
         state = defaults.get(name)

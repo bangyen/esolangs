@@ -156,10 +156,10 @@ def test_the_budgets_split_shared_from_package_tests() -> None:
 
 
 @pytest.mark.medium
-def test_the_suite_stays_under_its_test_budget() -> None:
+def test_the_suite_stays_under_its_test_budget(full_collection) -> None:
     """Fewer, sharper tests: a sweep that pushes past a budget is a blocker."""
     # 2026-10-16: 12,170 collected, 3,277 in 38 contract functions.
-    node_ids = collect_ids("")
+    node_ids = collect_ids("") if full_collection is None else full_collection
     assert len(node_ids) > 1000, "collection came back nearly empty"
     spellings = {
         spelling
