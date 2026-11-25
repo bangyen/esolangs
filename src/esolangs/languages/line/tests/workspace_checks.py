@@ -1,6 +1,5 @@
 """Line's two hand-derived fixture graphs, full bounded state and workspace."""
 
-from itertools import product
 from typing import NamedTuple
 
 import pytest
@@ -8,8 +7,9 @@ import pytest
 from esolangs.exceptions import ArgumentError, InputExhaustedError
 from esolangs.languages.line.interpreter import _Machine
 from esolangs.languages.line.interpreter.simulate import _Frame
-from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import assert_exact
 from tests.support.workspace_oracle import (
     WorkspaceWitness,
     check_erasures,
@@ -17,7 +17,7 @@ from tests.support.workspace_oracle import (
 )
 
 from .full_oracle import GRAPHS, model, provider_refusal_history, writer_refusal_history
-from .oracle_checks import _fixture
+from .oracle_checks import _fixture, arithmetic_terminal, fixture_cases
 
 _WORKSPACE = workspace_model("line-v1", "node instruction pointer cells input_cursor")
 
@@ -27,18 +27,6 @@ class _Held(NamedTuple):
     hashed: int
     captured: WorkspaceSnapshot
     capture_hash: int
-
-
-def _typed(value):
-    if type(value) in (int, bool, str, type(None)):
-        return type(value), value
-    if type(value) is tuple:
-        return tuple, tuple(map(_typed, value))
-    if type(value) is frozenset:
-        return frozenset, frozenset(map(_typed, value))
-    if type(value) is WorkspaceVariant:
-        return WorkspaceVariant, value.kind, _typed(value.values)
-    raise TypeError(type(value))
 
 
 def _boundary(machine, frames, row, stdin, witness, held):
@@ -54,11 +42,11 @@ def _boundary(machine, frames, row, stdin, witness, held):
             actual.nonzero,
             actual.goto,
         )
-        assert _typed(values) == _typed(tuple(expected))
-    assert _typed(machine.state) == _typed(tuple(row["raw"]))
-    assert _typed(machine.snapshot()) == _typed(row["cycle"])
-    assert _typed(machine.ip) == _typed(row["ip"])
-    assert _typed(machine.memory) == _typed(row["memory"])
+        assert_exact(values, tuple(expected))
+    assert_exact(machine.state, tuple(row["raw"]))
+    assert_exact(machine.snapshot(), row["cycle"])
+    assert_exact(machine.ip, row["ip"])
+    assert_exact(machine.memory, row["memory"])
     assert machine.halted is row["halted"]
     io = machine.io
     values = (
@@ -89,14 +77,14 @@ def _boundary(machine, frames, row, stdin, witness, held):
         stdin,
         stdin.count("\n") + int(bool(stdin) and not stdin.endswith("\n")),
     )
-    assert _typed(values) == _typed(expected)
-    assert _typed(io._buffer.__getstate__()) == _typed(
-        (row["output"], "\n", len(row["output"]), None)
+    assert_exact(values, expected)
+    assert_exact(
+        io._buffer.__getstate__(), (row["output"], "\n", len(row["output"]), None)
     )
     captured = machine.workspace_snapshot()
     assert type(captured) is WorkspaceSnapshot
     assert captured.model == _WORKSPACE
-    assert _typed(captured.parts) == _typed(row["workspace"])
+    assert_exact(captured.parts, row["workspace"])
     witness.sample(captured, row["workspace"])
     snapshot = machine.snapshot()
     held.append(_Held(snapshot, hash(snapshot), captured, hash(captured)))
@@ -132,8 +120,12 @@ def _drive(factory, example, stdin, rows, error):
 
 def _check(factory, example, stdin):
     error, rows = model(GRAPHS[example], stdin, cap=1000)
-    if error is None:
-        assert rows[-1]["halted"]
+    last = rows[-1]
+    cursor = last["position"]
+    assert (
+        error,
+        (last["raw"][2:], last["halted"], last["output"], cursor, cursor),
+    ) == (arithmetic_terminal(example, stdin))
     return _drive(factory, example, stdin, rows, error)
 
 
@@ -163,7 +155,7 @@ def _refusals(example):
         _drive(Refusal, example, stdin, rows, None)
         text = str(payload)
         retry = [text[len(prefix) :] if prefix else payload] if prefix != text else []
-        assert _typed(tuple(writes)) == _typed((payload, *retry))
+        assert_exact(tuple(writes), (payload, *retry))
     _, rows = provider_refusal_history(GRAPHS[example], stdin)
 
     class Provider(_Machine):
@@ -184,27 +176,7 @@ def _refusals(example):
 
 def check_accounting_line():
     """Check all92 full traces, five erasures and physical IO commit/retry."""
-    cases = [
-        (name, f"{a}\n{b} 99")
-        for name, a, b in product(("addition", "multiplication"), range(6), range(6))
-    ]
-    cases.extend(
-        product(
-            ("addition", "multiplication"),
-            (
-                "",
-                " \n",
-                "1",
-                "1\n",
-                "bad",
-                "1 bad",
-                "1_0 2",
-                "٣ 2",
-                "0 0",
-                " 5\t+5\r\n",
-            ),
-        )
-    )
+    cases = tuple(fixture_cases())
     assert len(cases) == 92
     for example, stdin in cases:
         oracle = _check(_Machine, example, stdin)

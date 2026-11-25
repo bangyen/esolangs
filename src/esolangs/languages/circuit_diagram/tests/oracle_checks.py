@@ -34,22 +34,24 @@ def _source(kind, width):
 
 
 def _inputs(count, width, stdin):
-    cursor, inputs = 0, []
+    cursor = past_end = 0
+    inputs = []
     for _ in range(count):
         bits = []
         for _ in range(width):
             while cursor < len(stdin) and stdin[cursor].isspace():
                 cursor += 1
             if cursor == len(stdin):
+                past_end += 1
                 bits.append(0)
             else:
                 bit = stdin[cursor]
                 cursor += 1
                 if bit not in "01":
-                    return None, cursor
+                    return None, cursor, past_end
                 bits.append(int(bit))
         inputs.append(tuple(bits))
-    return tuple(inputs), cursor
+    return tuple(inputs), cursor, past_end
 
 
 def _result(kind, inputs):
@@ -65,11 +67,10 @@ def _result(kind, inputs):
     return (int(not value if kind.isupper() else value),)
 
 
-def _model(kind, width, stdin):
-    count = 1 if kind == "~" else 2
-    inputs, cursor = _inputs(count, width, stdin)
+def _model(kind, inputs, cursor):
     if inputs is None:
         return "syntax", [(None, False, "", cursor, cursor)]
+    count = len(inputs)
     values = (*inputs, None)
     latches, done, output, trace = (None,) * count, False, "", []
 
@@ -94,21 +95,6 @@ def _model(kind, width, stdin):
     raise AssertionError("single gate did not settle")
 
 
-def _input_counts(count, width, stdin):
-    cursor = past_end = 0
-    for _ in range(count * width):
-        while cursor < len(stdin) and stdin[cursor].isspace():
-            cursor += 1
-        if cursor == len(stdin):
-            past_end += 1
-        else:
-            value = stdin[cursor]
-            cursor += 1
-            if value not in "01":
-                break
-    return cursor, past_end
-
-
 def _parts(machine, row, ports, kind, clock_cursor=0):
     # Bind only the static index permutation; predictions never read native values.
     indices = tuple(
@@ -130,11 +116,11 @@ def _parts(machine, row, ports, kind, clock_cursor=0):
 
 def _check(factory, kind, width, stdin="01 unused"):
     code, ports = _source(kind, width)
-    expected = _model(kind, width, stdin)
+    count = 1 if kind == "~" else 2
+    bits, reads, past_end = _inputs(count, width, stdin)
+    expected = _model(kind, bits, reads)
     predictions = iter(expected[1])
     witness = workspace.WorkspaceWitness(_WORKSPACE)
-    count = 1 if kind == "~" else 2
-    reads, past_end = _input_counts(count, width, stdin)
     inputs = []
 
     def build(code, io):

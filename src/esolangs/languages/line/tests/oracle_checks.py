@@ -31,7 +31,8 @@ def _read(stdin, cursor):
     return value, cursor, None
 
 
-def _model(example, stdin):
+def arithmetic_terminal(example, stdin):
+    """Predict the terminal tape and IO directly from fixture arithmetic."""
     cells, pointer, cursor = {}, 0, 0
     for pointer in (0, 1):
         value, cursor, error = _read(stdin, cursor)
@@ -69,28 +70,33 @@ def _check(factory, example, stdin):
     error, trace = observed(
         factory, _fixture(example), stdin, stable_halt(_view), cap=1000
     )
-    assert (error, trace[-1]) == _model(example, stdin), (example, stdin)
+    assert (error, trace[-1]) == arithmetic_terminal(example, stdin), (example, stdin)
     assert trace[0] == ((0, ()), False, "", 0, 0)
-    if factory is _Machine and error in (None, "input"):
-        io = ScriptedIO(stdin)
-        if error:
-            with pytest.raises(EOFError):
-                _execute(_fixture(example), io)
-        else:
-            _execute(_fixture(example), io)
-            assert (io.getvalue(), io.position(), io.reads) == (*trace[-1][2:4], 2)
+
+
+def fixture_cases():
+    """Yield the common arithmetic and full-trace corpus."""
+    examples = ("addition", "multiplication")
+    for example, left, right in product(examples, range(6), range(6)):
+        yield example, f"{left}\n{right} 99"
+    yield from product(
+        examples,
+        ("", " \n", "1", "1\n", "bad", "1 bad", "1_0 2", "٣ 2", "0 0", " 5\t+5\r\n"),
+    )
 
 
 def check_raw_line():
-    for example, left, right in product(
-        ("addition", "multiplication"), range(6), range(6)
-    ):
-        _check(_Machine, example, f"{left}\n{right} 99")
-    for example, stdin in product(
-        ("addition", "multiplication"),
-        ("", " \n", "1", "1\n", "bad", "1 bad", "1_0 2", "٣ 2", "0 0", " 5\t+5\r\n"),
-    ):
-        _check(_Machine, example, stdin)
+    for example, stdin in fixture_cases():
+        error, (_, _, output, cursor, _) = arithmetic_terminal(example, stdin)
+        io = ScriptedIO(stdin)
+        if error == "input":
+            with pytest.raises(EOFError):
+                _execute(_fixture(example), io)
+        elif error is None:
+            _execute(_fixture(example), io)
+            assert (io.getvalue(), io.position(), io.reads) == (output, cursor, 2)
+    for example in ("addition", "multiplication"):
+        _check(_Machine, example, "2 3 99")
 
     class WrongTape(_Machine):
         def step(self):

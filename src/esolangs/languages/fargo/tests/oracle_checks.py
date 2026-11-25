@@ -2,7 +2,7 @@
 
 # ruff: noqa: PT017 -- Exact raw/wrapped failure phases share one direct observer.
 
-from dataclasses import fields, is_dataclass, replace
+from dataclasses import replace
 from io import StringIO
 from types import MappingProxyType
 
@@ -18,6 +18,7 @@ from esolangs.languages.fargo.interpreter import (
 from esolangs.results import Completion, CompletionReport
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import _capture_observation, _capture_workspace, make_vm
+from tests.interpreters.oracle_support import assert_exact
 from tests.support.workspace_oracle import WorkspaceWitness
 
 from . import fargo_projections as projections
@@ -27,38 +28,6 @@ from .fargo_model import CallableValue, Continuation, State, model, parse
 
 REPORT = CompletionReport(Completion.HALTED)
 PUBLIC_TYPE_CONTROLS: list[int] = []
-
-
-def assert_exact(actual, expected):
-    """Compare complete owned records, rejecting bool/int substitutions."""
-    pending = [(actual, expected)]
-    while pending:
-        left, right = pending.pop()
-        assert type(left) is type(right)
-        if type(right) in (str, int, bool, type(None)):
-            assert left == right
-        elif is_dataclass(right):
-            pending.extend(
-                (getattr(left, field.name), getattr(right, field.name))
-                for field in fields(right)
-            )
-        elif isinstance(right, (tuple, list)):
-            assert len(left) == len(right)
-            pending.extend(zip(left, right, strict=True))
-        elif type(right) is frozenset:
-            assert len(left) == len(right)
-            remaining = list(left)
-            for item in right:
-                matches = [
-                    i
-                    for i, value in enumerate(remaining)
-                    if type(value) is type(item) and value == item
-                ]
-                assert matches
-                pending.append((remaining.pop(matches[0]), item))
-        else:
-            # Only enum members remain in declared completion reports.
-            assert left is right
 
 
 def assert_io(actual, row, stdin):

@@ -40,7 +40,7 @@ _ORACLE = re.compile(
 )
 #: Oracle line ceiling (user, 2026-11-11); lower it as oracles shrink. 2026-11-08
 #: dropped the tests < src rule; oracles then grew 17k lines, the rest 6k.
-MAX_ORACLE_LINES = 34_800
+MAX_ORACLE_LINES = 34_631
 
 
 def _category(name: str) -> str:

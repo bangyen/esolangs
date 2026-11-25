@@ -13,10 +13,11 @@ from esolangs.languages.streetcode.interpreter.geometry import (
 )
 from esolangs.runtime._state import WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import assert_exact
 from tests.support.workspace_oracle import WorkspaceWitness
 
 from .junction_oracle import CODE, parts, prefix
-from .workspace_checks import MODEL, exact
+from .workspace_checks import MODEL
 
 
 def typed_state(state):
@@ -115,8 +116,8 @@ def trace(factory=_Machine):
             row.heading,
             _Latches(merge, row.merging_heading, row.skip_hug),
         )
-        exact(machine._state, expected_state)
-        exact(
+        assert_exact(machine._state, expected_state)
+        assert_exact(
             (
                 machine.cp,
                 tuple(sorted(machine.cells.items())),
@@ -125,13 +126,13 @@ def trace(factory=_Machine):
             ),
             (0, (), 0, False),
         )
-        exact(tuple(machine.grid), CODE)
-        exact((machine.grid.height, machine.grid.width), (8, 9))
+        assert_exact(tuple(machine.grid), CODE)
+        assert_exact((machine.grid.height, machine.grid.width), (8, 9))
         assert machine._graph == graph
         assert machine.grid._geometry == memo
         metadata_schema(machine)
         assert expected_state in graph
-        exact(machine.snapshot(), (expected_state, 0, (), 0, False, 0, CODE))
+        assert_exact(machine.snapshot(), (expected_state, 0, (), 0, False, 0, CODE))
         expected_io = {
             "_source": "",
             "_supplied": 0,
@@ -149,13 +150,13 @@ def trace(factory=_Machine):
         actual_io["_buffer"] = actual_io["_buffer"].__getstate__()
         assert actual_io.keys() == expected_io.keys()
         for name in expected_io:
-            exact(actual_io[name], expected_io[name])
+            assert_exact(actual_io[name], expected_io[name])
         actual = machine.workspace_snapshot()
         wanted = WorkspaceSnapshot(MODEL, parts(row))
-        exact(actual, wanted)
+        assert_exact(actual, wanted)
         witness.sample(actual, wanted.parts)
         for saved, reference in held:
-            exact(saved, reference)
+            assert_exact(saved, reference)
         held.append((actual, wanted))
     witness.finish()
     assert witness.expected.peaks == [57, 1, 0, 1, 1, 1]
@@ -199,7 +200,7 @@ def controls():
         else:
             machine._graph[machine._state][(0, 0)] = "halt"
             assert machine._graph != before
-        exact(machine.workspace_snapshot(), capture)
+        assert_exact(machine.workspace_snapshot(), capture)
         machine.step()
         assert machine.halted is True
         assert (machine.row, machine.col) == (2, 1)

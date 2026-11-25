@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from esolangs import ExecutionLimits
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import assert_exact
 
 from . import oracle_checks as checker
 from .fargo_corpus import Case, cases
@@ -97,7 +98,7 @@ def check_phases():
                     seen = caught.observation
                     assert caught.partial_output == prior.output
                     assert seen is not None
-                    checker.assert_exact(
+                    assert_exact(
                         seen,
                         checker.esolangs.ExecutionResult(
                             prior.output,
@@ -123,14 +124,14 @@ def check_phases():
                 inner.ind,
                 tuple(checker.actual_frame(f) for f in inner.frames),
             )
-            checker.assert_exact(actual, prior.state)
+            assert_exact(actual, prior.state)
             accepting = True
             for _ in range(halt_at - at + 1):
                 machine.step()
             accepting = False
             assert machine.halted
             counts["writer_routes"] += 1
-        checker.assert_exact(
+        assert_exact(
             debugger.observation,
             checker.esolangs.ExecutionResult(
                 rows[-1].output,
@@ -160,7 +161,7 @@ def check_phases():
             assert type(caught) is checker.esolangs.ProgramError
             assert str(caught) == marker
             assert caught.partial_output == prior.output
-            checker.assert_exact(
+            assert_exact(
                 caught.observation,
                 checker.esolangs.ExecutionResult(
                     prior.output,

@@ -1,6 +1,5 @@
 """Full independent capture/IO boundary checks for the old one-row family."""
 
-from dataclasses import fields, is_dataclass
 from io import StringIO
 from types import MappingProxyType
 
@@ -9,6 +8,7 @@ from esolangs.languages.streetcode.interpreter import _Machine
 from esolangs.languages.streetcode.interpreter.geometry import _Grid, _Latches, _State
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
 from esolangs.runtime.io import ScriptedIO
+from tests.interpreters.oracle_support import assert_exact
 from tests.support.workspace_oracle import WorkspaceWitness
 
 from .full_oracle import Case, cases, parts, predict, witness
@@ -17,32 +17,6 @@ MODEL = WorkspaceModel(
     "streetcode-v1",
     ("steering", "pointer", "cells", "input_cursor", "stopped", "input_reads"),
 )
-
-
-def exact(left, right):
-    """Reject bool/int and container substitutions at every declared leaf."""
-    todo = [(left, right)]
-    while todo:
-        actual, expected = todo.pop()
-        assert type(actual) is type(expected)
-        if is_dataclass(expected):
-            todo.extend(
-                (getattr(actual, f.name), getattr(expected, f.name))
-                for f in fields(expected)
-            )
-        elif isinstance(expected, (tuple, list)):
-            assert len(actual) == len(expected)
-            todo.extend(zip(actual, expected, strict=True))
-        elif type(expected) is frozenset:
-            assert actual == expected
-            assert all(
-                type(pair) is tuple
-                and len(pair) == 2
-                and all(type(x) is int for x in pair)
-                for pair in actual
-            )
-        else:
-            assert actual == expected
 
 
 def io_state(port, row, stdin):
@@ -66,7 +40,7 @@ def io_state(port, row, stdin):
     }
     assert values.keys() == expected.keys()
     for name in expected:
-        exact(values[name], expected[name])
+        assert_exact(values[name], expected[name])
 
 
 def boundary(machine, port, case, row, meter, held):
@@ -75,40 +49,44 @@ def boundary(machine, port, case, row, meter, held):
     assert type(machine._state) is _State
     assert type(machine._state.latches) is _Latches
     expected_state = _State(0, pc, heading, _Latches(None, None, 0))
-    exact(machine._state, expected_state)
-    exact(machine.cp, pointer)
+    assert_exact(machine._state, expected_state)
+    assert_exact(machine.cp, pointer)
     assert type(machine.cells) in (dict, MappingProxyType)
     assert all(type(k) is int and type(v) is int for k, v in machine.cells.items())
-    exact(tuple(sorted(machine.cells.items())), cells)
-    exact(machine._done, row.halted)
-    exact(machine._input_reads, reads)
-    exact(machine.ip, (0, pc, "NESW".index(heading)))
-    exact(
+    assert_exact(tuple(sorted(machine.cells.items())), cells)
+    assert_exact(machine._done, row.halted)
+    assert_exact(
+        (machine.halted, port.getvalue(), port.position(), port.progress()),
+        (row.halted, row.output, row.cursor, row.progress),
+    )
+    assert_exact(machine._input_reads, reads)
+    assert_exact(machine.ip, (0, pc, "NESW".index(heading)))
+    assert_exact(
         machine.memory,
         []
         if not cells
         else [dict(cells).get(i, 0) for i in range(max(dict(cells)) + 1)],
     )
     assert type(machine.grid) is _Grid
-    exact(tuple(machine.grid), (case.source,))
-    exact(machine.grid.height, 1)
-    exact(machine.grid.width, len(case.source))
+    assert_exact(tuple(machine.grid), (case.source,))
+    assert_exact(machine.grid.height, 1)
+    assert_exact(machine.grid.width, len(case.source))
     assert type(machine.grid._rows) is list
-    exact(machine.grid._rows, [case.source])
+    assert_exact(machine.grid._rows, [case.source])
     assert type(machine.grid._geometry) is dict
     assert machine._graph is None
     io_state(port, row, case.stdin)
     cycle = machine.snapshot()
-    exact(
+    assert_exact(
         cycle,
         (expected_state, pointer, cells, row.cursor, row.halted, reads, (case.source,)),
     )
     captured = machine.workspace_snapshot()
     expected = WorkspaceSnapshot(MODEL, parts(row))
-    exact(captured, expected)
+    assert_exact(captured, expected)
     meter.sample(captured, expected.parts)
     for saved, reference, old_cycle, old_hash in held:
-        exact(saved, reference)
+        assert_exact(saved, reference)
         assert hash(old_cycle) == old_hash
     held.append((captured, expected, cycle, hash(cycle)))
 
@@ -131,7 +109,7 @@ def check_case(case, factory=_Machine):
                 InputExhaustedError if error == "input" else HaltError
             )
             if error == "input":
-                exact(
+                assert_exact(
                     (caught.reads, caught.supplied, caught.unit),
                     (row.cursor, len(case.stdin), "character"),
                 )

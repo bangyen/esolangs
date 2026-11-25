@@ -1,9 +1,43 @@
 """Observe production only; independent models supply their own expected traces."""
 
+from dataclasses import fields, is_dataclass
+
 import pytest
 
 from esolangs.exceptions import ArgumentError, HaltError, InterpreterLimitError
 from esolangs.runtime.io import ScriptedIO
+
+
+def assert_exact(actual, expected):
+    """Compare modeled records, including the exact types of nested values."""
+    pending = [(actual, expected)]
+    while pending:
+        left, right = pending.pop()
+        assert type(left) is type(right)
+        if type(right) in (str, int, bool, type(None)):
+            assert left == right
+        elif is_dataclass(right):
+            pending.extend(
+                (getattr(left, field.name), getattr(right, field.name))
+                for field in fields(right)
+            )
+        elif isinstance(right, (tuple, list)):
+            assert len(left) == len(right)
+            pending.extend(zip(left, right, strict=True))
+        elif type(right) is frozenset:
+            assert len(left) == len(right)
+            remaining = list(left)
+            for item in right:
+                matches = [
+                    i
+                    for i, value in enumerate(remaining)
+                    if type(value) is type(item) and value == item
+                ]
+                assert matches
+                pending.append((remaining.pop(matches[0]), item))
+        else:
+            # Only enum members remain in declared completion reports.
+            assert left is right
 
 
 def stalled(factory):
