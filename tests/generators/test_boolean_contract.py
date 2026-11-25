@@ -33,9 +33,9 @@ def test_boolean_index_lists_all_declared_backends() -> None:
 
 def test_reorder_permutation_preserves_the_function() -> None:
     """Permuting the table renames the inputs without changing the function."""
-    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.helpers import permute_truth_table, reflected_table
 
-    table = "01101001"
+    table = "00101101"
     n = 3
     for perm in [(0, 1, 2), (2, 0, 1), (2, 1, 0)]:
         permuted = permute_truth_table(table, perm)
@@ -43,6 +43,43 @@ def test_reorder_permutation_preserves_the_function() -> None:
             bits = row_bits(row, n)
             original = sum(bits[level] << (n - 1 - i) for level, i in enumerate(perm))
             assert permuted[row] == table[original]
+    assert reflected_table(table, n) == "01100101"
+
+
+def test_identity_projection_reuses_the_table() -> None:
+    from esolangs.generation.helpers import read_at
+
+    table = "00101101"
+    assert read_at(table, (0, 1, 2), 3) is table
+    assert read_at(table, [0, 1, 2], 3) is table
+    assert read_at(table, [0, 1], 3) == "0110"
+    assert read_at(table, [0, 1], 2) == "0010"
+    assert read_at(table, [0, 0, 2], 3) == "00111111"
+
+
+def test_contiguous_projection_holds_omitted_bits_at_zero() -> None:
+    from esolangs.generation.helpers import read_at
+
+    n = 7
+    table = format(int("ab3260f7e391c45376b018f5c438b2d9", 16), "0128b")
+    for inputs in ([0, 1, 2], [2, 3, 4], [4, 5, 6]):
+        rows = (
+            sum(
+                bit << (n - 1 - index)
+                for bit, index in zip(row_bits(row, 3), inputs, strict=True)
+            )
+            for row in range(8)
+        )
+        assert read_at(table, inputs, n) == "".join(table[row] for row in rows)
+
+
+def test_essential_inputs_after_ignoring_leading_halves() -> None:
+    n = 14
+    for inputs in ([1, 13], [3, 12, 13]):
+        mask = sum(1 << (n - 1 - index) for index in inputs)
+        table = "".join(str((row & mask).bit_count() & 1) for row in range(1 << n))
+        assert essential_inputs(table, n) == inputs
+    assert essential_inputs("0" * (1 << n), n) == []
 
 
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:

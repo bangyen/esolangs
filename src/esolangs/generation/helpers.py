@@ -4,6 +4,7 @@ A valid table has ``2**n`` entries, so ``n`` is recovered from the length
 and the generators take no ``n`` parameter.
 """
 
+from array import array
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
@@ -12,6 +13,7 @@ from typing import NamedTuple
 
 from esolangs.exceptions import TruthTableError
 from esolangs.generation.lookup import prefix_counts as _prefix_counts
+from esolangs.generation.lookup import prefix_totals as _prefix_totals
 from esolangs.generation.lookup import symmetric_outputs as _symmetric_outputs
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import with_hint
@@ -22,6 +24,7 @@ from esolangs.runtime.source_hints import with_hint
 # of ``+`` or ``-`` reads as a magic number.
 _ASCII_ZERO = 48
 _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
+_LEAF_BITS = bytes.maketrans(b"01", b"\x00\x01")
 
 
 def short_name(index: int, alphabet: str) -> str:
@@ -58,7 +61,13 @@ def narrowest_grid(*candidates: str) -> str:
 
 def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
     """Return an O(1) test for whether a half-open table span is constant."""
-    ones = _prefix_counts(truth_table, "1")
+    ones: Sequence[int]
+    if len(truth_table) >= 4096:
+        # Large indexes otherwise retain a Python int and a list slot per row.
+        width = "I" if len(truth_table).bit_length() <= 8 * array("I").itemsize else "Q"
+        ones = array(width, _prefix_totals(truth_table, "1"))
+    else:
+        ones = _prefix_counts(truth_table, "1")
 
     def constant(start: int, stop: int) -> bool:
         count = ones[stop] - ones[start]
@@ -78,22 +87,23 @@ def subtree_ids(truth_table: str) -> tuple[tuple[int, ...], ...]:
     quasi-reduced decision diagram, interned rather than searched), in O(T).
     """
     n = _validate_truth_table(truth_table)
-    # The list comprehension avoids resuming a generator for each leaf.
-    level = tuple([1 if bit == "1" else 0 for bit in truth_table])
+    level = tuple(str.encode(truth_table, "ascii").translate(_LEAF_BITS))
     ids = [level]
     fresh = 2
     for _ in range(n):
         seen: dict[tuple[int, int], int] = {}
         above: list[int] = []
         children = iter(level)
-        for zero, one in zip(children, children, strict=True):
+        for pair in zip(children, children, strict=True):
+            zero, one = pair
             if zero == one and zero < 2:  # two equal constants stay one
                 above.append(zero)
                 continue
-            if (zero, one) not in seen:
-                seen[zero, one] = fresh
+            node = seen.get(pair)
+            if node is None:
+                node = seen[pair] = fresh
                 fresh += 1
-            above.append(seen[zero, one])
+            above.append(node)
         level = tuple(above)
         ids.append(level)
     ids.reverse()
@@ -220,10 +230,9 @@ def _validate_shape(truth_table: str) -> int:
     A generator's ``_solve`` can reduce to essential inputs and reach a
     one-entry table on the way down; its public entry still validates in full.
     """
-    # Alphabet first: length-first answered ``01a`` with "got 3 entries"
-    # and never named the ``a``.  A set difference, since this runs per
-    # character on every candidate build.
-    if set(truth_table) - {"0", "1"}:
+    # Check the alphabet first so ``01a`` names the ``a``. Count in C on
+    # candidate builds and scan for the offending character only on error.
+    if str.count(truth_table, "0") + str.count(truth_table, "1") != len(truth_table):
         # The *argument*, plus which character is wrong and where.  This
         # printed ``sorted(set(...))``, so someone who typed ``nonsense``
         # was told "got 'enos'" -- a string they had never seen, which
@@ -285,7 +294,7 @@ class ResidualDiagram(NamedTuple):
 def _residual_ids(truth_table: str, n: int) -> ResidualDiagram:
     """Canonical residual IDs, children and constant values in O(T) RAM work."""
     levels: list[tuple[int, ...]] = [()] * (n + 1)
-    ids = [1 if bit == "1" else 0 for bit in truth_table]
+    ids: Sequence[int] = str.encode(truth_table, "ascii").translate(_LEAF_BITS)
     levels[n] = tuple(dict.fromkeys(ids))
     children: dict[int, tuple[int, int]] = {}
     constants: dict[int, int | None] = {0: 0, 1: 1}
@@ -293,16 +302,18 @@ def _residual_ids(truth_table: str, n: int) -> ResidualDiagram:
     for k in range(n - 1, -1, -1):
         names: dict[tuple[int, int], int] = {}
         parents = []
-        for zero, one in zip(ids[::2], ids[1::2], strict=True):
-            pair = (zero, one)
-            if pair not in names:
-                names[pair] = serial
-                children[serial] = pair
-                constants[serial] = (
+        layer = iter(ids)
+        for pair in zip(layer, layer, strict=True):
+            node = names.get(pair)
+            if node is None:
+                node = names[pair] = serial
+                children[node] = pair
+                zero, one = pair
+                constants[node] = (
                     constants[zero] if constants[zero] == constants[one] else None
                 )
                 serial += 1
-            parents.append(names[pair])
+            parents.append(node)
         levels[k] = tuple(names.values())
         ids = parents
     return ResidualDiagram(
@@ -313,11 +324,12 @@ def _residual_ids(truth_table: str, n: int) -> ResidualDiagram:
 def essential_inputs(truth_table: str, n: int) -> list[int]:
     """Input positions affecting the table, with O(T) worst-case RAM work.
 
-    Slice comparisons stop early on dense tables. After four table lengths
-    of comparisons, canonical child IDs bound the remaining work instead.
+    Shrink equal leading halves as they are proved independent. After four
+    table lengths of comparisons, canonical child IDs bound remaining work.
     """
     budget = 4 * len(truth_table)
     result = []
+    ignored = 0
     for i in range(n):
         half = 1 << (n - 1 - i)
         block = 2 * half
@@ -325,16 +337,20 @@ def essential_inputs(truth_table: str, n: int) -> list[int]:
             if block > budget:
                 if truth_table.count(truth_table[0]) == len(truth_table):
                     return []
-                levels, children, _ = _residual_ids(truth_table, n)
+                levels, children, _ = _residual_ids(truth_table, n - ignored)
                 return [
-                    k
-                    for k in range(n)
+                    k + ignored
+                    for k in range(n - ignored)
                     if any(children[s][0] != children[s][1] for s in levels[k])
                 ]
             budget -= block
-            if truth_table[lo : lo + half] != truth_table[lo + half : lo + block]:
+            left = truth_table[lo : lo + half]
+            if not truth_table.startswith(left, lo + half, lo + block):
                 result.append(i)
                 break
+            if not result and block == len(truth_table):
+                truth_table = left
+                ignored += 1
     return result
 
 
@@ -347,6 +363,19 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     essential inputs (holding an ignored one at 0 cannot change the answer).
     ``n`` is passed because the projected result is narrower than its input.
     """
+    if (
+        len(inputs) == n
+        and len(truth_table) == 1 << n
+        and all(slot == original for slot, original in enumerate(inputs))
+    ):
+        return truth_table
+    if inputs and len(inputs) < n and all(b == a + 1 for a, b in pairwise(inputs)):
+        # With the omitted bits held at zero, contiguous slots are a stride.
+        stride = 1 << (n - 1 - inputs[-1])
+        last = ((1 << len(inputs)) - 1) * stride
+        if last < len(truth_table):
+            return truth_table[: last + 1 : stride]
+
     # The row indices are built by doubling rather than by re-scattering
     # each row's bits: slot ``k`` is the next-most-significant bit, so
     # appending ``o | mask`` after ``o`` extends the list in row order.
@@ -472,4 +501,4 @@ def same_token_layout(template: str, plain: str, _layout: object) -> bool:
 
 def reflected_table(table: str, n: int) -> str:
     """Reorder rows by bit-reversed index, so the last input is tested first."""
-    return "".join(table[int(f"{row:0{n}b}"[::-1], 2)] for row in range(1 << n))
+    return read_at(table, tuple(range(n - 1, -1, -1)), n)
