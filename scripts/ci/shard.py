@@ -18,15 +18,16 @@ import re
 import statistics
 import subprocess
 import tempfile
+import time
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from datetime import date
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple
 
 import pytest
 from _pytest.reports import TestReport
 from verify import coverage as coverage_evidence
-from verify.process import run_bounded, write_text
+from verify.process import logged_path, start_logged, wait_with_heartbeat, write_text
 from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN
 
 from esolangs.runtime._json import unique_object
@@ -51,30 +52,17 @@ def _pytest_env() -> dict[str, str]:
 
 
 def _collection_error(
-    marker: str, reason: str, stdout: bytes, stderr: bytes
+    marker: str, reason: str, log: Path, output: str
 ) -> CollectionError:
-    """Keep all output in the log and expose only pytest's error on the console."""
-    output = stdout.decode("utf-8", errors="replace")
-    errors = stderr.decode("utf-8", errors="replace")
-    directory = ROOT / "notes" / "verification"
-    directory.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        prefix="pytest-collection-",
-        suffix=".log",
-        dir=directory,
-        delete=False,
-    ) as log:
-        log.write(output)
-        log.write("\n")
-        log.write(errors)
-    detail = errors.strip() or "\n".join(
-        line for line in output.splitlines() if line.startswith(("E ", "ERROR "))
+    """Expose pytest's errors from the bounded tail of the saved log."""
+    detail = "\n".join(
+        line
+        for line in output.splitlines()
+        if line.startswith(("E ", "ERROR ", "ERROR:", "[log error]"))
     )
     header = f"collection for -m {marker!r} {reason}"
     diagnostic = f"\n{detail[:2048]}" if detail else ""
-    return CollectionError(f"{header}{diagnostic}\n[log] {log.name}")
+    return CollectionError(f"{header}{diagnostic}\n[log] {log}")
 
 
 def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
@@ -105,31 +93,24 @@ def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
             marker,
             *paths,
         ]
-        try:
-            proc = run_bounded(
-                command,
-                cwd=ROOT,
-                env=_pytest_env(),
-                capture_output=True,
-                text=False,
-                timeout=_COLLECTION_TIMEOUT,
+        name = "pytest-collection"
+        started = time.monotonic()
+        with start_logged(
+            command, name, _pytest_env(), ROOT, stream=False, cwd=ROOT
+        ) as proc:
+            log = logged_path(proc)
+            output, status = wait_with_heartbeat(
+                proc, name, started, _COLLECTION_TIMEOUT, _COLLECTION_TIMEOUT
             )
-        except subprocess.TimeoutExpired as error:
-            raise _collection_error(
-                marker,
-                f"timed out after {_COLLECTION_TIMEOUT:g}s",
-                error.stdout or b"",
-                error.stderr or b"",
-            ) from error
-        if proc.returncode == 5:
+        if status == 5:
+            log.unlink()
             return []
-        if proc.returncode != 0:
-            raise _collection_error(
-                marker,
-                f"failed (pytest exit {proc.returncode})",
-                cast("bytes", proc.stdout),
-                cast("bytes", proc.stderr),
-            )
+        if status != 0:
+            reason = {
+                124: f"timed out after {_COLLECTION_TIMEOUT:g}s",
+                125: "failed (diagnostic byte limit exceeded or log error)",
+            }.get(status, f"failed (pytest exit {status})")
+            raise _collection_error(marker, reason, log, output)
         try:
             nodes = read_evidence_json(destination, kind="pytest collection")
             if (
@@ -142,9 +123,10 @@ def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
             raise _collection_error(
                 marker,
                 f"produced an invalid collection report: {error}",
-                cast("bytes", proc.stdout),
-                cast("bytes", proc.stderr),
+                log,
+                output,
             ) from error
+        log.unlink()
         return sorted(nodes)
 
 
@@ -407,10 +389,10 @@ def shard_main(argv: list[str] | None = None) -> int:
         ]
         _check_duration_output(_duration_output_path(rest), protected)
         durations = load_durations(args.durations) if args.durations else None
-    except (OSError, ValueError, RuntimeError) as error:
+        state = coverage_evidence.checkout(ROOT, data) if data is not None else ""
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         print(error, file=sys.stderr)
         return 2
-    state = coverage_evidence.checkout(ROOT, data) if data is not None else ""
     try:
         collected = collect_ids(args.marker)
     except (CollectionError, OSError) as error:
@@ -464,18 +446,24 @@ def shard_main(argv: list[str] | None = None) -> int:
             [(option, str(path)) for option, path in protected]
         )
     if data is not None:
-        return _run_coverage_shard(
-            data,
-            state,
-            rest,
-            {
-                "shard": args.shard,
-                "shards": args.shards,
-                "collected": coverage_evidence.fingerprint(collected),
-                "nodes": ids,
-            },
-            env,
-        )
+        try:
+            return _run_coverage_shard(
+                data,
+                state,
+                rest,
+                {
+                    "shard": args.shard,
+                    "shards": args.shards,
+                    "collected": coverage_evidence.fingerprint(collected),
+                    "nodes": ids,
+                },
+                env,
+            )
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print(
+                f"coverage shard {args.shard}/{args.shards}: {error}", file=sys.stderr
+            )
+            return 2
     return subprocess.run(
         [sys.executable, "-m", "pytest", *rest, *ids],
         cwd=ROOT,
@@ -492,6 +480,7 @@ def _run_coverage_shard(
     env: dict[str, str],
 ) -> int:
     """Publish coverage with the completed shard selection."""
+    expected: list[str] = selection["nodes"]
     with tempfile.TemporaryDirectory(prefix=".coverage.", dir=data.parent) as stage:
         staged = Path(stage) / ".coverage"
         execution = Path(stage) / "pytest.json"
@@ -505,7 +494,7 @@ def _run_coverage_shard(
                 PLUGIN,
                 OUTPUT_OPTION,
                 str(execution),
-                *selection["nodes"],
+                *expected,
             ],
             cwd=ROOT,
             env={**env, "COVERAGE_FILE": str(staged)},
@@ -513,8 +502,20 @@ def _run_coverage_shard(
         )
         if result.returncode:
             return result.returncode
-        if coverage_evidence.completed(execution) != selection["nodes"]:
-            raise ValueError("coverage shard ran a different selection")
+        actual = coverage_evidence.completed(execution)
+        if actual != expected:
+            missing = sorted(set(expected).difference(actual))
+            unexpected = sorted(set(actual).difference(expected))
+            details = [
+                f"ran a different selection (expected {len(expected)} tests, "
+                f"got {len(actual)})"
+            ]
+            for label, nodes in (("missing", missing), ("unexpected", unexpected)):
+                if nodes:
+                    sample = ", ".join(repr(node) for node in nodes[:5])
+                    extra = f" and {len(nodes) - 5} more" if len(nodes) > 5 else ""
+                    details.append(f"{label}: {sample}{extra}")
+            raise ValueError("\n".join(details))
         if coverage_evidence.checkout(ROOT, data) != state:
             raise ValueError("checkout inputs changed during coverage collection")
         coverage_evidence.publish(staged, data, state, selection)

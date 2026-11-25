@@ -46,6 +46,20 @@ def test_a_live_heading_and_explicit_anchor_pass(tmp_path: Path) -> None:
     assert checker.broken_links(tmp_path, files) == []
 
 
+def test_explicit_anchors_in_inline_code_are_only_examples(tmp_path: Path) -> None:
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {
+            "a.md": (
+                "[literal](b.md#literal) [real](b.md#real) [heading](b.md#use-code)"
+            ),
+            "b.md": '## Use `code`\n\n``<a id="literal"></a>`` <a id="real"></a>\n',
+        },
+    )
+    assert checker.broken_links(tmp_path, files) == [("a.md", "b.md#literal")]
+
+
 def test_a_missing_relative_file_is_reported(tmp_path: Path) -> None:
     checker = load_script()
     files = _tree(tmp_path, {"a.md": "See [there](gone.md).\n"})
@@ -272,7 +286,8 @@ def test_proof_evidence_shares_the_link_gates_anchors(
 
     page = tmp_path / "page.md"
     page.write_text(
-        '<a name="kept"></a>\n~~~\n## Hidden\n~~~\n<!--\n## Draft\n-->\n',
+        '<a name="kept"></a>\n`<a name="literal"></a>`\n'
+        "~~~\n## Hidden\n~~~\n<!--\n## Draft\n-->\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(proof_status, "ROOT", tmp_path)
@@ -281,6 +296,8 @@ def test_proof_evidence_shares_the_link_gates_anchors(
         proof_status._check_evidence("page.md#hidden", precise=True)
     with pytest.raises(ValueError, match="missing evidence anchor"):
         proof_status._check_evidence("page.md#draft", precise=True)
+    with pytest.raises(ValueError, match="missing evidence anchor"):
+        proof_status._check_evidence("page.md#literal", precise=True)
 
 
 def test_the_committed_tree_has_no_dead_links() -> None:

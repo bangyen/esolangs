@@ -179,10 +179,10 @@ def _heading_titles(text: str) -> Iterator[str]:
 
 def anchors(text: str) -> set[str]:
     """Return every heading and explicit anchor a reader can link to in ``text``."""
-    text = mask_hidden(text, keep_columns=False)
+    visible = mask_hidden(text, keep_columns=False)
     headings: set[str] = set()
     next_suffix: dict[str, int] = {}
-    for title in _heading_titles(text):
+    for title in _heading_titles(visible):
         base = heading = slug(title)
         suffix = next_suffix.get(base, 1)
         while heading in headings:
@@ -190,5 +190,6 @@ def anchors(text: str) -> set[str]:
             suffix += 1
         next_suffix[base] = suffix
         headings.add(heading)
-    # Explicit anchors do not take part in heading suffix allocation.
-    return headings | {m.group(1) for m in _EXPLICIT_ANCHOR.finditer(text)}
+    # Inline code contributes heading text but cannot contain HTML anchors.
+    markup = mask_hidden(text, inline_code=True)
+    return headings | {m.group(1) for m in _EXPLICIT_ANCHOR.finditer(markup)}

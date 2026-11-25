@@ -1,13 +1,14 @@
 """One shard of a marker band runs its slice and no one else's."""
 
 import re
-import subprocess
+import sys
 from functools import partial
 from pathlib import Path
 
 import pytest
 import yaml
 
+from scripts.verify.process import MARKER, MAX_LOG_BYTES
 from tests.tooling.script_support import load
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +37,7 @@ class TestShardIds:
         ids = shard.collect_ids("")
         assert ids == [f"test_collection.py::test_real[{i}]" for i in range(10)]
         assert shard.collect_ids("missing") == []
+        assert not list((tmp_path / "notes/verification").glob("*.log"))
         (tmp_path / "test_broken.py").write_text('raise ValueError("bad collection")')
         with pytest.raises(RuntimeError, match="bad collection"):
             shard.collect_ids("")
@@ -109,6 +111,23 @@ def test_invalid_marker_reports_the_error_and_keeps_the_collection_log(
     assert "Wrong expression passed to '-m'" in contents
 
 
+@pytest.mark.medium
+def test_noisy_pytest_collection_keeps_a_capped_log(tmp_path, monkeypatch, capsys):
+    shard = load_script()
+    monkeypatch.setattr(shard, "ROOT", tmp_path)
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
+    (tmp_path / "test_noisy.py").write_text(
+        f"print('x' * {MAX_LOG_BYTES + 65_536})\ndef test_noisy(): pass\n",
+        encoding="utf-8",
+    )
+    assert shard.shard_main(["--marker", "", "--shard", "0", "--shards", "1"]) == 2
+    diagnostic = capsys.readouterr().err
+    assert "diagnostic byte limit exceeded" in diagnostic
+    log = Path(diagnostic.partition("[log] ")[2].strip())
+    assert log.stat().st_size == MAX_LOG_BYTES
+    assert log.read_bytes().endswith(MARKER)
+
+
 @pytest.mark.parametrize(
     "payload", ['{"a":1}', '"abc"', '[""]', '["a","a"]', "[false]", "[", None]
 )
@@ -118,13 +137,19 @@ def test_invalid_collection_reports_keep_the_log_and_prevent_sharding(
     shard = load_script()
     monkeypatch.setattr(shard, "ROOT", tmp_path)
 
-    def collect(command, **_kwargs):
+    start = shard.start_logged
+
+    def collect(command, *args, **kwargs):
         output = Path(command[command.index("--collection-output") + 1])
         if payload is not None:
             output.write_text(payload, encoding="utf-8")
-        return subprocess.CompletedProcess(command, 0, b"kept stdout", b"kept stderr")
+        probe = (
+            "import sys; print('kept stdout', flush=True); "
+            "print('kept stderr', file=sys.stderr)"
+        )
+        return start([sys.executable, "-c", probe], *args, **kwargs)
 
-    monkeypatch.setattr(shard, "run_bounded", collect)
+    monkeypatch.setattr(shard, "start_logged", collect)
     manifest = tmp_path / "shard.json"
     assert (
         shard.shard_main(
@@ -145,7 +170,53 @@ def test_invalid_collection_reports_keep_the_log_and_prevent_sharding(
     message = capsys.readouterr().err
     assert "collection for -m 'slow' produced an invalid collection report" in message
     path = Path(message.partition("[log] ")[2].strip())
-    assert path.read_text(encoding="utf-8") == "kept stdout\nkept stderr"
+    assert path.read_text(encoding="utf-8").splitlines() == [
+        "kept stdout",
+        "kept stderr",
+    ]
+
+
+@pytest.mark.medium
+def test_coverage_shard_reports_missing_tests_without_publishing(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    shard = load_script()
+    monkeypatch.setattr(shard, "ROOT", tmp_path)
+    monkeypatch.setattr(shard.coverage_evidence, "checkout", lambda *_: "state")
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
+    (tmp_path / "test_probe.py").write_text(
+        "def test_keep(): pass\ndef test_drop(): pass\n", encoding="utf-8"
+    )
+    data = tmp_path / "coverage.db"
+    receipt = shard.coverage_evidence.sidecar(data)
+    data.write_bytes(b"previous database")
+    receipt.write_bytes(b"previous receipt")
+    assert (
+        shard.shard_main(
+            [
+                "--marker=",
+                "--shard=0",
+                "--shards=1",
+                "--bind-coverage",
+                str(data),
+                "--",
+                "--cov-branch",
+                "--cov=test_probe",
+                "-q",
+                "-k",
+                "keep",
+            ]
+        )
+        == 2
+    )
+    diagnostic = capsys.readouterr().err
+    assert (
+        "coverage shard 0/1: ran a different selection (expected 2 tests, got 1)"
+        in diagnostic
+    )
+    assert "missing: 'test_probe.py::test_drop'" in diagnostic
+    assert data.read_bytes() == b"previous database"
+    assert receipt.read_bytes() == b"previous receipt"
 
 
 @pytest.mark.parametrize("output", ["manifest", "coverage", "coverage receipt"])
