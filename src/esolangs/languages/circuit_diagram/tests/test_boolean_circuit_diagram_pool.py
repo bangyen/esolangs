@@ -33,10 +33,9 @@ def _best_linear_fold(table, n):
 
 def _execute(table, code, rows=None):
     n = len(table).bit_length() - 1
-    lines = code.splitlines()
     maximum = 0
     # Reparse avoidance: 21M-cell code took 8s/row, 290s for 36 rows.
-    topology = _compile(tuple(lines))
+    topology = _compile(tuple(code.splitlines()))
     expand = functions._expand_function_body
     expanded = cache(lambda gate, body, bindings: expand(gate, body, dict(bindings)))
     # Width substitution reuse cut n=7/8/9 from .24/.91/3.49s to .20/.75/2.67s.
@@ -48,8 +47,7 @@ def _execute(table, code, rows=None):
     ):
         for row in range(1 << n) if rows is None else rows:
             io = ScriptedIO(f"{row:0{n}b}")
-            with mock.patch(f"{_Machine.__module__}._compile", return_value=topology):
-                vm = _Machine(lines, io)
+            vm = _Machine(topology, io)
             assert io.progress() == n
             written = (
                 WrittenState(vm.workspace_snapshot())

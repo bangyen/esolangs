@@ -122,18 +122,12 @@ def test_packed_ascii_lookup_answers_every_row(inputs: int, width: int | None) -
     program = esolangs.generate("Befunge", table, width=width).source
     assert program.isascii()
     assert set(' "?@\\') <= set(program)
+    prepared = esolangs.prepare("Befunge", program)
+    limits = esolangs.ExecutionLimits(max_steps=500)
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
-        assert (
-            run(
-                "Befunge",
-                program,
-                stdin=stdin,
-                limits=esolangs.ExecutionLimits(max_steps=500),
-            ).output.strip()
-            == expected
-        )
+        assert prepared.run(stdin=stdin, limits=limits).output.strip() == expected
 
 
 @pytest.mark.parametrize("inputs", [11, 12, 13])

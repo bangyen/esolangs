@@ -387,7 +387,8 @@ def test_the_folded_street_computes_random_tables(n: int, count: int) -> None:
         assert len(fold.splitlines()) > 9
         assert _evaluate("Streetcode", fold, inputs=n) == table
         balanced = esolangs.generate("Streetcode", table, balance=True).source
-        assert _evaluate("Streetcode", balanced, inputs=n) == table
+        if balanced != fold:
+            assert _evaluate("Streetcode", balanced, inputs=n) == table
 
 
 @pytest.mark.parametrize("n", [1, 3, 4, 5, 6, 8, 12])

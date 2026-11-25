@@ -169,19 +169,21 @@ def parse_bounds(language: str, data: dict[str, Any]) -> dict[str, ResourceBound
     return found
 
 
-def resource_corpus(language: str, arity: int) -> tuple[str, ...] | None:
-    """Return a declared replacement for the generic resource corpus, if any."""
-    return _resource_cases(language, arity, "corpus")
-
-
-def resource_witnesses(language: str, arity: int) -> tuple[str, ...]:
-    """Build additional formula witnesses declared by the owning language."""
-    return _resource_cases(language, arity, "witnesses") or ()
-
-
-def _resource_cases(language: str, arity: int, field: str) -> tuple[str, ...] | None:
+def resource_cases(
+    language: str, arity: int
+) -> tuple[tuple[str, ...] | None, tuple[str, ...]]:
+    """Return a replacement corpus or additional witnesses from one declaration."""
     path = PACKAGES / LANGUAGES[language].id / "language.toml"
     data = section(path, "resource_evidence") or {}
+    corpus = _case_tables(language, arity, data, "corpus")
+    if corpus is not None:
+        return corpus, ()
+    return None, _case_tables(language, arity, data, "witnesses") or ()
+
+
+def _case_tables(
+    language: str, arity: int, data: dict[str, Any], field: str
+) -> tuple[str, ...] | None:
     reference = data.get(field)
     if reference is None:
         return None

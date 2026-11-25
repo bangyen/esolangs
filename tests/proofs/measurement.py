@@ -3,7 +3,7 @@
 import esolangs
 from esolangs.vm import _capture_workspace, complete_vm, make_vm
 from scripts.benchmark import WrittenState
-from scripts.docs.resource_evidence import resource_corpus, resource_witnesses
+from scripts.docs.resource_evidence import resource_cases
 from tests.proofs._witnesses import (
     _seeded,
 )
@@ -14,7 +14,7 @@ from tests.support.witness_tables import row_bits
 
 def tables(name: str, n: int) -> tuple[str, ...]:
     """Combine the common corpus with the language's named resource witnesses."""
-    corpus = resource_corpus(name, n)
+    corpus, witnesses = resource_cases(name, n)
     if corpus is not None:
         return corpus
     width = 1 << n
@@ -29,7 +29,7 @@ def tables(name: str, n: int) -> tuple[str, ...]:
         "1" + "0" * (width - 2) + "1",
         "01" * (width // 2),
     )
-    return tuple(dict.fromkeys((*tables, *resource_witnesses(name, n))))
+    return tuple(dict.fromkeys((*tables, *witnesses)))
 
 
 def measure(
