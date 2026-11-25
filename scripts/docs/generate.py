@@ -41,8 +41,11 @@ def main() -> int:
 
         if args.args:
             parser.error("anchors takes no arguments")
-        update_source_anchors()
-        return 0
+        try:
+            update_source_anchors()
+            return 0
+        except (OSError, ValueError) as error:
+            parser.exit(1, f"{error}\n")
     if args.target == "docs":
         if args.args:
             parser.error("docs takes no arguments")

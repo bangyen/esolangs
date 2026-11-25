@@ -4,6 +4,7 @@ import re
 from dataclasses import replace
 from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -17,6 +18,42 @@ SCRIPT = REPO_ROOT / "scripts" / "docs" / "generate.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 LIMITATIONS = REPO_ROOT / "docs" / "limitations.md"
+
+
+def test_source_anchor_refresh_restores_an_earlier_file(tmp_path, monkeypatch) -> None:
+    from scripts.docs import evidence
+
+    declarations = {
+        name: SimpleNamespace(id=name, backend=object()) for name in ("first", "second")
+    }
+    anchor = evidence.SourceAnchor(
+        evidence.TableWitness(2, "parity"), 11, "chars", "test control"
+    )
+    monkeypatch.setattr(evidence, "LANGUAGES", declarations)
+    monkeypatch.setattr(evidence, "source_anchors", lambda _: (anchor,))
+    monkeypatch.setattr(evidence, "generator_raises", lambda _: ())
+    first, second = (tmp_path / name / "generator.py" for name in declarations)
+    for path in (first, second):
+        path.parent.mkdir()
+        path.write_text('"""Size: n=2 parity: 10 chars."""\n', encoding="utf-8")
+    original = first.read_bytes()
+    assert evidence.update_source_anchors(root=tmp_path, check=True)
+    assert first.read_bytes() == original
+    replace = Path.replace
+
+    def refuse(staged, target):
+        if target == second.resolve():
+            raise OSError("injected second anchor replacement failure")
+        return replace(staged, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "replace", refuse)
+        with pytest.raises(OSError, match="injected second anchor replacement failure"):
+            evidence.update_source_anchors(root=tmp_path)
+    assert first.read_bytes() == second.read_bytes() == original
+    assert not list(tmp_path.rglob(".anchors-*"))
+    assert evidence.update_source_anchors(root=tmp_path)
+    assert first.read_bytes() == second.read_bytes() == original.replace(b"10", b"11")
 
 
 def _markers(tag: str) -> tuple[str, str]:

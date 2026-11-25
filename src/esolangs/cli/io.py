@@ -619,7 +619,12 @@ def _read_buffered_stdin(
 
 
 def _bounded_source_stdin(
-    timeout: float | None, timeout_flag: str, deadline: float | None, max_bytes: int
+    timeout: float | None,
+    timeout_flag: str,
+    deadline: float | None,
+    max_bytes: int,
+    *,
+    pipe_check: Callable[[bytes, bytearray], None] | None = None,
 ) -> bytes:
     """Read native source bytes from stdin under the program stream bounds."""
     waited = _READ_DEADLINE if timeout is None else timeout
@@ -635,7 +640,9 @@ def _bounded_source_stdin(
             _time_remaining(deadline)
             stream: BinaryIO | None = getattr(stdin, "buffer", None)
             if isinstance(stream, BufferedReader):
-                return _read_buffered_stdin(stream, deadline, size=size)
+                return _read_buffered_stdin(
+                    stream, deadline, size=size, pipe_check=pipe_check
+                )
             if stream is not None:
                 return _binary_chunk(read_snapshot(stream, size=size))
             return read_snapshot(stdin, size=size).encode("utf-8")
@@ -647,7 +654,7 @@ def _bounded_source_stdin(
     try:
         return _slurp_thread(read, deadline, on_timeout=on_timeout)
     except (OSError, TypeError, ValueError) as exc:
-        _fail(source_read_error("stdin", exc))
+        _fail(exc if isinstance(exc, ProgramError) else source_read_error("stdin", exc))
 
 
 @contextmanager

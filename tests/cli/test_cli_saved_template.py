@@ -2,6 +2,8 @@
 
 import json
 import shlex
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -96,6 +98,76 @@ def test_fill_reports_a_bom_on_saved_template_stdin(language, capsys):
     assert output == ""
     assert "stdin: portable JSON starts with a UTF-8 BOM" in error
     assert "remove the UTF-8 BOM" in error
+
+
+@pytest.mark.parametrize(
+    ("payload", "diagnostic"),
+    [
+        (b"\xef\xbb\xbf{}", b"remove the UTF-8 BOM"),
+        (b'{"source":"\xff', b"position 11: invalid start byte"),
+    ],
+)
+def test_saved_template_pipe_reports_encoding_errors_before_eof(
+    language, payload, diagnostic
+) -> None:
+    command = [
+        sys.executable,
+        "-m",
+        "esolangs",
+        "generate",
+        "--from-template=-",
+        "--bits=1",
+        "--",
+        language.name,
+    ]
+    with subprocess.Popen(
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as child:
+        assert child.stdin is not None
+        assert child.stdout is not None
+        assert child.stderr is not None
+        try:
+            child.stdin.write(payload)
+            child.stdin.flush()
+            assert child.wait(timeout=5) == 2
+            assert child.stdout.read() == b""
+            assert diagnostic in child.stderr.read()
+        finally:
+            if child.poll() is None:
+                child.kill()
+
+
+def test_valid_saved_template_pipe_waits_for_eof(language) -> None:
+    template = language.to_json(language.generate("01")).encode("utf-8")
+    command = [
+        sys.executable,
+        "-m",
+        "esolangs",
+        "generate",
+        "--from-template=-",
+        "--bits=1",
+        "--artifact",
+        "--",
+        language.name,
+    ]
+    with subprocess.Popen(
+        command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as child:
+        assert child.stdin is not None
+        try:
+            child.stdin.write(template)
+            child.stdin.flush()
+            with pytest.raises(subprocess.TimeoutExpired):
+                child.wait(timeout=0.2)
+            child.stdin.close()
+            child.stdin = None
+            output, error = child.communicate(timeout=5)
+            assert child.returncode == 0, error
+        finally:
+            if child.poll() is None:
+                child.kill()
+    filled = language.from_json(output.decode("utf-8"))
+    assert language.read_answer(language.run(filled).output) == "1"
 
 
 @pytest.mark.parametrize(

@@ -37,9 +37,11 @@ import os
 import re
 import shlex
 import sys
+from codecs import BOM_UTF8
 from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import asdict, replace
+from encodings.utf_8 import IncrementalDecoder as UTF8Decoder
 from itertools import chain, pairwise
 from typing import cast, get_args
 
@@ -96,6 +98,7 @@ from esolangs.cli.io import (
     _fail,
     _flush_stdout,
     _output_unavailable,
+    _portable_bom_error,
     _read_stdin,
     _read_truth_table,
     _stdout_is_terminal,
@@ -540,6 +543,23 @@ def _emit_generated(
     _note_export_settings(artifact, declaration)
 
 
+def _saved_template_pipe_check() -> Callable[[bytes, bytearray], None]:
+    """Refuse a BOM or invalid UTF-8 without waiting for the rest of a template."""
+    decoder = UTF8Decoder()
+
+    def check(chunk: bytes, received: bytearray) -> None:
+        if received.startswith(BOM_UTF8):
+            raise _portable_bom_error("stdin")
+        try:
+            decoder.decode(chunk)
+        except UnicodeDecodeError:
+            # Re-decode only on failure to retain the complete stream's byte offset.
+            received.decode("utf-8")
+            raise
+
+    return check
+
+
 def _read_saved_template(
     path: str, name: str, catalog: Catalog, *, retry_options: list[str]
 ) -> TemplateArtifact:
@@ -548,7 +568,9 @@ def _read_saved_template(
 
     label = "stdin" if path == "-" else display_label(path)
     if path == "-":
-        data = _bounded_source_stdin(None, "", None, _MAX_PROGRAM_BYTES)
+        data = _bounded_source_stdin(
+            None, "", None, _MAX_PROGRAM_BYTES, pipe_check=_saved_template_pipe_check()
+        )
         if len(data) > _MAX_PROGRAM_BYTES:
             _fail(
                 f"stdin is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB "

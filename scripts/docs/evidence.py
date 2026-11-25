@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import random
 import re
 import textwrap
@@ -13,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from esolangs.registry import LANGUAGES
+
+from .writing import publish_bytes
 
 PACKAGES = Path(__file__).resolve().parents[2] / "src/esolangs/languages"
 _RULES = frozenset(
@@ -386,7 +389,7 @@ def render_source_anchors(source: str, anchors: tuple[SourceAnchor, ...]) -> str
 
 def update_source_anchors(*, root: Path = PACKAGES, check: bool = False) -> bool:
     """Refresh docstring views; emitted size and execution checks stay independent."""
-    changes: list[tuple[Path, str]] = []
+    changes: dict[Path, bytes] = {}
     for language, declaration in LANGUAGES.items():
         if declaration.backend is None:
             continue
@@ -400,9 +403,9 @@ def update_source_anchors(*, root: Path = PACKAGES, check: bool = False) -> bool
             generator_raises(language),
         )
         if source != rendered:
-            changes.append((path, rendered))
-    # Validate every view before changing any file.
-    if not check:
-        for path, rendered in changes:
-            path.write_text(rendered, encoding="utf-8")
-    return bool(changes)
+            changes[path.resolve()] = rendered.replace("\n", os.linesep).encode("utf-8")
+    return (
+        bool(changes)
+        if check
+        else publish_bytes(changes, lock=root / ".anchors-publish")
+    )

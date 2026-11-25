@@ -14,6 +14,7 @@ import json
 import math
 import os
 import platform
+import re
 import statistics
 import subprocess
 import tempfile
@@ -32,6 +33,7 @@ from esolangs.runtime._json import unique_object
 
 ROOT = Path(__file__).resolve().parents[2]
 _COLLECTION_TIMEOUT = 60.0
+_DURATION_OUTPUT = "--duration-output"
 
 
 class CollectionError(RuntimeError):
@@ -298,6 +300,45 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
     return args, rest
 
 
+def _duration_sidecars(path: Path) -> tuple[Path, Path]:
+    """Return the recorder's completion record and progress log paths."""
+    return (
+        path.with_suffix(path.suffix + ".meta.json"),
+        path.with_suffix(path.suffix + ".progress.jsonl"),
+    )
+
+
+def _duration_output_path(pytest_args: list[str]) -> Path | None:
+    """Find the last recorder destination in the pytest options."""
+    end = pytest_args.index("--") if "--" in pytest_args else len(pytest_args)
+    for index in range(end - 1, -1, -1):
+        name, separator, value = pytest_args[index].partition("=")
+        if name == _DURATION_OUTPUT:
+            if separator:
+                return ROOT / value
+            return ROOT / pytest_args[index + 1] if index + 1 < end else None
+    return None
+
+
+def _check_duration_output(
+    pytest_args: list[str], protected: Sequence[tuple[str, Path | None]]
+) -> None:
+    """Keep timing recorder paths separate from the shard's own artifacts."""
+    if (output := _duration_output_path(pytest_args)) is None:
+        return
+    destinations = {path.resolve() for path in (output, *_duration_sidecars(output))}
+    parent = output.parent.resolve()
+    snapshot = re.compile(re.escape(output.name) + r"\.[0-9a-f]{64}\.json")
+    for option, path in protected:
+        if path is not None and (
+            path.resolve() in destinations
+            or (path.parent.resolve() == parent and snapshot.fullmatch(path.name))
+        ):
+            raise ValueError(
+                f"{_DURATION_OUTPUT} {output} would replace {option} {path}"
+            )
+
+
 def shard_main(argv: list[str] | None = None) -> int:
     """Collect the band, run this shard's slice, return pytest's exit code."""
     args, rest = _parse_args(argv)
@@ -326,6 +367,14 @@ def shard_main(argv: list[str] | None = None) -> int:
                     raise ValueError(
                         f"{option} {output} would replace --durations {args.durations}"
                     )
+        _check_duration_output(
+            rest,
+            (
+                ("--durations", args.durations),
+                ("--manifest", args.manifest),
+                *coverage_outputs,
+            ),
+        )
         durations = load_durations(args.durations) if args.durations else None
     except (OSError, ValueError, RuntimeError) as error:
         print(error, file=sys.stderr)
@@ -627,7 +676,7 @@ class Recorder:
         self.collected: set[str] = set()
         self.finished: set[str] = set()
         self.failed: set[str] = set()
-        self.progress = path.with_suffix(path.suffix + ".progress.jsonl")
+        self.completion, self.progress = _duration_sidecars(path)
         write_text(self.progress, "")
 
     def pytest_collection_finish(self, session: pytest.Session) -> None:
@@ -700,7 +749,7 @@ class Recorder:
         }
         # The sidecar is the commit point; readers use its immutable snapshot.
         write_text(
-            self.path.with_suffix(self.path.suffix + ".meta.json"),
+            self.completion,
             json.dumps(metadata, sort_keys=True, indent=1) + "\n",
         )
 
@@ -708,7 +757,7 @@ class Recorder:
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Register the recording destination."""
     parser.addoption("--collection-output", type=Path)
-    parser.addoption("--duration-output", type=Path)
+    parser.addoption(_DURATION_OUTPUT, type=Path)
 
 
 def pytest_collection_finish(session: pytest.Session) -> None:
@@ -720,7 +769,7 @@ def pytest_collection_finish(session: pytest.Session) -> None:
 
 def pytest_configure(config: pytest.Config) -> None:
     """Only the controller owns the destination."""
-    path = config.getoption("duration_output")
+    path = config.getoption(_DURATION_OUTPUT)
     if path is not None and not hasattr(config, "workerinput"):
         config.pluginmanager.register(Recorder(path))
 

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import shutil
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
+from contextlib import ExitStack
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 GENERATED_DOCS = (
     "docs/proofs/index.md",
@@ -45,6 +48,40 @@ def replace_batch(pending: list[tuple[Path, Path, Path | None]]) -> set[Path]:
             raise PublicationRecoveryError(f"{error}\n{details}") from error
         raise
     return {path for _, path, _ in pending}
+
+
+def publish_bytes(updates: Mapping[Path, bytes], *, lock: Path) -> bool:
+    """Publish a batch staged beside its destinations, preserving file modes."""
+    if not updates:
+        return False
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with ExitStack() as cleanup:
+        lock.mkdir()
+        cleanup.callback(lock.rmdir)
+        pending: list[tuple[Path, Path, Path | None]] = []
+        prefix = lock.name.removesuffix("-publish") + "-"
+        for path, payload in updates.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            # The replacement and its destination must share a filesystem.
+            scratch = TemporaryDirectory(prefix=prefix, dir=path.parent, delete=False)
+            cleanup.callback(scratch.cleanup)
+            staged = Path(scratch.name) / path.name
+            staged.write_bytes(payload)
+            backup = Path(scratch.name) / "original"
+            try:
+                shutil.copy2(path, backup)
+            except FileNotFoundError:
+                pending.append((staged, path, None))
+            else:
+                if os.name == "posix":
+                    shutil.copymode(backup, staged)
+                pending.append((staged, path, backup))
+        try:
+            replace_batch(pending)
+        except PublicationRecoveryError:
+            cleanup.pop_all()
+            raise
+    return True
 
 
 def generated_sources(

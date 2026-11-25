@@ -187,6 +187,57 @@ def test_shard_refuses_a_manifest_over_coverage_before_collection(
     assert receipt.read_bytes() == b"existing receipt"
 
 
+@pytest.mark.parametrize(
+    ("option", "recorder", "protected", "equals"),
+    [
+        ("--durations", "timings.json", "timings.json", False),
+        ("--manifest", "timings.json", "timings.json.meta.json", True),
+        ("--manifest", "timings.json", "timings.json.progress.jsonl", False),
+        ("--manifest", "timings.json", "timings.json." + "a" * 64 + ".json", True),
+        ("--bind-coverage", ".coverage", ".coverage", True),
+        (
+            "--bind-coverage receipt",
+            ".coverage.inputs.json",
+            ".coverage.inputs.json",
+            False,
+        ),
+    ],
+)
+def test_shard_protects_its_paths_from_the_pytest_timing_recorder(
+    tmp_path, monkeypatch, capsys, option, recorder, protected, equals
+) -> None:
+    shard = load_script()
+    monkeypatch.setattr(shard, "ROOT", tmp_path)
+    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
+    caller = tmp_path / "caller"
+    caller.mkdir()
+    monkeypatch.chdir(caller)
+    path = tmp_path / protected
+    path.write_bytes(b"existing evidence")
+    output = (
+        [f"--duration-output={recorder}"] if equals else ["--duration-output", recorder]
+    )
+    option_name = option.split()[0]
+    operand = ".coverage" if option.endswith(" receipt") else protected
+    status = shard.shard_main(
+        [
+            "--marker=",
+            "--shard=0",
+            "--shards=1",
+            option_name,
+            f"../{operand}",
+            "--",
+            "--cov-branch",
+            *output,
+        ]
+    )
+    assert status == 2
+    message = capsys.readouterr().err
+    assert f"--duration-output {tmp_path / recorder}" in message
+    assert f"would replace {option}" in message
+    assert path.read_bytes() == b"existing evidence"
+
+
 def test_stale_exclusions_name_the_nodes_without_replacing_the_manifest(
     tmp_path, monkeypatch, capsys
 ) -> None:
