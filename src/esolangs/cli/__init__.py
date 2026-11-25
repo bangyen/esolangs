@@ -1099,6 +1099,8 @@ def _dispatch() -> None:
                 f"unknown command: {display_label(requested)}"
                 f"{_did_you_mean(requested, set(COMMANDS))}"
             )
+        if len(rest) > 1:
+            _fail(f"unexpected argument: {rest[1]!r}")
         encoding = _display_encoding(sys.stdout)
         with _errors():
             page = help_text(rest[0], encoding=encoding) if rest else USAGE

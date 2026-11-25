@@ -639,6 +639,19 @@ class TestHelp:
         assert exc.value.code == 0
         assert "usage: esolangs <command>" in capsys.readouterr().out
 
+    @pytest.mark.parametrize("flag", ["--help", "-h", "help"])
+    def test_help_refuses_extra_operands(
+        self, flag: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as caught:
+            call_main([flag, "generate"], capsys)
+        assert caught.value.code == 0
+        assert "usage: esolangs generate" in capsys.readouterr().out
+        assert _failure([flag, "generate", "typo"], capsys) == (
+            "",
+            "unexpected argument: 'typo'\n",
+        )
+
     @pytest.mark.parametrize("command", ["list", "generate", "run"])
     def test_each_command_expands_its_own_options(
         self, command: str, capsys: pytest.CaptureFixture[str]

@@ -22,12 +22,29 @@ from contextlib import ExitStack, contextmanager
 from functools import cache
 from itertools import islice
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 if TYPE_CHECKING:
     from esolangs import LanguageInfo
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class _StrictTarInfo(tarfile.TarInfo):
+    @classmethod
+    def fromtarfile(cls, archive: tarfile.TarFile) -> Self:
+        """Refuse bad member headers that tarfile would treat as end of archive."""
+        offset = archive.fileobj.tell()
+        try:
+            return super().fromtarfile(archive)
+        # Typeshed declares their base HeaderError but not these subclasses.
+        except (
+            tarfile.InvalidHeaderError,  # type: ignore[attr-defined]
+            tarfile.TruncatedHeaderError,  # type: ignore[attr-defined]
+        ) as error:
+            raise tarfile.ReadError(
+                f"invalid TAR header at byte {offset}: {error}"
+            ) from error
 
 
 @contextmanager
@@ -43,7 +60,9 @@ def _staged_normalization(
         staged = directory / "normalized"
         with (
             gzip.open(path, "rb") as uncompressed,
-            tarfile.open(fileobj=uncompressed, mode="r:") as source,
+            tarfile.open(
+                fileobj=uncompressed, mode="r:", tarinfo=_StrictTarInfo
+            ) as source,
             staged.open("wb") as stream,
             gzip.GzipFile(
                 filename="", mode="wb", fileobj=stream, mtime=epoch

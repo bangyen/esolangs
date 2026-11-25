@@ -240,7 +240,15 @@ def test_shard_evidence_must_match_active_ci_run(tmp_path, monkeypatch, variable
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("run", None), ("collected", [{}]), ("collected", ["b", "b"])],
+    [
+        ("run", None),
+        ("collected", [{}]),
+        ("collected", ["b", "b"]),
+        ("schema", True),
+        ("schema", 1.0),
+        ("exitstatus", False),
+        ("exitstatus", 0.0),
+    ],
 )
 def test_bad_completion_fields_name_the_sidecar(tmp_path, field, value) -> None:
     paths = evidence(tmp_path)

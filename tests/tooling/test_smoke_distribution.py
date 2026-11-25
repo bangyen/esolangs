@@ -1,5 +1,6 @@
 """Distribution batches retain all rows and a bounded isolated process."""
 
+import gzip
 import io
 import os
 import stat
@@ -146,7 +147,15 @@ def test_normalize_rejects_invalid_epoch_before_opening_archives(
 
 
 @pytest.mark.parametrize(
-    "failure", ["stage", "truncated-trailer", "invalid-crc", "publish"]
+    "failure",
+    [
+        "stage",
+        "truncated-trailer",
+        "invalid-crc",
+        "bad-header",
+        "short-header",
+        "publish",
+    ],
 )
 def test_normalize_preserves_archives_when_a_batch_fails(
     tmp_path, monkeypatch, capsys, failure
@@ -155,6 +164,7 @@ def test_normalize_preserves_archives_when_a_batch_fails(
     for path in (first, second):
         with tarfile.open(path, "w:gz") as output:
             output.addfile(tarfile.TarInfo("example"))
+            output.addfile(tarfile.TarInfo("second"))
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
     if failure == "stage":
         second.write_bytes(b"corrupt archive")
@@ -165,6 +175,15 @@ def test_normalize_preserves_archives_when_a_batch_fails(
         second.write_bytes(
             compressed[:-8] + (trailer if failure == "invalid-crc" else b"")
         )
+    elif failure in {"bad-header", "short-header"}:
+        contents = bytearray(gzip.decompress(second.read_bytes()))
+        offset = tarfile.BLOCKSIZE
+        assert contents[offset:].startswith(b"second")
+        if failure == "bad-header":
+            contents[offset] ^= 1
+        else:
+            del contents[offset + 100 :]
+        second.write_bytes(gzip.compress(contents))
     original = first.read_bytes(), second.read_bytes()
     replace = Path.replace
 
@@ -179,7 +198,10 @@ def test_normalize_preserves_archives_when_a_batch_fails(
         with pytest.raises(SystemExit) as caught:
             smoke.main(["normalize", str(first), str(second)])
     assert caught.value.code == 1
-    assert str(second) in capsys.readouterr().err
+    diagnostic = capsys.readouterr().err
+    assert str(second) in diagnostic
+    if failure in {"bad-header", "short-header"}:
+        assert f"invalid TAR header at byte {tarfile.BLOCKSIZE}" in diagnostic
     assert (first.read_bytes(), second.read_bytes()) == original
     assert set(tmp_path.iterdir()) == {first, second}
 
@@ -188,6 +210,7 @@ def test_normalize_preserves_archives_when_a_batch_fails(
     assert smoke.main(["normalize", str(first), str(second)]) == 0
     for path in (first, second):
         with tarfile.open(path) as archive:
+            assert archive.getnames() == ["example", "second"]
             assert archive.getmember("example").mtime == 1700000000
 
 

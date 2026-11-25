@@ -158,6 +158,11 @@ def read_completion_metadata(path: Path) -> dict[str, Any]:
     metadata = read_evidence_json(path, kind="timing")
     if not isinstance(metadata, dict):
         raise ValueError(f"{path}: timing completion metadata must be an object")
+    for key in ("schema", "exitstatus"):
+        if type(metadata.get(key)) is not int:
+            raise ValueError(
+                f"{path}: invalid completion field {key!r}: expected an integer"
+            )
     run = metadata.get("run")
     if not isinstance(run, dict):
         raise ValueError(f"{path}: invalid completion field 'run': expected an object")
