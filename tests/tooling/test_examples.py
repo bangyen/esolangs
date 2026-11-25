@@ -339,6 +339,42 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         assert [path.read_bytes() for path in old_paths] == [b"previous"] * 2
         assert capsys.readouterr().out == ""
 
+    def test_a_publication_failure_restores_the_previous_examples(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+    ) -> None:
+        module = self._redirect(monkeypatch, tmp_path)
+        api = esolangs.Language(REFERENCE)
+        previous = api.generate("01")
+        replacement = api.generate("10")
+        suffix = LANGUAGES[resolve(REFERENCE)].source_suffix
+        stems = ("early", "late")
+        paths = [tmp_path / stem / f"{stem}{suffix}" for stem in stems]
+        for path in paths:
+            path.parent.mkdir()
+            api.to_file(previous, path, normalize=True)
+        originals = [path.read_bytes() for path in paths]
+        monkeypatch.setitem(
+            module.SETS, "probe", lambda: iter((stem, replacement) for stem in stems)
+        )
+        replace = Path.replace
+
+        def refuse(path, target):
+            if target == paths[-1]:
+                raise OSError("injected publication failure")
+            return replace(path, target)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "replace", refuse)
+            with pytest.raises(OSError, match="injected publication failure"):
+                module.write_set("probe")
+        assert [path.read_bytes() for path in paths] == originals
+        assert [api.evaluate(api.from_file(path), [1]).answer for path in paths] == [
+            "1",
+            "1",
+        ]
+        assert {path.name for path in tmp_path.iterdir()} == set(stems)
+        assert capsys.readouterr().out == ""
+
     def test_a_png_with_the_same_pixels_and_metadata_is_left_alone(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

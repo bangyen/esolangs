@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 GENERATED_DOCS = (
@@ -39,14 +39,16 @@ def generated_sources(
             )
 
 
-def publish_generated(staging: Path, root: Path) -> None:
-    """Replace the rendered files as a batch, saving originals for rollback."""
+def publish_generated(
+    staging: Path, root: Path, *, paths: Iterable[str | Path] = GENERATED_DOCS
+) -> set[Path]:
+    """Return published destinations after replacing a batch with rollback."""
     saved = root / ".docs-publish"
     saved.mkdir()
     retain = False
     try:
         pending: list[tuple[Path, Path, Path | None]] = []
-        for relative in GENERATED_DOCS:
+        for relative in dict.fromkeys(map(Path, paths)):
             staged = staging / relative
             path = root / relative
             if not staged.is_file() or (
@@ -82,6 +84,7 @@ def publish_generated(staging: Path, root: Path) -> None:
                     f"{error}\n{details}\noriginals kept in {saved}"
                 ) from error
             raise
+        return {path for _, path, _ in pending}
     finally:
         if not retain:
             shutil.rmtree(saved)

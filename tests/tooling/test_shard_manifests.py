@@ -291,6 +291,30 @@ def test_refresh_names_invalid_identity_values_before_replacing_snapshot(
     assert snapshot.read_bytes() == previous
 
 
+def test_refresh_names_all_stale_serial_node_ids(tmp_path, monkeypatch, capsys) -> None:
+    snapshot = tmp_path / "snapshot.json"
+    previous = b'{"collected":{},"durations":{}}\n'
+    snapshot.write_bytes(previous)
+    existing = "test_example.py::test_kept"
+    unknown = ["test_example.py::test_deleted", "test_example.py::test_typo"]
+    monkeypatch.setattr("scripts.ci.shard.collect_ids", lambda _: [existing])
+    with pytest.raises(SystemExit) as error:
+        refresh_main(
+            [
+                str(tmp_path),
+                "--output",
+                str(snapshot),
+                *(f"--serial-node={node}" for node in [*reversed(unknown), existing]),
+            ]
+        )
+    assert error.value.code == 2
+    message = capsys.readouterr().err.splitlines()[-1]
+    assert message.endswith(
+        "--serial-node: not in the collected corpus: " + ", ".join(map(repr, unknown))
+    )
+    assert snapshot.read_bytes() == previous
+
+
 @pytest.mark.parametrize(
     "fault",
     [

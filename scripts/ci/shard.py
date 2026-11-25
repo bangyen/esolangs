@@ -570,11 +570,13 @@ def refresh_main(argv: list[str] | None = None) -> int:
         parser.error("--shards must be at least 1")
     try:
         ids = collect_ids(args.marker)
-        if set(args.serial_node) - set(ids):
-            raise ValueError("serial nodes must belong to the selected corpus")
+        serial = set(args.serial_node)
+        if unknown := sorted(serial.difference(ids)):
+            nodes = ", ".join(repr(node) for node in unknown)
+            raise ValueError(f"--serial-node: not in the collected corpus: {nodes}")
         refresh(args.runs, ids, args.output)
         durations = load_durations(args.output)
-        parallel = [node for node in ids if node not in args.serial_node]
+        parallel = [node for node in ids if node not in serial]
         for index in range(args.shards):
             load = sum(
                 durations[node]

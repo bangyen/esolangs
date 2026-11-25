@@ -50,7 +50,7 @@ from esolangs import (
     list_languages,
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
-from esolangs.cli._answer_input import _AnswerTail
+from esolangs.cli._answer_input import _AnswerTail, _snapshot_answer
 from esolangs.cli.args import (
     _FLAG_OPTIONS,
     _VALUE_OPTIONS,
@@ -968,7 +968,7 @@ def _read_answer(rest: list[str]) -> None:
     output = _read_stdin(
         hint="; pipe a program's output in, or close stdin",
         terminal_prompt=f"Paste the program's output, then send EOF with {eof}.",
-        snapshot=None if tail is None else tail.snapshot,
+        snapshot=_snapshot_answer if tail is None else tail.snapshot,
     )
     # NQ's false answer is a space; only absent output is empty stdin.
     try:

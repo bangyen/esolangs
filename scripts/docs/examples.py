@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import sys
 from collections.abc import Iterator
 from itertools import zip_longest
 from tempfile import TemporaryDirectory
 
+# Keep direct script invocation able to find the sibling docs package.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+from docs.writing import publish_generated
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ProgramError
@@ -200,12 +205,9 @@ def write_set(name: str) -> None:
                 (staging / relative).write_bytes(contents)
             pending.append(relative)
 
-        for relative in pending:
-            staged = staging / relative
-            path = LANGUAGES_DIR / relative
-            if staged.exists():
-                path.parent.mkdir(parents=True, exist_ok=True)
-                staged.replace(path)
+        published = publish_generated(staging, LANGUAGES_DIR, paths=pending)
+        for relative in dict.fromkeys(pending):
+            if LANGUAGES_DIR / relative in published:
                 print(f"wrote     {relative}")
             else:
                 print(f"unchanged {relative}")
