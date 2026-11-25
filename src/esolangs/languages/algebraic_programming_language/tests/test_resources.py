@@ -44,18 +44,21 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
 
     monkeypatch.setattr(apl, "_step_call", traced)
     span = 64 if n == 3 else 1 << (1 << n)
+    perm = tuple(range(n))
     for value in range(band * span, (band + 1) * span):
         table = f"{value:0{1 << n}b}"
-        perm = tuple(range(n))
         if sharing == "frames":
             source = _apl_split(table, perm, 1, _apl_reduced_ordered)[0]
         else:
             plain = _apl_reduced_ordered(table, perm)
             source = _apl_repeated_expressions(plain)
             assert len(source) <= len(plain)
+        lines = tuple(apl._blocks(source))
+        command_limit = execution(n, source)
+        workspace_limit = workspace(n, source)
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in range(n - 1, -1, -1)]
-            machine = _Machine(source, ScriptedIO(esolangs.encode_inputs(NAME, bits)))
+            machine = _Machine(lines, ScriptedIO(esolangs.encode_inputs(NAME, bits)))
             calls.clear()
             # Keep the native cycle-serial capacity control live.
             machine.snapshot()
@@ -73,8 +76,8 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
             assert read_answer(NAME, machine.io.getvalue()) == expected
             assert len(calls) == len(set(calls))
             assert len(calls) <= 3 * n + 1
-            assert steps <= execution(n, source)
-            assert state.bits <= workspace(n, source)
+            assert steps <= command_limit
+            assert state.bits <= workspace_limit
             positive += bool(calls)
     if n == 3 and (sharing == "frames" or band in (1, 2)):
         assert positive > 0

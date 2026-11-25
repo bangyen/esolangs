@@ -264,6 +264,16 @@ def state_bits(value: object, memo: dict[int, tuple[object, int]]) -> int:
     return total
 
 
+def _delta_bits(delta: frozenset[object], memo: dict[int, tuple[object, int]]) -> int:
+    """Count a temporary difference while keeping its reusable members cached."""
+    key = id(delta)
+    retained = key in memo
+    bits = state_bits(delta, memo)
+    if not retained:
+        memo.pop(key, None)
+    return bits
+
+
 def _variant_bits(value: WorkspaceVariant, memo: dict[int, tuple[object, int]]) -> int:
     """Count typed payloads iteratively; constructor kinds are schema metadata."""
     pending = [(value, False)]
@@ -337,8 +347,8 @@ class WrittenState:
                 # language-owners: ["Forþ"]
                 # A persistent scope table reports the items its stores moved,
                 # so a store recounts the change, not the whole table.
-                now += state_bits(frozenset(moved[0]), memo)
-                now -= state_bits(frozenset(moved[1]), memo)
+                now += _delta_bits(frozenset(moved[0]), memo)
+                now -= _delta_bits(frozenset(moved[1]), memo)
             elif (
                 now is not None
                 and isinstance(part, frozenset)
@@ -347,8 +357,8 @@ class WrittenState:
                 # language-owners: ["A Painter Ant"]
                 # A frozenset counts as the sum of its items, so a painted
                 # cell recounts the change, not A Painter Ant's whole grid.
-                now += state_bits(part - last, memo)
-                now -= state_bits(last - part, memo)
+                now += _delta_bits(part - last, memo)
+                now -= _delta_bits(last - part, memo)
             elif (
                 now is not None
                 and isinstance(part, tuple)

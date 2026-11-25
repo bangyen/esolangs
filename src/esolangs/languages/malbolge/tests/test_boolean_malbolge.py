@@ -14,7 +14,12 @@ from esolangs.languages.malbolge.generator import digits as _digits
 from esolangs.languages.malbolge.generator import symmetric as _symmetric
 from esolangs.languages.malbolge.generator.core import _table_char
 from esolangs.languages.malbolge.generator.isa import _first_free, _g
-from esolangs.languages.malbolge.interpreter import _XLAT1, _initial_memory, run
+from esolangs.languages.malbolge.interpreter import (
+    _XLAT1,
+    _initial_memory,
+    prepare_machine,
+    run,
+)
 from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
@@ -35,12 +40,12 @@ class _ReadFirstIO(ScriptedIO):
 def _rows(table: str, rows: Sequence[int] | None = None) -> list[str]:
     """Run the requested rows, requiring every input and leaving the sentinel."""
     n = len(table).bit_length() - 1
-    program = boolean.malbolge(table)
+    prepared = prepare_machine(boolean.malbolge(table), {})
     outputs = []
     for value in range(1 << n) if rows is None else rows:
         bits = row_bits(value, n)
         io = _ReadFirstIO("".join(f"{bit}" for bit in bits) + "Q", n)
-        run(program, io)
+        prepared.run(io)
         assert io.reads == n, (n, value, io.reads)
         assert io.input_char() == ord("Q"), (n, value)
         outputs.append(io.getvalue())

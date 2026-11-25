@@ -68,3 +68,14 @@ def test_flat_integer_delta_retains_whole_store_peak() -> None:
     assert state.bits == 43
     state.sample(_STORE.capture(store=initial))
     assert state.bits == 43
+
+
+def test_set_differences_are_released_after_counting() -> None:
+    initial = frozenset({0})
+    state = WrittenState(_STORE.capture(store=initial))
+    state.sample(_STORE.capture(store=frozenset({5})))
+    retained = state._memo.copy()
+    state.sample(_STORE.capture(store=frozenset({15})))
+    state.sample(_STORE.capture(store=initial))
+    assert state.bits == 4
+    assert state._memo == retained
