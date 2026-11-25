@@ -28,6 +28,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.b_tapemark.generator", "b_tapemark_request"
         ),
         layout_width=True,
+        layout_balance=True,
         # Not a tree: the table copied onto the grid, one mark per row.
         shape=Shape.LOOKUP,
         balance=OperationRef[BalanceRequest, Program](

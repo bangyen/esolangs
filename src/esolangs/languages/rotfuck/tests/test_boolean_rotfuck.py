@@ -37,7 +37,7 @@ class TestRotfuck:
         assert_analysis_complement("ROTfuck", "read_at", "00100010")
         assert_analysis_complement(
             "ROTfuck",
-            "symmetric_weights",
+            "symmetric_outputs",
             "".join(str(row.bit_count() % 2) for row in range(256)),
             rows=(0, 1, 255),
         )

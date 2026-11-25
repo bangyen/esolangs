@@ -107,7 +107,8 @@ def _balanced_languages() -> list[str]:
         if lang.backend is not None
         and lang.runtime.source_kind is SourceKind.TEXT
         and (
-            lang.backend.balance is not None
+            lang.backend.layout_balance
+            or lang.backend.balance is not None
             or isinstance(lang.backend.wrap, _wrap.TokenWrapper)
             or id(lang.backend.wrap) in token_wrappers
             or (lang.backend.wrap is wrap_chars and lang.parameterized)
@@ -158,4 +159,5 @@ def test_native_width_generators_have_balance_rules() -> None:
         if language.backend is not None
         and language.backend.layout_width
         and language.backend.balance is None
+        and not language.backend.layout_balance
     ]

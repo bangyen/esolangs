@@ -40,8 +40,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
-    symmetric_weights,
 )
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.rotfuck.dialect import (
     ROTFUCK_CYCLES,
@@ -392,8 +392,11 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     raw = n >= _RAW_FROM
     # At one input the lookup already is the sum reader.
     lookups = [(table, _select(n, used, _groups(len(used), raw=raw), raw=raw), n == 1)]
-    if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        lookups.append((symmetric.table, _count(n, used, raw=raw), len(used) == n))
+    if (
+        len(used) >= 2
+        and (symmetric := symmetric_outputs(table, len(used))) is not None
+    ):
+        lookups.append((symmetric, _count(n, used, raw=raw), len(used) == n))
     texts = []
     for entries, select, multiply in lookups:
         out = _Builder(cycle)

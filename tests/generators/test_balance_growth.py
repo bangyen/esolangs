@@ -72,7 +72,11 @@ def test_balanced_area_grows_about_linearly(name: str) -> None:
     no ``balance`` hook, whose layout the generator does not choose, and a
     recorded ``wall``: a line carries O(log T) bits, so area >= T**2/log**2 T."""
     language = LANGUAGES[name]
-    if language.backend.no_wrap and language.backend.balance is None:
+    if (
+        language.backend.no_wrap
+        and language.backend.balance is None
+        and not language.backend.layout_balance
+    ):
         pytest.skip(language.backend.no_wrap)
     if wall := _recorded(name, "wall"):
         pytest.skip(wall)

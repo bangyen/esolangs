@@ -34,10 +34,11 @@ from math import isqrt
 
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import (
+    WeightedLookup,
     _validate_truth_table,
     grid_rank,
     input_weights,
-    symmetric_weights,
+    symmetric_lookup,
 )
 from esolangs.generation.lookup import packed_cells
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
@@ -56,13 +57,13 @@ def fish(truth_table: str, width: int | None = None) -> str:
     if bias is not None:
         return _parity(n, bias)
     # An ignored input is read and dropped; the table indexes the rest.
-    original = truth_table
-    weights, truth_table = input_weights(truth_table, n)
+    projected = input_weights(truth_table, n)
+    weights, truth_table = projected
     reads = _lookup_reads(weights)
     header = "0" + reads + "1g68*-n;"
     if width is None:
         return _default_lookup(
-            original, n, header + "\n" + truth_table, _packed(reads, truth_table)
+            projected, header + "\n" + truth_table, _packed(reads, truth_table)
         )
     if max(len(header), len(truth_table)) <= width:
         return header + "\n" + truth_table
@@ -70,8 +71,8 @@ def fish(truth_table: str, width: int | None = None) -> str:
     return _folded(reads, truth_table, columns)
 
 
-def _default_lookup(original: str, n: int, plain: str, packed: str) -> str:
-    symmetric = symmetric_weights(original, n)
+def _default_lookup(projected: WeightedLookup, plain: str, packed: str) -> str:
+    symmetric = symmetric_lookup(projected)
     if symmetric is not None:
         # A symmetric table adds its bits and indexes m + 1 entries
         # ([ablations.symmetric_count]).
@@ -302,7 +303,8 @@ def balance_fish(truth_table: str, default: str | None = None) -> str:
             _constant(n, bit, max(3, width)) for width in range(side - 1, side + 4)
         )
         return min(candidates, key=balance_score)
-    weights, table = input_weights(truth_table, n)
+    projected = input_weights(truth_table, n)
+    weights, table = projected
     reads = _lookup_reads(weights)
 
     @cache
@@ -315,7 +317,7 @@ def balance_fish(truth_table: str, default: str | None = None) -> str:
         bias = parity_bias(truth_table)
         plain = "0" + reads + "1g68*-n;\n" + table
         default = (
-            _default_lookup(truth_table, n, plain, packed)
+            _default_lookup(projected, plain, packed)
             if bias is None
             else _parity(n, bias)
         )

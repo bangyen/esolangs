@@ -50,7 +50,7 @@ def test_pair_table_prints_its_answer() -> None:
 
 
 def _check_constants() -> None:
-    assert_analysis_complement("Sonata", "symmetric_weights", "0110")
+    assert_analysis_complement("Sonata", "symmetric_outputs", "0110")
     assert_analysis_complement("Sonata", "read_at", "0010")
     from esolangs.languages.sonata.interpreter import _Machine
 

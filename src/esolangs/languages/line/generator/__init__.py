@@ -261,28 +261,32 @@ class _Choice(NamedTuple):
     score: _Score
     node: Node
     canvas: Canvas | None
-    compact: bool
     tight: bool
 
 
 def _best_choice(
-    options: list[Node], *, compact: bool, tight: bool = True, small: bool, unit: int
+    options: list[Node],
+    *,
+    tight: bool = True,
+    small: bool,
+    unit: int,
+    initial: _Choice | None = None,
 ) -> _Choice:
     """Return the most balanced option."""
-    choices = []
+    choices = [] if initial is None else [initial]
     for node in options:
         canvas = (
-            small_tree_canvas(node, compact=compact, tight=tight, unit=unit)
+            small_tree_canvas(node, compact=True, tight=tight, unit=unit)
             if small
             else None
         )
         if canvas is not None:
             width, height = canvas.width, canvas.height
         else:
-            y0, y1, x0, x1 = tree_extents(node, compact=compact, tight=tight)[id(node)]
+            y0, y1, x0, x1 = tree_extents(node, tight=tight)[id(node)]
             width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
         score = _Score(max(width, height), width * height, 0 if small else width)
-        choices.append(_Choice(score, node, canvas, compact, tight))
+        choices.append(_Choice(score, node, canvas, tight))
     return min(choices, key=lambda choice: choice.score)
 
 
@@ -294,7 +298,9 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
         for reverse in (False, True)
         if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
     ]
-    chosen = _ceilinged_choice(nodes, small=small, unit=unit)
+    preceding = _best_choice(nodes, tight=False, small=small, unit=unit)
+    tight = _best_choice(nodes, small=small, unit=unit)
+    chosen = _ceilinged_choice(preceding, tight)
     if small:
         return chosen
     # Skipped trees stay candidates past five inputs: compact, they balance
@@ -304,14 +310,15 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
         line_boolean(truth_table, reverse=reverse, skip=True)
         for reverse in (False, True)
     ]
-    other = _ceilinged_choice(nodes + skipped, small=small, unit=unit)
+    other = _ceilinged_choice(
+        _best_choice(skipped, tight=False, small=False, unit=unit, initial=preceding),
+        _best_choice(skipped, small=False, unit=unit, initial=tight),
+    )
     return min(chosen, other, key=lambda choice: choice.score)
 
 
-def _ceilinged_choice(nodes: list[Node], *, small: bool, unit: int) -> _Choice:
-    """Most balanced compact node, capped by the untightened layout's area."""
-    preceding = _best_choice(nodes, compact=True, tight=False, small=small, unit=unit)
-    chosen = _best_choice(nodes, compact=True, small=small, unit=unit)
+def _ceilinged_choice(preceding: _Choice, chosen: _Choice) -> _Choice:
+    """Prefer the tight layout when it fits the untightened layout's area."""
     # Winning on side can still grow the area: 00011100 grows 248087 ->
     # 274287 pixels without this (6 of the 256 n=3 tables).
     if chosen.score.area > preceding.score.area:
@@ -323,7 +330,7 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
     """Preserve balanced feasibility layouts, considering the default raster."""
     _check_unit(unit)
     small = _validate_truth_table(truth_table) <= _SMALL_MAX
-    score, selected, canvas, compact, tight = _balanced_choice(
+    score, selected, canvas, tight = _balanced_choice(
         truth_table, small=small, unit=unit
     )
     width = canvas.width if canvas is not None else score.tiebreak
@@ -342,7 +349,7 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
         lambda: (
             _grey_rows(canvas)
             if canvas is not None
-            else _render_node(selected, compact=compact, tight=tight, unit=unit)
+            else _render_node(selected, compact=True, tight=tight, unit=unit)
         ),
         selected,
     )

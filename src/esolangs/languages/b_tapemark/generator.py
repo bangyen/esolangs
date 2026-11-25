@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from math import isqrt
 
 from esolangs.generation.helpers import (
+    WeightedLookup,
     _validate_truth_table,
     grid_rank,
     grid_width,
@@ -260,9 +261,22 @@ def b_tapemark(
     interpreter's ``Dialects`` note); the constant layout swaps nothing
     and serves both.
     """
+    return _program(truth_table, width, swap_marker=swap_marker)
+
+
+def _program(
+    truth_table: str,
+    width: int | None = None,
+    *,
+    swap_marker: str,
+    balance: bool = False,
+    default: str | None = None,
+) -> str:
     validate_swap_marker(swap_marker)
     depth = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
+        if default is not None:
+            return default
         answer = truth_table[0]
         horizontal = ">" + "-|" * (depth - 1) + "-" + answer + "!"
         if width is None or len(horizontal) <= width:
@@ -270,12 +284,17 @@ def b_tapemark(
         # Each vertical | moves to a fresh mark; the final mirror turns right
         # so the literal digit prints rather than comparing the data mark.
         return "v\n" + "-\n|\n" * (depth - 1) + "-\n\\" + answer + "!"
-    program = _b_tapemark_program(truth_table, width, swap_marker=swap_marker)
+    projected = input_weights(truth_table, depth)
+    wide = _b_tapemark_program(
+        truth_table, width, swap_marker=swap_marker, projected=projected
+    )
     if width is not None:
-        return program
-    # Judged by area: the wide strip or the least of the closed-form layouts.
-    # No width sweep, so O(T).  See [ablations.area_default].
-    return min([program, *_closed_forms(truth_table, swap_marker)], key=grid_rank)
+        return wide
+    candidates = [wide, *_closed_forms(truth_table, swap_marker, projected=projected)]
+    # The closed forms and wide strip compete by area. See [ablations.area_default].
+    if default is None:
+        default = min(candidates, key=grid_rank)
+    return min(default, *candidates, key=balance_score) if balance else default
 
 
 def _b_tapemark_program(
@@ -284,13 +303,16 @@ def _b_tapemark_program(
     *,
     keep_full_narrow: bool = False,
     swap_marker: str = "new",
+    projected: WeightedLookup | None = None,
 ) -> str:
     """Build the copied-table walk, retaining the former constant layout."""
-    depth = _validate_truth_table(truth_table)
+    if projected is None:
+        projected = input_weights(truth_table, _validate_truth_table(truth_table))
+    weights, painted = projected
+    depth = len(weights)
     # The table is copied at its essential inputs, and an ignored input's
     # stage crosses no ``|``: it still reads and still steps the pointer once,
     # so the climb and tail stay a stage per input.  A constant keeps all.
-    weights, painted = input_weights(truth_table, depth)
     full = tuple(1 << (depth - 1 - i) for i in range(depth))
     if not any(weights):
         painted, weights = truth_table, full
@@ -372,7 +394,12 @@ def _folded_stage_old(builder: _Builder, top: int, weight: int, run: int) -> int
 
 
 def _b_tapemark_folded(
-    truth_table: str, copy: int, run: int, swap_marker: str = "new"
+    truth_table: str,
+    copy: int,
+    run: int,
+    swap_marker: str = "new",
+    *,
+    projected: WeightedLookup | None = None,
 ) -> str:
     """Build the copied-table walk with its long rows snaked into strips.
 
@@ -383,8 +410,10 @@ def _b_tapemark_folded(
     is unchanged.  A stage's runs take its rows 1 and 3, then blank rows
     inserted after row 3, which every beam crosses straight down.
     """
-    depth = _validate_truth_table(truth_table)
-    weights, painted = input_weights(truth_table, depth)
+    if projected is None:
+        projected = input_weights(truth_table, _validate_truth_table(truth_table))
+    weights, painted = projected
+    depth = len(weights)
     builder = _Builder()
 
     # Strip k holds entries k*copy.. on row 2k, read westward from x_east;
@@ -432,10 +461,13 @@ def _b_tapemark_folded(
     return builder.render()
 
 
-def _closed_forms(table: str, swap_marker: str = "new") -> list[str]:
+def _closed_forms(
+    table: str, swap_marker: str = "new", *, projected: WeightedLookup | None = None
+) -> list[str]:
     """Return the formula's folded strips (not constant)."""
-    candidates: list[str] = []
-    depth = len(table).bit_length() - 1
+    if projected is None:
+        projected = input_weights(table, _validate_truth_table(table))
+    depth = len(projected.weights)
     # A run row as wide as a copy row (3 per entry, less the stage's 12
     # columns west of it) won at n=7..10 in a full grid; below that the
     # stages' 7 rows apiece floor the height and runs go unfolded.
@@ -448,43 +480,31 @@ def _closed_forms(table: str, swap_marker: str = "new") -> list[str]:
     # Its practical win is an explicit exception to the sustained-share bar
     # ([ablations.area_strip_width_prototype]); the side-fit forms still balance.
     area_copy = max(5, isqrt(104 * len(table) // (63 * depth)))
-    candidates.extend(
-        _b_tapemark_folded(table, max(1, copy), max(1, 3 * copy - 12), swap_marker)
+    return [
+        _b_tapemark_folded(
+            table,
+            max(1, copy),
+            max(1, 3 * copy - 12),
+            swap_marker,
+            projected=projected,
+        )
         for copy in {best, best * 17 // 20, area_copy}
-    )
-    return candidates
-
-
-def _balance(table: str, default: str, *, swap_marker: str = "new") -> str:
-    """Return the default or the closed-form layout with the least balanced side."""
-    if len(set(table)) == 1:
-        return default
-    # Preserve the wide form that the old default supplied on small tables.
-    return min(
-        [
-            default,
-            _b_tapemark_program(table, swap_marker=swap_marker),
-            *_closed_forms(table, swap_marker),
-        ],
-        key=balance_score,
-    )
+    ]
 
 
 def b_tapemark_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return b_tapemark(
-            request.table,
-            request.width,
-            swap_marker=request.options.text("swap_marker"),
-        )
-    return b_tapemark(request.table, swap_marker=request.options.text("swap_marker"))
+    marker = request.options.text("swap_marker")
+    if request.balance:
+        return _program(request.table, swap_marker=marker, balance=True)
+    return b_tapemark(request.table, request.width, swap_marker=marker)
 
 
 def b_tapemark_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(
+    return _program(
         request.table,
-        request.text_source(),
         swap_marker=request.options.text("swap_marker"),
+        balance=True,
+        default=request.text_source(),
     )

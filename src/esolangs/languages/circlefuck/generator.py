@@ -14,15 +14,14 @@ Decisions:
     by index has no subtrees to share.
 """
 
-from collections.abc import Sequence
 from itertools import pairwise
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
-    symmetric_weights,
 )
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -91,16 +90,19 @@ def circlefuck(truth_table: str) -> str:
     # The tape is the program: the table is its tail, backwards past the
     # ``@``, so entry 0 abuts the index cells, which ``<`` reaches from cell 0
     # (the tape is a ring).  Only the table grows.
-    prog.append(read_at(truth_table, essential, n)[::-1])
+    table = read_at(truth_table, essential, n)
+    prog.append(table[::-1])
     prog.append("0" * cells)
     plain = "".join(prog)
-    symmetric = symmetric_weights(truth_table, n)
-    if symmetric is None or len(symmetric.table) > 1 << _DIGIT_BITS:
-        return plain
-    return min(plain, _counted(n, *symmetric), key=len)
+    if (
+        2 <= width < 1 << _DIGIT_BITS
+        and (symmetric := symmetric_outputs(table, width)) is not None
+    ):
+        return min(plain, _counted(n, set(essential), symmetric), key=len)
+    return plain
 
 
-def _counted(n: int, weights: Sequence[int], table: str) -> str:
+def _counted(n: int, essential: set[int], table: str) -> str:
     """Count the essential bits into one digit and delete that many entries.
 
     A symmetric table has m + 1 count entries for m essential inputs
@@ -108,7 +110,7 @@ def _counted(n: int, weights: Sequence[int], table: str) -> str:
     """
     prog = ["<[-]>", _reads(n)]
     prog.extend(
-        "<" + (f"[-{'<' * (i + 1)}+{'>' * (i + 1)}]" if weights[i] else "")
+        "<" + (f"[-{'<' * (i + 1)}+{'>' * (i + 1)}]" if i in essential else "")
         for i in reversed(range(n))
     )
     return "".join([*prog, "<", _deleter(0), "<.@", table[::-1], "0"])

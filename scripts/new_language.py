@@ -501,7 +501,7 @@ def _generator_gaps(lang: LanguageDeclaration) -> list[Gap]:
                 'would change the program as no_wrap="..."',
             )
         )
-    if width and lang.backend.balance is None:
+    if width and lang.backend.balance is None and not lang.backend.layout_balance:
         gaps.append(
             Gap(
                 source_rel,

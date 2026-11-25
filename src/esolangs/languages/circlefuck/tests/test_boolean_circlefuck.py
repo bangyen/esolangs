@@ -98,7 +98,7 @@ class TestCirclefuck:
         """A degenerate table is the smaller table it really is."""
         assert_analysis_complement("Circlefuck", "read_at")
         assert_analysis_complement(
-            "Circlefuck", "symmetric_weights", "0110100110010110"
+            "Circlefuck", "symmetric_outputs", "0110100110010110"
         )
         assert len(boolean.circlefuck("11111111")) < len(
             boolean.circlefuck("10101010"),

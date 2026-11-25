@@ -32,8 +32,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
-    symmetric_weights,
 )
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -80,11 +80,13 @@ def sonata(truth_table: str) -> str:
     table = read_at(truth_table, essential, n)
     if n >= _MASK_FROM:
         return _masked_program(n, essential, table)
-    symmetric = symmetric_weights(truth_table, n)
-    if symmetric is not None:
+    if (
+        len(essential) >= 2
+        and (symmetric := symmetric_outputs(table, len(essential))) is not None
+    ):
         # A symmetric table counts its ones over m + 1 entries, never longer
         # than the doubling build ([ablations.symmetric_count]).
-        return _program(n, essential, symmetric.table, _COUNT)
+        return _program(n, essential, symmetric, _COUNT)
     if len(essential) >= _PAIR_FROM:
         return _pair_program(n, essential, table)
     return _program(n, essential, table, _DOUBLE)

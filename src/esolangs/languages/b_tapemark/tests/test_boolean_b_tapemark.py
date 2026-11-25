@@ -15,7 +15,6 @@ from esolangs.languages.b_tapemark.generator import (
     _b_tapemark_folded,
     _b_tapemark_narrow,
     _b_tapemark_program,
-    _balance,
     _Builder,
     _closed_forms,
 )
@@ -367,7 +366,8 @@ def test_fold_widths_match_the_swept_optimum(depth: int) -> None:
         for copy in copies
         for run in {max(1, 3 * copy - 12), len(table)}
     )
-    got = balance_score(_balance(table, tools.b_tapemark(table)))[0]
+    balanced = esolangs.generate("B-tapemark", table, balance=True).source
+    got = balance_score(balanced)[0]
     assert got <= 1.03 * swept
 
 
