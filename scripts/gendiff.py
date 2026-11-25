@@ -420,7 +420,7 @@ def main(
         if replacement is not None:
             target, contents = replacement
             mutant_src = _mutated(contents, target, staging / "mutant")
-            caught = len(differences(old, dump(mutant_src)[0]))
+            caught = len(differences(new, dump(mutant_src)[0]))
             print(f"control: mutant differs on {caught}")
             failed |= not caught
     return int(failed)

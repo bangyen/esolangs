@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -44,10 +45,41 @@ def record(data: Path, state: str, selection: dict[str, Any]) -> None:
 
 
 def publish(staged: Path, data: Path, state: str, selection: dict[str, Any]) -> None:
-    """Hash staged bytes so a concurrent writer cannot change their receipt."""
-    record(staged, state, selection)
-    staged.replace(data)
-    sidecar(staged).replace(sidecar(data))
+    """Publish a coverage pair and restore the previous database on failure."""
+    lock = data.with_name(f".coverage.publish-{data.name}")
+    try:
+        lock.mkdir()
+    except FileExistsError as error:
+        raise FileExistsError(f"coverage publication already owns {lock}") from error
+    backup = lock / "previous"
+    receipt = sidecar(staged)
+    retain = False
+    try:
+        had_data = data.exists() or data.is_symlink()
+        record(staged, state, selection)
+        if had_data:
+            shutil.copy2(data, backup, follow_symlinks=False)
+        try:
+            staged.replace(data)
+            receipt.replace(sidecar(data))
+        except BaseException as error:
+            # A completed replace consumes its staged path.
+            if not staged.exists() and receipt.exists():
+                try:
+                    if had_data:
+                        backup.replace(data)
+                    else:
+                        data.unlink()
+                except OSError as restore_error:
+                    retain = had_data
+                    recovery = f"; previous database kept at {backup}" if retain else ""
+                    raise OSError(
+                        f"{error}; could not restore {data}: {restore_error}{recovery}"
+                    ) from error
+            raise
+    finally:
+        if not retain:
+            shutil.rmtree(lock)
 
 
 def read(data: Path, state: str, *, snapshot: Path | None = None) -> dict[str, Any]:

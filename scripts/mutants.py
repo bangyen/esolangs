@@ -55,6 +55,7 @@ from verify.failures import (  # noqa: E402
 )
 from verify.process import stop_process_tree  # noqa: E402
 from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN  # noqa: E402
+from verify.receipts import parse_pytest_execution  # noqa: E402
 
 LANGUAGES = ROOT / "src" / "esolangs" / "languages"
 SWAP = {
@@ -284,23 +285,19 @@ def _run(
             except BaseException:
                 stop_process_tree(process)
                 raise
+        status = process.returncode
+        if status is None or status not in (0, 1):
+            return "inconclusive", output
         try:
-            execution = json.loads(path.read_bytes())
+            execution = parse_pytest_execution(
+                path.read_bytes(), status, allow_fail_fast=True
+            )
         except (OSError, ValueError):
             return "inconclusive", output
-        if (
-            isinstance(execution, dict)
-            and execution.get("exitstatus") == process.returncode
-        ):
-            if process.returncode == 1 and execution.get("failed_calls"):
-                return "killed", output
-            if (
-                process.returncode == 0
-                and execution.get("passed_calls")
-                and (selected := execution.get("selected"))
-                and execution.get("finished") == selected
-            ):
-                return "survived", output
+        if execution.failed:
+            return "killed", output
+        if status == 0:
+            return "survived", output
         return "inconclusive", output
 
 

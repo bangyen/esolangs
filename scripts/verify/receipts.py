@@ -212,9 +212,13 @@ def _execution_nodes(value: object, field: str) -> list[str]:
 
 
 def parse_pytest_execution(
-    contents: bytes, returncode: int, *, allow_legacy: bool = False
+    contents: bytes,
+    returncode: int,
+    *,
+    allow_legacy: bool = False,
+    allow_fail_fast: bool = False,
 ) -> PytestExecution:
-    """Validate complete execution evidence, allowing older receipt sidecars."""
+    """Validate execution evidence, optionally accepting a partial failed run."""
     try:
         data = json.loads(contents.decode("utf-8"), object_pairs_hook=_receipt_object)
     except RecursionError as error:
@@ -238,10 +242,15 @@ def parse_pytest_execution(
     failed = set(_execution_nodes(data.get("failed_calls", default), "failed_calls"))
     passed = set(_execution_nodes(data.get("passed_calls", default), "passed_calls"))
     if (
-        finished != selected
-        or not called
-        or not called.issubset(selected)
+        not called
+        or not called.issubset(finished)
+        or not set(finished).issubset(selected)
         or not failed | passed <= called
+        or not failed.isdisjoint(passed)
+        or (
+            finished != selected
+            and not (allow_fail_fast and returncode == 1 and failed)
+        )
         or (returncode == 0 and (failed or ("passed_calls" in data and not passed)))
     ):
         raise ValueError("inconsistent or incomplete pytest execution report")

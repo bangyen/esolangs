@@ -215,25 +215,39 @@ def test_speed_stops_on_any_output_change(monkeypatch, capsys, changes_on) -> No
 
 
 @pytest.mark.medium  # three generator processes and a copy of src: ~3 s
-def test_an_unchanged_tree_matches_and_boundary_witnesses_catch_a_mutant(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("changed_baseline", [False, True])
+def test_boundary_witnesses_measure_mutants_against_current_source(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    changed_baseline: bool,
 ) -> None:
+    module = importlib.import_module(LANGUAGES[REFERENCE].backend.generate.__module__)
+    entry = Path(module.__file__ or "")
+    source = entry.read_text()
+
     def snapshot(ref: str, scratch: Path) -> Path:
         assert ref == "snapshot"
         # Generator optimizations legitimately differ from HEAD before commit.
-        return shutil.copytree(
+        copied = shutil.copytree(
             REPO_ROOT / "src",
             scratch / "src",
             ignore=shutil.ignore_patterns("__pycache__"),
         )
+        if changed_baseline:
+            (copied / entry.relative_to(REPO_ROOT / "src")).write_text(
+                source + _MUTATION
+            )
+        return copied
 
     monkeypatch.setattr(gendiff, "_checkout", snapshot)
-    module = importlib.import_module(LANGUAGES[REFERENCE].backend.generate.__module__)
     mutant = tmp_path / "mutant.py"
-    mutant.write_text(Path(module.__file__ or "").read_text() + _MUTATION)
+    mutant.write_text(source if changed_baseline else source + _MUTATION)
     argv = [REFERENCE, "--old", "snapshot", "--max-n", "1", "--mutant", str(mutant)]
-    assert gendiff.main(argv) == 0
+    assert gendiff.main(argv) == int(changed_baseline)
     out = capsys.readouterr().out
-    assert "0 differ from snapshot" in out
+    changed, caught = (2, 0) if changed_baseline else (0, 2)
+    assert f"{changed} differ from snapshot" in out
     assert "additional construction witnesses: 2" in out.splitlines()
-    assert "control: mutant differs on 2" in out.splitlines()
+    assert f"control: mutant differs on {caught}" in out.splitlines()

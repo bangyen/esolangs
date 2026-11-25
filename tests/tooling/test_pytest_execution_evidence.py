@@ -180,6 +180,7 @@ def test_accepted_retry_requires_each_failed_call_to_pass(
     [
         ("assert True", [], "survived"),
         ("assert False", [], "killed"),
+        ("assert False", ["-x"], "killed"),
         ("pytest.skip('skipped during call')", [], "inconclusive"),
         ("pytest.xfail('expected failure during call')", [], "inconclusive"),
         ("assert True", ["--collect-only"], "inconclusive"),
@@ -191,9 +192,10 @@ def test_mutation_runner_classifies_actual_test_reports(
     tmp_path, monkeypatch, body, options, status
 ):
     probe = tmp_path / "test_mutant.py"
-    probe.write_text(
-        f"import pytest\n\ndef test_effect():\n    {body}\n", encoding="utf-8"
-    )
+    source = f"import pytest\n\ndef test_effect():\n    {body}\n"
+    if "-x" in options:
+        source += "\ndef test_later():\n    pytest.fail('continued after failure')\n"
+    probe.write_text(source, encoding="utf-8")
     monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
     command = [
         sys.executable,
@@ -209,3 +211,42 @@ def test_mutation_runner_classifies_actual_test_reports(
     ]
     actual, output = mutants._run(command, 10)
     assert actual == status, output
+    assert "continued after failure" not in output
+
+
+def test_mutation_runner_rejects_inconsistent_reports():
+    valid = {
+        "schema": 1,
+        "exitstatus": 0,
+        "selection": {"collect_only": False},
+        "selected": ["test_effect"],
+        "finished": ["test_effect"],
+        "called": ["test_effect"],
+        "passed_calls": ["test_effect"],
+        "failed_calls": [],
+    }
+    reports = (
+        {**valid, "passed_calls": ["test_other"]},
+        {
+            **valid,
+            "exitstatus": 1,
+            "selection": {"collect_only": True},
+            "called": [],
+            "passed_calls": [],
+            "failed_calls": ["test_effect"],
+        },
+    )
+    worker = (
+        "import sys; from pathlib import Path; "
+        "Path(sys.argv[-1]).write_text(sys.argv[1], encoding='utf-8'); "
+        "sys.exit(int(sys.argv[2]))"
+    )
+    for report in reports:
+        command = [
+            sys.executable,
+            "-c",
+            worker,
+            json.dumps(report),
+            str(report["exitstatus"]),
+        ]
+        assert mutants._run(command, 5)[0] == "inconclusive"

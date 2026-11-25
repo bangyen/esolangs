@@ -458,6 +458,32 @@ def test_cli_compares_each_revisions_nested_parser(tmp_path, monkeypatch, capsys
     assert "nested parser control" in output
 
 
+@pytest.mark.medium
+def test_unchanged_trace_control_ignores_a_different_baseline(
+    tmp_path, monkeypatch, capsys
+):
+    current = _INTERPRETER.read_bytes()
+    mutant = tmp_path / "unchanged.py"
+    mutant.write_bytes(current)
+    baseline = current + (
+        b"\n_prior_prepare = prepare_machine\n"
+        b"def prepare_machine(source, options):\n"
+        b"    return _prior_prepare('+++.' if source == '+.' else source, options)\n"
+    )
+
+    def snapshot(_ref, scratch):
+        return tracediff._mutated(baseline, _INTERPRETER, scratch)
+
+    monkeypatch.setattr(tracediff, "_checkout", snapshot)
+    monkeypatch.setattr(tracediff, "corpus", lambda *_: [("+.", ""), ("++.", "")])
+    assert (
+        tracediff.main([REFERENCE, "--old", "snapshot", "--mutant", str(mutant)]) == 1
+    )
+    output = capsys.readouterr().out
+    assert "2 halt cleanly), 1 differ from snapshot" in output
+    assert "control: mutant differs on 0" in output.splitlines()
+
+
 def test_cli_uses_declared_post_halt_policy_for_mutant_controls(
     tmp_path, monkeypatch, capsys
 ):

@@ -835,7 +835,7 @@ def _compare_revisions(
         mutant = _mutated(contents, target, scratch / "mutant")
         mutant_path = scratch / "mutant.gz"
         _run_worker(mutant, name, request, mutant_path)
-        pairs = zip(_observations(before_path), _observations(mutant_path), strict=True)
+        pairs = zip(_observations(after_path), _observations(mutant_path), strict=True)
         caught = len(_summarize(programs, pairs, projected=True).differences)
         print(f"control: mutant differs on {caught}")
         failed |= not caught

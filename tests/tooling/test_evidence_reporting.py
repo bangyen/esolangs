@@ -1,15 +1,70 @@
 """Evidence reports retain skips and reject incomplete scans."""
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from conftest import pytest_terminal_summary
+from scripts.verify import coverage as evidence
 
 
 def test_evidence_reports(tmp_path, monkeypatch):
     _contract_summary_counts_outcomes_and_reasons()
     _failed_collection_removes_partial_coverage(tmp_path, monkeypatch)
+
+
+@pytest.mark.parametrize(
+    "failure", ["database", "receipt", "first-publication", "restore"]
+)
+def test_coverage_publication_recovers_when_a_replace_fails(
+    tmp_path, monkeypatch, failure
+):
+    data = tmp_path / "coverage.db"
+    staged = tmp_path / "staged.db"
+    staged.write_bytes(b"new database")
+    state = "same checkout"
+    previous = {"nodes": ["previous test"]}
+    selection = {"nodes": ["new test"]}
+    if failure != "first-publication":
+        data.write_bytes(b"previous database")
+        evidence.record(data, state, previous)
+
+    replace = Path.replace
+
+    def fail_replace(source, target):
+        if source == staged and failure == "database":
+            raise OSError("database rename failed")
+        if source == evidence.sidecar(staged):
+            if failure == "receipt":
+                with pytest.raises(FileExistsError, match="coverage publication"):
+                    evidence.publish(staged, data, state, selection)
+            raise OSError("receipt rename failed")
+        if source.name == "previous" and failure == "restore":
+            raise OSError("restore failed")
+        return replace(source, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "replace", fail_replace)
+        with pytest.raises(OSError, match="rename failed") as error:
+            evidence.publish(staged, data, state, selection)
+
+    if failure == "restore":
+        backup = Path(str(error.value).split("previous database kept at ", 1)[1])
+        assert backup.read_bytes() == b"previous database"
+        backup.replace(data)
+        backup.parent.rmdir()
+    if failure == "first-publication":
+        assert not data.exists()
+        assert not evidence.sidecar(data).exists()
+    else:
+        assert data.read_bytes() == b"previous database"
+        assert evidence.read(data, state) == previous
+    assert not list(tmp_path.glob(".coverage.publish-*"))
+
+    staged.write_bytes(b"new database")
+    evidence.publish(staged, data, state, selection)
+    assert evidence.read(data, state) == selection
 
 
 def test_deadcode_rejects_partial_coverage_before_reporting_or_updating(
