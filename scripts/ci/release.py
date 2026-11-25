@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Self
 
 # Release notes also run from a source checkout without the package installed.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from docs.anchors import mask_hidden
+from docs.anchors import atx_heading, mask_hidden
 from docs.writing import PublicationRecoveryError, replace_batch
 
 if TYPE_CHECKING:
@@ -163,20 +163,23 @@ def notes(version: str, changelog: str) -> str:
 
     A missing, empty or repeated version section raises.
     """
-    heading = f"## {version.removeprefix('v')}"
+    title = version.removeprefix("v")
+    heading = f"## {title}"
     lines = changelog.splitlines()
     visible = mask_hidden("\n".join(lines)).split("\n")
-    matches = [index for index, line in enumerate(visible) if line == heading]
+    sections = [
+        (index, atx[1])
+        for index, line in enumerate(visible)
+        if (atx := atx_heading(line)) is not None and atx[0] == 2
+    ]
+    matches = [index for index, text in sections if text == title]
     if not matches:
         raise SystemExit(f"docs/CHANGELOG.md has no {heading!r} section")
     if len(matches) > 1:
         positions = ", ".join(str(index + 1) for index in matches)
         raise SystemExit(f"docs/CHANGELOG.md repeats {heading!r} at lines {positions}")
     start = matches[0] + 1
-    end = next(
-        (i for i in range(start, len(visible)) if visible[i].startswith("## ")),
-        len(lines),
-    )
+    end = next((index for index, _ in sections if index >= start), len(lines))
     body = "\n".join(lines[start:end])
     if not mask_hidden(body, code_blocks=False).strip():
         raise SystemExit(f"docs/CHANGELOG.md's {heading!r} section is empty")

@@ -441,6 +441,13 @@ def test_release_notes_keep_fenced_headings_in_the_original_body() -> None:
     assert smoke.notes("v1.1.0", changelog) == body
 
 
+def test_release_notes_use_markdown_level_two_heading_boundaries() -> None:
+    body = "- New.\n\n### Detail\n\n- More.\n"
+    changelog = f"  ##\t1.1.0 ### \n\n{body}\n   ## 1.0.0\n\n- Old.\n"
+    assert smoke.notes("1.1.0", changelog) == body
+    assert smoke.notes("1.0.0", changelog) == "- Old.\n"
+
+
 def test_release_notes_require_content_besides_html_comments() -> None:
     comment = "<!-- Draft\nnotes -->\n"
     heading = "## 1.1.0\n\n"
@@ -465,7 +472,7 @@ def test_release_notes_require_a_visible_version_heading() -> None:
 def test_release_notes_name_each_visible_duplicate_heading() -> None:
     example = "~~~md\n## 1.1.0\nExample.\n~~~\n\n"
     first = "## 1.1.0\n\nFirst entry.\n"
-    second = "\n## 1.1.0\n\nSecond entry.\n"
+    second = "\n  ## 1.1.0 ##\n\nSecond entry.\n"
     assert smoke.notes("v1.1.0", example + first) == "First entry.\n"
     with pytest.raises(SystemExit, match=r"repeats '## 1\.1\.0' at lines 6, 10"):
         smoke.notes("v1.1.0", example + first + second)

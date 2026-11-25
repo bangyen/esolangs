@@ -20,12 +20,11 @@ from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.operations.source import read_png_source
 from esolangs.portable import to_file
 from esolangs.raster import Raster, png
-from esolangs.registry import LANGUAGES, canonical_id, get_catalog
+from esolangs.registry import get_catalog
 from esolangs.runtime._program import Program
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-_BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 LANGUAGES_DIR = ROOT / "src" / "esolangs" / "languages"
 
 
@@ -33,11 +32,6 @@ def boolean_programs() -> Iterator[tuple[str, ProgramArtifact[Program]]]:
     """Yield ``(stem, program)`` for every boolean example."""
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         yield stem, example.build(balance=True)
-
-
-def _display_name(stem: str) -> str:
-    """Return the registry display name for an example's filename stem."""
-    return _BY_ID.get(canonical_id(stem.replace("-", " ")), stem)
 
 
 def boolean_manifest_text() -> str:
@@ -50,6 +44,7 @@ def boolean_manifest_text() -> str:
     only thing an example is for.  Generated from the same entries the
     programs are, so the two cannot disagree.
     """
+    catalog = get_catalog()
     rows = [
         "# What each boolean example computes",
         "",
@@ -72,7 +67,7 @@ def boolean_manifest_text() -> str:
         "| Program | Language | Table | Row | Input | Expected output |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
-    for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
+    for _stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         row = "".join(str(bit) for bit in example.bits)
         if example.fill is not None:
             given = "embedded " + row
@@ -92,7 +87,7 @@ def boolean_manifest_text() -> str:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
             f"| `{example.language}/{example.filename}` | "
-            f"{_display_name(stem)} | `{example.table}` | "
+            f"{catalog.resolve(example.language)} | `{example.table}` | "
             f"`{row}` | {given} | {expected} |"
         )
     if any(e.note for e in BOOLEAN_EXAMPLES.values()):
@@ -141,15 +136,14 @@ def _same_program(
 def write_set(name: str) -> None:
     """Stage the whole example set before replacing any published file."""
     build = SETS[name]
+    catalog = get_catalog()
     LANGUAGES_DIR.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(dir=LANGUAGES_DIR, prefix=".examples-") as temporary:
         staging = pathlib.Path(temporary)
         pending: list[pathlib.Path] = []
         for stem, generated in build():
-            suffix = LANGUAGES[generated.language].source_suffix
-            relative = pathlib.Path(canonical_id(stem.replace("-", " "))) / (
-                f"{stem}{suffix}"
-            )
+            language = catalog.languages[generated.language]
+            relative = pathlib.Path(language.id) / f"{stem}{language.source_suffix}"
             path = LANGUAGES_DIR / relative
             existing = path.read_bytes() if path.exists() else None
             staged = staging / relative

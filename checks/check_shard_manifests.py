@@ -12,7 +12,7 @@ from ci.shard import (
     CollectionError,
     collect_ids,
     load_run,
-    read_completion_metadata,
+    read_completion_sidecars,
     read_evidence_json,
 )
 
@@ -94,10 +94,7 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
             raise ValueError("overlapping or unexpected shard selection")
         selected.update(nodes)
         actual = set()
-        sidecars = {
-            sidecar: read_completion_metadata(sidecar)
-            for sidecar in sorted(path.parent.rglob("*.json.meta.json"))
-        }
+        sidecars = read_completion_sidecars(path.parent)
         for sidecar, metadata in sidecars.items():
             _check_completion_identity(sidecar, metadata["run"], path, run)
             actual.update(metadata["collected"])

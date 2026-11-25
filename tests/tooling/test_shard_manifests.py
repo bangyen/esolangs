@@ -13,13 +13,13 @@ from checks.check_shard_manifests import check
 from scripts.ci.shard import Recorder, load_durations, load_run, refresh, refresh_main
 
 
-def evidence(tmp_path):
+def evidence(tmp_path, *, timing_name="test-durations.json"):
     paths = []
     for index, selected in enumerate((["a"], ["b"])):
         directory = tmp_path / str(index)
         directory.mkdir()
         path = directory / "tests.shard.json"
-        recorder = Recorder(directory / "test-durations.json")
+        recorder = Recorder(directory / timing_name)
         recorder.collected.update(selected + (["serial"] if index == 0 else []))
         recorder.finished.update(recorder.collected)
         recorder.durations.update(dict.fromkeys(recorder.collected, 1))
@@ -29,9 +29,7 @@ def evidence(tmp_path):
         # null identity here would disagree with the sidecar in CI, where
         # those variables are set, and check() would fail closed on the
         # identity before ever reaching the injected fault.
-        run = json.loads((directory / "test-durations.json.meta.json").read_text())[
-            "run"
-        ]
+        run = json.loads(recorder.completion.read_text())["run"]
         path.write_text(
             json.dumps(
                 {
@@ -86,6 +84,24 @@ def test_timing_refresh_rejects_duplicate_runs(
 def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     paths = evidence(tmp_path)
     check(paths, ["a", "b", "serial"], "slow", 2)
+
+
+@pytest.mark.parametrize(
+    "timing_name", ["timings", "timings.data", "timings.meta.json"]
+)
+def test_completion_checks_can_read_timing_names_without_json_suffix(
+    tmp_path, timing_name
+) -> None:
+    run = tmp_path / "run"
+    run.mkdir()
+    paths = evidence(run, timing_name=timing_name)
+    assert (paths[0].parent / f"{timing_name}.meta.json").is_file()
+    corpus = ["a", "b", "serial"]
+    check(paths, corpus, "slow", 2)
+    assert load_run(run, set(corpus)) == dict.fromkeys(corpus, 1)
+    destination = tmp_path / "snapshot.json"
+    refresh([run], corpus, destination)
+    assert load_durations(destination) == dict.fromkeys(corpus, 1)
 
 
 def test_shard_completion_must_match_the_verifiers_python(tmp_path) -> None:

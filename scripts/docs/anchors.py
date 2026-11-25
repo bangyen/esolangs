@@ -17,7 +17,8 @@ _MARKUP = re.compile(
     re.MULTILINE,
 )
 _FENCE_END = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*\r?$", re.MULTILINE)
-_HEADING = re.compile(r" {0,3}#{1,6}(?:[ \t]+(.*?)[ \t]*#*[ \t]*)?")
+_HEADING = re.compile(r" {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*")
+_HEADING_CLOSE = re.compile(r"(?:^|[ \t]+)#+$")
 _UNDERLINE = re.compile(r" {0,3}(?:=+|-+)[ \t]*")
 _THEMATIC = re.compile(r" {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})")
 _BLOCK_START = re.compile(
@@ -145,13 +146,21 @@ def mask_hidden(
     return "".join(parts)
 
 
+def atx_heading(line: str) -> tuple[int, str] | None:
+    """Return an ATX heading's level and title from an already visible line."""
+    if match := _HEADING.fullmatch(line):
+        title = _HEADING_CLOSE.sub("", (match[2] or "").rstrip(" \t"))
+        return len(match[1]), title
+    return None
+
+
 def _heading_titles(text: str) -> Iterator[str]:
     """Read ATX and Setext headings in document order."""
     paragraph: list[str] = []
     in_block = False
     for line in text.splitlines():
-        if match := _HEADING.fullmatch(line):
-            yield match[1] or ""
+        if heading := atx_heading(line):
+            yield heading[1]
         elif paragraph and _UNDERLINE.fullmatch(line):
             yield "\n".join(paragraph)
         elif not line.strip() or _THEMATIC.fullmatch(line):

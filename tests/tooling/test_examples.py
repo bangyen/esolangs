@@ -12,7 +12,7 @@ from esolangs._cycles import _BranchingStepMachine, _FramedMachine, _TapeMachine
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.raster import Raster
-from esolangs.registry import LANGUAGES, canonical_id, resolve
+from esolangs.registry import LANGUAGES, _table, resolve
 from esolangs.vm import (
     make_vm,
     run_until_halt,
@@ -50,9 +50,8 @@ VM_LANGUAGE = {
 # program terminates *before* anything runs it unbounded.
 HALT_CONVENTION = {
     stem
-    for stem in BOOLEAN_GENERATED
-    if esolangs.describe(canonical_id(stem.replace("-", " "))).answer_mode
-    == "termination"
+    for stem, example in BOOLEAN_GENERATED.items()
+    if esolangs.describe(example.language).answer_mode == "termination"
 }
 
 # The command every staleness message names.
@@ -71,7 +70,7 @@ REGENERATE = "`uv run python scripts/docs/generate.py examples`"
 def test_boolean_example_matches_generator(name: str) -> None:
     """Each committed boolean program is what its generator produces today."""
     example = BOOLEAN_GENERATED[name]
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(example.language).examples[0]
     artifact = example.build(balance=True)
     program = artifact.source
     stale = f"{path.relative_to(BASE_DIR)} is stale; run {REGENERATE}"
@@ -82,9 +81,11 @@ def test_boolean_example_matches_generator(name: str) -> None:
         )
     elif isinstance(program, Raster):
         # PNG compression differs across platforms.
-        assert esolangs.from_file(name, path) == artifact, stale
+        assert esolangs.from_file(example.language, path) == artifact, stale
     else:
-        ending = "\n" if LANGUAGES[resolve(name)].runtime.file_newline else ""
+        ending = (
+            "\n" if LANGUAGES[resolve(example.language)].runtime.file_newline else ""
+        )
         expected = (program + ending).encode("utf-8")
         assert path.read_bytes() == expected, stale
 
@@ -103,7 +104,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
     )
     assert programs.keys() == BOOLEAN_GENERATED.keys()
     for stem, example in BOOLEAN_GENERATED.items():
-        language = canonical_id(stem.replace("-", " "))
+        language = example.language
         expected = generate(language, example.table, balance=True, scale=example.scale)
         if example.fill is not None:
             expected = instantiate(language, expected, example.bits)
@@ -137,6 +138,46 @@ def test_manifest_uses_declared_bits_with_whitespace_in_stdin(monkeypatch) -> No
     assert "| `10` | ' 10 ' |" in examples.boolean_manifest_text()
 
 
+def test_examples_keep_the_declared_owner_when_the_stem_differs(tmp_path, monkeypatch):
+    from esolangs.generation import examples as records
+    from scripts.docs import examples as writer
+
+    declaration = replace(LANGUAGES[REFERENCE], name="Example Probe", id="owner_probe")
+    catalog = esolangs.Catalog([declaration])
+    monkeypatch.setattr(_table, "CATALOG", catalog)
+    monkeypatch.setattr(records, "LANGUAGES", catalog.languages)
+    examples = records._register()
+    example = examples["example-probe"]
+    assert example.language == declaration.id
+    monkeypatch.setattr(writer, "BOOLEAN_EXAMPLES", examples)
+    monkeypatch.setattr(writer, "LANGUAGES_DIR", tmp_path)
+    writer.write_set("boolean")
+    path = tmp_path / declaration.id / example.filename
+    api = catalog.bind(declaration.name)
+    outcome = api.evaluate(api.from_file(path), example.bits)
+    assert outcome.answer == example.table[int("".join(map(str, example.bits)), 2)]
+    assert f"| `{declaration.id}/{example.filename}` | {declaration.name} |" in (
+        tmp_path / "EXAMPLES.md"
+    ).read_text(encoding="utf-8")
+
+
+def test_examples_reject_duplicate_stems_before_publication(monkeypatch):
+    from esolangs.generation import examples
+
+    base = LANGUAGES[REFERENCE]
+    first = replace(base, name="Example Probe", id="example_probe")
+    second = replace(base, name="Example-Probe", id="alternate_example_probe")
+    catalog = esolangs.Catalog([first, second])
+    monkeypatch.setattr(_table, "CATALOG", catalog)
+    monkeypatch.setattr(examples, "LANGUAGES", catalog.languages)
+    with pytest.raises(
+        ValueError, match="duplicate example stem 'example-probe'"
+    ) as error:
+        examples._register()
+    assert first.id in str(error.value)
+    assert second.id in str(error.value)
+
+
 def test_boolean_examples_cover_every_committed_file() -> None:
     """Every file in examples is accounted for, and vice versa."""
     on_disk = {
@@ -145,8 +186,8 @@ def test_boolean_examples_cover_every_committed_file() -> None:
         if p.suffix in (".txt", ".png", ".gz")
     }
     expected = {
-        f"{canonical_id(stem.replace('-', ' '))}/{example.filename}"
-        for stem, example in BOOLEAN_GENERATED.items()
+        f"{example.language}/{example.filename}"
+        for example in BOOLEAN_GENERATED.values()
     }
     unregistered = sorted(on_disk - expected)
     assert not unregistered, (
@@ -160,7 +201,11 @@ def test_boolean_examples_cover_every_committed_file() -> None:
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
 def test_halt_convention_examples_halt(name: str) -> None:
     """The committed program of a halt-convention language terminates."""
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
+    path = (
+        BASE_DIR
+        / "src/esolangs"
+        / esolangs.describe(BOOLEAN_GENERATED[name].language).examples[0]
+    )
     program = (
         CompressedText(path.read_bytes())
         if path.suffix == ".gz"
@@ -174,7 +219,7 @@ def test_halt_convention_examples_halt(name: str) -> None:
 
 def _halts(name: str, program: str, _inputs: list[str]) -> bool:
     """Whether ``name``'s committed program terminates, by cycle detection."""
-    language = canonical_id(name.replace("-", " "))
+    language = BOOLEAN_GENERATED[name].language
     stdin = BOOLEAN_GENERATED[name].stdin
     return run_until_halt_or_cycle(make_vm(language, program, stdin=stdin))
 
@@ -182,7 +227,7 @@ def _halts(name: str, program: str, _inputs: list[str]) -> bool:
 def test_every_boolean_generator_has_an_example() -> None:
     """Every registered boolean generator has a committed example."""
     registered = {lang.id for lang in LANGUAGES.values() if lang.backend}
-    covered = {canonical_id(stem.replace("-", " ")) for stem in BOOLEAN_GENERATED}
+    covered = {example.language for example in BOOLEAN_GENERATED.values()}
     missing = sorted(registered - covered)
     assert not missing, f"no committed example for {missing}; {CHECK}"
 
@@ -222,11 +267,12 @@ def _prove_halt(vm: object) -> bool:
 @pytest.mark.medium
 def test_boolean_example(name: str) -> None:
     _module, _inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
-    path = BASE_DIR / "src/esolangs" / esolangs.describe(name).examples[0]
-    stdin = BOOLEAN_GENERATED[name].stdin
-    program = esolangs.Language(name).from_file(path, normalize=True).source
+    example = BOOLEAN_GENERATED[name]
+    path = BASE_DIR / "src/esolangs" / esolangs.describe(example.language).examples[0]
+    stdin = example.stdin
+    program = esolangs.Language(example.language).from_file(path, normalize=True).source
     if isinstance(program, Raster):
-        got = esolangs.run(name, program, stdin=stdin).output
+        got = esolangs.run(example.language, program, stdin=stdin).output
     else:
         vm = make_vm(VM_LANGUAGE[_module], program, stdin=stdin)
     if name == "a-painter-ant":
@@ -250,7 +296,7 @@ def test_boolean_example(name: str) -> None:
         # every VM exactly matches each interpreter's public ``run`` behavior.
         vm.step()
         got = vm.output
-    if not BOOLEAN_GENERATED[name].expected_compared:
+    if not example.expected_compared:
         # The constructed 123 template pops through location -2 while
         # merging, and a ``2`` there prints whatever the cell holds --
         # junk bytes that are deliberately not the answer, which is the
@@ -293,7 +339,9 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         # The committed form the staleness test reads back: without the
         # terminator, a regeneration rewrote 110 examples it then failed.
         language = LANGUAGES[resolve(REFERENCE)]
-        written = tmp_path / "examples" / "sample" / f"sample{language.source_suffix}"
+        written = (
+            tmp_path / "examples" / language.id / f"sample{language.source_suffix}"
+        )
         ending = "\n" if language.runtime.file_newline else ""
         assert written.read_text(encoding="utf-8") == "x" + ending
         capsys.readouterr()
@@ -314,8 +362,12 @@ class TestTheWritersWriteWhatTheBuildersBuild:
     ) -> None:
         module = self._redirect(monkeypatch, tmp_path)
         program = esolangs.ProgramArtifact("x", REFERENCE)
-        suffix = LANGUAGES[resolve(REFERENCE)].source_suffix
-        old_paths = [tmp_path / f"early/early{suffix}", tmp_path / "EXAMPLES.md"]
+        declaration = LANGUAGES[resolve(REFERENCE)]
+        suffix = declaration.source_suffix
+        old_paths = [
+            tmp_path / declaration.id / f"early{suffix}",
+            tmp_path / "EXAMPLES.md",
+        ]
         for path in old_paths:
             path.parent.mkdir(exist_ok=True)
             path.write_bytes(b"previous")
@@ -355,11 +407,12 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         api = esolangs.Language(REFERENCE)
         previous = api.generate("01")
         replacement = api.generate("10")
-        suffix = LANGUAGES[resolve(REFERENCE)].source_suffix
+        declaration = LANGUAGES[resolve(REFERENCE)]
+        suffix = declaration.source_suffix
         stems = ("early", "late")
-        paths = [tmp_path / stem / f"{stem}{suffix}" for stem in stems]
+        paths = [tmp_path / declaration.id / f"{stem}{suffix}" for stem in stems]
         for path in paths:
-            path.parent.mkdir()
+            path.parent.mkdir(exist_ok=True)
             api.to_file(previous, path, normalize=True)
         originals = [path.read_bytes() for path in paths]
         monkeypatch.setitem(
@@ -381,7 +434,10 @@ class TestTheWritersWriteWhatTheBuildersBuild:
             "1",
             "1",
         ]
-        assert {path.name for path in tmp_path.iterdir()} == set(stems)
+        assert {path.name for path in tmp_path.iterdir()} == {declaration.id}
+        assert {path.name for path in paths[0].parent.iterdir()} == {
+            path.name for path in paths
+        }
         assert capsys.readouterr().out == ""
 
     def test_a_png_with_the_same_pixels_and_metadata_is_left_alone(
@@ -396,8 +452,8 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         painted = esolangs.describe(first(source_kind="raster", boolean_generator=True))
         stem = next(
             stem
-            for stem in BOOLEAN_GENERATED
-            if canonical_id(stem.replace("-", " ")) == painted.id
+            for stem, example in BOOLEAN_GENERATED.items()
+            if example.language == painted.id
         )
         program = BOOLEAN_GENERATED[stem].build(balance=True)
         raster = Raster.from_png(program.source.to_png())
@@ -406,7 +462,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         )
         monkeypatch.setitem(module.SETS, "boolean", lambda: iter([("img", artifact)]))
         module.write_set("boolean")
-        path = tmp_path / "examples" / "img/img.png"
+        path = tmp_path / "examples" / painted.id / "img.png"
         original = path.read_bytes()
         metadata = png.read_metadata(original)
         assert metadata is not None
@@ -427,7 +483,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         artifact = api.generate("01")
         module = self._redirect(monkeypatch, tmp_path)
         monkeypatch.setitem(module.SETS, "probe", lambda: iter([("sample", artifact)]))
-        path = tmp_path / "sample/sample.png"
+        path = tmp_path / LANGUAGES[name].id / "sample.png"
         path.parent.mkdir()
         api.to_file(replace(artifact, input_arity=2), path)
 
@@ -454,7 +510,7 @@ class TestTheWritersWriteWhatTheBuildersBuild:
         artifact = api.generate("01")
         module = self._redirect(monkeypatch, tmp_path)
         monkeypatch.setitem(module.SETS, "probe", lambda: iter([("sample", artifact)]))
-        path = tmp_path / "sample" / f"sample{LANGUAGES[name].source_suffix}"
+        path = tmp_path / LANGUAGES[name].id / f"sample{LANGUAGES[name].source_suffix}"
         path.parent.mkdir()
         path.write_bytes(b"corrupt transport")
 

@@ -35,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[2]
 _COLLECTION_TIMEOUT = 60.0
 _DURATION_OUTPUT = "--duration-output"
 _DURATION_PROTECTED = "_ESOLANGS_SHARD_DURATION_PROTECTED"
+_COMPLETION_SUFFIX = ".meta.json"
 
 
 class CollectionError(RuntimeError):
@@ -195,6 +196,18 @@ def read_completion_metadata(path: Path) -> dict[str, Any]:
     return metadata
 
 
+def read_completion_sidecars(directory: Path) -> dict[Path, dict[str, Any]]:
+    """Read the recorder's completion sidecars regardless of the timing suffix."""
+    candidates = set(directory.rglob(f"*{_COMPLETION_SUFFIX}"))
+    # A timing filename can itself end with the completion suffix.
+    return {
+        path: read_completion_metadata(path)
+        for path in sorted(candidates)
+        if path.name != _COMPLETION_SUFFIX
+        and path.with_name(path.name + _COMPLETION_SUFFIX) not in candidates
+    }
+
+
 def _parse_durations(data: bytes, path: Path) -> dict[str, float]:
     """Parse the bytes read from a timing file or checked against a sidecar."""
     raw = _timing_map(read_evidence_json(path, kind="timing", data=data))
@@ -305,8 +318,8 @@ def _parse_args(argv: list[str] | None) -> tuple[argparse.Namespace, list[str]]:
 def _duration_sidecars(path: Path) -> tuple[Path, Path]:
     """Return the recorder's completion record and progress log paths."""
     return (
-        path.with_suffix(path.suffix + ".meta.json"),
-        path.with_suffix(path.suffix + ".progress.jsonl"),
+        path.with_name(path.name + _COMPLETION_SUFFIX),
+        path.with_name(path.name + ".progress.jsonl"),
     )
 
 
@@ -519,17 +532,14 @@ def _load_run(
 ) -> _TimingRun:
     """Validate sidecars and retain the identity shared by every shard."""
     if sidecars is None:
-        sidecars = {
-            path: read_completion_metadata(path)
-            for path in sorted(directory.rglob("*.json.meta.json"))
-        }
+        sidecars = read_completion_sidecars(directory)
     if not sidecars:
         raise ValueError(f"{directory}: no timing completion metadata")
     result: dict[str, float] = {}
     sources: dict[str, Path] = {}
     identity = None
     for path, metadata in sidecars.items():
-        durations_path = path.with_suffix("").with_suffix("")
+        durations_path = path.with_name(path.name.removesuffix(_COMPLETION_SUFFIX))
         if "durations_file" in metadata:
             name = metadata["durations_file"]
             if not isinstance(name, str) or Path(name).name != name:
