@@ -145,7 +145,9 @@ def test_normalize_rejects_invalid_epoch_before_opening_archives(
     assert "SOURCE_DATE_EPOCH must be an integer" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("failure", ["stage", "publish"])
+@pytest.mark.parametrize(
+    "failure", ["stage", "truncated-trailer", "invalid-crc", "publish"]
+)
 def test_normalize_preserves_archives_when_a_batch_fails(
     tmp_path, monkeypatch, capsys, failure
 ) -> None:
@@ -156,6 +158,13 @@ def test_normalize_preserves_archives_when_a_batch_fails(
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
     if failure == "stage":
         second.write_bytes(b"corrupt archive")
+    elif failure in {"truncated-trailer", "invalid-crc"}:
+        compressed = second.read_bytes()
+        trailer = bytearray(compressed[-8:])
+        trailer[0] ^= 1
+        second.write_bytes(
+            compressed[:-8] + (trailer if failure == "invalid-crc" else b"")
+        )
     original = first.read_bytes(), second.read_bytes()
     replace = Path.replace
 
@@ -174,7 +183,7 @@ def test_normalize_preserves_archives_when_a_batch_fails(
     assert (first.read_bytes(), second.read_bytes()) == original
     assert set(tmp_path.iterdir()) == {first, second}
 
-    if failure == "stage":
+    if failure != "publish":
         second.write_bytes(original[0])
     assert smoke.main(["normalize", str(first), str(second)]) == 0
     for path in (first, second):

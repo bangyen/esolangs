@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .process import write_text
-from .receipts import digest, inputs
+from .receipts import digest, inputs, parse_pytest_execution
 
 
 def sidecar(data: Path) -> Path:
@@ -76,19 +76,8 @@ def read(data: Path, state: str, *, snapshot: Path | None = None) -> dict[str, A
 def completed(path: Path) -> list[str]:
     """Return the selected nodes when pytest completed a real run."""
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-        selected = value["selected"]
-        if (
-            isinstance(selected, list)
-            and selected
-            and value["schema"] == 1
-            and value["exitstatus"] == 0
-            and not value["selection"]["collect_only"]
-            and value["passed_calls"]
-            and not value["failed_calls"]
-            and selected == value["finished"]
-        ):
-            return selected
-    except (OSError, KeyError, TypeError, ValueError):
-        pass
-    raise ValueError("pytest coverage collection did not complete")
+        return parse_pytest_execution(path.read_bytes(), 0).selected
+    except (OSError, ValueError) as error:
+        raise ValueError(
+            f"{path}: pytest coverage collection did not complete: {error}"
+        ) from error

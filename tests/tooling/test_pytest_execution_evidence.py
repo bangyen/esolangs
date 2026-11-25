@@ -9,8 +9,9 @@ from pathlib import Path
 import pytest
 
 from scripts import mutants
+from scripts.verify.coverage import completed
 from scripts.verify.pytest_evidence import OUTPUT_OPTION, PLUGIN
-from scripts.verify.receipts import AcceptanceRun, validate
+from scripts.verify.receipts import AcceptanceRun, _read_execution, validate
 from tests.tooling.receipt_support import _checkout
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +72,21 @@ def test_receipt_captures_execution_and_effective_selection(
         evidence = json.loads(output.read_text())
         assert evidence["selection"]["keyword"] == "test_selected"
         assert evidence["called"] == ["test_probe.py::test_selected"]
+        assert completed(output) == evidence["called"]
+        for invalid in (
+            json.dumps({**evidence, "passed_calls": ["test_probe.py::test_other"]}),
+            json.dumps({**evidence, "called": []}),
+            json.dumps({**evidence, "selected": evidence["selected"] * 2}),
+            json.dumps(evidence).replace(
+                '"collect_only": false', '"collect_only": true, "collect_only": false'
+            ),
+        ):
+            output.write_text(invalid, encoding="utf-8")
+            with pytest.raises(
+                ValueError, match="pytest coverage collection did not complete"
+            ):
+                completed(output)
+            assert _read_execution(root, str(output), 0) is None
         output.write_text("{}")
         with pytest.raises(ValueError, match="execution evidence was changed"):
             validate(receipt, root, {"pytest"})

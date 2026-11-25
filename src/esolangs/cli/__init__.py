@@ -738,6 +738,14 @@ def _generate(rest: list[str]) -> None:
         )
     _emit_generated(artifact, declaration, flags, catalog)
     if isinstance(artifact, TemplateArtifact):
+        note = (
+            f"note: this is a template with unfilled {artifact.bindings.char!r} "
+            "input slots"
+        )
+        if "--artifact" in flags:
+            advice = _saved_template_hint(artifact.language, "template.json", catalog)
+            _diagnostic(f"{note}; save it as template.json, then {advice}\n")
+            return
         original = shlex.join(before)
         fill = "fill them with: esolangs generate --bits <bits>"
         stdin_hint = (
@@ -760,10 +768,7 @@ def _generate(rest: list[str]) -> None:
                     part for part in (flags_text, operand, table_operand) if part
                 )
                 advice = f"{fill} {tail}{stdin_hint}"
-        _diagnostic(
-            f"note: this is a template with unfilled {artifact.bindings.char!r} "
-            f"input slots; {advice}\n"
-        )
+        _diagnostic(f"{note}; {advice}\n")
 
 
 def _printable(value: object) -> str:

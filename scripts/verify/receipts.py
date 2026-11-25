@@ -32,6 +32,16 @@ class _PytestExecution(NamedTuple):
     passed: set[str]
 
 
+class PytestExecution(NamedTuple):
+    """Validated collection and call outcomes from one pytest invocation."""
+
+    selection: dict[str, Any]
+    selected: list[str]
+    called: int
+    failed: set[str]
+    passed: set[str]
+
+
 def digest(path: Path) -> str:
     """Hash the complete artifact in bounded memory."""
     with path.open("rb") as source:
@@ -175,35 +185,67 @@ def _read_execution(root: Path, file: str, returncode: int) -> _PytestExecution 
         path = (root / file).resolve()
         relative = path.relative_to(root.resolve())
         contents = path.read_bytes()
-        data = json.loads(contents)
-        selected, called, finished = (
-            set(data[key]) for key in ("selected", "called", "finished")
-        )
-        failed = set(data.get("failed_calls", []))
-        # Earlier archives did not record passing calls.
-        passed = set(data.get("passed_calls", []))
-        selection = data["selection"]
-        if (
-            data["schema"] != 1
-            or data["exitstatus"] != returncode
-            or selection["collect_only"]
-            or not called
-            or not called <= selected
-            or not failed | passed <= called
-            or (returncode == 0 and (failed or ("passed_calls" in data and not passed)))
-            or finished != selected
-        ):
-            return None
-    except (OSError, KeyError, TypeError, ValueError):
+        execution = parse_pytest_execution(contents, returncode, allow_legacy=True)
+    except (OSError, ValueError):
         return None
     record = {
         "path": str(relative),
         "sha256": hashlib.sha256(contents).hexdigest(),
-        "selection": selection,
-        "selected": len(selected),
-        "called": len(called),
+        "selection": execution.selection,
+        "selected": len(execution.selected),
+        "called": execution.called,
     }
-    return _PytestExecution(record, failed, passed)
+    return _PytestExecution(record, execution.failed, execution.passed)
+
+
+def _execution_nodes(value: object, field: str) -> list[str]:
+    """Require a list of distinct, nonempty pytest node IDs."""
+    if (
+        not isinstance(value, list)
+        or not all(isinstance(node, str) and node for node in value)
+        or len(set(value)) != len(value)
+    ):
+        raise ValueError(
+            f"invalid pytest execution field {field!r}: expected unique IDs"
+        )
+    return value
+
+
+def parse_pytest_execution(
+    contents: bytes, returncode: int, *, allow_legacy: bool = False
+) -> PytestExecution:
+    """Validate complete execution evidence, allowing older receipt sidecars."""
+    try:
+        data = json.loads(contents.decode("utf-8"), object_pairs_hook=_receipt_object)
+    except RecursionError as error:
+        raise ValueError("pytest execution JSON is nested too deeply") from error
+    if (
+        not isinstance(data, dict)
+        or type(data.get("schema")) is not int
+        or data["schema"] != 1
+        or type(data.get("exitstatus")) is not int
+        or data["exitstatus"] != returncode
+        or not isinstance(selection := data.get("selection"), dict)
+        or selection.get("collect_only") is not False
+    ):
+        raise ValueError("incompatible pytest execution report")
+
+    selected = _execution_nodes(data.get("selected"), "selected")
+    finished = _execution_nodes(data.get("finished"), "finished")
+    called = set(_execution_nodes(data.get("called"), "called"))
+    # Older archived receipts can lack the call-outcome lists.
+    default: list[str] | None = [] if allow_legacy else None
+    failed = set(_execution_nodes(data.get("failed_calls", default), "failed_calls"))
+    passed = set(_execution_nodes(data.get("passed_calls", default), "passed_calls"))
+    if (
+        finished != selected
+        or not called
+        or not called.issubset(selected)
+        or not failed | passed <= called
+        or (returncode == 0 and (failed or ("passed_calls" in data and not passed)))
+    ):
+        raise ValueError("inconsistent or incomplete pytest execution report")
+    return PytestExecution(selection, selected, len(called), failed, passed)
 
 
 def _bound_execution(root: Path, row: dict[str, Any]) -> _PytestExecution | None:

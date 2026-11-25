@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import zlib
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, contextmanager
@@ -41,7 +42,8 @@ def _staged_normalization(
     try:
         staged = directory / "normalized"
         with (
-            tarfile.open(path, "r:gz") as source,
+            gzip.open(path, "rb") as uncompressed,
+            tarfile.open(fileobj=uncompressed, mode="r:") as source,
             staged.open("wb") as stream,
             gzip.GzipFile(
                 filename="", mode="wb", fileobj=stream, mtime=epoch
@@ -63,6 +65,9 @@ def _staged_normalization(
                 target.addfile(
                     member, source.extractfile(member) if member.isfile() else None
                 )
+            # Tar's end marker can precede validation of the gzip trailer.
+            while uncompressed.read(64 * 1024):
+                pass
         staged.chmod(stat.S_IMODE(path.stat().st_mode))
         yield path, staged
     finally:
@@ -119,7 +124,7 @@ def normalize_main(argv: list[str]) -> int:
                     backup = staged.with_name("original")
                     shutil.copy2(path, backup)
                 pending[path] = staged, backup
-            except (OSError, EOFError, tarfile.TarError) as error:
+            except (OSError, EOFError, tarfile.TarError, zlib.error) as error:
                 parser.exit(1, f"{archive}: {error}\n")
         for path, (staged, backup) in pending.items():
             try:

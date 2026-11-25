@@ -22,11 +22,22 @@ def language() -> esolangs.Language:
 def test_saved_template_fills_all_xor_rows(
     language, tmp_path, capsys, monkeypatch
 ) -> None:
-    document = call_main(
-        ["generate", "--artifact", "--width=7", language.name, "0110"], capsys
+    document, note = call_both(
+        ["generate", "--artifact", "--width=7", language.name, "-"], capsys, "0110\n"
     )
-    path = tmp_path / "saved xor.json"
-    path.write_text(document, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    assert "save it as template.json" in note
+    assert "same truth table" not in note
+    command = shlex.split(note.split("for example: ", 1)[1])
+    assert command[:6] == [
+        "esolangs",
+        "generate",
+        "--from-template=template.json",
+        "--bits",
+        "BITS",
+        "--artifact",
+    ]
+    Path("template.json").write_text(document, encoding="utf-8")
     template = language.from_json(document)
     assert isinstance(template, esolangs.TemplateArtifact)
 
@@ -35,18 +46,8 @@ def test_saved_template_fills_all_xor_rows(
 
     monkeypatch.setattr("esolangs.operations.generation._generate_checked", unused)
     for row, answer in zip(("00", "01", "10", "11"), "0110", strict=True):
-        filled, diagnostic = call_both(
-            [
-                "generate",
-                "--from-template",
-                str(path),
-                "--bits",
-                row,
-                "--artifact",
-                language.name,
-            ],
-            capsys,
-        )
+        command[4] = row
+        filled, diagnostic = call_both(command[1:], capsys)
         assert diagnostic == ""
         assert language.from_json(filled) == template.fill([int(bit) for bit in row])
         output = call_main(["run", "--artifact", language.name, "-"], capsys, filled)
