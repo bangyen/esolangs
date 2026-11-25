@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .process import write_text
-from .receipts import digest, inputs, parse_pytest_execution
+from .receipts import digest, inputs, parse_pytest_execution, receipt_object
 
 
 def sidecar(data: Path) -> Path:
@@ -84,14 +84,17 @@ def publish(staged: Path, data: Path, state: str, selection: dict[str, Any]) -> 
 
 def read(data: Path, state: str, *, snapshot: Path | None = None) -> dict[str, Any]:
     """Validate the receipt against the database or a private copy of it."""
+    receipt = sidecar(data)
     try:
-        value = json.loads(sidecar(data).read_text(encoding="utf-8"))
+        value = json.loads(
+            receipt.read_text(encoding="utf-8"), object_pairs_hook=receipt_object
+        )
     except FileNotFoundError:
         raise ValueError(
             f"no coverage receipt for {data}; choose a fresh --data file to collect"
         ) from None
-    except (OSError, ValueError) as error:
-        raise ValueError(f"unreadable coverage receipt for {data}") from error
+    except (OSError, ValueError, RecursionError) as error:
+        raise ValueError(f"unreadable coverage receipt {receipt}: {error}") from error
     if not (
         isinstance(value, dict)
         and value.get("schema") == 1

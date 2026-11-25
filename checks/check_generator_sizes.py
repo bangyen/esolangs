@@ -260,6 +260,8 @@ def main(argv: list[str] | None = None) -> int:
         "--repeat", type=int, default=1, help="timing samples per record"
     )
     args = parser.parse_args(argv)
+    if args.repeat < 1:
+        parser.error("--repeat must be positive")
 
     target = None
     if args.timings is not None:

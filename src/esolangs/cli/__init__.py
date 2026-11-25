@@ -591,6 +591,7 @@ def _generate_from_template(
     if "--balance" in flags or "--scale" in options:
         _fail("--from-template cannot be combined with --balance or --scale")
     _check_count("generate", args, 1, catalog=catalog)
+    path = options["--from-template"]
     with _errors():
         declaration = catalog.languages[catalog.resolve(args[0])]
         settings = _settings_of(settings_arguments, language=args[0], catalog=catalog)
@@ -600,11 +601,12 @@ def _generate_from_template(
         if width is not None:
             retry_options.append(f"--width={format_integer(width)}")
         template = _read_saved_template(
-            options["--from-template"],
+            path,
             declaration.name,
             catalog,
             retry_options=retry_options,
         )
+    try:
         filled = instantiate(
             declaration.name,
             template,
@@ -613,6 +615,9 @@ def _generate_from_template(
             settings=settings,
             catalog=catalog,
         )
+    except EsolangError as error:
+        label = "stdin" if path == "-" else display_label(path)
+        _fail(f"{label}: {_cli_error_text(error)}")
     _emit_generated(filled, declaration, flags, catalog)
 
 

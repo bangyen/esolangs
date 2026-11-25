@@ -111,6 +111,8 @@ def test_deadcode_rejects_partial_coverage_before_reporting_or_updating(
         ("database", "does not match its receipt"),
         ("selection", "different test selection"),
         ("receipt", "no coverage receipt"),
+        ("duplicate checkout", "duplicate field: checkout"),
+        ("duplicate nodes", "duplicate field: nodes"),
     ],
 )
 def test_deadcode_refuses_stale_saved_coverage(
@@ -155,6 +157,14 @@ def test_deadcode_refuses_stale_saved_coverage(
         data.write_bytes(data.read_bytes() + b"different")
     elif change == "selection":
         module.evidence.record(data, state, selection | {"packages": ["sample"]})
+    elif change.startswith("duplicate "):
+        receipt = module.evidence.sidecar(data)
+        document = receipt.read_text(encoding="utf-8")
+        if change == "duplicate checkout":
+            document = '{"checkout":"stale",' + document[1:]
+        else:
+            document = document.replace('"nodes":', '"nodes":["other"],"nodes":')
+        receipt.write_text(document, encoding="utf-8")
     else:
         module.evidence.sidecar(data).unlink()
 

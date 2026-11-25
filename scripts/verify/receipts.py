@@ -220,7 +220,7 @@ def parse_pytest_execution(
 ) -> PytestExecution:
     """Validate execution evidence, optionally accepting a partial failed run."""
     try:
-        data = json.loads(contents.decode("utf-8"), object_pairs_hook=_receipt_object)
+        data = json.loads(contents.decode("utf-8"), object_pairs_hook=receipt_object)
     except RecursionError as error:
         raise ValueError("pytest execution JSON is nested too deeply") from error
     if (
@@ -561,7 +561,7 @@ def _receipt_shape(record: object) -> dict[str, Any]:
     return value
 
 
-def _receipt_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+def receipt_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     """Reject repeated fields even when archiving without a package install."""
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -577,7 +577,7 @@ def _read_receipt(path: Path) -> dict[str, Any]:
     try:
         return _receipt_shape(
             json.loads(
-                path.read_text(encoding="utf-8"), object_pairs_hook=_receipt_object
+                path.read_text(encoding="utf-8"), object_pairs_hook=receipt_object
             )
         )
     except (ValueError, RecursionError) as error:

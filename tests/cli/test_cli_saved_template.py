@@ -126,7 +126,7 @@ def test_saved_template_requires_its_path_before_other_options(capsys, option) -
     assert "--from-template needs a value" in error
 
 
-def test_saved_template_rejects_wrong_record_owner_and_row(language, capsys) -> None:
+def test_saved_template_rejects_invalid_records(language, capsys) -> None:
     template = call_main(["generate", "--artifact", language.name, "0110"], capsys)
     program = call_main(
         ["generate", "--artifact", "--bits=01", language.name, "0110"], capsys
@@ -134,7 +134,6 @@ def test_saved_template_rejects_wrong_record_owner_and_row(language, capsys) -> 
     for document, name, message in (
         (program, language.name, "requires an unfilled portable template"),
         (template, REFERENCE, "artifact records"),
-        (template, language.name, "pass exactly 2 0/1 digits to --bits"),
         ("not JSON", language.name, "invalid portable template in stdin"),
     ):
         output, error = _failure(
@@ -142,6 +141,26 @@ def test_saved_template_rejects_wrong_record_owner_and_row(language, capsys) -> 
         )
         assert not output
         assert message in error
+
+
+@pytest.mark.parametrize("from_stdin", [False, True])
+def test_wrong_row_length_names_the_saved_template(
+    language, tmp_path, capsys, from_stdin
+):
+    document = call_main(["generate", "--artifact", language.name, "0110"], capsys)
+    path = tmp_path / "xor template.json"
+    if not from_stdin:
+        path.write_text(document, encoding="utf-8")
+    operand = "-" if from_stdin else str(path)
+    output, error = _failure(
+        ["generate", f"--from-template={operand}", "--bits=1", language.name],
+        capsys,
+        stdin=document if from_stdin else "",
+    )
+    source = "stdin" if from_stdin else str(path)
+    assert not output
+    assert error.startswith(f"{source}: ")
+    assert "pass exactly 2 0/1 digits to --bits" in error
 
 
 @pytest.mark.parametrize("from_stdin", [False, True])

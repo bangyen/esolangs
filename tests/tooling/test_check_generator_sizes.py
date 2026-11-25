@@ -167,6 +167,23 @@ def test_timing_destination_is_checked_before_the_sweep(
         assert not fragment.exists()
 
 
+@pytest.mark.parametrize("repeat", ["0", "-1"])
+def test_invalid_repeats_are_refused_before_preflighting_outputs(
+    tmp_path, monkeypatch, capsys, repeat
+) -> None:
+    from checks import check_generator_sizes as sizes
+
+    target = tmp_path / "timings" / "report.json"
+    monkeypatch.setattr(
+        sizes, "sweep", lambda **_kwargs: pytest.fail("invalid repeats started a sweep")
+    )
+    with pytest.raises(SystemExit) as caught:
+        sizes.main(["--repeat", repeat, "--timings", str(target)])
+    assert caught.value.code == 2
+    assert "--repeat must be positive" in capsys.readouterr().err
+    assert not target.parent.exists()
+
+
 def test_timing_publication_preserves_existing_report_on_failure(
     tmp_path, monkeypatch, capsys
 ) -> None:
