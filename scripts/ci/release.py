@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Self
 # Release notes also run from a source checkout without the package installed.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from docs.anchors import mask_hidden
+from docs.writing import PublicationRecoveryError, replace_batch
 
 if TYPE_CHECKING:
     from esolangs import LanguageInfo
@@ -115,16 +116,6 @@ def normalize(path: Path, epoch: int) -> None:
         staged.replace(path)
 
 
-def _restore_archive(path: Path, backup: Path, retained: set[Path]) -> None:
-    """Preserve the saved bytes if an archive cannot be restored in place."""
-    try:
-        backup.replace(path)
-    except OSError as error:
-        retained.add(backup.parent)
-        print(f"could not restore {path}: {error}", file=sys.stderr)
-        print(f"original archive kept at {backup}", file=sys.stderr)
-
-
 def normalize_main(argv: list[str]) -> int:
     """Normalize every archive named on the command line to SOURCE_DATE_EPOCH."""
     parser = argparse.ArgumentParser(
@@ -144,8 +135,8 @@ def normalize_main(argv: list[str]) -> int:
     if not 0 <= epoch <= max_epoch:
         parser.error(message)
     retained: set[Path] = set()
-    with ExitStack() as scratch, ExitStack() as rollback:
-        pending: dict[Path, tuple[Path, Path | None]] = {}
+    with ExitStack() as scratch:
+        pending: dict[Path, tuple[Path, Path, Path | None]] = {}
         for archive in args.archives:
             try:
                 path, staged = scratch.enter_context(
@@ -153,21 +144,17 @@ def normalize_main(argv: list[str]) -> int:
                 )
                 if path in pending:
                     continue
-                backup = None
-                if len(args.archives) > 1:
-                    backup = staged.with_name("original")
-                    shutil.copy2(path, backup)
-                pending[path] = staged, backup
+                backup = staged.with_name("original")
+                shutil.copy2(path, backup)
+                pending[path] = staged, path, backup
             except (OSError, EOFError, tarfile.TarError, zlib.error) as error:
                 parser.exit(1, f"{archive}: {error}\n")
-        for path, (staged, backup) in pending.items():
-            try:
-                staged.replace(path)
-            except OSError as error:
-                parser.exit(1, f"{path}: {error}\n")
-            if backup is not None:
-                rollback.callback(_restore_archive, path, backup, retained)
-        rollback.pop_all()
+        try:
+            replace_batch(list(pending.values()))
+        except OSError as error:
+            if isinstance(error, PublicationRecoveryError):
+                retained.update(backup.parent for backup in error.backups)
+            parser.exit(1, f"{error}\n")
     return 0
 
 

@@ -23,6 +23,11 @@ GENERATED_DOCS = (
 class PublicationRecoveryError(OSError):
     """A failed restore that requires retaining the original files for recovery."""
 
+    def __init__(self, message: str, backups: list[Path]) -> None:
+        """Retain the surviving backup paths for the caller's cleanup."""
+        super().__init__(message)
+        self.backups = tuple(backups)
+
 
 def replace_batch(pending: list[tuple[Path, Path, Path | None]]) -> set[Path]:
     """Replace the prepared files, restoring their backups on failure."""
@@ -30,7 +35,9 @@ def replace_batch(pending: list[tuple[Path, Path, Path | None]]) -> set[Path]:
         for staged, path, _ in pending:
             staged.replace(path)
     except BaseException as error:
+        failed = path
         failures = []
+        backups = []
         for staged, path, backup in reversed(pending):
             if staged.exists():
                 continue  # This replacement did not consume its staged file.
@@ -43,9 +50,14 @@ def replace_batch(pending: list[tuple[Path, Path, Path | None]]) -> set[Path]:
                 failures.append(f"could not restore {path}: {restore_error}")
                 if backup is not None:
                     failures.append(f"original kept at {backup}")
+                    backups.append(backup)
         if failures:
             details = "\n".join(failures)
-            raise PublicationRecoveryError(f"{error}\n{details}") from error
+            raise PublicationRecoveryError(
+                f"{failed}: {error}\n{details}", backups
+            ) from error
+        if isinstance(error, OSError):
+            raise OSError(f"{failed}: {error}") from error
         raise
     return {path for _, path, _ in pending}
 

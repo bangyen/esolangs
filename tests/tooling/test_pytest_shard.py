@@ -238,6 +238,48 @@ def test_shard_protects_its_paths_from_the_pytest_timing_recorder(
     assert path.read_bytes() == b"existing evidence"
 
 
+@pytest.mark.medium
+@pytest.mark.parametrize("configured_in_file", [False, True], ids=["override", "ini"])
+def test_shard_guard_checks_the_effective_pytest_recorder_path(
+    tmp_path, monkeypatch, capfd, configured_in_file
+) -> None:
+    shard = load_script()
+    monkeypatch.setattr(shard, "ROOT", tmp_path)
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
+    addopts = "--duration-output=timings.json"
+    ini = "[pytest]\n" + (f"addopts = {addopts}\n" if configured_in_file else "")
+    (tmp_path / "pytest.ini").write_text(ini, encoding="utf-8")
+    (tmp_path / "test_probe.py").write_text(
+        "def test_probe(): pass\n", encoding="utf-8"
+    )
+    timing = tmp_path / "timings.json"
+    progress = tmp_path / "timings.json.progress.jsonl"
+    original = b'{"test_probe.py::test_probe":1}\n'
+    timing.write_bytes(original)
+    progress.write_bytes(b"previous progress\n")
+    extra = [] if configured_in_file else ["-o", f"addopts={addopts}"]
+    command = [
+        "--marker=",
+        "--shard=0",
+        "--shards=1",
+        "--durations",
+        str(timing),
+        "--",
+        "-p",
+        "scripts.ci.shard",
+        *extra,
+    ]
+    assert shard.shard_main(command) == pytest.ExitCode.USAGE_ERROR
+    assert "would replace --durations" in capfd.readouterr().err
+    assert timing.read_bytes() == original
+    assert progress.read_bytes() == b"previous progress\n"
+    assert not (tmp_path / "timings.json.meta.json").exists()
+
+    assert shard.shard_main([*command, "--duration-output=report.json"]) == 0
+    assert (tmp_path / "report.json.meta.json").is_file()
+    assert timing.read_bytes() == original
+
+
 def test_stale_exclusions_name_the_nodes_without_replacing_the_manifest(
     tmp_path, monkeypatch, capsys
 ) -> None:

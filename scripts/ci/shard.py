@@ -34,6 +34,7 @@ from esolangs.runtime._json import unique_object
 ROOT = Path(__file__).resolve().parents[2]
 _COLLECTION_TIMEOUT = 60.0
 _DURATION_OUTPUT = "--duration-output"
+_DURATION_PROTECTED = "_ESOLANGS_SHARD_DURATION_PROTECTED"
 
 
 class CollectionError(RuntimeError):
@@ -44,6 +45,7 @@ def _pytest_env() -> dict[str, str]:
     """Use the declared selectors even when a caller has local pytest options."""
     env = dict(os.environ)
     env.pop("PYTEST_ADDOPTS", None)
+    env.pop(_DURATION_PROTECTED, None)
     return env
 
 
@@ -321,18 +323,17 @@ def _duration_output_path(pytest_args: list[str]) -> Path | None:
 
 
 def _check_duration_output(
-    pytest_args: list[str], protected: Sequence[tuple[str, Path | None]]
+    output: Path | None, protected: Sequence[tuple[str, Path]]
 ) -> None:
     """Keep timing recorder paths separate from the shard's own artifacts."""
-    if (output := _duration_output_path(pytest_args)) is None:
+    if output is None:
         return
     destinations = {path.resolve() for path in (output, *_duration_sidecars(output))}
     parent = output.parent.resolve()
     snapshot = re.compile(re.escape(output.name) + r"\.[0-9a-f]{64}\.json")
     for option, path in protected:
-        if path is not None and (
-            path.resolve() in destinations
-            or (path.parent.resolve() == parent and snapshot.fullmatch(path.name))
+        if path.resolve() in destinations or (
+            path.parent.resolve() == parent and snapshot.fullmatch(path.name)
         ):
             raise ValueError(
                 f"{_DURATION_OUTPUT} {output} would replace {option} {path}"
@@ -367,14 +368,16 @@ def shard_main(argv: list[str] | None = None) -> int:
                     raise ValueError(
                         f"{option} {output} would replace --durations {args.durations}"
                     )
-        _check_duration_output(
-            rest,
-            (
+        protected = [
+            (option, path.absolute())
+            for option, path in (
                 ("--durations", args.durations),
                 ("--manifest", args.manifest),
                 *coverage_outputs,
-            ),
-        )
+            )
+            if path is not None
+        ]
+        _check_duration_output(_duration_output_path(rest), protected)
         durations = load_durations(args.durations) if args.durations else None
     except (OSError, ValueError, RuntimeError) as error:
         print(error, file=sys.stderr)
@@ -427,6 +430,11 @@ def shard_main(argv: list[str] | None = None) -> int:
         print(f"shard {args.shard}/{args.shards} of -m {args.marker}: no tests")
         return int(data is not None)
     print(f"shard {args.shard}/{args.shards} of -m {args.marker}: {len(ids)} tests")
+    env = _pytest_env()
+    if protected:
+        env[_DURATION_PROTECTED] = json.dumps(
+            [(option, str(path)) for option, path in protected]
+        )
     if data is not None:
         return _run_coverage_shard(
             data,
@@ -438,17 +446,22 @@ def shard_main(argv: list[str] | None = None) -> int:
                 "collected": coverage_evidence.fingerprint(collected),
                 "nodes": ids,
             },
+            env,
         )
     return subprocess.run(
         [sys.executable, "-m", "pytest", *rest, *ids],
         cwd=ROOT,
-        env=_pytest_env(),
+        env=env,
         check=False,
     ).returncode
 
 
 def _run_coverage_shard(
-    data: Path, state: str, pytest_args: list[str], selection: dict[str, Any]
+    data: Path,
+    state: str,
+    pytest_args: list[str],
+    selection: dict[str, Any],
+    env: dict[str, str],
 ) -> int:
     """Publish coverage with the completed shard selection."""
     with tempfile.TemporaryDirectory(prefix=".coverage.", dir=data.parent) as stage:
@@ -467,7 +480,7 @@ def _run_coverage_shard(
                 *selection["nodes"],
             ],
             cwd=ROOT,
-            env={**_pytest_env(), "COVERAGE_FILE": str(staged)},
+            env={**env, "COVERAGE_FILE": str(staged)},
             check=False,
         )
         if result.returncode:
@@ -771,6 +784,13 @@ def pytest_configure(config: pytest.Config) -> None:
     """Only the controller owns the destination."""
     path = config.getoption(_DURATION_OUTPUT)
     if path is not None and not hasattr(config, "workerinput"):
+        path = path.absolute()
+        if raw := os.environ.get(_DURATION_PROTECTED):
+            try:
+                protected = [(option, Path(value)) for option, value in json.loads(raw)]
+                _check_duration_output(path, protected)
+            except (OSError, ValueError, RuntimeError) as error:
+                raise pytest.UsageError(str(error)) from error
         config.pluginmanager.register(Recorder(path))
 
 

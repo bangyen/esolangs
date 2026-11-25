@@ -1,5 +1,6 @@
 """Fill portable template bindings through generate and execute the result."""
 
+import gzip
 import json
 import shlex
 import subprocess
@@ -100,11 +101,35 @@ def test_fill_reports_a_bom_on_saved_template_stdin(language, capsys):
     assert "remove the UTF-8 BOM" in error
 
 
+@pytest.mark.parametrize("kind", ["gzip", "PNG"])
+def test_saved_template_identifies_native_binary_files(
+    language, tmp_path, capsys, kind
+):
+    path = tmp_path / "template"
+    if kind == "gzip":
+        template = language.generate("01")
+        assert isinstance(template, esolangs.TemplateArtifact)
+        path.write_bytes(gzip.compress(template.source.encode("utf-8")))
+    else:
+        raster = esolangs.Language(first(source_kind="raster", boolean_generator=True))
+        raster.to_file(raster.generate("01"), path)
+    output, error = _failure(
+        ["generate", f"--from-template={path}", "--bits=1", language.name], capsys
+    )
+    assert output == ""
+    assert str(path) in error
+    assert "--from-template expects portable JSON" in error
+    assert f"input is native {kind}" in error
+    assert "esolangs generate --artifact" in error
+
+
 @pytest.mark.parametrize(
     ("payload", "diagnostic"),
     [
         (b"\xef\xbb\xbf{}", b"remove the UTF-8 BOM"),
         (b'{"source":"\xff', b"position 11: invalid start byte"),
+        (b"\x89PNG\r\n\x1a\n", b"input is native PNG"),
+        (b"\x1f\x8b", b"input is native gzip"),
     ],
 )
 def test_saved_template_pipe_reports_encoding_errors_before_eof(

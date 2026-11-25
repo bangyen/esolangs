@@ -97,6 +97,7 @@ from esolangs.cli.io import (
     _diagnostic,
     _fail,
     _flush_stdout,
+    _native_binary_format,
     _output_unavailable,
     _read_stdin,
     _read_truth_table,
@@ -543,11 +544,24 @@ def _emit_generated(
     _note_export_settings(artifact, declaration)
 
 
+def _check_saved_template_format(data: bytes | bytearray, label: str) -> None:
+    """Explain how to obtain retained bindings from native binary source."""
+    if kind := _native_binary_format(data):
+        raise _with_cli_hint(
+            ProgramError(
+                f"{label}: --from-template expects portable JSON. "
+                f"The input is native {kind}."
+            ),
+            "regenerate with esolangs generate --artifact and pass the template JSON",
+        )
+
+
 def _saved_template_pipe_check() -> Callable[[bytes, bytearray], None]:
     """Refuse a BOM or invalid UTF-8 without waiting for the rest of a template."""
     decoder = UTF8Decoder()
 
     def check(chunk: bytes, received: bytearray) -> None:
+        _check_saved_template_format(received, "stdin")
         if received.startswith(BOM_UTF8):
             raise _portable_bom_error("stdin")
         try:
@@ -578,6 +592,7 @@ def _read_saved_template(
             )
     else:
         data = _bounded_read(path, None)
+    _check_saved_template_format(data, label)
     try:
         artifact = _decode_portable_record(name, path, data, catalog)
     except ProgramError as error:

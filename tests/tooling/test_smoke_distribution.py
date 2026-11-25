@@ -242,6 +242,32 @@ def test_normalize_accepts_an_empty_archive_with_exactly_two_zero_blocks(
         assert archive.getnames() == []
 
 
+@pytest.mark.parametrize("count", [1, 2])
+def test_normalize_rolls_back_a_replacement_consumed_before_interrupt(
+    tmp_path, monkeypatch, count
+) -> None:
+    paths = [tmp_path / f"{index}.tar.gz" for index in range(count)]
+    for path in paths:
+        with tarfile.open(path, "w:gz") as archive:
+            archive.addfile(tarfile.TarInfo("example"))
+    original = [path.read_bytes() for path in paths]
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
+    replace = Path.replace
+
+    def interrupt(path, target):
+        result = replace(path, target)
+        if path.name == "normalized" and target == paths[-1].resolve():
+            assert result.read_bytes() != original[-1]
+            raise KeyboardInterrupt
+        return result
+
+    monkeypatch.setattr(Path, "replace", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        smoke.main(["normalize", *(str(path) for path in paths)])
+    assert [path.read_bytes() for path in paths] == original
+    assert set(tmp_path.iterdir()) == set(paths)
+
+
 def test_failed_release_restore_preserves_the_original_for_recovery(
     tmp_path, monkeypatch, capsys
 ) -> None:
@@ -270,7 +296,7 @@ def test_failed_release_restore_preserves_the_original_for_recovery(
     assert (
         f"could not restore {targets[1].resolve()}: injected restore failure" in message
     )
-    backup = Path(message.partition("original archive kept at ")[2].strip())
+    backup = Path(message.partition("original kept at ")[2].strip())
     assert backup.read_bytes() == originals[1]
     assert set(tmp_path.iterdir()) == {*targets, backup.parent}
     backup.replace(targets[1])

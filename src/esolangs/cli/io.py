@@ -267,6 +267,14 @@ def _reject_portable_source(
     )
 
 
+def _native_binary_format(data: bytes | bytearray) -> str | None:
+    """Recognize native binary source by its signature."""
+    for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
+        if data.startswith(signature):
+            return kind
+    return None
+
+
 def _load_portable_source(
     language: str,
     path: str,
@@ -282,15 +290,13 @@ def _load_portable_source(
     )
 
     label = "stdin" if path == "-" else display_label(path)
-    for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
-        if data.startswith(signature):
-            raise _with_cli_hint(
-                ProgramError(
-                    f"{label}: --artifact expects portable JSON; "
-                    f"the input is native {kind}"
-                ),
-                _native_run_hint(language, path, catalog, retry.options_for(language)),
-            )
+    if kind := _native_binary_format(data):
+        raise _with_cli_hint(
+            ProgramError(
+                f"{label}: --artifact expects portable JSON; the input is native {kind}"
+            ),
+            _native_run_hint(language, path, catalog, retry.options_for(language)),
+        )
     try:
         artifact = _decode_portable_record(language, path, data, catalog)
     except ProgramError as error:
