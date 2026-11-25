@@ -31,7 +31,7 @@ from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.decision import DecisionNode, reduced_diagram
 from esolangs.generation.fraction_templates import fraction_template, wrap_fractions
 from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score
@@ -216,23 +216,13 @@ def refractran_request(request: GenerationRequest) -> TemplateLayout:
     if request.balance:
         plan = _Plan(request.table)
         default = _layout(request.table, None, plan=plan)
-        return _balance(request.table, default, plan=plan)
+        return _balance(default, plan)
     return _layout(request.table, request.width)
 
 
-def refractran_balance_request(request: BalanceRequest) -> TemplateLayout:
-    """Return the best plain, rail-circuit or marked-path layout."""
-    default = request.source
-    if not isinstance(default, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
-    return _balance(request.table, default)
-
-
-def _balance(
-    table: str, default: TemplateLayout, *, plan: _Plan | None = None
-) -> TemplateLayout:
+def _balance(default: TemplateLayout, plan: _Plan) -> TemplateLayout:
     candidates = [default]
-    for layout in (default, _path_program(table, plan=plan)):
+    for layout in (default, _path_program(plan.table, plan=plan)):
         if layout is not None:
             tokens = layout.source.split()
             width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))

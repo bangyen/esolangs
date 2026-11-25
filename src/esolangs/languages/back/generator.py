@@ -51,7 +51,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
 )
 from esolangs.generation.lookup import symmetric_outputs
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
     TemplateLayout,
@@ -291,7 +291,6 @@ def _layout(
     width: int | None,
     *,
     balance: bool = False,
-    default: TemplateLayout | None = None,
 ) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
@@ -305,7 +304,7 @@ def _layout(
         vertical = layout_tokens(["\\", *units], 1)
         if balance:
             return min(
-                default or flat,
+                flat,
                 vertical,
                 key=lambda layout: balance_score(layout.source),
             )
@@ -329,11 +328,10 @@ def _layout(
         return program
 
     folded = None
-    if default is None:
-        default = comb(width)
-        if width is None and levels > _FOLD_BASE:
-            folded = _back_htree(table, weights, ids=ids)
-            default = min(default, folded, key=lambda layout: grid_rank(layout.source))
+    default = comb(width)
+    if width is None and levels > _FOLD_BASE:
+        folded = _back_htree(table, weights, ids=ids)
+        default = min(default, folded, key=lambda layout: grid_rank(layout.source))
     if not balance:
         return default
 
@@ -600,10 +598,3 @@ def _back_ordered(
 def back_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
     return _layout(request.table, request.width, balance=request.balance)
-
-
-def back_balance_request(request: BalanceRequest) -> TemplateLayout:
-    """Balance the native layouts while preserving their slot positions."""
-    if not isinstance(request.source, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
-    return _layout(request.table, None, balance=True, default=request.source)

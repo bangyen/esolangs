@@ -976,14 +976,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     if options.keys() - {"rng"}:
         raise TypeError("painfuck machines accept only the rng runtime option")
     image = _Image(_translate(source))
-
-    def build(io: IO, rng: Randomness | None) -> _Machine:
-        return _Machine(image, io, rng)
-
-    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
-        return _execute(image, io, rng)
-
-    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
+    return RandomRuntimePlan.driven(
+        partial(_Machine, image), policy=CAPABILITIES.completion
+    ).bind(options.get("rng"))
 
 
 def _execute(

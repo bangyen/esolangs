@@ -39,6 +39,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import HaltError
@@ -382,14 +383,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     if options.keys() - {"rng"}:
         raise TypeError("caballo machines accept only the rng runtime option")
     image = parse(source)
-
-    def build(io: IO, rng: Randomness | None) -> _Machine:
-        return _Machine(image, io, rng)
-
-    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
-        return _execute(image, io, rng)
-
-    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
+    return RandomRuntimePlan.driven(
+        partial(_Machine, image), policy=CAPABILITIES.completion
+    ).bind(options.get("rng"))
 
 
 def _execute(

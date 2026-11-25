@@ -47,6 +47,7 @@ Decisions:
 import re
 from collections.abc import Callable, Mapping
 from difflib import get_close_matches
+from functools import partial
 from types import MappingProxyType
 from typing import Any, Never, cast
 
@@ -677,14 +678,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     if options.keys() - {"rng"}:
         raise TypeError("modulous machines accept only the rng runtime option")
     image = _parse_tokens(source)
-
-    def build(io: IO, rng: Randomness | None) -> _Machine:
-        return _Machine(image, io, rng)
-
-    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
-        return _execute(image, io, rng)
-
-    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
+    return RandomRuntimePlan.driven(
+        partial(_Machine, image), policy=CAPABILITIES.completion
+    ).bind(options.get("rng"))
 
 
 def _execute(

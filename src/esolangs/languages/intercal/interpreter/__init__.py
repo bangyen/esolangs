@@ -72,6 +72,7 @@ from __future__ import annotations
 import gc
 from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from functools import partial
 from typing import Any, NamedTuple
 
 from esolangs.exceptions import EsolangError, HaltError
@@ -397,14 +398,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     if options.keys() - {"rng"}:
         raise TypeError("intercal machines accept only the rng runtime option")
     image = _prepare_source(source)
-
-    def build(io: IO, rng: Randomness | None) -> _Machine:
-        return _Machine(image, io, rng)
-
-    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
-        return _execute(image, io, rng)
-
-    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
+    return RandomRuntimePlan.driven(
+        partial(_Machine, image), policy=CAPABILITIES.completion
+    ).bind(options.get("rng"))
 
 
 def _execute(

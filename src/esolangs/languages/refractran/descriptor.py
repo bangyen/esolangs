@@ -14,7 +14,7 @@ PAIR = ("0", "1")
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_space_delimited
     from esolangs.registry._backend import BooleanBackend, TemplateSpec
@@ -32,9 +32,6 @@ def _backend() -> BackendDefinition:
             "esolangs.generation.helpers",
             "same_token_layout",
             ("template", "plain", "_layout"),
-        ),
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.refractran.generator", "refractran_balance_request"
         ),
         template=TemplateSpec(pair=PAIR),
     )

@@ -44,7 +44,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.lookup import constant_output
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
     TemplateLayout,
@@ -392,16 +392,6 @@ def _folds(
 def arrowqueue_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
     return _layout(request.table, request.width, balance=request.balance)
-
-
-def arrowqueue_balance_request(request: BalanceRequest) -> TemplateLayout:
-    """Return the default or the fold with the least balanced side."""
-    default = request.source
-    if not isinstance(default, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
-    if constant_output(request.table) is not None:
-        return default
-    return _balance(default, _folds(request.table))
 
 
 def _balance(default: TemplateLayout, folds: list[TemplateLayout]) -> TemplateLayout:

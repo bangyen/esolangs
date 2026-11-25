@@ -702,9 +702,13 @@ def _is_template_for(
         candidates.append(sized.source)
 
     def matches_balance() -> bool:
-        if backend.balance is None and (
-            backend.wrap_balance is not None
-            or not _can_balance_template(canonical_layout, backend.wrap)
+        if (
+            not backend.layout_balance
+            and backend.balance is None
+            and (
+                backend.wrap_balance is not None
+                or not _can_balance_template(canonical_layout, backend.wrap)
+            )
         ):
             return False
         try:
