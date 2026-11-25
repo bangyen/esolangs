@@ -59,6 +59,20 @@ def test_native_rejection_suggests_running_portable_json(tmp_path, capsys, langu
         assert "--artifact" not in error
 
 
+@pytest.mark.parametrize("source", ['"+."', '{"example":"+."}'])
+def test_artifact_run_suggests_the_native_command_for_json_shaped_source(
+    tmp_path, capsys, source
+):
+    path = tmp_path / "native source.bf"
+    path.write_text(source, encoding="utf-8")
+    output, error = _failure(["run", "--artifact", REFERENCE, str(path)], capsys)
+    assert not output
+    assert "remove --artifact" in error
+    retry = shlex.split(error.split("for example: ", 1)[1])
+    assert retry == ["esolangs", "run", REFERENCE, str(path)]
+    assert call_main(retry[1:], capsys) == "\x01"
+
+
 @pytest.mark.parametrize("duplicate", [False, True])
 def test_native_run_keeps_json_with_only_a_similar_format_marker(
     tmp_path, capsys, duplicate
@@ -108,6 +122,8 @@ def test_native_run_rejects_a_tagged_artifact_with_missing_fields(
     assert not output
     assert str(path) in error
     assert "invalid portable program: unexpected or missing fields" in error
+    _, explicit = _failure(["run", "--artifact", REFERENCE, str(path)], capsys)
+    assert "remove --artifact" not in explicit
 
 
 @pytest.mark.parametrize(

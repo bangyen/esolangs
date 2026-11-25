@@ -63,6 +63,10 @@ from esolangs.settings import (
 _FORMAT = "esolangs.program"
 
 
+class _MissingPortableEnvelopeError(ValueError):
+    """The JSON document has no portable format tag."""
+
+
 def _has_portable_tag(document: str) -> bool:
     """Read complete top-level fields without requiring the rest of the object."""
     index = _json_space(document, 0)
@@ -132,14 +136,17 @@ def _check_portable_fields(value: dict[str, Any]) -> None:
             fields.add("generation_width")
     elif "input_arity" in value:
         fields.add("input_arity")
+    error_type = (
+        ValueError if value.get("format") == _FORMAT else _MissingPortableEnvelopeError
+    )
     if set(value) != fields:
-        raise ValueError("unexpected or missing fields")
+        raise error_type("unexpected or missing fields")
     if (
         value["format"] != _FORMAT
         or type(value["version"]) is not int
         or value["version"] != 1
     ):
-        raise ValueError("unsupported program format or version")
+        raise error_type("unsupported program format or version")
 
 
 class _ArtifactLanguageMismatchError(ValueError):
@@ -621,7 +628,7 @@ def from_json(
     try:
         value = record_loads(document)
         if not isinstance(value, dict):
-            raise ValueError("document must be an object")
+            raise _MissingPortableEnvelopeError("document must be an object")
         _check_portable_fields(value)
         kind = value["kind"]
         origin = value["language"]

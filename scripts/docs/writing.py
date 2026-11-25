@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -36,6 +37,54 @@ def generated_sources(
                 f"{name}: missing generated file. "
                 "Restore it from Git, then run just docs."
             )
+
+
+def publish_generated(staging: Path, root: Path) -> None:
+    """Replace the rendered files as a batch, saving originals for rollback."""
+    saved = root / ".docs-publish"
+    saved.mkdir()
+    retain = False
+    try:
+        pending: list[tuple[Path, Path, Path | None]] = []
+        for relative in GENERATED_DOCS:
+            staged = staging / relative
+            path = root / relative
+            if not staged.is_file() or (
+                path.is_file() and staged.read_bytes() == path.read_bytes()
+            ):
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
+            backup = None
+            if path.exists() or path.is_symlink():
+                backup = saved / relative
+                backup.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, backup, follow_symlinks=False)
+            pending.append((staged, path, backup))
+        try:
+            for staged, path, _ in pending:
+                staged.replace(path)
+        except BaseException as error:
+            failures = []
+            for staged, path, backup in reversed(pending):
+                if staged.exists():
+                    continue  # This replacement did not consume its staged file.
+                try:
+                    if backup is None:
+                        path.unlink()
+                    else:
+                        backup.replace(path)
+                except OSError as restore_error:
+                    failures.append(f"could not restore {path}: {restore_error}")
+            if failures:
+                retain = True
+                details = "\n".join(failures)
+                raise OSError(
+                    f"{error}\n{details}\noriginals kept in {saved}"
+                ) from error
+            raise
+    finally:
+        if not retain:
+            shutil.rmtree(saved)
 
 
 def write_if_changed(path: Path, text: str, *, encoding: str | None = None) -> bool:

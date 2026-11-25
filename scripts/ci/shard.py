@@ -302,11 +302,26 @@ def shard_main(argv: list[str] | None = None) -> int:
     """Collect the band, run this shard's slice, return pytest's exit code."""
     args, rest = _parse_args(argv)
     try:
+        data = args.bind_coverage.resolve() if args.bind_coverage is not None else None
+        if args.durations is not None:
+            timing = args.durations.resolve()
+            outputs = (
+                ("--manifest", args.manifest),
+                ("--bind-coverage", data),
+                (
+                    "--bind-coverage receipt",
+                    coverage_evidence.sidecar(data) if data is not None else None,
+                ),
+            )
+            for option, output in outputs:
+                if output is not None and output.resolve() == timing:
+                    raise ValueError(
+                        f"{option} {output} would replace --durations {args.durations}"
+                    )
         durations = load_durations(args.durations) if args.durations else None
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, RuntimeError) as error:
         print(error, file=sys.stderr)
         return 2
-    data = args.bind_coverage.resolve() if args.bind_coverage is not None else None
     state = coverage_evidence.checkout(ROOT, data) if data is not None else ""
     try:
         collected = collect_ids(args.marker)

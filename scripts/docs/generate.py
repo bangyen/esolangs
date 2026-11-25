@@ -18,7 +18,7 @@ import typing
 import esolangs
 from docs.curation import update_well_known, well_known
 from docs.proof_status import splice, update_catalogue, update_docs
-from docs.writing import GENERATED_DOCS, generated_sources
+from docs.writing import generated_sources, publish_generated
 from docs.writing import write_if_changed as _write_if_changed
 from esolangs.registry import LANGUAGES, SourceKind, wiki_url
 
@@ -483,14 +483,7 @@ def docs_main(*, output_root: pathlib.Path = ROOT) -> int:
             staged.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, staged)
         messages = [message for update, message in updates if update(staging)]
-        for relative in GENERATED_DOCS:
-            staged = staging / relative
-            path = output_root / relative
-            if staged.is_file() and (
-                not path.is_file() or staged.read_bytes() != path.read_bytes()
-            ):
-                path.parent.mkdir(parents=True, exist_ok=True)
-                staged.replace(path)
+        publish_generated(staging, output_root)
     for message in messages:
         print(message)
     unchanged = len(updates) - len(messages)

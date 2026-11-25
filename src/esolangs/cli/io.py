@@ -296,7 +296,10 @@ def _load_portable_source(
     catalog: Catalog,
 ) -> ProgramArtifact[Program]:
     """Restore runnable JSON and combine any explicit compatible choices."""
-    from esolangs.portable import _ArtifactLanguageMismatchError
+    from esolangs.portable import (
+        _ArtifactLanguageMismatchError,
+        _MissingPortableEnvelopeError,
+    )
 
     label = "stdin" if path == "-" else display_label(path)
     for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
@@ -323,7 +326,7 @@ def _load_portable_source(
                     "pass the artifact's recorded language to esolangs run --artifact",
                 )
             raise _with_cli_hint(error, hint) from cause
-        if not isinstance(cause, JSONDecodeError):
+        if not isinstance(cause, (JSONDecodeError, _MissingPortableEnvelopeError)):
             raise
         raise _with_cli_hint(
             error,

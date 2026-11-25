@@ -108,6 +108,50 @@ def test_invalid_marker_reports_the_error_and_keeps_the_collection_log(
     assert "Wrong expression passed to '-m'" in contents
 
 
+@pytest.mark.parametrize("output", ["manifest", "coverage", "coverage receipt"])
+def test_shard_refuses_to_overwrite_timings_before_collection(
+    tmp_path, monkeypatch, capsys, output
+):
+    shard = load_script()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
+    coverage = tmp_path / ".coverage"
+    timing = (
+        tmp_path / "timings.json"
+        if output == "manifest"
+        else coverage
+        if output == "coverage"
+        else shard.coverage_evidence.sidecar(coverage)
+    )
+    original = b'{"test_probe.py::test_probe":1}\n'
+    timing.write_bytes(original)
+    options = (
+        ["--manifest", str(timing)]
+        if output == "manifest"
+        else ["--bind-coverage", str(coverage), "--", "--cov-branch"]
+    )
+    assert (
+        shard.shard_main(
+            [
+                "--marker",
+                "",
+                "--shard",
+                "0",
+                "--shards",
+                "1",
+                "--durations",
+                timing.name,
+                *options,
+            ]
+        )
+        == 2
+    )
+    diagnostic = capsys.readouterr().err
+    assert "would replace --durations" in diagnostic
+    assert str(timing) in diagnostic
+    assert timing.read_bytes() == original
+
+
 def test_stale_exclusions_name_the_nodes_without_replacing_the_manifest(
     tmp_path, monkeypatch, capsys
 ) -> None:

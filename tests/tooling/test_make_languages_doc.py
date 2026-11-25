@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.docs.writing import GENERATED_DOCS
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
 from tests.tooling.script_support import load
@@ -67,7 +68,7 @@ def test_main_updates_all_registry_derived_docs(
     module.update_readme = lambda _root: called.append("readme") or True
     module.update_usage = lambda _root: called.append("usage") or True
     module.update_limitations = lambda _root: called.append("limitations") or True
-    for relative in module.GENERATED_DOCS:
+    for relative in GENERATED_DOCS:
         if relative == "src/esolangs/registry/well_known.json":
             continue
         target = tmp_path / relative
@@ -87,7 +88,7 @@ def test_main_updates_all_registry_derived_docs(
 @pytest.mark.parametrize("side", ["START", "END"])
 def test_failed_docs_render_preserves_all_published_files(tmp_path, capsys, side):
     module = load_script()
-    for relative in module.GENERATED_DOCS:
+    for relative in GENERATED_DOCS:
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((REPO_ROOT / relative).read_bytes())
@@ -97,7 +98,7 @@ def test_failed_docs_render_preserves_all_published_files(tmp_path, capsys, side
     usage = tmp_path / "docs/usage.md"
     missing = f"<!-- PUBLIC-API:{side} -->"
     usage.write_text(usage.read_text().replace(missing, ""))
-    before = {name: (tmp_path / name).read_bytes() for name in module.GENERATED_DOCS}
+    before = {name: (tmp_path / name).read_bytes() for name in GENERATED_DOCS}
 
     with pytest.raises(
         ValueError, match=f"docs/usage.md: missing generated marker {missing}"
@@ -105,6 +106,59 @@ def test_failed_docs_render_preserves_all_published_files(tmp_path, capsys, side
         module.docs_main(output_root=tmp_path)
 
     assert {name: (tmp_path / name).read_bytes() for name in before} == before
+    assert not list(tmp_path.glob(".docs-render-*"))
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("restore_failure", [False, True])
+def test_failed_docs_publication_restores_originals(
+    tmp_path, monkeypatch, capsys, restore_failure
+):
+    module = load_script()
+    new_path = "src/esolangs/registry/well_known.json"
+    for name in GENERATED_DOCS:
+        if name != new_path:
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes((REPO_ROOT / name).read_bytes())
+    proof = tmp_path / "docs/proofs/index.md"
+    usage = tmp_path / "docs/usage.md"
+    for path, marker in (
+        (proof, "<!-- PROOF-TOTALS:START -->"),
+        (usage, "<!-- INPUT-SHAPES:START -->"),
+    ):
+        path.write_text(
+            path.read_text().replace(marker, marker + "\nold generated text")
+        )
+    before = {
+        tmp_path / name: (tmp_path / name).read_bytes()
+        for name in GENERATED_DOCS
+        if name != new_path
+    }
+    replace = Path.replace
+
+    def refuse(path, target):
+        if target == usage:
+            raise OSError("injected publication failure")
+        if restore_failure and target == proof and ".docs-publish" in path.parts:
+            raise OSError("injected restoration failure")
+        return replace(path, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "replace", refuse)
+        with pytest.raises(OSError, match="injected publication failure") as caught:
+            module.docs_main(output_root=tmp_path)
+
+    backup = tmp_path / ".docs-publish/docs/proofs/index.md"
+    if restore_failure:
+        assert "injected restoration failure" in str(caught.value)
+        assert str(backup.parents[2]) in str(caught.value)
+        assert backup.read_bytes() == before[proof]
+        backup.replace(proof)
+    else:
+        assert not (tmp_path / ".docs-publish").exists()
+    assert all(path.read_bytes() == original for path, original in before.items())
+    assert not (tmp_path / new_path).exists()
     assert not list(tmp_path.glob(".docs-render-*"))
     assert capsys.readouterr().out == ""
 
