@@ -20,17 +20,18 @@ import tempfile
 from collections.abc import Sequence
 from contextlib import suppress
 from datetime import date
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 import pytest
 from _pytest.reports import TestReport
 from verify import coverage as coverage_evidence
-from verify.process import write_text
+from verify.process import run_bounded, write_text
 from verify.pytest_evidence import OUTPUT_OPTION, PLUGIN
 
 from esolangs.runtime._json import unique_object
 
 ROOT = Path(__file__).resolve().parents[2]
+_COLLECTION_TIMEOUT = 60.0
 
 
 class CollectionError(RuntimeError):
@@ -45,9 +46,11 @@ def _pytest_env() -> dict[str, str]:
 
 
 def _collection_error(
-    marker: str, result: subprocess.CompletedProcess[str]
+    marker: str, reason: str, stdout: bytes, stderr: bytes
 ) -> CollectionError:
     """Keep all output in the log and expose only pytest's error on the console."""
+    output = stdout.decode("utf-8", errors="replace")
+    errors = stderr.decode("utf-8", errors="replace")
     directory = ROOT / "notes" / "verification"
     directory.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -58,13 +61,13 @@ def _collection_error(
         dir=directory,
         delete=False,
     ) as log:
-        log.write(result.stdout)
+        log.write(output)
         log.write("\n")
-        log.write(result.stderr)
-    detail = result.stderr.strip() or "\n".join(
-        line for line in result.stdout.splitlines() if line.startswith(("E ", "ERROR "))
+        log.write(errors)
+    detail = errors.strip() or "\n".join(
+        line for line in output.splitlines() if line.startswith(("E ", "ERROR "))
     )
-    header = f"collection for -m {marker!r} failed (pytest exit {result.returncode})"
+    header = f"collection for -m {marker!r} {reason}"
     diagnostic = f"\n{detail[:2048]}" if detail else ""
     return CollectionError(f"{header}{diagnostic}\n[log] {log.name}")
 
@@ -79,34 +82,49 @@ def collect_ids(marker: str, *, paths: Sequence[str] = ()) -> list[str]:
     """
     with tempfile.TemporaryDirectory(prefix="pytest-collection-") as directory:
         destination = Path(directory) / "ids.json"
-        proc = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pytest",
-                "--collect-only",
-                "-q",
-                "-o",
-                "addopts=",
-                "-p",
-                "scripts.ci.shard",
-                "--collection-output",
-                str(destination),
-                "-m",
+        command = [
+            sys.executable,
+            "-u",
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-s",
+            "-q",
+            "-o",
+            "addopts=",
+            "-p",
+            "scripts.ci.shard",
+            "--collection-output",
+            str(destination),
+            "-m",
+            marker,
+            *paths,
+        ]
+        try:
+            proc = run_bounded(
+                command,
+                cwd=ROOT,
+                env=_pytest_env(),
+                capture_output=True,
+                text=False,
+                timeout=_COLLECTION_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise _collection_error(
                 marker,
-                *paths,
-            ],
-            cwd=ROOT,
-            env=_pytest_env(),
-            capture_output=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-        )
+                f"timed out after {_COLLECTION_TIMEOUT:g}s",
+                error.stdout or b"",
+                error.stderr or b"",
+            ) from error
         if proc.returncode == 5:
             return []
         if proc.returncode != 0:
-            raise _collection_error(marker, proc)
+            raise _collection_error(
+                marker,
+                f"failed (pytest exit {proc.returncode})",
+                cast("bytes", proc.stdout),
+                cast("bytes", proc.stderr),
+            )
         return sorted(set(json.loads(destination.read_text(encoding="utf-8"))))
 
 

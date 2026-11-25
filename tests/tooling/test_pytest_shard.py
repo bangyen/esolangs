@@ -65,6 +65,28 @@ class TestShardIds:
 
 
 @pytest.mark.medium
+def test_timed_out_collection_keeps_partial_log(tmp_path, monkeypatch, capsys):
+    shard = load_script()
+    monkeypatch.setattr(shard, "ROOT", tmp_path)
+    monkeypatch.setattr(shard, "_COLLECTION_TIMEOUT", 2.0)
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
+    (tmp_path / "test_blocked.py").write_text(
+        "from time import sleep\n"
+        "print('started importing test_blocked')\n"
+        "sleep(20)\n"
+        "print('finished importing test_blocked')\n",
+        encoding="utf-8",
+    )
+    assert shard.shard_main(["--marker", "", "--shard", "0", "--shards", "1"]) == 2
+    message = capsys.readouterr().err
+    assert "collection for -m '' timed out after 2s" in message
+    log = Path(message.partition("[log] ")[2].strip())
+    contents = log.read_text(encoding="utf-8")
+    assert "started importing test_blocked" in contents
+    assert "finished importing test_blocked" not in contents
+
+
+@pytest.mark.medium
 def test_invalid_marker_reports_the_error_and_keeps_the_collection_log(
     tmp_path, monkeypatch, capsys
 ) -> None:

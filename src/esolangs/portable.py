@@ -34,7 +34,12 @@ from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
 from esolangs.runtime._files import decode_utf8, destination_path, reserve_staged
-from esolangs.runtime._json import check_record_utf8, record_dumps, record_loads
+from esolangs.runtime._json import (
+    _json_space,
+    check_record_utf8,
+    record_dumps,
+    record_loads,
+)
 from esolangs.runtime._source import (
     ProgramSource,
     _raster_gzip_error,
@@ -58,6 +63,31 @@ from esolangs.settings import (
 _FORMAT = "esolangs.program"
 
 
+def _has_portable_tag(document: str) -> bool:
+    """Read complete top-level fields without requiring the rest of the object."""
+    index = _json_space(document, 0)
+    if document[index : index + 1] != "{":
+        return False
+    index = _json_space(document, index + 1)
+    decoder = json.JSONDecoder(parse_int=str)
+    try:
+        while document[index : index + 1] == '"':
+            key, end = decoder.raw_decode(document, index)
+            index = _json_space(document, end)
+            if document[index : index + 1] != ":":
+                return False
+            value, end = decoder.raw_decode(document, _json_space(document, index + 1))
+            if key == "format" and value == _FORMAT:
+                return True
+            index = _json_space(document, end)
+            if document[index : index + 1] != ",":
+                return False
+            index = _json_space(document, index + 1)
+    except (ValueError, RecursionError):
+        return False
+    return False
+
+
 def _portable_record_candidate(data: bytes) -> dict[str, Any] | None:
     """Recognize a top-level format tag even when strict decoding rejects it."""
     if _FORMAT.encode("ascii") not in data and b"\\u" not in data:
@@ -68,15 +98,12 @@ def _portable_record_candidate(data: bytes) -> dict[str, Any] | None:
         return None
     try:
         value = record_loads(document)
-    except (json.JSONDecodeError, RecursionError):
+    except RecursionError as error:
+        if _has_portable_tag(document):
+            raise ValueError("portable JSON is nested too deeply") from error
         return None
     except ValueError:
-        # Keep all top-level pairs so a later format field cannot hide the tag.
-        try:
-            pairs = json.loads(document, object_pairs_hook=tuple, parse_int=str)
-        except (ValueError, RecursionError):
-            return None
-        if isinstance(pairs, tuple) and ("format", _FORMAT) in pairs:
+        if _has_portable_tag(document):
             raise
         return None
     if not isinstance(value, dict) or value.get("format") != _FORMAT:

@@ -5,9 +5,13 @@ from __future__ import annotations
 import argparse
 import queue
 import time
+from typing import TYPE_CHECKING
 
 from esolangs.exceptions import ExecutionTimeoutError
 from esolangs.runtime._validate import check_timeout
+
+if TYPE_CHECKING:
+    from threading import Event
 
 DEFAULT_TOTAL_TIMEOUT = 300.0
 
@@ -62,6 +66,22 @@ class BenchmarkDeadline:
             ) from None
         self.remaining()
         return record
+
+
+def post_record(
+    messages: queue.Queue[str | None], stopped: Event, record: str | None
+) -> None:
+    """Queue a record until this worker stops.
+
+    A restart rebinds the queue and event so the old thread cannot post to
+    the new worker's queue.
+    """
+    while not stopped.is_set():
+        try:
+            messages.put(record, timeout=0.05)
+            return
+        except queue.Full:
+            pass
 
 
 def argument_parser(description: str) -> argparse.ArgumentParser:

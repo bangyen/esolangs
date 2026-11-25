@@ -110,6 +110,29 @@ def test_native_run_rejects_a_tagged_artifact_with_missing_fields(
     assert "invalid portable program: unexpected or missing fields" in error
 
 
+@pytest.mark.parametrize(
+    "document",
+    [
+        '{"format":"esolangs.program"',
+        '{"settings":{"other":[1]},"format":"esolangs.program","source":',
+        r'{"\u0066ormat":"esolangs.\u0070rogram","source":',
+    ],
+)
+def test_native_run_stops_truncated_portable_json(tmp_path, capsys, document):
+    path = tmp_path / "truncated.json"
+    path.write_text(document, encoding="utf-8")
+    output, error = _failure(["run", REFERENCE, str(path)], capsys, stdin="A")
+    assert output == ""
+    assert f"{path}: invalid portable program:" in error
+
+
+def test_native_run_ignores_a_truncated_nested_format_tag(tmp_path, capsys):
+    path = tmp_path / "native.bf"
+    path.write_text('{"other":{"format":"esolangs.program"', encoding="utf-8")
+    output, error = call_both(["run", REFERENCE, str(path)], capsys)
+    assert (output, error) == ("\x00", "")
+
+
 @pytest.mark.parametrize("bom_count", [1, 2])
 def test_run_reports_a_bom_before_parsing_portable_json(tmp_path, capsys, bom_count):
     path = tmp_path / "portable.json"

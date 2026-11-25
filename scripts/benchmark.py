@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(1, str(Path(__file__).resolve().parent))
 sys.path.insert(2, str(Path(__file__).resolve().parents[1]))
 
-from benchmark_options import BenchmarkDeadline, argument_parser
+from benchmark_options import BenchmarkDeadline, argument_parser, post_record
 from source_units import source_units
 from verify.process import (
     EXCERPT_BYTES,
@@ -212,6 +212,15 @@ _EVIDENCE: ContextVar[dict[str, Any] | None] = ContextVar(
 )
 
 
+class _CheckoutChangedError(RuntimeError):
+    """Benchmark evidence cannot be published after checkout inputs change."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "checkout changed during benchmark. Rerun once the checkout is stable."
+        )
+
+
 @contextmanager
 def evidence_session() -> Iterator[None]:
     """Check checkout state once around a sweep, before publishing its records."""
@@ -222,7 +231,7 @@ def evidence_session() -> Iterator[None]:
     try:
         yield
         if source_identity() != identity:
-            raise RuntimeError("checkout changed during benchmark")
+            raise _CheckoutChangedError
     finally:
         worker.close()
         _WORKER.reset(worker_token)
@@ -698,7 +707,7 @@ def _measure(
             _on_row(execution)
     selected = next(item for item in executions if item["row"] == row)
     if _EVIDENCE.get() is None and source_identity() != identity:
-        raise RuntimeError("checkout changed during benchmark")
+        raise _CheckoutChangedError
     return {
         "schema": 6,
         "provenance": {
@@ -785,7 +794,7 @@ def measure(
             arguments, identity, generation_timeout, budget=deadline
         )
         if _EVIDENCE.get() is None and _request_identity(deadline) != identity:
-            raise RuntimeError("checkout changed during benchmark")
+            raise _CheckoutChangedError
         deadline.remaining()
         result["generation_timeout"] = generation_timeout
         result["total_timeout"] = deadline.seconds
@@ -865,7 +874,11 @@ def main(argv: list[str] | None = None) -> int:
         deadline.remaining()
     except (esolangs.ArgumentError, esolangs.GeneratorCapError) as exc:
         parser.error(str(exc))
-    except (esolangs.ExecutionTimeoutError, esolangs.ProgramError) as exc:
+    except (
+        esolangs.ExecutionTimeoutError,
+        esolangs.ProgramError,
+        _CheckoutChangedError,
+    ) as exc:
         print(exc, file=sys.stderr)
         for note in getattr(exc, "__notes__", ()):
             if note.startswith("[log] "):
@@ -873,22 +886,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(payload)
     return 0 if all(item["matches"] is True for item in result["executions"]) else 1
-
-
-def _post(
-    messages: queue.Queue[str | None], stopped: threading.Event, record: str | None
-) -> None:
-    """Queue ``record`` for the waiting caller, giving up once ``stopped``.
-
-    Takes the queue and event, not the worker: a restart rebinds both, and a
-    thread from the old process must not post into the new one's queue.
-    """
-    while not stopped.is_set():
-        try:
-            messages.put(record, timeout=0.05)
-            return
-        except queue.Full:
-            pass
 
 
 def _worker_error(message: dict[str, Any]) -> Exception:
@@ -986,7 +983,7 @@ class Worker:
                                 }
                             }
                         )
-                    _post(messages, stopped, line)
+                    post_record(messages, stopped, line)
                     if line is None or oversized:
                         break
 
@@ -1075,7 +1072,7 @@ class Worker:
                     failure = json.dumps(
                         {"error": {"type": type(error).__name__, "message": str(error)}}
                     )
-                    _post(messages, stopped, failure)
+                    post_record(messages, stopped, failure)
 
             self.writer = threading.Thread(target=send, daemon=True)
             self.writer.start()

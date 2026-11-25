@@ -481,6 +481,17 @@ def test_checkout_change_invalidates_benchmark(monkeypatch) -> None:
         b.measure("Brainfuck", "01", repeat=1, row=1, step_cap=100)
 
 
+def test_benchmark_cli_reports_checkout_change_without_results(monkeypatch, capsys):
+    identities = iter([{"commit": "before"}, {"commit": "after"}])
+    monkeypatch.setattr(b, "source_identity", lambda **_: next(identities))
+    assert b.main(["Brainfuck", "01", "--repeat", "1", "--all-rows"]) == 1
+    output, error = capsys.readouterr()
+    assert not output
+    assert error.splitlines()[-1] == (
+        "checkout changed during benchmark. Rerun once the checkout is stable."
+    )
+
+
 @pytest.mark.parametrize(
     "phase",
     [
