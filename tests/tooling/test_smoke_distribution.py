@@ -409,6 +409,18 @@ def test_release_notes_are_the_tag_changelog_section() -> None:
         smoke.notes("v1.1.0", "## 1.1.0\n\n## 1.0.0\n- Old.\n")
 
 
+def test_release_notes_keep_fenced_headings_in_the_original_body() -> None:
+    body = "Before\n\n```sh\n## a shell comment\n```\n\nAfter\n"
+    changelog = f"## 1.1.0\n\n{body}\n## 1.0.0\n\nOld.\n"
+    assert smoke.notes("v1.1.0", changelog) == body
+
+
+def test_release_notes_require_a_visible_version_heading() -> None:
+    changelog = "~~~md\n## 1.1.0\nExample.\n~~~\n\n## 1.0.0\n\nOld.\n"
+    with pytest.raises(SystemExit, match=r"no '## 1\.1\.0' section"):
+        smoke.notes("v1.1.0", changelog)
+
+
 def test_every_source_path_checks_out_on_windows() -> None:
     """``what!?.txt`` failed every Windows checkout; macOS and Linux accept it."""
     src = Path(__file__).parents[2] / "src"

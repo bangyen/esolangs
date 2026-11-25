@@ -109,6 +109,44 @@ def test_source_retry_keeps_the_requested_execution_limits(
     assert "output limit exceeded" in error
 
 
+@pytest.mark.parametrize(
+    ("flag", "declarations"),
+    [
+        (
+            "--seed=1",
+            [
+                lang
+                for lang in LANGUAGES.values()
+                if lang.runtime.random and lang.has_backend and not lang.parameterized
+            ][:1],
+        ),
+        (
+            "--scale=2",
+            [
+                lang
+                for lang in LANGUAGES.values()
+                if lang.runtime.capabilities.supports_scale and lang.has_backend
+            ][:1],
+        ),
+    ],
+)
+def test_same_language_source_retry_keeps_seed_and_scale(
+    tmp_path, capsys, flag, declarations
+) -> None:
+    if not declarations:
+        pytest.skip("no matching generator")
+    api = esolangs.Language(declarations[0].name)
+    path = tmp_path / "program.json"
+    program = api.generate("01", scale=2) if flag == "--scale=2" else api.generate("01")
+    path.write_text(api.to_json(program), encoding="utf-8")
+    output, error = _failure(["run", flag, api.name, str(path)], capsys)
+    assert not output
+    retry = shlex.split(error.split("for example: ", 1)[1])
+    assert retry == ["esolangs", "run", "--artifact", flag, api.name, str(path)]
+    answer, _ = call_both(retry[1:], capsys, stdin=api.encode_inputs([1]))
+    assert api.read_answer(answer) == "1"
+
+
 @pytest.mark.parametrize("duplicate", [False, True])
 def test_native_run_keeps_json_with_only_a_similar_format_marker(
     tmp_path, capsys, duplicate

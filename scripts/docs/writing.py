@@ -17,6 +17,36 @@ GENERATED_DOCS = (
 )
 
 
+class PublicationRecoveryError(OSError):
+    """A failed restore that requires retaining the original files for recovery."""
+
+
+def replace_batch(pending: list[tuple[Path, Path, Path | None]]) -> set[Path]:
+    """Replace the prepared files, restoring their backups on failure."""
+    try:
+        for staged, path, _ in pending:
+            staged.replace(path)
+    except BaseException as error:
+        failures = []
+        for staged, path, backup in reversed(pending):
+            if staged.exists():
+                continue  # This replacement did not consume its staged file.
+            try:
+                if backup is None:
+                    path.unlink()
+                else:
+                    backup.replace(path)
+            except OSError as restore_error:
+                failures.append(f"could not restore {path}: {restore_error}")
+                if backup is not None:
+                    failures.append(f"original kept at {backup}")
+        if failures:
+            details = "\n".join(failures)
+            raise PublicationRecoveryError(f"{error}\n{details}") from error
+        raise
+    return {path for _, path, _ in pending}
+
+
 def generated_sources(
     root: Path, *, require_generated: bool = False
 ) -> Iterator[tuple[str, Path]]:
@@ -62,29 +92,10 @@ def publish_generated(
                 backup.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, backup, follow_symlinks=False)
             pending.append((staged, path, backup))
-        try:
-            for staged, path, _ in pending:
-                staged.replace(path)
-        except BaseException as error:
-            failures = []
-            for staged, path, backup in reversed(pending):
-                if staged.exists():
-                    continue  # This replacement did not consume its staged file.
-                try:
-                    if backup is None:
-                        path.unlink()
-                    else:
-                        backup.replace(path)
-                except OSError as restore_error:
-                    failures.append(f"could not restore {path}: {restore_error}")
-            if failures:
-                retain = True
-                details = "\n".join(failures)
-                raise OSError(
-                    f"{error}\n{details}\noriginals kept in {saved}"
-                ) from error
-            raise
-        return {path for _, path, _ in pending}
+        return replace_batch(pending)
+    except PublicationRecoveryError:
+        retain = True
+        raise
     finally:
         if not retain:
             shutil.rmtree(saved)

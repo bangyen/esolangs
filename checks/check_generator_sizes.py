@@ -290,9 +290,12 @@ def main(argv: list[str] | None = None) -> int:
     measured = baseline(records)
     if args.update:
         count = sum(len(rows) for rows in measured["records"].values())
-        changed = generator_sizes.write_fragments(
-            generator_sizes.PACKAGES, LANGUAGES.values(), measured["records"]
-        )
+        try:
+            changed = generator_sizes.write_fragments(
+                generator_sizes.PACKAGES, LANGUAGES.values(), measured["records"]
+            )
+        except (OSError, ValueError) as error:
+            parser.exit(1, f"could not update generator baselines: {error}\n")
         if changed:
             print(
                 f"wrote the package-fragment baseline: {count} generator measurements"

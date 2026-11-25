@@ -45,6 +45,7 @@ from esolangs.cli.hints import (
     _native_run_hint,
     _portable_run_hint,
     _run_source_command,
+    _RunRetry,
     _saved_template_hint,
     _timeout_text,
     _with_cli_hint,
@@ -166,17 +167,19 @@ def _read_program(
     catalog: Catalog | None = None,
     _settings_validated: bool = False,
     portable: bool = False,
-    retry_options: tuple[str, ...] = (),
+    retry: _RunRetry | None = None,
 ) -> ProgramArtifact[Program]:
     """Read native source or a portable record under the acquisition deadline."""
     deadline = None if timeout is None else monotonic() + timeout
     catalog = get_catalog(catalog)
+    retry = retry or _RunRetry(language, settings=settings)
     gzip_native = catalog.languages[language].runtime.compressed_source
     label = "stdin" if path == "-" else display_label(path)
     max_bytes = _MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES
     if path == "-":
         data = _bounded_source_stdin(timeout, timeout_flag, deadline, max_bytes)
         if len(data) > max_bytes:
+            retry_options = retry.options_for(language)
             hint = "save the program to a file and pass its filename to esolangs run"
             filename = "program.json" if portable else "program"
             if command := _run_source_command(
@@ -203,9 +206,9 @@ def _read_program(
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
             if portable:
                 return _load_portable_source(
-                    language, path, data, settings, catalog, retry_options
+                    language, path, data, settings, catalog, retry
                 )
-            _reject_portable_source(data, path, label, catalog, retry_options)
+            _reject_portable_source(data, path, label, catalog, retry)
             return _check_program(
                 language,
                 _FileSource(label, data),
@@ -241,7 +244,7 @@ def _portable_bom_error(label: str) -> ProgramError:
 
 
 def _reject_portable_source(
-    data: bytes, path: str, label: str, catalog: Catalog, retry_options: tuple[str, ...]
+    data: bytes, path: str, label: str, catalog: Catalog, retry: _RunRetry
 ) -> None:
     """Stop a portable envelope from reaching a native interpreter."""
     start = 0
@@ -277,7 +280,11 @@ def _reject_portable_source(
     raise _with_cli_hint(
         ProgramError(message),
         _portable_run_hint(
-            owner, path, catalog, "use --artifact to run portable JSON", retry_options
+            owner,
+            path,
+            catalog,
+            "use --artifact to run portable JSON",
+            retry.options_for(owner),
         ),
     )
 
@@ -288,7 +295,7 @@ def _load_portable_source(
     data: bytes,
     settings: DialectSettings | None,
     catalog: Catalog,
-    retry_options: tuple[str, ...],
+    retry: _RunRetry,
 ) -> ProgramArtifact[Program]:
     """Restore runnable JSON and combine any explicit compatible choices."""
     from esolangs.portable import (
@@ -304,7 +311,7 @@ def _load_portable_source(
                     f"{label}: --artifact expects portable JSON; "
                     f"the input is native {kind}"
                 ),
-                _native_run_hint(language, path, catalog, retry_options),
+                _native_run_hint(language, path, catalog, retry.options_for(language)),
             )
     try:
         artifact = _decode_portable_record(language, path, data, catalog)
@@ -319,12 +326,12 @@ def _load_portable_source(
                     path,
                     catalog,
                     "pass the artifact's recorded language to esolangs run --artifact",
-                    retry_options,
+                    retry.options_for(cause.owner),
                 )
             raise _with_cli_hint(error, hint) from cause
         if not isinstance(cause, (JSONDecodeError, _MissingPortableEnvelopeError)):
             raise
-        hint = _native_run_hint(language, path, catalog, retry_options)
+        hint = _native_run_hint(language, path, catalog, retry.options_for(language))
         raise _with_cli_hint(error, f"if this is a native program, {hint}") from error
     if isinstance(artifact, TemplateArtifact):
         raise _with_cli_hint(

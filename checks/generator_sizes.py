@@ -12,14 +12,17 @@ Aggregation derives the summary command count from the last input row.
 
 from __future__ import annotations
 
+import os
+import shutil
 import tomllib
 from collections.abc import Iterable, Mapping
+from contextlib import ExitStack
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any
 
 from docs.fragments import FRAGMENT, AggregateKey, aggregate, sections
-
-from esolangs.runtime._files import destination_path, write_staged
+from docs.writing import PublicationRecoveryError, replace_batch
 
 if TYPE_CHECKING:
     from esolangs.registry import LanguageDeclaration
@@ -212,7 +215,7 @@ def write_fragments(
     languages: Iterable[LanguageDeclaration],
     records: Mapping[str, Mapping[str, Any]],
 ) -> bool:
-    """Validate the full update, then atomically replace changed fragments.
+    """Validate the full update, then publish the changed fragments with rollback.
 
     Returns True when any file changed.  A language with no records loses
     its section; a measured name outside the registry raises, since the
@@ -236,7 +239,35 @@ def write_fragments(
         new_text = _replace_section(path, text, rendered)
         if new_text != text:
             updates[path] = new_text.encode("utf-8")
-    for path, payload in updates.items():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        write_staged(destination_path(path), (payload,))
-    return bool(updates)
+    if not updates:
+        return False
+    packages.mkdir(parents=True, exist_ok=True)
+    with ExitStack() as cleanup:
+        lock = packages / ".baseline-publish"
+        lock.mkdir()
+        cleanup.callback(lock.rmdir)
+        pending: list[tuple[Path, Path, Path | None]] = []
+        for path, payload in updates.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            # Each resolved fragment and its replacement must share a filesystem.
+            scratch = TemporaryDirectory(
+                prefix=".baseline-", dir=path.parent, delete=False
+            )
+            cleanup.callback(scratch.cleanup)
+            staged = Path(scratch.name) / path.name
+            staged.write_bytes(payload)
+            backup = Path(scratch.name) / "original"
+            try:
+                shutil.copy2(path, backup)
+            except FileNotFoundError:
+                pending.append((staged, path, None))
+            else:
+                if os.name == "posix":
+                    shutil.copymode(backup, staged)
+                pending.append((staged, path, backup))
+        try:
+            replace_batch(pending)
+        except PublicationRecoveryError:
+            cleanup.pop_all()
+            raise
+    return True

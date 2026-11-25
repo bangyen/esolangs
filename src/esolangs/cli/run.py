@@ -29,6 +29,7 @@ from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
     _cli_error_text,
     _exit_code,
+    _RunRetry,
     _template_hint,
     _timeout_text,
 )
@@ -190,6 +191,11 @@ def _run(rest: list[str]) -> None:
         ),
         *(("--isolated",) if isolated else ()),
     )
+    source_options = tuple(
+        f"{flag}={format_integer(value)}"
+        for flag, value in (("--seed", seed), ("--scale", scale))
+        if value is not None
+    )
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
@@ -203,7 +209,7 @@ def _run(rest: list[str]) -> None:
         catalog=catalog,
         _settings_validated=True,
         portable="--artifact" in flags,
-        retry_options=retry_options,
+        retry=_RunRetry(declaration.name, retry_options, source_options, settings),
     )
     unbounded = not worker and max_steps is None
     stdin: InputSource = ""

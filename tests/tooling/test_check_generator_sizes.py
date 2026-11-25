@@ -3,7 +3,9 @@
 import hashlib
 import json
 import os
+import stat
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -274,6 +276,56 @@ def test_update_preflights_later_fragments_before_writing(tmp_path) -> None:
     assert write_fragments(tmp_path, [first, second], records)
     assert path.read_text(encoding="utf-8").startswith(original)
     assert not write_fragments(tmp_path, [first, second], records)
+
+
+@pytest.mark.parametrize(
+    ("first_exists", "restore_fails"), [(True, False), (False, False), (True, True)]
+)
+def test_baseline_update_rolls_back_failed_publication(
+    tmp_path, monkeypatch, first_exists, restore_fails
+) -> None:
+    from checks.check_generator_sizes import LANGUAGES
+    from checks.generator_sizes import write_fragments
+
+    first = LANGUAGES[REFERENCE]
+    second = replace(first, id="second", name="Second")
+    path = tmp_path / first.id / "language.toml"
+    failed = tmp_path / second.id / "language.toml"
+    original = b'[reference]\nmarker = "keep"\n'
+    for target in (path, failed) if first_exists else (failed,):
+        target.parent.mkdir()
+        target.write_bytes(original)
+        if os.name == "posix":
+            target.chmod(0o640)
+    row = {"source_units": 4, "commands": 2, "commands_by_row": {"0": 1, "1": 2}}
+    records = {lang.name: {"01": row} for lang in (first, second)}
+    replace_path = Path.replace
+
+    def refuse(staged, target):
+        if target == failed:
+            raise PermissionError("injected publication failure")
+        if restore_fails and target == path and staged.name == "original":
+            raise PermissionError("injected restore failure")
+        return replace_path(staged, target)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "replace", refuse)
+        with pytest.raises(OSError, match="injected publication failure") as caught:
+            write_fragments(tmp_path, [first, second], records)
+    assert failed.read_bytes() == original
+    if restore_fails:
+        (backup,) = path.parent.glob(".baseline-*/original")
+        assert str(backup) in str(caught.value)
+        assert backup.read_bytes() == original
+        return
+    if first_exists:
+        assert path.read_bytes() == original
+    else:
+        assert not path.exists()
+    assert not list(tmp_path.rglob(".baseline-*"))
+    assert write_fragments(tmp_path, [first, second], records)
+    if first_exists and os.name == "posix":
+        assert stat.S_IMODE(path.stat().st_mode) == 0o640
 
 
 @pytest.mark.parametrize("matches", [False, None])

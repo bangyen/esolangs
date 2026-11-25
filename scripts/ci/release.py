@@ -24,6 +24,10 @@ from itertools import islice
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
+# Release notes also run from a source checkout without the package installed.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from docs.anchors import mask_hidden
+
 if TYPE_CHECKING:
     from esolangs import LanguageInfo
 
@@ -175,11 +179,12 @@ def notes(version: str, changelog: str) -> str:
     """
     heading = f"## {version.removeprefix('v')}"
     lines = changelog.splitlines()
-    if heading not in lines:
+    visible = mask_hidden("\n".join(lines)).split("\n")
+    if heading not in visible:
         raise SystemExit(f"docs/CHANGELOG.md has no {heading!r} section")
-    start = lines.index(heading) + 1
+    start = visible.index(heading) + 1
     end = next(
-        (i for i in range(start, len(lines)) if lines[i].startswith("## ")),
+        (i for i in range(start, len(visible)) if visible[i].startswith("## ")),
         len(lines),
     )
     body = "\n".join(lines[start:end]).strip()

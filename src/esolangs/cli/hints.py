@@ -6,6 +6,7 @@ import shlex
 import sys
 from collections.abc import Callable, Iterable
 from contextlib import suppress
+from dataclasses import dataclass
 from difflib import get_close_matches
 
 from esolangs import LanguageInfo
@@ -23,6 +24,7 @@ from esolangs.registry import (
     get_catalog,
 )
 from esolangs.registry._contracts import CHAR_STREAMS
+from esolangs.runtime._json import record_dumps
 from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime.source_hints import (
     can_render_argument,
@@ -32,6 +34,7 @@ from esolangs.runtime.source_hints import (
     shell_argument,
     syntax_repair,
 )
+from esolangs.settings import DialectSettings
 
 #: A run stopped by its ``--execution-timeout``, following timeout(1).  Distinct from
 #: a program error's 1, which it shared. A timeout leaves termination
@@ -162,6 +165,26 @@ def _saved_template_hint(
         )
     command = shlex.join(("esolangs", "generate", f"--from-template={path}", *options))
     return f"fill the saved template, for example: {command} {operand}"
+
+
+@dataclass(frozen=True)
+class _RunRetry:
+    """Carry the options applicable to a replacement run command."""
+
+    language: str
+    execution: tuple[str, ...] = ()
+    source: tuple[str, ...] = ()
+    settings: DialectSettings | None = None
+
+    def options_for(self, language: str) -> tuple[str, ...]:
+        """Retain interpreter-specific options when the language matches."""
+        if language != self.language:
+            return self.execution
+        options = self.execution + self.source
+        if self.settings is not None:
+            choices = record_dumps(DialectSettings.options(self.settings))
+            options += (f"--settings={choices}",)
+        return options
 
 
 def _run_source_command(
