@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
             "collatz_multiverse_request",
         ),
         layout_width=True,
+        layout_balance=True,
         balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.collatz_multiverse.generator",
             "collatz_multiverse_balance_request",

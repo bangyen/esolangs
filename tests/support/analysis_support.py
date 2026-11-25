@@ -17,6 +17,7 @@ from esolangs.generation.helpers import (
     input_weights,
     read_at,
     subtree_ids,
+    symmetric_lookup,
     symmetric_weights,
 )
 from esolangs.generation.lookup import prefix_counts, symmetric_outputs
@@ -59,17 +60,21 @@ def assert_analysis_complement(
         "read_at": read_at,
         "input_weights": input_weights,
         "symmetric_outputs": symmetric_outputs,
+        "symmetric_lookup": symmetric_lookup,
         "symmetric_weights": symmetric_weights,
         "flag_tree_body": flag_tree_body,
     }[attribute]
     assert getattr(module, attribute) is query
-    with patch.object(
-        module,
-        attribute,
-        side_effect=lambda table, *args, **kwargs: query(
-            table.translate(str.maketrans("01", "10")), *args, **kwargs
-        ),
-    ) as corrupted:
+
+    def complement(source, *args, **kwargs):
+        flip = str.maketrans("01", "10")
+        if attribute == "symmetric_lookup":
+            source = source._replace(table=source.table.translate(flip))
+        else:
+            source = source.translate(flip)
+        return query(source, *args, **kwargs)
+
+    with patch.object(module, attribute, side_effect=complement) as corrupted:
         expected = table.translate(str.maketrans("01", "10"))
         if rows is None:
             assert evaluate_generated(name, table, width=width) == expected

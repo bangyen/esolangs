@@ -34,7 +34,7 @@ from esolangs.generation.helpers import (
     WeightedLookup,
     _validate_truth_table,
     input_weights,
-    symmetric_weights,
+    symmetric_lookup,
 )
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
@@ -95,8 +95,9 @@ def _log(lookup: WeightedLookup, *, split: bool) -> str:
 def artppeice(truth_table: str) -> str:
     """Build an artppeice program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    candidates = [input_weights(truth_table, n)]
-    symmetric = symmetric_weights(truth_table, n)
+    projected = input_weights(truth_table, n)
+    candidates = [projected]
+    symmetric = symmetric_lookup(projected)
     if symmetric is not None:
         candidates.append(symmetric)
     return min(

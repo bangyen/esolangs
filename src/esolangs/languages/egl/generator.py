@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
-    symmetric_weights,
+    symmetric_lookup,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score, balance_width
@@ -31,7 +31,8 @@ def egl(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return _wrap("2,1:" + "x" * n + ">" + "+" * int(truth_table[0]) + "=", width)
-    builds = [input_weights(truth_table, n), symmetric_weights(truth_table, n)]
+    projected = input_weights(truth_table, n)
+    builds = (projected, symmetric_lookup(projected))
     # A symmetric table walks one cell a 1 over m + 1 entries
     # ([ablations.symmetric_count]).
     return min(

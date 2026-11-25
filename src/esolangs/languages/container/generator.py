@@ -511,6 +511,12 @@ def _narrow_rules(program: str, width: int) -> str:
 
 def container(truth_table: str, width: int | None = None) -> str:
     """Build Container rules; narrow widths factor constants and deltas."""
+    return _program(truth_table, width)
+
+
+def _program(
+    truth_table: str, width: int | None = None, *, balance: bool = False
+) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         # [ablations.constant_table_audit_20261101]: one pulse per two ticks.
@@ -524,17 +530,19 @@ def container(truth_table: str, width: int | None = None) -> str:
     # The tree wins projections and structured tables, the
     # threshold most other tables from n=3: 26 of the 256 n=3 tables keep the
     # tree, ties included (it halts two ticks sooner).
-    program = min(
-        _container_tree(truth_table, share=True),
-        _container_threshold(truth_table),
-        key=len,
-    )
+    tree = _container_tree(truth_table, share=True)
+    threshold = _container_threshold(truth_table)
+    program = min(tree, threshold, key=len)
+    if balance:
+        return balance_container(truth_table, program, threshold=threshold)
     if width is None or grid_width(program) <= width:
         return program
     narrow = _narrow_rules(program, width)
+    if program == threshold:
+        return narrow
     return min(
         narrow,
-        _narrow_rules(_container_threshold(truth_table), width),
+        _narrow_rules(threshold, width),
         key=lambda text: (grid_width(text), len(text)),
     )
 
@@ -619,7 +627,7 @@ def _container_blocks(table: str) -> str:
     return "\n".join(lines)
 
 
-def balance_container(table: str, default: str) -> str:
+def balance_container(table: str, default: str, *, threshold: str | None = None) -> str:
     """Return the squarest default, narrowed threshold, or block program."""
     if default.startswith("T="):
         return default
@@ -628,9 +636,11 @@ def balance_container(table: str, default: str) -> str:
     # is the named alternative ([ablations.balance_candidates]); the block
     # program joins from n=4 ([ablations.balance_blocks]).
     side = isqrt(CELL_ASPECT * len(default))
-    candidates = [
-        _narrow_rules(p, side) for p in (default, _container_threshold(table))
-    ]
+    if threshold is None:
+        threshold = _container_threshold(table)
+    candidates = [_narrow_rules(default, side)]
+    if threshold != default:
+        candidates.append(_narrow_rules(threshold, side))
     if len(table) >= 16:
         candidates.append(_container_blocks(table))
     return min(candidates, key=balance_score)
@@ -638,9 +648,9 @@ def balance_container(table: str, default: str) -> str:
 
 def container_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return container(request.table, request.width)
-    return container(request.table)
+    if request.balance:
+        return _program(request.table, balance=True)
+    return container(request.table, request.width)
 
 
 def container_balance_request(request: BalanceRequest) -> Program:

@@ -21,6 +21,7 @@ Decisions:
 
 import re
 from math import isqrt
+from typing import NamedTuple
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -63,56 +64,47 @@ def _chunked(value: int, bits: int) -> str:
     return f"<{chunks[0]}>{bits}{{" + ">".join(steps) + "$"
 
 
-def _emit_lookup(truth_table: str, chunk_digits: int = 0) -> str:
-    """Emit a linear-size integer lookup for ``truth_table``.
+class _Lookup(NamedTuple):
+    prefix: str
+    decimal: str
+    value: int
+    flip: bool
 
-    ``chunk_digits`` > 0 writes the literal as Horner chunks of at most that
-    many digits (:func:`_chunked`), for the balanced layout only.
 
-    The input row is accumulated by Horner's rule in cell 0.  Cell 1 then
-    holds the reversed table as one decimal integer, shifts it by that row,
-    and takes the low bit; output is O(T) digits.  An ignored input is read
-    into cell 1 and left there for the next read, or for the literal's first
-    digit, to overwrite; the table indexes the rest.
-    """
-    weights, truth_table = input_weights(
-        truth_table, _validate_truth_table(truth_table)
-    )
-    out = ['"']
-    for weight in weights:
-        # [ablations.stacked_two_horner]: persistent 2 doubles the row and
-        # reduces each ASCII bit modulo 2; the temporary bit is then popped.
-        out.extend(("*>,%{<+$",) if weight else (">,<",))
-    # Write the reversed table as one decimal
-    # literal in cell 1: a digit run is ``cell * 10 + digit`` and its first
-    # digit replaces the cell.  The reversed source order makes
-    # truth_table[row] bit ``row`` of the integer.
-    value = int(truth_table[::-1], 2)
-    # Encode the bit as 49 ^ bit (the complement) or 48 + bit, one character
-    # either way, so use whichever integer has fewer digits.
-    plain, other = _decimal(value), _decimal((1 << len(truth_table)) - 1 - value)
+def _lookup_plan(truth_table: str, n: int) -> _Lookup:
+    """Prepare the row reader and the shorter decimal polarity."""
+    weights, projected = input_weights(truth_table, n)
+    # The projected source is reversed so bit i is row i.
+    value = int(projected[::-1], 2)
+    opposite = (1 << len(projected)) - 1 - value
+    plain, other = _decimal(value), _decimal(opposite)
     flip = len(other) < len(plain)
-    # [ablations.stacked_ascii_zero]: encoding sits beneath the persistent 2.
-    # The nondigit pushes separate literals; final 0 resets the accumulator.
-    out[0] = f'"{49 if flip else 48}{{2{{0'
-    literal = (1 << len(truth_table)) - 1 - value if flip else value
-    if chunk_digits and len(other if flip else plain) > chunk_digits:
+    # Keep the persistent 2 above the ASCII offset. Ignored inputs use
+    # scratch cell 1, which the next read or literal overwrites.
+    # See [ablations.stacked_two_horner] and [ablations.stacked_ascii_zero].
+    reads = "".join("*>,%{<+$" if weight else ">,<" for weight in weights)
+    return _Lookup(
+        f'"{49 if flip else 48}{{2{{0{reads}',
+        other if flip else plain,
+        opposite if flip else value,
+        flip,
+    )
+
+
+def _emit_lookup(lookup: _Lookup, chunk_digits: int = 0) -> str:
+    """Shift the table by the input row, optionally storing it in Horner chunks."""
+    if chunk_digits and len(lookup.decimal) > chunk_digits:
         # The largest bit count whose chunk, 2**bits - 1, fits the digits.
         bits = (10**chunk_digits).bit_length() - 1
-        out.append(f">>{_chunked(literal, bits)}")
+        literal = _chunked(lookup.value, bits)
     else:
-        out.append(f">><{other if flip else plain}")
-    # Shift by the row saved in cell 0, reduce modulo 2, encode as ASCII.
-    out.append("<{>]$%$^." if flip else "<{>]$%$+.")
-    return "".join(out)
+        literal = "<" + lookup.decimal
+    suffix = "<{>]$%$^." if lookup.flip else "<{>]$%$+."
+    return lookup.prefix + ">>" + literal + suffix
 
 
-def _super_snusp_flat(truth_table: str) -> str:
-    """Emit a native constant, a two-input short form, or the lookup.
-
-    Every path consumes exactly ``n`` input characters.
-    """
-    n = _validate_truth_table(truth_table)
+def _short_program(truth_table: str, n: int) -> str | None:
+    """Return a native constant or a two-input short form, if available."""
     if truth_table.count(truth_table[0]) == len(truth_table):
         return '"' + "," * n + f"{48 + int(truth_table[0])}."
     if n == 2:
@@ -123,7 +115,7 @@ def _super_snusp_flat(truth_table: str) -> str:
             return '"48{,-> ,-<' + "^." if word == 3 else '"48{,-> ,-<' + ">^."
         if word in (6, 7):
             return '"48{,-> ,-<^{>' + "|." if word == 7 else '"48{,-> ,-<^{>' + "^."
-    return _emit_lookup(truth_table)
+    return None
 
 
 def _super_snusp_tokens(program: str) -> list[str]:
@@ -137,18 +129,16 @@ def _super_snusp_tokens(program: str) -> list[str]:
     return re.findall(r"\d+|.", program, re.DOTALL)
 
 
-def _super_snusp_folded(program: str, width: int) -> str:
+def _super_snusp_folded(tokens: list[str], limit: int) -> str:
     r"""Fold ``program`` into a boustrophedon inside ``width`` columns.
 
     ``\\`` then ``/`` stacked turn an eastward row round in one row and one
     column; at the west edge ``/`` then ``\\`` turn it back.  A westward row
     is written in the order the pointer meets its cells (right to left on the
     page).  Mirrors sit at the far edges with a blank gap before them, which
-    the pointer walks over, so no padding commands are needed.  ``width`` is
-    raised to two more than the longest token (``48``).
+    the pointer walks over, so no padding commands are needed. The limit
+    is at least two more than the longest token.
     """
-    tokens = _super_snusp_tokens(program)
-    limit = max(width, max(len(token) for token in tokens) + 2)
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
     index = 0
@@ -191,29 +181,34 @@ def super_snusp(truth_table: str, width: int | None = None) -> str:
     Positive widths below the fold floor use the vertical layout;
     nonpositive widths fold at the floor.
     """
-    return _super_snusp_layout(_super_snusp_flat(truth_table), width)
-
-
-def _fold_floor(flat: str) -> int:
-    """Return the narrowest fold width: two more than the longest token."""
-    return max(len(token) for token in _super_snusp_tokens(flat)) + 2
-
-
-def _super_snusp_layout(flat: str, width: int | None) -> str:
-    """Return the natural, vertical, or folded layout of ``flat``."""
+    n = _validate_truth_table(truth_table)
+    flat = _short_program(truth_table, n)
+    if flat is None:
+        flat = _emit_lookup(_lookup_plan(truth_table, n))
     if width is None or len(flat) <= width:
         return flat
-    if 0 < width < _fold_floor(flat):
-        # START may be absent (wiki); the bottom-right rightward entry
-        # meets a slash and climbs the complete straight evaluator.  At width
-        # 3 this is 53% fewer characters than the fold (356 tables, n<=7).
-        # A fold cannot split the decimal literal, so a width under it
-        # climbs too, in one column.
-        return "\n".join(reversed("/" + flat[1:]))
-    return _super_snusp_folded(flat, width)
+    return _FoldPlan(flat).layout(width)
 
 
-def balance_super_snusp(flat: str) -> str:
+class _FoldPlan:
+    """Keep the tokens and whole-token width floor for every fold."""
+
+    def __init__(self, flat: str) -> None:
+        self.flat = flat
+        self.tokens = _super_snusp_tokens(flat)
+        self.floor = max(len(token) for token in self.tokens) + 2
+
+    def layout(self, width: int) -> str:
+        if len(self.flat) <= width:
+            return self.flat
+        if 0 < width < self.floor:
+            # The wiki permits an unmarked entry. The bottom-right entry climbs
+            # the evaluator, saving 53% at width 3 (356 tables through n=7).
+            return "\n".join(reversed("/" + self.flat[1:]))
+        return _super_snusp_folded(self.tokens, max(width, self.floor))
+
+
+def balance_super_snusp(flat: str, *, plan: _FoldPlan | None = None) -> str:
     """Return the best-balanced supported layout of a generated straight line.
 
     For A=CELL_ASPECT and s=ceil(sqrt(A*L)), the normal fold's W=A*H crossing
@@ -226,16 +221,22 @@ def balance_super_snusp(flat: str) -> str:
     # H rows hold at most (W-1)+(H-1)(W-2) cells and at least
     # (W-2)+(H-2)(W-3)+1: first-row room is W-1, later room W-2, and each
     # row wastes at most one.  So H >= (L-1)/(W-2) and H <= (L+W-5)/(W-3).
-    floor = _fold_floor(flat)
-    folds = [
-        _super_snusp_layout(flat, max(floor, width))
+    if plan is None:
+        plan = _FoldPlan(flat)
+    floor = plan.floor
+    widths = dict.fromkeys(
+        max(floor, width)
         for width in (*range(side - 1, side + (4 + CELL_ASPECT) // 2 + 1), floor)
-    ]
-    vertical = _super_snusp_layout(flat, 1)
-    return min((flat, *folds, vertical), key=balance_score)
+    )
+    return min(
+        flat,
+        *(plan.layout(width) for width in widths),
+        plan.layout(1),
+        key=balance_score,
+    )
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(table: str, default: str | None = None) -> str:
     """Balance the straight line, or the same lookup with a chunked literal.
 
     A digit run is one unsplittable token, so every fold of the plain
@@ -243,21 +244,40 @@ def _balance(table: str, default: str) -> str:
     a fraction of the fold side, so the fold is O(T); chunk widths of 1/2, 1/4
     and 1/8 of the side are tried against the plain layout.
     """
+    n = _validate_truth_table(table)
+    lookup = None
+    if default is None:
+        default = _short_program(table, n)
+        if default is None:
+            lookup = _lookup_plan(table, n)
+            default = _emit_lookup(lookup)
+    plan = _FoldPlan(default)
+    balanced = balance_super_snusp(default, plan=plan)
+    if plan.floor <= 6:
+        return balanced
+    if lookup is None:
+        lookup = _lookup_plan(table, n)
     side = isqrt(CELL_ASPECT * len(default) - 1) + 1
-    layouts = [balance_super_snusp(default)]
-    if max(map(len, _super_snusp_tokens(default))) > 4:
-        layouts += [
-            balance_super_snusp(_emit_lookup(table, max(2, side // divisor)))
-            for divisor in (2, 4, 8)
-        ]
-    return min(layouts, key=balance_score)
+    widths = dict.fromkeys(max(2, side // divisor) for divisor in (2, 4, 8))
+    programs = dict.fromkeys(_emit_lookup(lookup, width) for width in widths)
+    return min(
+        [
+            balanced,
+            *(
+                balance_super_snusp(program)
+                for program in programs
+                if program != default
+            ),
+        ],
+        key=balance_score,
+    )
 
 
 def super_snusp_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return super_snusp(request.table, request.width)
-    return super_snusp(request.table)
+    if request.balance:
+        return _balance(request.table)
+    return super_snusp(request.table, request.width)
 
 
 def super_snusp_balance_request(request: BalanceRequest) -> Program:

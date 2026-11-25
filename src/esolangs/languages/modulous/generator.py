@@ -26,7 +26,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     grid_width,
     input_weights,
-    symmetric_weights,
+    symmetric_lookup,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
@@ -80,7 +80,7 @@ def modulous(truth_table: str, width: int | None = None) -> str:
         if grid_width(wrapped) <= width:
             return wrapped
         return wrap_space_delimited(" ".join(_TOKEN.findall(program)), width)
-    symmetric = symmetric_weights(truth_table, n)
+    symmetric = symmetric_lookup(projected)
     if symmetric is not None:
         # The count reader preserves O(n) source on symmetric functions.
         return _lookup(*symmetric, width)

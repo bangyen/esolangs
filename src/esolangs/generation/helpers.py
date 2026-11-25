@@ -443,6 +443,15 @@ def input_weights(truth_table: str, n: int) -> WeightedLookup:
     return WeightedLookup(tuple(weights), read_at(truth_table, essential, n))
 
 
+def symmetric_lookup(projected: WeightedLookup) -> WeightedLookup | None:
+    """Index an already projected binary lookup by popcount if it is symmetric."""
+    weights, table = projected
+    kept = sum(map(bool, weights))
+    if kept < 2 or (outputs := _symmetric_outputs(table, kept)) is None:
+        return None
+    return WeightedLookup(tuple(int(bool(weight)) for weight in weights), outputs)
+
+
 def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
     """Weight 1 per essential input and the table by popcount, if it is symmetric.
 

@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.super_snusp.generator", "super_snusp_request"
         ),
         layout_width=True,
+        layout_balance=True,
         # A sum, not a tree: a lookup over the essential inputs only.
         shape=Shape.REDUCING,
         balance=OperationRef[BalanceRequest, Program](

@@ -32,7 +32,7 @@ from esolangs.generation.helpers import (
     WeightedLookup,
     _validate_truth_table,
     input_weights,
-    symmetric_weights,
+    symmetric_lookup,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
@@ -114,7 +114,7 @@ def _layout(truth_table: str) -> TemplateLayout:
         bare: list[str | InputSlot] = [_SLOT, " "]
         return layout_fragments([*bare * n, f"({truth_table[0]})"])
     candidates = [_lookup(weighted)]
-    if (symmetric := symmetric_weights(truth_table, n)) is not None:
+    if (symmetric := symmetric_lookup(weighted)) is not None:
         candidates.append(_symmetric(symmetric))
     return min(candidates, key=lambda layout: len(layout.source))
 

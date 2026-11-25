@@ -25,6 +25,7 @@ Decisions:
 import re
 from collections import Counter
 from collections.abc import Iterable
+from functools import cached_property
 
 from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
@@ -46,6 +47,7 @@ __all__ = ["balance_collatz_multiverse", "collatz_multiverse"]
 #: A cell costs one line whatever its width and the decoder ``c`` lines per
 #: distinct cell: at most 64 for four, but up to 2048 for eight.
 _CM_CHUNK = 4
+_CM_FLIP = str.maketrans("01", "10")
 
 #: The shortest line that does nothing -- ``z`` is the zero register.
 _CM_PAD = "z=z x+z,NOT PRINT."
@@ -133,6 +135,7 @@ def _cm_build(
     narrow: bool = False,
     invert: bool = False,
     chunk: int = _CM_CHUNK,
+    projected: str | None = None,
 ) -> str:
     """Emit the cell-and-decoder program over ``order``'s inputs.
 
@@ -147,9 +150,9 @@ def _cm_build(
     line, so the sparser polarity costs less -- and prints ``49 - bit``.
     """
     address_scale = 2 if narrow else 1
+    table = read_at(truth_table, order, n) if projected is None else projected
     if invert:
-        truth_table = "".join("10"[int(bit)] for bit in truth_table)
-    table = read_at(truth_table, order, n)
+        table = table.translate(_CM_FLIP)
     chunks = list(map(ord, packed_cells(table, chunk)))
     uses = Counter(chunks)
     codes = _cm_codes(uses) if numbered else {value: value for value in chunks}
@@ -389,21 +392,75 @@ def _cm_affine_program(table: str, n: int) -> str | None:
     return "\n".join(lines)
 
 
+class _CandidatePlan:
+    """Share analysis and selector builds across layouts of one table."""
+
+    def __init__(self, table: str, n: int) -> None:
+        self.table = table
+        self.n = n
+        self.projections: dict[tuple[int, ...], str] = {}
+        self.builds: dict[tuple[tuple[int, ...], bool, bool], str] = {}
+
+    @cached_property
+    def constant(self) -> str | None:
+        return constant_output(self.table)
+
+    @cached_property
+    def affine(self) -> str | None:
+        return _cm_affine_program(self.table, self.n)
+
+    @cached_property
+    def essential(self) -> list[int]:
+        return essential_inputs(self.table, self.n)
+
+    @cached_property
+    def chunk(self) -> int:
+        return _cm_chunk(self.project(self.essential))
+
+    def project(self, order: list[int]) -> str:
+        key = tuple(order)
+        projected = self.projections.get(key)
+        if projected is None:
+            projected = read_at(self.table, order, self.n)
+            self.projections[key] = projected
+        return projected
+
+    def build(self, order: list[int], *, narrow: bool, invert: bool) -> str:
+        key = tuple(order), narrow, invert
+        program = self.builds.get(key)
+        if program is None:
+            program = _cm_build(
+                self.table,
+                self.n,
+                order,
+                narrow=narrow,
+                invert=invert,
+                chunk=self.chunk,
+                projected=self.project(order),
+            )
+            self.builds[key] = program
+        return program
+
+
 def _cm_candidates(
-    truth_table: str, n: int, *, narrow: bool, expanded: bool
+    truth_table: str,
+    n: int,
+    *,
+    narrow: bool,
+    expanded: bool,
+    plan: _CandidatePlan | None = None,
 ) -> list[str]:
     """Return one constant/affine stream, otherwise the selector orders."""
-    if (constant := constant_output(truth_table)) is not None:
-        # A constant table needs no evaluation, but the reads are the
-        # interface: skipping them strands the caller's bits and the prompts.
+    if plan is None:
+        plan = _CandidatePlan(truth_table, n)
+    if (constant := plan.constant) is not None:
+        # Constant programs still need every read, even without evaluation.
         return [_cm_constant_program(n, _ASCII_ZERO + int(constant), narrow=narrow)]
-    if (affine := _cm_affine_program(truth_table, n)) is not None:
+    if (affine := plan.affine) is not None:
         return [affine]
-    orders = _cm_orders(essential_inputs(truth_table, n), expanded=expanded)
-    chunk = _cm_chunk(read_at(truth_table, orders[0], n))
     return [
-        _cm_build(truth_table, n, order, narrow=narrow, invert=invert, chunk=chunk)
-        for order in orders
+        plan.build(order, narrow=narrow, invert=invert)
+        for order in _cm_orders(plan.essential, expanded=expanded)
         for invert in (False, True)
     ]
 
@@ -413,9 +470,15 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
 
     ``width`` selects complete statements with fixed odd-index cells when needed.
     """
-    n = _validate_truth_table(truth_table)
+    return _program(
+        _CandidatePlan(truth_table, _validate_truth_table(truth_table)), width
+    )
+
+
+def _program(plan: _CandidatePlan, width: int | None = None) -> str:
+    table, n = plan.table, plan.n
     program = min(
-        _cm_candidates(truth_table, n, narrow=False, expanded=width is not None),
+        _cm_candidates(table, n, narrow=False, expanded=width is not None, plan=plan),
         key=len,
     )
     if width is None:
@@ -425,7 +488,7 @@ def collatz_multiverse(truth_table: str, width: int | None = None) -> str:
         return fitted
     layouts = [
         _cm_layout(c, width)
-        for c in _cm_candidates(truth_table, n, narrow=True, expanded=True)
+        for c in _cm_candidates(table, n, narrow=True, expanded=True, plan=plan)
     ]
     return _cm_narrow_choice(fitted, layouts)
 
@@ -437,11 +500,14 @@ def _cm_layout_versions(program: str) -> tuple[str, ...]:
     return program, compact, aliased, _cm_layout(program, 1)
 
 
-def balance_collatz_multiverse(truth_table: str, default: str) -> str:
+def balance_collatz_multiverse(truth_table: str, default: str | None = None) -> str:
     """Return the best-balanced spelling of the wide and narrow builds."""
     n = _validate_truth_table(truth_table)
-    wide = collatz_multiverse(truth_table, len(default))
-    narrow = _cm_candidates(truth_table, n, narrow=True, expanded=True)
+    plan = _CandidatePlan(truth_table, n)
+    if default is None:
+        default = _program(plan)
+    wide = _program(plan, len(default))
+    narrow = _cm_candidates(truth_table, n, narrow=True, expanded=True, plan=plan)
     # Each build's four spellings are the finite regimes the old sweep over
     # fit thresholds selected among; scoring them directly needs no width.
     candidates = [default]
@@ -506,9 +572,9 @@ def _cm_constants(
 
 def collatz_multiverse_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return collatz_multiverse(request.table, request.width)
-    return collatz_multiverse(request.table)
+    if request.balance:
+        return balance_collatz_multiverse(request.table)
+    return collatz_multiverse(request.table, request.width)
 
 
 def collatz_multiverse_balance_request(request: BalanceRequest) -> Program:

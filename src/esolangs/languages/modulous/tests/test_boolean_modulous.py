@@ -76,7 +76,7 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
     assert_analysis_complement(
         "Modulous", "input_weights", named_table(6, "random 1847")
     )
-    assert_analysis_complement("Modulous", "symmetric_weights", "0110100110010110")
+    assert_analysis_complement("Modulous", "symmetric_lookup", "0110100110010110")
     _check_pair_resources()
     assert_an_ignored_input_costs("Modulous", 6, 14)
 

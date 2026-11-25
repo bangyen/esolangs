@@ -45,7 +45,7 @@ class TestSuperSNUSPWidth:
 
         for witness in cases["vertical_to_fold_width_floor"]:
             table = witness.table()
-            floor = boolean._fold_floor(boolean.super_snusp(table))
+            floor = boolean._FoldPlan(boolean.super_snusp(table)).floor
             for width in (floor - 1, floor):
                 with patch.object(
                     boolean, "_super_snusp_folded", wraps=boolean._super_snusp_folded
