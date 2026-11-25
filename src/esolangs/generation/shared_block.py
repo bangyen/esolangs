@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from esolangs.generation.helpers import subtree_ids
+
+type RepeatedSpans = Sequence[tuple[int, int, int]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,9 +27,11 @@ class ContinuationCost[KeyT]:
         )
 
 
-def repeated_block(table: str) -> tuple[int, int] | None:
+def repeated_block(
+    table: str, *, repeats: RepeatedSpans | None = None
+) -> tuple[int, int] | None:
     """Return (depth, first row) with greatest repeated-span saving, or None."""
-    found = _repeated_blocks(table)
+    found = _repeated_blocks(table) if repeats is None else repeats
     if not found:
         return None
     depth, row, _ = max(found, key=lambda block: block[2])
@@ -43,12 +48,17 @@ def repeated_blocks(table: str) -> tuple[tuple[int, int], ...]:
 
 
 def repeated_bank(
-    table: str, *, reserve_last: bool = False, ranked: bool = True
+    table: str,
+    *,
+    reserve_last: bool = False,
+    ranked: bool = True,
+    repeats: RepeatedSpans | None = None,
 ) -> tuple[tuple[tuple[int, int], ...], tuple[int, ...]]:
     """Bank repeats by occurrence or copy count at the greatest-saving level."""
     n = len(table).bit_length() - 1
     groups: dict[int, list[tuple[int, int]]] = {}
-    for depth, row, saving in _repeated_blocks(table):
+    found = _repeated_blocks(table) if repeats is None else repeats
+    for depth, row, saving in found:
         groups.setdefault(depth, []).append((row, saving >> (n - depth)))
     best: tuple[tuple[int, int], ...] = ()
     flags: tuple[int, ...] = ()
@@ -120,9 +130,13 @@ def repeated_mixed_bank(
 
 
 def _repeated_blocks(
-    table: str, *, include_single: bool = False
+    table: str,
+    *,
+    include_single: bool = False,
+    ids: Sequence[Sequence[int]] | None = None,
 ) -> list[tuple[int, int, int]]:
-    ids = subtree_ids(table)
+    if ids is None:
+        ids = subtree_ids(table)
     n = len(ids) - 1
     live = {ids[0][0]: (1, 0)}
     found: list[tuple[int, int, int]] = []

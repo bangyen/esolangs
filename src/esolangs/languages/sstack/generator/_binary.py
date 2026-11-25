@@ -10,7 +10,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from esolangs.generation.helpers import subtree_ids
-from esolangs.generation.shared_block import _repeated_blocks
+from esolangs.generation.shared_block import RepeatedSpans, _repeated_blocks
 from esolangs.languages.sstack.generator._walk import _Hooks, _TreeWalk
 
 _PROLOGUE = '"49/b""48/c"'
@@ -278,14 +278,22 @@ def binary_bank(
 
 
 def best_binary_bank(
-    table: str, build: _Builder, command_budget: int, size_limit: int
+    table: str,
+    build: _Builder,
+    command_budget: int,
+    size_limit: int,
+    *,
+    ids: Sequence[Sequence[int]] | None = None,
+    repeats: RepeatedSpans | None = None,
 ) -> tuple[str, int] | None:
     """Price all folded-tree levels in O(T), then emit the best admitted bank."""
-    ids = subtree_ids(table)
+    if ids is None:
+        ids = subtree_ids(table)
     n = len(ids) - 1
     metrics = _inline_metrics(ids)
     groups: dict[int, list[int]] = {}
-    for depth, row, _ in _repeated_blocks(table):
+    found = _repeated_blocks(table, ids=ids) if repeats is None else repeats
+    for depth, row, _ in found:
         groups.setdefault(depth, []).append(row)
     best = None
     for depth, rows in groups.items():

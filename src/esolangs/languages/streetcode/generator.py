@@ -903,29 +903,40 @@ def _tree_may_win(truth_table: str, n: int, flat: str) -> bool:
     return 4 * _tree_leaves(truth_table) * (setup + 1) < grid_area(flat)
 
 
-def _tree_shapes(truth_table: str, n: int, *, hallway: bool) -> list[str]:
+def _tree_shapes(
+    truth_table: str, n: int, *, hallway: bool, flat: str | None = None
+) -> list[str]:
     """Return the tree shapes, hallway first if asked, and the flat lookup.
 
     The flat lookup joins the race at the last tree arity and is canonical
     from ``_FLAT_FROM``, where the tree is drawn only if its area floor wins.
     """
-    # The per-input loops trade rows for columns, so only width selection
-    # needs them.  The shared lap is strictly shorter through every table at
-    # n <= 3 and every sampled n == 4 table, while its fixed setup wins more
-    # decisively as the input count grows.
-    if n >= _FLAT_FROM:
-        flat = _streetcode_shared_kerb(_streetcode_flat(truth_table, n))
-        if not _tree_may_win(truth_table, n, flat):
-            return [flat]
+    kerb = None
+    if n >= _FLAT_FROM - 1:
+        if flat is None:
+            flat = _streetcode_flat(truth_table, n)
+        kerb = _streetcode_shared_kerb(flat)
+        if n >= _FLAT_FROM and not _tree_may_win(truth_table, n, kerb):
+            return [kerb]
+    # Per-input loops trade rows for columns. The shared lap is strictly
+    # shorter for every table through n=3 and the sampled n=4 tables.
     tree = _streetcode_tree(truth_table)
     programs = [_streetcode_hallway_program(n, tree)] if hallway else []
     programs.append(_streetcode_shared_program(n, tree))
-    # At four the shared-kerb lookup wins dense tables but loses folded ones.
-    if n == _FLAT_FROM - 1:
-        programs.append(_streetcode_shared_kerb(_streetcode_flat(truth_table, n)))
-    if n >= _FLAT_FROM:
-        programs.append(flat)
+    if kerb is not None:
+        programs.append(kerb)
     return programs
+
+
+def _constant_corridor(n: int, constant: str) -> str:
+    """Use a closed two-lane corridor without a junction or lookup."""
+    body = "C" + "I" * n + "=" + "^" * (48 + int(constant)) + "O;"
+    wall = "+" + "-" * len(body) + "+"
+    return "\n".join((wall, "|" + " " * len(body) + "|", "|" + body + "|", wall))
+
+
+def _fit_corridor(program: str, width: int) -> str:
+    return _streetcode_quarter_turn(program) if grid_width(program) > width else program
 
 
 def streetcode(truth_table: str, width: int | None = None) -> str:
@@ -935,54 +946,76 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     if (constant := constant_output(truth_table)) is not None:
-        # A closed two-lane corridor needs no junction, normalization or lookup.
-        body = "C" + "I" * n + "=" + "^" * (48 + int(constant)) + "O;"
-        wall = "+" + "-" * len(body) + "+"
-        program = "\n".join((wall, "|" + " " * len(body) + "|", "|" + body + "|", wall))
-        if width is not None and grid_width(program) > width:
-            return _streetcode_quarter_turn(program)
-        return program
-    programs = _tree_shapes(truth_table, n, hallway=width is not None)
+        program = _constant_corridor(n, constant)
+        return program if width is None else _fit_corridor(program, width)
+    flat = _streetcode_flat(truth_table, n) if n >= _FLAT_FROM - 1 else None
+    programs = _tree_shapes(truth_table, n, hallway=width is not None, flat=flat)
     if width is not None:
         fitting = [p for p in programs if grid_width(p) <= width]
         if fitting:
             return _smallest(*fitting)
         # Sharing the kerb wins even when the wider turn fits; see
         # [ablations.narrow_kerb_and_cache_repair_20261104].
-        return _streetcode_narrow(_streetcode_flat(truth_table, n))
+        return _streetcode_narrow(
+            flat if flat is not None else _streetcode_flat(truth_table, n)
+        )
     return _smallest(*programs)
 
 
-def _balance(table: str, default: str) -> str:
-    """Compare the default with the fold from six inputs, else also the tree fits.
-
-    From six inputs the fold beat every other layout (default, the one- and
-    nine-column fits, the indexed street and its half-turn) on every table
-    measured; the free default stays so balance never scores worse than it.
-    """
+def _balance(table: str, default: str | None = None) -> str:
+    """Compare the default with folded streets and, through n=5, width fits."""
     n = _validate_truth_table(table)
+    flat = _streetcode_flat(table, n)
+    constant = constant_output(table)
+    corridor = _constant_corridor(n, constant) if constant is not None else None
     if n >= _FOLD_FROM:
-        folded = _streetcode_folded(_streetcode_flat(table, n))
+        # From six inputs the fold beat every other layout on the measured tables.
+        if default is None:
+            default = (
+                corridor
+                if corridor is not None
+                else _smallest(*_tree_shapes(table, n, hallway=False, flat=flat))
+            )
+        folded = _streetcode_folded(flat)
         piece = _ROOM_PIECE * isqrt(1 << n)
         stacked = _streetcode_folded(_streetcode_flat(table, n, piece), tall=True)
-        return min([default, folded, stacked], key=balance_score)
-    shapes = _tree_shapes(table, n, hallway=True)
-    # A requested width changes the shortest fitting shape only when another
-    # shape starts fitting; asking at that shape's span also excludes losers.
-    candidates = [default, streetcode(table, 1), streetcode(table, 9)]
-    if constant_output(table) is not None:
-        # The corridor wins area; small constants' loop shapes are squarer.
-        candidates.extend(shapes)
-    candidates.extend(streetcode(table, grid_width(shape)) for shape in shapes)
-    candidates.append(_streetcode_folded(_streetcode_flat(table, n)))
+        return min(default, folded, stacked, key=balance_score)
+
+    shapes = _tree_shapes(table, n, hallway=True, flat=flat)
+    widths = [grid_width(shape) for shape in shapes]
+    if corridor is not None:
+        if default is None:
+            default = corridor
+        candidates = [
+            default,
+            _fit_corridor(corridor, 1),
+            _fit_corridor(corridor, 9),
+            *shapes,
+        ]
+        candidates.extend(_fit_corridor(corridor, width) for width in widths)
+    else:
+        if default is None:
+            # The default omits the hallway. A lone kerb has no hallway.
+            default = _smallest(*(shapes[1:] or shapes))
+        ranked = sorted(
+            zip(widths, shapes, strict=True), key=lambda pair: grid_rank(pair[1])
+        )
+        narrow = _streetcode_narrow(flat)
+        # The winner changes only at a candidate's own width.
+        fits = (
+            next((shape for span, shape in ranked if span <= width), narrow)
+            for width in (1, 9, *widths)
+        )
+        candidates = [default, *fits]
+    candidates.append(_streetcode_folded(flat))
     return min(candidates, key=balance_score)
 
 
 def streetcode_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return streetcode(request.table, request.width)
-    return streetcode(request.table)
+    if request.balance:
+        return _balance(request.table)
+    return streetcode(request.table, request.width)
 
 
 def streetcode_balance_request(request: BalanceRequest) -> Program:

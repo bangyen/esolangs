@@ -59,12 +59,14 @@ class GenerationRequest:
     table: str
     width: int | None = None
     options: Options = Options()
+    balance: bool = False
 
     def __repr__(self) -> str:
         """Represent the request even when its integer width exceeds the digit cap."""
         return (
             f"{type(self).__qualname__}(table={self.table!r}, "
-            f"width={repr_value(self.width)}, options={self.options!r})"
+            f"width={repr_value(self.width)}, options={self.options!r}"
+            f"{', balance=True' if self.balance else ''})"
         )
 
 

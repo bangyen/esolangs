@@ -24,6 +24,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.back.generator", "back_request"
         ),
         layout_width=True,
+        layout_balance=True,
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.back.generator", "back_balance_request"
         ),

@@ -24,6 +24,7 @@ Decisions:
     8,192 old/new native rows.
 """
 
+from collections.abc import Sequence
 from itertools import pairwise
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
@@ -31,6 +32,7 @@ from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import (
     BranchCost,
     ContinuationCost,
+    _repeated_blocks,
     add_cost,
     dispatch_cost,
     merge_cost,
@@ -51,27 +53,37 @@ def sstack(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         return ";d;" * n + f'"{48 + int(truth_table[0])}/b":b:'
-    plain, _ = _sstack_tree(truth_table)
-    shared = repeated_block(truth_table)
+    ids = subtree_ids(truth_table)
+    plain, _ = _sstack_tree(truth_table, ids=ids)
+    repeats = _repeated_blocks(truth_table, ids=ids)
+    shared = repeated_block(truth_table, repeats=repeats)
     if shared is None:
         return plain
-    candidate, commands = _sstack_tree(truth_table, shared)
+    candidate, commands = _sstack_tree(truth_table, shared, ids=ids)
     forms = [(plain, 0), (candidate, commands)]
     # Only the two same-level banks race ([ablations.multi_block_deferral]).
-    banks = (repeated_bank(truth_table, ranked=False)[0], repeated_bank(truth_table)[0])
+    banks = (
+        repeated_bank(truth_table, ranked=False, repeats=repeats)[0],
+        repeated_bank(truth_table, repeats=repeats)[0],
+    )
     for blocks in dict.fromkeys(banks):
         if len(blocks) > 1:
-            result = _sstack_shared(truth_table, blocks)
+            result = _sstack_shared(truth_table, blocks, ids=ids)
             # The bank fits in n - depth labels and n <= 62 for a str.
             assert result is not None
             forms.append(result)
     admitted = min((program for program, cost in forms if cost <= 7 * n + 3), key=len)
-    bank = best_binary_bank(truth_table, _sstack_tree, 7 * n + 3, len(admitted))
+    bank = best_binary_bank(
+        truth_table, _sstack_tree, 7 * n + 3, len(admitted), ids=ids, repeats=repeats
+    )
     return admitted if bank is None else bank[0]
 
 
 def _sstack_shared(
-    table: str, blocks: tuple[tuple[int, int], ...]
+    table: str,
+    blocks: tuple[tuple[int, int], ...],
+    *,
+    ids: Sequence[Sequence[int]] | None = None,
 ) -> tuple[str, int] | None:
     """Defer residuals through six-bit labels; return text and command bound."""
     n = _validate_truth_table(table)
@@ -91,9 +103,9 @@ def _sstack_shared(
         for depth, row in blocks
     ):
         raise ValueError("definitions must name aligned table spans")
-    ids = subtree_ids(table)
+    tree = subtree_ids(table) if ids is None else ids
     selected = {
-        (depth, ids[depth][row >> (n - depth)]): i
+        (depth, tree[depth][row >> (n - depth)]): i
         for i, (depth, row) in enumerate(blocks)
     }
     if len(selected) != len(blocks) or any(key < 2 for _, key in selected):
@@ -116,7 +128,7 @@ def _sstack_shared(
         return ContinuationCost(remaining + 1)
 
     walk: _TreeWalk[ContinuationCost[int]] = _TreeWalk(
-        ids,
+        tree,
         out.append,
         _Hooks(
             hit=hit,
@@ -131,7 +143,7 @@ def _sstack_shared(
     for i, (depth, row) in enumerate(blocks):
         marker = f'"{i + 1}/b"'
         out.append(marker + "[e\\b/~e~~b~")
-        del selected[depth, ids[depth][row >> (n - depth)]]
+        del selected[depth, tree[depth][row >> (n - depth)]]
         body = walk.walk(n - depth, row)
         out.append(marker + "]~b~")
         stages.append((i, body))
@@ -143,10 +155,15 @@ def _sstack_shared(
     return "".join(out), 2 + prefix.evaluate(tails)
 
 
-def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str, int]:
+def _sstack_tree(
+    table: str,
+    shared: tuple[int, int] | None = None,
+    *,
+    ids: Sequence[Sequence[int]] | None = None,
+) -> tuple[str, int]:
     """Emit a tree and the maximum commands of normal and deferred paths."""
     n = _validate_truth_table(table)
-    ids = subtree_ids(table)
+    tree = subtree_ids(table) if ids is None else ids
     out = [_PROLOGUE]
 
     def hit(
@@ -159,7 +176,7 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
         """Price a jump to ``defer``'s shared body where the span recurs there."""
         if defer is None or depth != defer[0]:
             return None
-        if key != ids[depth][defer[1] >> remaining]:
+        if key != tree[depth][defer[1] >> remaining]:
             return None
         out.append('"49/e"')
         return None, 1
@@ -175,7 +192,7 @@ def _sstack_tree(table: str, shared: tuple[int, int] | None = None) -> tuple[str
         return remaining + 1, None
 
     walk: _TreeWalk[BranchCost] = _TreeWalk(
-        ids,
+        tree,
         out.append,
         _Hooks(
             hit=hit,

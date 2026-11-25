@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.streetcode.generator", "streetcode_request"
         ),
         layout_width=True,
+        layout_balance=True,
         balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.streetcode.generator", "streetcode_balance_request"
         ),

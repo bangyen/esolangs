@@ -85,6 +85,8 @@ class BooleanBackend:
     balance: OperationRef[BalanceRequest, GeneratedProgram] | Balancer | None = None
     #: Native arity check, shared with direct generator calls for its diagnostic.
     arity_guard: Callable[[int], None] | None = None
+    #: The generator can select balanced layouts in one request.
+    layout_balance: bool = False
 
     @recursive_repr()
     def __repr__(self) -> str:

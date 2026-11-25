@@ -272,7 +272,7 @@ def _generate(
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
     truth_table = check_table_text(truth_table)
-    if balance:
+    if balance and not backend.layout_balance:
         return _generate_balanced(
             resolved, truth_table, options, settings, catalog=catalog, probes=probes
         )
@@ -280,9 +280,12 @@ def _generate(
     inputs = _validate_truth_table(truth_table)
     backend.check_arity(resolved, inputs)
     fn = backend.generate
-    laid_out = width is not None and backend.layout_width
+    laid_out = balance or (width is not None and backend.layout_width)
     request = GenerationRequest(
-        truth_table, width if laid_out else None, _backend_options(schema, options)
+        truth_table,
+        width if laid_out else None,
+        _backend_options(schema, options),
+        balance=balance,
     )
     generated = (
         call_backend(fn, request) if probes is None else probes.generate(fn, request)

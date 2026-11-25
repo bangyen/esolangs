@@ -63,6 +63,7 @@ from esolangs.generation.wrap import balance_score
 
 _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], TemplateToken]
+_SubtreeIds = tuple[tuple[int, ...], ...]
 
 
 #: Finisher for a cell primed to 1: ``-`` flips it to 0, ``+`` is inert.
@@ -167,7 +168,11 @@ def _back_parity(truth_table: str, n: int) -> TemplateLayout | None:
 
 
 def _back_htree(
-    table: str, weights: Sequence[int], base: int = _FOLD_BASE
+    table: str,
+    weights: Sequence[int],
+    base: int = _FOLD_BASE,
+    *,
+    ids: _SubtreeIds | None = None,
 ) -> TemplateLayout:
     r"""Fold the decision tree into an H-tree of combs, under a row of load.
 
@@ -189,10 +194,10 @@ def _back_htree(
     for level, i in enumerate(essential):
         cells[i] = n if level == levels else level
     units = _back_load(list(range(n)), cells, weights, levels, n)
-    ids = subtree_ids(table)
+    tree = subtree_ids(table) if ids is None else ids
 
     def leaf(level: int, lo: int) -> bool:
-        return level == levels or ids[level][lo >> (levels - level + 1)] < 2
+        return level == levels or tree[level][lo >> (levels - level + 1)] < 2
 
     # (width, height, entry row) of a subtree drawn heading east from its
     # west edge; a comb block enters at its top-left.
@@ -204,7 +209,7 @@ def _back_htree(
         else:
             half = 1 << (levels - level)
             block = lo // (2 * half)
-            if ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
+            if tree[level + 1][2 * block] == tree[level + 1][2 * block + 1]:
                 w, h, entry = measure(level + 1, lo)
                 box = (1 + w, h, entry)
                 dims[level, lo] = box
@@ -239,7 +244,7 @@ def _back_htree(
             return
         half = 1 << (levels - level)
         block = lo // (2 * half)
-        if ids[level + 1][2 * block] == ids[level + 1][2 * block + 1]:
+        if tree[level + 1][2 * block] == tree[level + 1][2 * block + 1]:
             put(dims[level + 1, lo][2], 0, ">")
             sub(lo, 0, 1, turn=False)
             return
@@ -281,7 +286,13 @@ def back(truth_table: str, width: int | None = None) -> str:
     return _layout(truth_table, width).source
 
 
-def _layout(truth_table: str, width: int | None) -> TemplateLayout:
+def _layout(
+    truth_table: str,
+    width: int | None,
+    *,
+    balance: bool = False,
+    default: TemplateLayout | None = None,
+) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     weights, table = input_weights(truth_table, n)
     if len(table) == 1:
@@ -289,27 +300,54 @@ def _layout(truth_table: str, width: int | None) -> TemplateLayout:
         units = [*(_BACK_INPUT, "-") * n, *(">" * n)]
         units += (["-"] if table == "1" else []) + ["*"]
         flat = layout_fragments(units)
-        if width is None or width >= len(flat.source):
+        if not balance and (width is None or width >= len(flat.source)):
             return flat
-        return layout_tokens(["\\", *units], 1)
+        vertical = layout_tokens(["\\", *units], 1)
+        if balance:
+            return min(
+                default or flat,
+                vertical,
+                key=lambda layout: balance_score(layout.source),
+            )
+        return vertical
+
+    ids = subtree_ids(table)
     levels = len(table).bit_length() - 1
-    order = tuple(range(levels))
-    if width is None and symmetric_outputs(table, levels) is not None:
-        # Popcount functions are invariant under reversal. The same comb then
-        # needs a shorter loader walk ([ablations.symmetric_reverse_loader]).
-        order = tuple(reversed(order))
-    program = _back_ordered(table, order, width, weights)
-    if width is None and len(table) > 1 << _FOLD_BASE:
-        program = min(
-            program,
-            _back_htree(table, weights),
-            key=lambda layout: grid_rank(layout.source),
-        )
-    if width is not None and width > 0 and grid_width(program.source) > width:
-        parity = _back_parity(truth_table, n)
-        if parity is not None:
-            return parity
-    return program
+    natural = tuple(range(levels))
+
+    def comb(span: int | None) -> TemplateLayout:
+        order = natural
+        if span is None and symmetric_outputs(table, levels) is not None:
+            # Popcount symmetry keeps the comb fixed. Reversing the input
+            # cells shortens its loader walk ([ablations.symmetric_reverse_loader]).
+            order = tuple(reversed(order))
+        program = _back_ordered(table, order, span, weights, ids=ids)
+        if span is not None and span > 0 and grid_width(program.source) > span:
+            parity = _back_parity(truth_table, n)
+            if parity is not None:
+                return parity
+        return program
+
+    folded = None
+    if default is None:
+        default = comb(width)
+        if width is None and levels > _FOLD_BASE:
+            folded = _back_htree(table, weights, ids=ids)
+            default = min(default, folded, key=lambda layout: grid_rank(layout.source))
+    if not balance:
+        return default
+
+    # The base changes the fold aspect ratio by a factor of two per level
+    # of parity (n=8: 63 x 80 at base 5, 46 x 102 at base 6).
+    candidates = [default, comb(1)]
+    candidates.extend(
+        folded
+        if base == _FOLD_BASE and folded is not None
+        else _back_htree(table, weights, base, ids=ids)
+        for base in range(_BALANCE_BASES[0], _BALANCE_BASES[1] + 1)
+        if levels > base
+    )
+    return min(candidates, key=lambda layout: balance_score(layout.source))
 
 
 def _back_pointer_walk(frm: int, to: int) -> list[str]:
@@ -484,6 +522,8 @@ def _back_ordered(
     perm: tuple[int, ...],
     width: int | None = None,
     weights: Sequence[int] | None = None,
+    *,
+    ids: _SubtreeIds | None = None,
 ) -> TemplateLayout:
     r"""Build one Back template, loading its inputs in ``perm`` order.
 
@@ -521,7 +561,7 @@ def _back_ordered(
         # [ablations.answer_cell_preload_20261102]: the final bit is a leaf input.
         cells[essential[i]] = n if level == levels - 1 else level
 
-    ids = subtree_ids(truth_table)
+    tree = subtree_ids(truth_table) if ids is None else ids
 
     def build(*, vertical: bool) -> _Grid:
         """Plan then draw one layout, both phases sharing one context."""
@@ -530,7 +570,7 @@ def _back_ordered(
             levels=levels - 1,
             n=n,
             vertical=vertical,
-            ids=ids,
+            ids=tree,
         )
         context.plan()
         return context.draw()[0]
@@ -557,30 +597,13 @@ def _back_ordered(
     return _reflect_back(grid, height, tree_width)
 
 
-def _balance(table: str, default: TemplateLayout) -> TemplateLayout:
-    """Compare the default, one column and the folded tree at each comb base.
-
-    The comb wins area at n=8 (140 x 29) but the tree is squarer (63 x 80).
-    A base moves the fold's shape by a factor of two per level of parity, so
-    the even arities reach 2:1 only at another base (n=8: 46 x 102 at base 6).
-    """
-    candidates = [default, _layout(table, 1)]
-    weights, reduced = input_weights(table, _validate_truth_table(table))
-    candidates.extend(
-        _back_htree(reduced, weights, base)
-        for base in range(_BALANCE_BASES[0], _BALANCE_BASES[1] + 1)
-        if len(reduced) > 1 << base
-    )
-    return min(candidates, key=lambda layout: balance_score(layout.source))
-
-
 def back_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return _layout(request.table, request.width)
+    return _layout(request.table, request.width, balance=request.balance)
 
 
 def back_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Balance the native layouts while preserving their slot positions."""
     if not isinstance(request.source, TemplateLayout):
         raise TypeError("balancing needs a rendered template with slots")
-    return _balance(request.table, request.source)
+    return _layout(request.table, None, balance=True, default=request.source)
