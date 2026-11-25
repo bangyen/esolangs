@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+from codecs import BOM_UTF8
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import ExitStack
 from dataclasses import asdict, replace
@@ -120,6 +121,32 @@ def _portable_record_candidate(data: bytes) -> dict[str, Any] | None:
     if value["kind"] not in ("text", "png", "gzip", "template"):
         raise ValueError("unknown source kind")
     return value
+
+
+def _portable_bom_error(label: str) -> ProgramError:
+    return with_hint(
+        ProgramError(f"{label}: portable JSON starts with a UTF-8 BOM"),
+        "remove the UTF-8 BOM from the portable JSON and retry",
+    )
+
+
+def _portable_file_record(data: bytes, label: str) -> dict[str, Any] | None:
+    """Detect a portable file before passing its bytes to a native loader."""
+    start = 0
+    while data.startswith(BOM_UTF8, start):
+        start += len(BOM_UTF8)
+    document = data[start:]
+    if not document.lstrip().startswith(b"{"):
+        return None
+    try:
+        record = _portable_record_candidate(document)
+    except ValueError as error:
+        if start:
+            raise _portable_bom_error(label) from error
+        raise ProgramError(f"{label}: invalid portable program: {error}") from error
+    if record is not None and start:
+        raise _portable_bom_error(label)
+    return record
 
 
 def _check_portable_fields(value: dict[str, Any]) -> None:

@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import threading
+from codecs import BOM_UTF8
 from importlib.resources import files
 from pathlib import Path
 
@@ -376,6 +377,41 @@ class TestSourceAndPathsAreExplicit:
         path = tmp_path / "source.txt"
         path.write_bytes(b"nope.txt\r\n")
         assert _check_program(REFERENCE, path).source == "nope.txt\r\n"
+
+    def test_native_file_loaders_refuse_portable_json(self, tmp_path) -> None:
+        api = esolangs.Language(REFERENCE)
+        document = api.to_json("+" * 65 + ".+.")
+        path = tmp_path / "artifact.json"
+        path.write_text(document, encoding="utf-8")
+
+        for load in (api.from_file, api.prepare, api.run):
+            with pytest.raises(
+                ProgramError, match="contains a portable JSON artifact"
+            ) as caught:
+                load(path)
+            assert str(path) in str(caught.value)
+            assert any("from_json" in note for note in caught.value.__notes__)
+        assert api.run(api.from_json(path.read_text(encoding="utf-8"))).output == "AB"
+
+        path.write_text('{"payload":"++."}', encoding="utf-8")
+        assert api.run(api.from_file(path)).output == "\x02"
+        assert api.run(path).output == "\x02"
+
+    @pytest.mark.parametrize(
+        ("contents", "message"),
+        [
+            (b'{"format":"esolangs.program","source":', "invalid portable program"),
+            (BOM_UTF8 + b'{"format":"esolangs.program"}', "starts with a UTF-8 BOM"),
+        ],
+    )
+    def test_native_file_loaders_refuse_malformed_portable_json(
+        self, tmp_path, contents, message
+    ) -> None:
+        path = tmp_path / "incomplete.json"
+        path.write_bytes(contents)
+        with pytest.raises(ProgramError, match=message) as caught:
+            esolangs.from_file(REFERENCE, path)
+        assert str(path) in str(caught.value)
 
     def test_a_pathlib_path_is_read_in_both_directions(
         self, tmp_path: pathlib.Path

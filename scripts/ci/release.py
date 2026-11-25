@@ -174,15 +174,18 @@ def normalize_main(argv: list[str]) -> int:
 def notes(version: str, changelog: str) -> str:
     """Return the ``## version`` section of ``changelog``, heading dropped.
 
-    A missing or empty section raises: a release without notes is a tag that
-    skipped the changelog step.
+    A missing, empty or repeated version section raises.
     """
     heading = f"## {version.removeprefix('v')}"
     lines = changelog.splitlines()
     visible = mask_hidden("\n".join(lines)).split("\n")
-    if heading not in visible:
+    matches = [index for index, line in enumerate(visible) if line == heading]
+    if not matches:
         raise SystemExit(f"docs/CHANGELOG.md has no {heading!r} section")
-    start = visible.index(heading) + 1
+    if len(matches) > 1:
+        positions = ", ".join(str(index + 1) for index in matches)
+        raise SystemExit(f"docs/CHANGELOG.md repeats {heading!r} at lines {positions}")
+    start = matches[0] + 1
     end = next(
         (i for i in range(start, len(visible)) if visible[i].startswith("## ")),
         len(lines),

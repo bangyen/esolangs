@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .anchors import anchors
-from .fragments import AggregateKey, cached, fingerprint
+from .fragments import AggregateKey, FragmentFingerprint, cached, fingerprint
 from .resource_description import ResourceDescriptions, parse_descriptions
 from .writing import write_if_changed as _write_if_changed
 
@@ -125,7 +125,7 @@ def _fragment_row(
 #: validated loads by (source, fingerprint).  The new-language check
 #: loads the full status once per registered language; uncached, each
 #: load re-parsed every fragment and re-checked every evidence anchor.
-_LoadKey = tuple[str, tuple[tuple[str, int, int], ...]]
+_LoadKey = tuple[str, FragmentFingerprint]
 _AGGREGATES: dict[AggregateKey, dict[str, list[dict[str, Any]]]] = {}
 _LOADS: dict[_LoadKey, tuple[tuple[ProofRow, ...], tuple[ScalingRow, ...]]] = {}
 

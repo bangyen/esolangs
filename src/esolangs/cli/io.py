@@ -58,6 +58,7 @@ from esolangs.exceptions import (
     TemplateError,
 )
 from esolangs.operations.source import _check_program
+from esolangs.portable import _portable_bom_error, _portable_file_record
 from esolangs.raster.png import _SIGNATURE as _PNG_SIGNATURE
 from esolangs.registry import Catalog, LanguageDeclaration, get_catalog
 from esolangs.runtime._files import (
@@ -87,7 +88,6 @@ from esolangs.runtime.source_hints import (
     display_label,
     program_error_context,
     source_read_error,
-    with_hint,
 )
 from esolangs.settings import (
     DialectSettings,
@@ -236,36 +236,14 @@ def _read_program(
         _fail(exc)
 
 
-def _portable_bom_error(label: str) -> ProgramError:
-    return with_hint(
-        ProgramError(f"{label}: portable JSON starts with a UTF-8 BOM"),
-        "remove the UTF-8 BOM from the portable JSON and retry",
-    )
-
-
 def _reject_portable_source(
     data: bytes, path: str, label: str, catalog: Catalog, retry: _RunRetry
 ) -> None:
     """Stop a portable envelope from reaching a native interpreter."""
-    start = 0
-    while data.startswith(BOM_UTF8, start):
-        start += len(BOM_UTF8)
-    document = data[start:]
-    if not document.lstrip().startswith(b"{"):
-        return
-    from esolangs.portable import _portable_record_candidate
     from esolangs.registry._catalog import resolve_origin
 
-    try:
-        record = _portable_record_candidate(document)
-    except ValueError as error:
-        if start:
-            raise _portable_bom_error(label) from error
-        raise ProgramError(f"{label}: invalid portable program: {error}") from error
-    if record is None:
+    if (record := _portable_file_record(data, label)) is None:
         return
-    if start:
-        raise _portable_bom_error(label)
     recorded = record["language"]
     message = f"{label} contains a portable JSON artifact"
     if (owner := resolve_origin(recorded, catalog=catalog)) is None:

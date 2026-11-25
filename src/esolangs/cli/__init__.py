@@ -98,7 +98,6 @@ from esolangs.cli.io import (
     _fail,
     _flush_stdout,
     _output_unavailable,
-    _portable_bom_error,
     _read_stdin,
     _read_truth_table,
     _stdout_is_terminal,
@@ -119,6 +118,7 @@ from esolangs.operations.boolean_io import (
     _encode_inputs,
     _read_output_answer,
 )
+from esolangs.portable import _portable_bom_error
 from esolangs.raster import png
 from esolangs.registry import Catalog, LanguageDeclaration, SourceKind, get_catalog
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm

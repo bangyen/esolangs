@@ -9,7 +9,7 @@ every evidence anchor each time (the all-languages check went from
 2.2s on the old single-ledger tree to 19.8s).
 
 Aggregates are therefore cached per process against a fingerprint of
-the fragment set -- (package, mtime, size) per file, recomputed on
+the fragment set -- package, file identity, timestamps, and size, recomputed on
 every call for the price of a stat sweep.  Adding, removing, or
 editing a fragment changes the fingerprint, so a process that mutates
 the tree, as the scaffold and removal flows do, never reads a stale
@@ -30,21 +30,30 @@ if TYPE_CHECKING:
 #: The file each package keeps its fragment datasets in.
 FRAGMENT = "language.toml"
 
-#: Cache key for a registry-stamped aggregate: the packages dir, the
-#: registry's (id, name) stamp, and the fragment fingerprint.
-AggregateKey = tuple[
-    Path, tuple[tuple[str, str], ...], tuple[tuple[str, int, int], ...]
-]
+type FragmentFingerprint = tuple[tuple[str, int, int, int, int, int], ...]
+
+#: Keep the packages dir and registry identity alongside the fragment stamp.
+AggregateKey = tuple[Path, tuple[tuple[str, str], ...], FragmentFingerprint]
 
 
-def fingerprint(packages: Path) -> tuple[tuple[str, int, int], ...]:
-    """Return the fragment set's stamp: (package, mtime, size) per file."""
+def fingerprint(packages: Path) -> FragmentFingerprint:
+    """Return one stat stamp per fragment, including identity and change time."""
     if not packages.is_dir():
         return ()
-    return tuple(
-        (path.parent.name, path.stat().st_mtime_ns, path.stat().st_size)
-        for path in sorted(packages.glob(f"*/{FRAGMENT}"))
-    )
+    stamps = []
+    for path in sorted(packages.glob(f"*/{FRAGMENT}")):
+        info = path.stat()
+        stamps.append(
+            (
+                path.parent.name,
+                info.st_dev,
+                info.st_ino,
+                info.st_mtime_ns,
+                info.st_ctime_ns,
+                info.st_size,
+            )
+        )
+    return tuple(stamps)
 
 
 def cached[K, T](cache: dict[K, T], key: K, build: Callable[[], T]) -> T:

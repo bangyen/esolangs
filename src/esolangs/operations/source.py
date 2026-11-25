@@ -34,6 +34,7 @@ from esolangs.runtime.source_hints import (
     display_label,
     program_error_context,
     source_read_error,
+    with_hint,
 )
 from esolangs.settings import (
     DialectSettings,
@@ -231,6 +232,20 @@ def _read_source_artifact(
 ) -> ProgramArtifact[Program]:
     """Load a container after its explicit settings have been checked."""
     value, path = _read_container(program)
+    # The CLI checks its bounded snapshots separately to render shell hints.
+    if (
+        path is not None
+        and isinstance(value, bytes)
+        and not _has_backing_type(program, _FileSource)
+    ):
+        from esolangs.portable import _portable_file_record
+
+        label = display_label(path)
+        if _portable_file_record(value, label) is not None:
+            raise with_hint(
+                ProgramError(f"{label} contains a portable JSON artifact"),
+                "pass the file's UTF-8 text and recorded language to from_json",
+            )
     if isinstance(value, bytes) and (
         value.startswith(b"\x89PNG\r\n\x1a\n")
         or catalog.languages[name].runtime.source_kind is SourceKind.RASTER
@@ -356,7 +371,7 @@ def from_file(
     Gzip and PNG are detected by content. ``normalize=True`` applies the
     language's native file newline policy. Imports retain the original
     gzip bytes when the source text is unchanged. PNG can retain the
-    input arity and canonical owner.
+    input arity and canonical owner. Use ``from_json`` for portable JSON text.
 
     Raises:
         UnknownLanguageError: ``language`` is not registered.

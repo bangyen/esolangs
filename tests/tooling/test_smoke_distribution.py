@@ -421,6 +421,15 @@ def test_release_notes_require_a_visible_version_heading() -> None:
         smoke.notes("v1.1.0", changelog)
 
 
+def test_release_notes_name_each_visible_duplicate_heading() -> None:
+    example = "~~~md\n## 1.1.0\nExample.\n~~~\n\n"
+    first = "## 1.1.0\n\nFirst entry.\n"
+    second = "\n## 1.1.0\n\nSecond entry.\n"
+    assert smoke.notes("v1.1.0", example + first) == "First entry.\n"
+    with pytest.raises(SystemExit, match=r"repeats '## 1\.1\.0' at lines 6, 10"):
+        smoke.notes("v1.1.0", example + first + second)
+
+
 def test_every_source_path_checks_out_on_windows() -> None:
     """``what!?.txt`` failed every Windows checkout; macOS and Linux accept it."""
     src = Path(__file__).parents[2] / "src"
