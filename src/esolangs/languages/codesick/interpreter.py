@@ -53,6 +53,7 @@ from esolangs.runtime._state import (
     WorkspaceSnapshot,
     WorkspaceVariant,
 )
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 
 # Keep an escaped quote from backtracking into the closing delimiter.
@@ -240,10 +241,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain parsed instructions and substitute input separately for each run."""
-    if not isinstance(source, str):
-        raise TypeError("codesick machines require text source")
-    if options:
-        raise TypeError("codesick machines accept no runtime options")
+    source = require_text_source(source, options, "codesick")
 
     image = _prepare_source(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))

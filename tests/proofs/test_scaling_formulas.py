@@ -60,23 +60,36 @@ _MEDIUM_FROM = 19
     ],
 )
 def test_size_formulas_hold(name: str, n: int) -> None:
-    formula, exact, _ = FORMULAS[name]
     reached = False
     for table in _tables(name, n):
-        program = esolangs.generate(name, table)
-        text = str(program.source)
-        size = (
-            len(text)
-            if _UNIT[name] == "characters"
-            else grid_area(text)
-            if _UNIT[name] == "cells"
-            else _raster_area(program.source)
-            if _UNIT[name] in _RASTER
-            else text.count("\n") + 1
-        )
-        claim = formula(n, text)
-        assert size <= claim, f"{name} n={n} {table}: {size} > {claim} {_UNIT[name]}"
-        reached |= size == claim
+        reached |= check_size_bound(name, n, table, esolangs.generate(name, table))
+    check_exact_size(name, n, reached=reached)
+
+
+def check_size_bound(
+    name: str, n: int, table: str, program: esolangs.ProgramArtifact
+) -> bool:
+    """Check the measured size and report whether it reaches the bound."""
+    formula, _, _ = FORMULAS[name]
+    text = str(program.source)
+    unit = _UNIT[name]
+    size = (
+        len(text)
+        if unit == "characters"
+        else grid_area(text)
+        if unit == "cells"
+        else _raster_area(program.source)
+        if unit in _RASTER
+        else text.count("\n") + 1
+    )
+    claim = formula(n, text)
+    assert size <= claim, f"{name} n={n} {table}: {size} > {claim} {unit}"
+    return size == claim
+
+
+def check_exact_size(name: str, n: int, *, reached: bool) -> None:
+    """Require a witness to attain each exact size claim."""
+    _, exact, _ = FORMULAS[name]
     assert reached or not exact_at(exact, n), (
         f"{name} n={n}: no table reaches the formula"
     )

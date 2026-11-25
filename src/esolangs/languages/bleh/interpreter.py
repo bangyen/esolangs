@@ -69,6 +69,7 @@ from esolangs.runtime._state import (
     WorkspaceVariant,
     repr_snapshot_record,
 )
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
@@ -1024,10 +1025,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Parse source once and build fresh state for each run."""
-    if not isinstance(source, str):
-        raise TypeError("bleh machines require text source")
-    if options:
-        raise TypeError("bleh machines accept no runtime options")
+    source = require_text_source(source, options, "bleh")
     image = _prepare_source(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 

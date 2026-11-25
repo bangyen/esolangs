@@ -50,6 +50,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._snapshot import named_tuple_codec
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 
@@ -194,10 +195,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain source and jump targets with fresh invocation state."""
-    if not isinstance(source, str):
-        raise TypeError("qrain machines require text source")
-    if options:
-        raise TypeError("qrain machines accept no runtime options")
+    source = require_text_source(source, options, "qrain")
 
     image = _prepare_source(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))

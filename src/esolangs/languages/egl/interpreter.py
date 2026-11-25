@@ -44,6 +44,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.brackets import match_brackets
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
@@ -236,10 +237,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain source and jump targets with fresh invocation state."""
-    if not isinstance(source, str):
-        raise TypeError("egl machines require text source")
-    if options:
-        raise TypeError("egl machines accept no runtime options")
+    source = require_text_source(source, options, "egl")
 
     image = _prepare_source(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))

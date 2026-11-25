@@ -32,7 +32,11 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime._validate import _argument_repr, check_address
+from esolangs.runtime._validate import (
+    _argument_repr,
+    check_address,
+    require_text_source,
+)
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_int_memory
 from esolangs.runtime.source_hints import syntax_error
@@ -140,10 +144,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Parse once; every invocation copies the immutable initial memory image."""
-    if not isinstance(source, str):
-        raise TypeError("subleq machines require text source")
-    if options:
-        raise TypeError("subleq machines accept no runtime options")
+    source = require_text_source(source, options, "subleq")
 
     image = tuple(parse_int_memory(source))
 

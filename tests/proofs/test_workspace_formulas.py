@@ -14,6 +14,7 @@ from tests.proofs._witnesses import band_marks
 from tests.proofs.execution import FORMULAS as EXECUTION_FORMULAS
 from tests.proofs.execution import measure as _measure
 from tests.proofs.execution import tables as _tables
+from tests.proofs.test_scaling_formulas import check_exact_size, check_size_bound
 from tests.proofs.workspace import FORMULAS
 from tests.support.generator_support import CHECK
 
@@ -64,7 +65,9 @@ def _formula_cases() -> list[object]:
 
 
 @pytest.mark.parametrize(("name", "n"), _formula_cases())
-def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
+def test_execution_and_workspace_formulas_hold(
+    name: str, n: int, *, include_size_proof: bool
+) -> None:
     formulas = [
         (written, formula, exact)
         for written, ledger in ((False, EXECUTION_FORMULAS), (True, FORMULAS))
@@ -73,8 +76,11 @@ def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
         if n in arities
     ]
     reached = [False] * len(formulas)
+    size_reached = False
     for table in _tables(name, n):
         program = esolangs.generate(name, table)
+        if include_size_proof:
+            size_reached |= check_size_bound(name, n, table, program)
         measurements = _measure(
             name,
             table,
@@ -86,6 +92,8 @@ def test_execution_and_workspace_formulas_hold(name: str, n: int) -> None:
             actual = measurements[int(written)]
             assert actual <= claim, f"{name} n={n} {table}: {actual} > {claim}"
             reached[i] |= actual == claim
+    if include_size_proof:
+        check_exact_size(name, n, reached=size_reached)
     for found, (_, _, exact) in zip(reached, formulas, strict=True):
         assert found or not exact_at(exact, n), (
             f"{name} n={n}: no table reaches the formula"

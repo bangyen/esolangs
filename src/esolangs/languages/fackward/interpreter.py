@@ -59,6 +59,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 
@@ -338,10 +339,7 @@ def _depth(stack: _Stack) -> int:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain parsed instructions and allocate state per invocation."""
-    if not isinstance(source, str):
-        raise TypeError("fackward machines require text source")
-    if options:
-        raise TypeError("fackward machines accept no runtime options")
+    source = require_text_source(source, options, "fackward")
 
     image = parse(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))

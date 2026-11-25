@@ -24,6 +24,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.bit_tape import _BitTapeMachine
 from esolangs.runtime.brackets import BracketProgram
 from esolangs.runtime.io import IO
@@ -39,10 +40,7 @@ class _Machine(_BitTapeMachine):
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain validated loops while each run owns its tape and byte buffers."""
-    if not isinstance(source, str):
-        raise TypeError("boolfuck machines require text source")
-    if options:
-        raise TypeError("boolfuck machines accept no runtime options")
+    source = require_text_source(source, options, "boolfuck")
     program = BracketProgram.parse(source)
 
     def build(io: IO) -> _Machine:

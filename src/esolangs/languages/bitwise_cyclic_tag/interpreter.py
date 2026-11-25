@@ -36,6 +36,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
@@ -208,10 +209,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh machines after shared source and option preparation."""
-    if not isinstance(source, str):
-        raise TypeError("bitwise_cyclic_tag machines require text source")
-    if options:
-        raise TypeError("bitwise_cyclic_tag machines accept no runtime options")
+    source = require_text_source(source, options, "bitwise_cyclic_tag")
     image = _parse(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 
