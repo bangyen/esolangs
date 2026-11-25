@@ -404,7 +404,7 @@ def _constant_program(bit: str) -> str:
     return "$" if bit == "0" else "% 0 1\n$"
 
 
-def _balance(table: str, default: str | None = None) -> str:
+def _balance(table: str) -> str:
     """Return the squarest of the default and ten packings (shared and unshared walks).
 
     A packing at width ``w`` has about ``w`` columns and ``H(w)`` lines, with
@@ -416,12 +416,9 @@ def _balance(table: str, default: str | None = None) -> str:
     """
     n = _validate_truth_table(table)
     expression, normal = _expression_program(table, n)
-    if default is None:
-        default = (
-            _constant_program(table[0])
-            if table.count(table[0]) == len(table)
-            else normal
-        )
+    default = (
+        _constant_program(table[0]) if table.count(table[0]) == len(table) else normal
+    )
     # The one-node-per-line form only seeds the walk: it never renders
     # squarer than the default or a packing (``[ablations.balance_race]``).
     shared = _definition_program(expression)

@@ -962,7 +962,7 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     return _smallest(*programs)
 
 
-def _balance(table: str, default: str | None = None) -> str:
+def _balance(table: str) -> str:
     """Compare the default with folded streets and, through n=5, width fits."""
     n = _validate_truth_table(table)
     flat = _streetcode_flat(table, n)
@@ -970,12 +970,11 @@ def _balance(table: str, default: str | None = None) -> str:
     corridor = _constant_corridor(n, constant) if constant is not None else None
     if n >= _FOLD_FROM:
         # From six inputs the fold beat every other layout on the measured tables.
-        if default is None:
-            default = (
-                corridor
-                if corridor is not None
-                else _smallest(*_tree_shapes(table, n, hallway=False, flat=flat))
-            )
+        default = (
+            corridor
+            if corridor is not None
+            else _smallest(*_tree_shapes(table, n, hallway=False, flat=flat))
+        )
         folded = _streetcode_folded(flat)
         piece = _ROOM_PIECE * isqrt(1 << n)
         stacked = _streetcode_folded(_streetcode_flat(table, n, piece), tall=True)
@@ -984,19 +983,16 @@ def _balance(table: str, default: str | None = None) -> str:
     shapes = _tree_shapes(table, n, hallway=True, flat=flat)
     widths = [grid_width(shape) for shape in shapes]
     if corridor is not None:
-        if default is None:
-            default = corridor
         candidates = [
-            default,
+            corridor,
             _fit_corridor(corridor, 1),
             _fit_corridor(corridor, 9),
             *shapes,
         ]
         candidates.extend(_fit_corridor(corridor, width) for width in widths)
     else:
-        if default is None:
-            # The default omits the hallway. A lone kerb has no hallway.
-            default = _smallest(*(shapes[1:] or shapes))
+        # The default omits the hallway. A lone kerb has no hallway.
+        default = _smallest(*(shapes[1:] or shapes))
         ranked = sorted(
             zip(widths, shapes, strict=True), key=lambda pair: grid_rank(pair[1])
         )

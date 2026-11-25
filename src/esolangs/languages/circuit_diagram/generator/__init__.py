@@ -817,13 +817,13 @@ def _generate_circuit(
     return _narrowest_present(flat, banded, affine)
 
 
-def _balance(table: str, default: str | None = None) -> str:
+def _balance(table: str) -> str:
     """Defer to the ``balance`` submodule, which imports this one."""
     from esolangs.languages.circuit_diagram.generator.balance import (
         balance_circuit_diagram,  # circular
     )
 
-    return balance_circuit_diagram(table, default)
+    return balance_circuit_diagram(table)
 
 
 def circuit_diagram_request(request: GenerationRequest) -> Program:

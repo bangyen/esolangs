@@ -110,11 +110,10 @@ def _drawn_at(
     return _narrowest_present(flat, banded, chain)
 
 
-def balance_circuit_diagram(table: str, default: str | None = None) -> str:
+def balance_circuit_diagram(table: str) -> str:
     """Compare the default, the flat drawing and drawings at the square widths."""
     analysis = _FoldAnalysis()
-    if default is None:
-        default = _generate_circuit(table, analysis=analysis)
+    default = _generate_circuit(table, analysis=analysis)
     if constant_output(table) is not None:
         # Native sources beat the clock/gate layouts; no H lattice is needed.
         return default

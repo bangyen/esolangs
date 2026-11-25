@@ -38,6 +38,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
@@ -875,12 +876,16 @@ def _flowchart_deque(truth_table: str, *, plan: _InputPlan | None = None) -> str
     answer arm, ahead of its pop.
     """
     n = len(truth_table).bit_length() - 1
-    used = essential_inputs(truth_table, n)
-    if not used:
+    if plan is None:
+        used = essential_inputs(truth_table, n)
+        plan = _plan(truth_table, used=used) if used else None
+    elif constant_output(truth_table) is not None:
+        plan = None
+    if plan is None:
         # Read only the value bit of the final byte; earlier bytes are skipped.
         nodes = ["( )", *["/ /"] * (8 * (n - 1) + 1), _set(truth_table[0]), *_ANSWER]
         return "─".join(reversed(nodes))
-    truth_table, skips, tail = _plan(truth_table, used=used) if plan is None else plan
+    truth_table, skips, tail = plan
     cells: dict[tuple[int, int], str] = {}
     spine = 1
     col = 0
@@ -966,7 +971,7 @@ def _banded_candidates(table: str, *, plan: _InputPlan | None = None) -> list[st
     return [_banded(table, split, 3, plan=plan)] if split > 0 else []
 
 
-def _balance(table: str, default: str | None = None) -> str:
+def _balance(table: str) -> str:
     """Return the squarest of the default, banded and trees snaked over columns.
 
     Candidates are the flat tree folded over 1, 3 or 5 columns per chain
@@ -982,8 +987,7 @@ def _balance(table: str, default: str | None = None) -> str:
     n=1..12 (exhaustive to n=3).
     """
     plan = _plan(table)
-    if default is None:
-        default = _flowchart_deque(table, plan=plan)
+    default = _flowchart_deque(table, plan=plan)
     constant = constant_span_test(plan[0])
     folded = (
         _flowchart_render(
