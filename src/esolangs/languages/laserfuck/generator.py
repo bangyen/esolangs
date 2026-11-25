@@ -25,7 +25,8 @@ Decisions:
     the identity order is built instead.
 """
 
-from functools import cache
+from dataclasses import dataclass
+from functools import cache, cached_property
 from itertools import zip_longest
 from typing import NamedTuple
 
@@ -385,9 +386,22 @@ def _laserfuck_reader_candidates(n: int) -> tuple[_ReaderCandidate, ...]:
     return tuple(candidates)
 
 
-class _LaserTree(NamedTuple):
+@dataclass
+class _LaserTree:
     runs: list[list[tuple[int, str]]]
     upright: list[str]
+
+    @property
+    def span(self) -> int:
+        return len(self.upright[0])
+
+    @cached_property
+    def turned(self) -> list[str]:
+        return _laserfuck_rotate(self.upright)
+
+    @cached_property
+    def flipped(self) -> list[str]:
+        return _laserfuck_flip(self.upright)
 
 
 def _laserfuck_reader(
@@ -543,14 +557,12 @@ def _laserfuck_attach_tree(
     """Place the tree straight, rotated, or hanging beneath its reader."""
     margin = MARGIN
     reader_rows, reader_exit_row, reader_exit_col = reader
-    rows, upright = tree
     # Carry straight on into the tree if the width allows reader + tree
     # end to end; otherwise mirror it and hang it underneath (a '/' faces
     # the beam left, so no return row is needed).
-    straight_width = margin + reader_exit_col + max(len(line) for line in upright)
+    straight_width = margin + reader_exit_col + tree.span
     if vertical_tree:
-        turned = _laserfuck_rotate(upright)
-        entry = margin + len(upright) - 1
+        entry = margin + len(tree.upright) - 1
         exit_col = margin + reader_exit_col
         top = len(reader_rows)
         if entry < exit_col:
@@ -560,7 +572,7 @@ def _laserfuck_attach_tree(
             top += 1
         else:
             grid.put(reader_exit_row, entry, "v")
-        for offset, line in enumerate(turned):
+        for offset, line in enumerate(tree.turned):
             for index, char in enumerate(line):
                 grid.put(top + offset, margin + index, char)
     elif width is None or straight_width + 1 <= width:
@@ -568,13 +580,13 @@ def _laserfuck_attach_tree(
         # staircase, so ``upright`` is mostly blanks, and a blank is
         # re-padded by the next run on its row (or ``rstrip``ed off the
         # end) rather than written.
-        for offset, marks in enumerate(rows):
+        for offset, marks in enumerate(tree.runs):
             for col, text in marks:
                 grid.put_run(
                     reader_exit_row + offset, margin + reader_exit_col + col, text
                 )
     else:
-        flipped = _laserfuck_flip(upright)
+        flipped = tree.flipped
         entry = len(flipped[0].rstrip()) - 1
         # A narrow reader can leave the beam further left than the tree is
         # wide, and the tree would run off the western edge.  Turning down
@@ -596,6 +608,7 @@ def _laserfuck_build(
     width: int | None = None,
     *,
     vertical_tree: bool = False,
+    tree: _LaserTree | None = None,
 ) -> str:
     r"""Build one LaserFuck program, placing inputs in stream order.
 
@@ -634,7 +647,8 @@ def _laserfuck_build(
     upright placement last.
     """
     n = _validate_truth_table(truth_table)
-    tree = _laserfuck_tree(truth_table, n)
+    if tree is None:
+        tree = _laserfuck_tree(truth_table, n)
     if width is None or vertical_tree:
         reader = _laserfuck_reader(n, width, vertical_tree=vertical_tree)
         return _laserfuck_assemble(reader, tree, width, vertical_tree=vertical_tree)
@@ -695,26 +709,44 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     often not the shortest.
     """
     n = _validate_truth_table(truth_table)
-    if width is None and (constant := constant_output(truth_table)) is not None:
+    if width is not None:
+        return _laserfuck_pool(truth_table, width)
+    return _laserfuck_default(truth_table, n)
+
+
+def _laserfuck_default(
+    truth_table: str, n: int, *, tree: _LaserTree | None = None
+) -> str:
+    if (constant := constant_output(truth_table)) is not None:
         # Overwrite one cell while reading, then drain it before the dump.
         # The zeroing ring removes the last ASCII digit without a second cell.
         top = " }}" + "," * n + "}-#/)" + ("+" if constant == "1" else "") + "x"
         middle = "|o^" + " " * n + "^  {"
         return top + "\n" + middle + "\n _"
-    if width is None and len(truth_table) > 64:
+    if len(truth_table) > 64:
         return _laserfuck_weighted(truth_table)
-    return _laserfuck_pool(truth_table, width)
+    return _laserfuck_pool(truth_table, None, tree=tree)
 
 
-def _laserfuck_pool(truth_table: str, width: int | None) -> str:
+def _laserfuck_pool(
+    truth_table: str,
+    width: int | None,
+    *,
+    tree: _LaserTree | None = None,
+    primary: str | None = None,
+) -> str:
     """Return the best candidate over tree placements.
 
     Input order stays the identity: a node is ``>#v)``, which steps the pointer
     and tests the cell under it, so a reorder changes what every node tests; a
     greedy order saved 0% at n=6..8 (40 random tables) and at most 4.3% at n<=4.
     """
-    _validate_truth_table(truth_table)
-    best = _laserfuck_build(truth_table, width)
+    n = _validate_truth_table(truth_table)
+    if tree is None:
+        tree = _laserfuck_tree(truth_table, n)
+    best = (
+        _laserfuck_build(truth_table, width, tree=tree) if primary is None else primary
+    )
     if width is not None and grid_width(best) > width:
         # Move the start funnel above the computation, reclaiming its three
         # reserved columns. Two '/' turns enter its first heading setter.
@@ -722,7 +754,9 @@ def _laserfuck_pool(truth_table: str, width: int | None) -> str:
         # Turning the staircase upright costs O(T log T) padding in general;
         # this bounded fallback keeps the full family O(T).
         if grid_width(best) > width and len(truth_table) <= 8:
-            candidate = _laserfuck_build(truth_table, width, vertical_tree=True)
+            candidate = _laserfuck_build(
+                truth_table, width, vertical_tree=True, tree=tree
+            )
             if grid_width(candidate) > width:
                 candidate = _laserfuck_raise_funnel(candidate)
             best = narrowest_grid(best, candidate)
@@ -787,7 +821,7 @@ def _laserfuck_raise_funnel(program: str) -> str:
     return "\n".join([" }}v", "|o^", " _", route, *shifted])
 
 
-def _laserfuck_turned(table: str) -> str:
+def _laserfuck_turned(table: str, *, tree: _LaserTree | None = None) -> str:
     """Build the flat reader with its tree stood on end beneath it.
 
     The staircase has one row per *one* edge, so upright it is tall and
@@ -796,7 +830,8 @@ def _laserfuck_turned(table: str) -> str:
     """
     n = _validate_truth_table(table)
     reader = _laserfuck_reader(n, None, vertical_tree=False)
-    tree = _laserfuck_tree(table, n)
+    if tree is None:
+        tree = _laserfuck_tree(table, n)
     return _laserfuck_assemble(reader, tree, None, vertical_tree=True)
 
 
@@ -848,19 +883,23 @@ def _laserfuck_tiled(table: str) -> str:
     return grid.render()
 
 
-def balance_laserfuck(table: str, default: str) -> str:
+def balance_laserfuck(table: str, default: str | None = None) -> str:
     """Compare reader fits, tree placements, funnel fits, the turned and tiled trees."""
     n = _validate_truth_table(table)
     margin = MARGIN
     events = {1, 4}
-    span = max(map(len, _laserfuck_tree(table, n).upright))
+    tree = _laserfuck_tree(table, n)
+    if default is None:
+        default = _laserfuck_default(table, n, tree=tree)
+    span = tree.span
     for candidate in _laserfuck_reader_candidates(n):
         exit_column = candidate.reader.exit_col
         events.update((margin + candidate.span + 2, margin + exit_column + span + 1))
     boundaries = sorted(events)
     widths = set(boundaries)
+    measured: dict[int, str] = {}
     for start, stop in zip_longest(boundaries, boundaries[1:]):
-        form = _laserfuck_build(table, start)
+        form = measured[start] = _laserfuck_build(table, start, tree=tree)
         # Reader and tree geometry is fixed within this interval. Only the
         # source's own fit can switch its startup funnel or narrow fallback.
         spans = {grid_width(form), grid_width(_laserfuck_raise_funnel(form))}
@@ -872,18 +911,21 @@ def balance_laserfuck(table: str, default: str) -> str:
 
     return min(
         default,
-        _laserfuck_turned(table),
+        _laserfuck_turned(table, tree=tree),
         _laserfuck_tiled(table) or default,
-        *(laserfuck(table, width) for width in sorted(widths)),
+        *(
+            _laserfuck_pool(table, width, tree=tree, primary=measured.pop(width, None))
+            for width in sorted(widths)
+        ),
         key=balance_score,
     )
 
 
 def laserfuck_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return laserfuck(request.table, request.width)
-    return laserfuck(request.table)
+    if request.balance:
+        return balance_laserfuck(request.table)
+    return laserfuck(request.table, request.width)
 
 
 def laserfuck_balance_request(request: BalanceRequest) -> Program:

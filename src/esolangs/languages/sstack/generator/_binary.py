@@ -263,20 +263,6 @@ def _check_bank(
         raise ValueError("definitions must name distinct nonconstant residuals")
 
 
-def binary_bank(
-    table: str, blocks: tuple[tuple[int, int], ...], build: _Builder
-) -> tuple[str, int]:
-    """Emit one same-level bank whose bit word fits the retired-input budget."""
-    ids = subtree_ids(table)
-    if len(blocks) < 2 or len({depth for depth, _ in blocks}) != 1:
-        raise ValueError("a binary bank needs multiple definitions at one level")
-    depth = blocks[0][0]
-    rows = tuple(row for _, row in blocks)
-    _check_bank(ids, depth, rows)
-    metrics = _inline_metrics(ids)
-    return _render(table, ids, metrics, _price(ids, metrics, depth, rows), build)
-
-
 def best_binary_bank(
     table: str,
     build: _Builder,

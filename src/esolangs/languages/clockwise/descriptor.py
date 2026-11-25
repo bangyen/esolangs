@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.clockwise.generator", "clockwise_request"
         ),
         layout_width=True,
+        layout_balance=True,
         # Not a tree: a countdown stops on the entry's own column.
         shape=Shape.LOOKUP,
         balance=OperationRef[BalanceRequest, Program](

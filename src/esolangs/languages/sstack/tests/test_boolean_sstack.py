@@ -1,6 +1,7 @@
 """SStack generator tests."""
 
 import random
+from collections.abc import Callable
 from dataclasses import replace
 
 import pytest
@@ -264,6 +265,30 @@ def test_multiple_definitions_reduce_cap_program_within_ledger() -> None:
     )
 
 
+def _binary_bank(
+    table: str,
+    blocks: tuple[tuple[int, int], ...],
+    build: Callable[[str], tuple[str, int]],
+) -> tuple[str, int]:
+    """Exercise one same-level bank without running candidate selection."""
+    from esolangs.generation.helpers import subtree_ids
+    from esolangs.languages.sstack.generator._binary import (
+        _check_bank,
+        _inline_metrics,
+        _price,
+        _render,
+    )
+
+    ids = subtree_ids(table)
+    if len(blocks) < 2 or len({depth for depth, _ in blocks}) != 1:
+        raise ValueError("a binary bank needs multiple definitions at one level")
+    depth = blocks[0][0]
+    rows = tuple(row for _, row in blocks)
+    _check_bank(ids, depth, rows)
+    metrics = _inline_metrics(ids)
+    return _render(table, ids, metrics, _price(ids, metrics, depth, rows), build)
+
+
 def _binary_bank_table() -> str:
     sequence = [*range(1, 66), *range(65, 0, -1), *range(1, 64), *range(63, 0, -1)]
     return "".join(f"{code:08b}" for code in sequence) * 32
@@ -273,7 +298,6 @@ def _binary_bank_table() -> str:
 def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> None:
     from esolangs.generation.shared_block import _repeated_blocks
     from esolangs.languages.sstack.generator import _sstack_tree
-    from esolangs.languages.sstack.generator._binary import binary_bank
     from esolangs.languages.sstack.interpreter import _Machine, _parse
 
     table = _binary_bank_table()
@@ -281,7 +305,7 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
         (depth, row) for depth, row, _ in _repeated_blocks(table) if depth == 13
     )
     assert len(blocks) == 64
-    program, limit = binary_bank(table, blocks, _sstack_tree)
+    program, limit = _binary_bank(table, blocks, _sstack_tree)
     assert limit <= 115
     assert len(boolean.sstack(table)) <= len(program)
     ops = _parse(program)
@@ -315,13 +339,12 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
 )
 def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words) -> None:
     from esolangs.languages.sstack.generator import _sstack_tree
-    from esolangs.languages.sstack.generator._binary import binary_bank
 
     table = "".join(words)
     n = len(table).bit_length() - 1
     first = {word: i for i, word in enumerate(words) if word not in ("0000", "1111")}
     blocks = tuple((n - 2, 4 * i) for i in first.values())
-    program, limit = binary_bank(table, blocks, _sstack_tree)
+    program, limit = _binary_bank(table, blocks, _sstack_tree)
     for row, expected in enumerate(table):
         machine = make_vm("SStack", program, stdin=f"{row:0{n}b}" + "B")
         commands = 0
@@ -356,10 +379,9 @@ def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words) -> None
 )
 def test_invalid_binary_banks_abort(table, blocks, message) -> None:
     from esolangs.languages.sstack.generator import _sstack_tree
-    from esolangs.languages.sstack.generator._binary import binary_bank
 
     with pytest.raises(ValueError, match=message):
-        binary_bank(table, blocks, _sstack_tree)
+        _binary_bank(table, blocks, _sstack_tree)
 
 
 def test_binary_selector_rejects_inadmissible_or_unprofitable_banks() -> None:
@@ -386,14 +408,13 @@ def test_binary_selector_skips_a_bank_whose_word_exceeds_the_workspace_budget() 
 
 def test_binary_bank_refuses_a_drifted_inline_builder(monkeypatch) -> None:
     from esolangs.languages.sstack.generator import _sstack_tree
-    from esolangs.languages.sstack.generator._binary import binary_bank
 
     def drifted(table):
         program, commands = _sstack_tree(table)
         return program, commands + 1
 
     with pytest.raises(ValueError, match="builder disagrees"):
-        binary_bank("00010110", ((1, 0), (1, 4)), drifted)
+        _binary_bank("00010110", ((1, 0), (1, 4)), drifted)
 
     from esolangs.languages.sstack.generator._binary import _price
 
@@ -405,7 +426,7 @@ def test_binary_bank_refuses_a_drifted_inline_builder(monkeypatch) -> None:
         "esolangs.languages.sstack.generator._binary._price", drifted_price
     )
     with pytest.raises(ValueError, match="emitted SStack bank disagrees"):
-        binary_bank("00010110", ((1, 0), (1, 4)), _sstack_tree)
+        _binary_bank("00010110", ((1, 0), (1, 4)), _sstack_tree)
 
 
 def test_check_runs_the_formula_case_bounds_measures() -> None:

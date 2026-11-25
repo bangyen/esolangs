@@ -22,6 +22,7 @@ Size:
     n=10 random 1847: 23,967 chars, n=12 random 1847: 94,703 chars.
 """
 
+from functools import cached_property
 from math import ceil
 from typing import NamedTuple
 
@@ -68,7 +69,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     used = essential_inputs(truth_table, total)
     if len(used) == 1:
         return _coordinate_ring(total, used[0], truth_table[0])
-    return _clockwise_program(truth_table, width)
+    return _Lookup(truth_table, total, used).render(width)
 
 
 def _constant_ring(inputs: int, bit: str, width: int = 2) -> str:
@@ -159,7 +160,44 @@ class _Layout(NamedTuple):
     return_gap: int
 
 
-def _clockwise_flat(truth_table: str) -> str:
+class _Lookup:
+    """Share the projected table and width-independent drawings."""
+
+    def __init__(self, table: str, total: int, used: list[int]) -> None:
+        self.table, self.total = table, total
+        self.indexed = read_at(table, used, total)
+        self.trailing = total - used[-1] - 1
+        self.reads = _head_widths(total, used)
+
+    @cached_property
+    def flat(self) -> str:
+        return _clockwise_flat(self)
+
+    @cached_property
+    def stacked(self) -> tuple[_Layout, str]:
+        grid = _Grid()
+        digit = _layout_lookup(grid, self.reads, self.indexed)
+        return_gap = _shift_return_rail(grid, self.trailing)
+        layout = _Layout(
+            grid, self.total, len(self.reads), digit + return_gap, return_gap
+        )
+        return layout, grid.render()
+
+    def render(self, width: int | None) -> str:
+        """Choose the flat or narrower stacked layout."""
+        flat = self.flat
+        if width is None:
+            # All-essential area is 25T + 40n + 20, against the stack's
+            # (2T + 9n + 2)(2n + 15) >= 34T ([ablations.flat_band]).
+            return flat
+        layout, program = self.stacked
+        stacked = _fit_width(self.table, layout, program, width)
+        if grid_width(flat) > width:
+            return stacked
+        return min(stacked, flat, key=lambda p: (grid_area(p), len(p)))
+
+
+def _clockwise_flat(lookup: _Lookup) -> str:
     """Lay the gadgets in one two-row band, each east of the last: O(T) area.
 
     Gadget ``l`` returns west and climbs.  Instead of the next head above it,
@@ -170,11 +208,7 @@ def _clockwise_flat(truth_table: str) -> str:
     dip, 1-4 table.  Trailing inputs are read on the return row west of the
     table, or down a left rail when that stretch is too short.
     """
-    total = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, total)
-    trailing = total - used[-1] - 1
-    indexed = read_at(truth_table, used, total)
-    reads = _head_widths(total, used)
+    trailing, indexed, reads = lookup.trailing, lookup.indexed, lookup.reads
     # The table starts east of the digit run, every head and every gadget.
     corner = len(_DIGIT) - 1
     start = corner + sum(r + 1 + 3 * 2 ** (i + 1) for i, r in enumerate(reads[:-1]))
@@ -233,29 +267,9 @@ def _clockwise_flat(truth_table: str) -> str:
     return grid.render()
 
 
-def _clockwise_program(truth_table: str, width: int | None = None) -> str:
-    """Build the flat band, or under a width the narrower of it and the lookup."""
-    flat = _clockwise_flat(truth_table)
-    if width is None:
-        # All-essential area is 25T + 40n + 20, against the stack's
-        # (2T + 9n + 2)(2n + 15) >= 34T ([ablations.flat_band]).
-        return flat
-    total = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, total)
-    trailing = total - used[-1] - 1
-    indexed = read_at(truth_table, used, total)
-    reads = _head_widths(total, used)
-    grid = _Grid()
-    digit = _layout_lookup(grid, reads, indexed)
-    return_gap = _shift_return_rail(grid, trailing)
-    layout = _Layout(grid, total, len(reads), digit + return_gap, return_gap)
-    stacked = _fit_width(truth_table, layout, grid.render(), width)
-    if grid_width(flat) > width:
-        return stacked
-    return min(stacked, flat, key=lambda p: (grid_area(p), len(p)))
-
-
-def _clockwise_banded(truth_table: str, split: int) -> str:
+def _clockwise_banded(
+    truth_table: str, split: int, *, lookup: _Lookup | None = None
+) -> str:
     """Select one of ``2**split`` strips by the first inputs, then look up.
 
     The top is the lookup for the first ``split`` indexed inputs with its
@@ -268,12 +282,11 @@ def _clockwise_banded(truth_table: str, split: int) -> str:
     the accumulator nonzero, so lower strips' rails pass the ``!`` straight.
     Inputs after the last indexed one are read on the rail above the strips.
     """
-    total = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, total)
-    trailing = total - used[-1] - 1
-    indexed = read_at(truth_table, used, total)
-    reads = _head_widths(total, used)
-    strips, width = 1 << split, 1 << (len(used) - split)
+    if lookup is None:
+        total = _validate_truth_table(truth_table)
+        lookup = _Lookup(truth_table, total, essential_inputs(truth_table, total))
+    trailing, indexed, reads = lookup.trailing, lookup.indexed, lookup.reads
+    strips, width = 1 << split, 1 << (len(reads) - split)
 
     strip_cells = [
         _banded_lookup(reads[split:], indexed[h * width : (h + 1) * width])
@@ -530,11 +543,17 @@ def _clockwise_two_columns(table: str) -> str:
     return "\n".join(row.rstrip() for row in rows)
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(table: str, default: str | None = None) -> str:
     """Compare the lookup, its rotations, the two-column route and the strips."""
     inputs = _validate_truth_table(table)
     used = essential_inputs(table, inputs)
     if len(used) <= 1:
+        if default is None:
+            default = (
+                _coordinate_ring(inputs, used[0], table[0])
+                if used
+                else _constant_ring(inputs, table[0])
+            )
         commands = _READS * inputs + len(_DIGIT) + int(table[0]) + bool(used)
         # The ring's 2W+2H-7 free cells fix W+H; W=A*H splits them.
         width = max(2, ceil(CELL_ASPECT * (commands + 7) / (2 * CELL_ASPECT + 2)))
@@ -544,8 +563,11 @@ def _balance(table: str, default: str) -> str:
             else _constant_ring(inputs, table[0], width)
         )
         return min(default, ring, key=balance_score)
-    rotated = clockwise(table, max(1, grid_width(default) - 1))
-    lean = clockwise(table, max(1, grid_width(rotated) - 1))
+    lookup = _Lookup(table, inputs, used)
+    if default is None:
+        default = lookup.flat
+    rotated = lookup.render(max(1, grid_width(default) - 1))
+    lean = lookup.render(max(1, grid_width(rotated) - 1))
     # Measured on random tables n=3..9: side against split is minimal at
     # k//3 (k essential inputs), k//3+1 guards the rounding.
     k = len(used)
@@ -554,17 +576,17 @@ def _balance(table: str, default: str) -> str:
         default,
         rotated,
         lean,
-        clockwise(table, 1),
-        *(_clockwise_banded(table, s) for s in sorted(splits)),
+        lookup.render(1),
+        *(_clockwise_banded(table, s, lookup=lookup) for s in sorted(splits)),
         key=balance_score,
     )
 
 
 def clockwise_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return clockwise(request.table, request.width)
-    return clockwise(request.table)
+    if request.balance:
+        return _balance(request.table)
+    return clockwise(request.table, request.width)
 
 
 def clockwise_balance_request(request: BalanceRequest) -> Program:
