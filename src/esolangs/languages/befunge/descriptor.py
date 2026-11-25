@@ -41,6 +41,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.befunge.generator", "befunge_request"
         ),
         layout_width=True,
+        layout_balance=True,
         # Not a tree: reads a packed grid cell with ``g``.
         shape=Shape.LOOKUP,
         balance=OperationRef[BalanceRequest, Program](

@@ -22,7 +22,7 @@ Decisions:
     characters.
 """
 
-from collections.abc import Callable
+from functools import cached_property
 from string import ascii_uppercase
 
 from esolangs.generation import decision
@@ -316,30 +316,55 @@ def _join(parts: list[tuple[_Rope, int, int]]) -> tuple[_Rope, int, int]:
     )
 
 
-def _apl_tree_layout(
-    table: str, perm: tuple[int, ...], width: int
-) -> tuple[str, set[int]]:
-    """Return the shorter split tree and its frame-budget transitions.
+class _WidthLayouts:
+    """Reuse the width-independent Boolean expressions across frame budgets."""
 
-    The reduced diagram drops ignored inputs and repeated halves; the inline
-    tree stays a candidate since ``!`` sharing grew XOR-like n=3 tables by
-    1-3 characters.
-    """
-    laid = [
-        _apl_split(table, perm, width, build)
-        for build in (_apl_reduced_ordered, _apl_tree_ordered)
-    ]
-    shared = _apl_repeated_expressions(_apl_reduced_ordered(table, perm))
-    span = grid_width(shared)
-    laid.append((shared, {span} if span > width else set()))
-    events: set[int] = set()
-    for _, points in laid:
-        events.update(points)
-    best = min(
-        (program for program, _ in laid),
-        key=lambda x: (max(grid_width(x), width), len(x)),
-    )
-    return best, events
+    def __init__(self, table: str, perm: tuple[int, ...]) -> None:
+        self.table, self.perm = table, perm
+        self.inputs = _validate_truth_table(table)
+        reduced = _apl_reduced_ordered(table, perm)
+        self.trees = (
+            _split_reads(reduced),
+            _split_reads(_apl_tree_ordered(table, perm)),
+        )
+        self.shared = _apl_repeated_expressions(reduced)
+        self.span = grid_width(self.shared)
+
+    @cached_property
+    def definitions(self) -> tuple[str, int]:
+        program = _apl_short_definitions(self.table, self.perm)
+        return program, grid_width(program)
+
+    @cached_property
+    def operators(self) -> str:
+        return _apl_short_operators(self.table, self.perm)
+
+    def layout(self, width: int) -> tuple[str, int | None]:
+        """Return the chosen spelling and its next frame or format fit."""
+        # The inline tree stays a candidate since sharing grew some XOR-like
+        # n=3 tables by 1-3 characters.
+        laid = [_Splitter(self.inputs, source, width).split() for source in self.trees]
+        laid.append((self.shared, {self.span} if self.span > width else set()))
+        previous = min(
+            (program for program, _ in laid),
+            key=lambda program: (max(grid_width(program), width), len(program)),
+        )
+        upcoming = {event for _, events in laid for event in events}
+        span = grid_width(previous)
+        if self.inputs > 3 or span <= width:
+            return previous, min(upcoming, default=None)
+        # The definitions were strictly narrower than the tree on all 5,010
+        # reaching builds (every table n<=3 at widths 1-129, 150-1000).
+        upto = min(span, min(upcoming, default=span))
+        definitions, definition_span = self.definitions
+        if definition_span <= width:
+            return definitions, upto
+        upto = min(upto, definition_span)
+        if width < 5 and self.table == "0110":
+            # XOR's generic operator spelling cannot fit in five columns.
+            return _XOR_OPERATORS, min(upto, 5)
+        # Operators were strictly narrower on all 3,234 reaching builds.
+        return self.operators, upto
 
 
 class _Splitter:
@@ -352,13 +377,12 @@ class _Splitter:
 
     def __init__(
         self,
-        table: str,
-        perm: tuple[int, ...],
+        inputs: int,
+        source: tuple[str, str],
         width: int,
-        build: Callable[[str, tuple[int, ...]], str],
     ) -> None:
-        self._n = _validate_truth_table(table)
-        self._prefix, self._source = _split_reads(build(table, perm))
+        self._n = inputs
+        self._prefix, self._source = source
         # There are fewer definitions than source characters, bounding name width.
         self._name_width = len(short_name(len(self._source), ascii_uppercase))
         self._call_width = self._name_width + 2
@@ -433,16 +457,6 @@ class _Splitter:
         return program, self._events
 
 
-def _apl_split(
-    table: str,
-    perm: tuple[int, ...],
-    width: int,
-    build: Callable[[str, tuple[int, ...]], str],
-) -> tuple[str, set[int]]:
-    """Split ``build``'s tree into definitions under the frame budget."""
-    return _Splitter(table, perm, width, build).split()
-
-
 #: Operator definitions computing XOR in five columns.  The generic
 #: :func:`_apl_short_operators` spelling needs six columns for the XOR table
 #: ``0110``.  This hand-rolled alternative spells XOR as ``a+b-2ab``: the
@@ -454,14 +468,12 @@ _XOR_OPERATORS = "!x={\nx*b\n}\n?x={\nx*2\n}\n~x={\na-x\n}\n^x={\n~?!x\n}\n^a+b"
 def _apl_narrow_layout(
     table: str, perm: tuple[int, ...], width: int
 ) -> tuple[str, int | None]:
-    """Return the chosen spelling and its next frame or format fit."""
-    previous, upcoming = _apl_tree_layout(table, perm, width)
-    n = _validate_truth_table(table)
-    if n > 3 or grid_width(previous) <= width:
-        return previous, min(upcoming, default=None)
-    events = [grid_width(previous), *upcoming]
-    # At most nine primitive definitions use one-character names below n=4.
-    # Larger trees retain fresh-text splitting, avoiding O(T log T) names.
+    """Split the tree and compare the fitting short forms at one width."""
+    return _WidthLayouts(table, perm).layout(width)
+
+
+def _apl_short_definitions(table: str, perm: tuple[int, ...]) -> str:
+    """Return one-character definitions for a table of at most three inputs."""
     reduced, selectors = _essential(table, perm)
     constant = constant_span_test(reduced)
     definitions: list[str] = []
@@ -500,22 +512,8 @@ def _apl_narrow_layout(
     result = tree(0, len(reduced), 0)
     # '&' binds before '|'; the zero prefix pre-binds every input without
     # parentheses, preserving input order even when a Boolean arm folds.
-    reads = _reads(n, "&")
-    candidate = "\n".join([_NOT_TIGHT, *definitions, f"{reads}|{result}"])
-    # The definitions spelling was strictly narrower than ``previous`` on all
-    # 5,010 reaching builds (every table n<=3 at widths 1-129, 150-1000).
-    span = grid_width(candidate)
-    if span <= width:
-        return candidate, min(events)
-    events.append(span)
-    operators = _apl_short_operators(table, perm)
-    if width < 5 and table == "0110":
-        events.append(5)
-        # XOR's generic operator spelling cannot fit in five columns; the
-        # hand-rolled a+b-2ab spelling can (see _XOR_OPERATORS).
-        operators = _XOR_OPERATORS
-    # Strictly narrower than the definitions on all 3,234 reaching builds.
-    return operators, min(events)
+    reads = _reads(len(perm), "&")
+    return "\n".join([_NOT_TIGHT, *definitions, f"{reads}|{result}"])
 
 
 def _essential(table: str, perm: tuple[int, ...]) -> tuple[str, list[str]]:
@@ -564,10 +562,11 @@ def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
 def balance_apl(table: str, default: str) -> str:
     """Compare reachable frame-budget and short-definition fit transitions."""
     perm = tuple(range(len(table).bit_length() - 1))
+    layouts = _WidthLayouts(table, perm)
     candidates = [default]
     width: int | None = 1
     while width is not None:
-        program, width = _apl_narrow_layout(table, perm, width)
+        program, width = layouts.layout(width)
         candidates.append(program)
     return min(candidates, key=balance_score)
 

@@ -9,7 +9,8 @@ from esolangs import run
 from esolangs.languages.algebraic_programming_language.generator import (
     _apl_reduced_ordered,
     _apl_repeated_expressions,
-    _apl_split,
+    _split_reads,
+    _Splitter,
 )
 from esolangs.languages.algebraic_programming_language.interpreter import _Machine
 from esolangs.operations.boolean_io import read_answer
@@ -48,7 +49,8 @@ def test_shared_expressions_obey_bounds_for_every_small_table(
     for value in range(band * span, (band + 1) * span):
         table = f"{value:0{1 << n}b}"
         if sharing == "frames":
-            source = _apl_split(table, perm, 1, _apl_reduced_ordered)[0]
+            tree = _split_reads(_apl_reduced_ordered(table, perm))
+            source, _ = _Splitter(n, tree, 1).split()
         else:
             plain = _apl_reduced_ordered(table, perm)
             source = _apl_repeated_expressions(plain)

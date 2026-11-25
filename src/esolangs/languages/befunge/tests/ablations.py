@@ -20,8 +20,9 @@ def ablate(table: str, rule: Literal["default", "one_row_nibbles"]) -> str:
     if len(set(table)) == 1:
         return _constant(n, table[0], None)
     weights, values = input_weights(table, n)
+    reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
     if len(values) <= 2:
-        return _natural_befunge(table)
+        return _natural_befunge(values, reads)
     if rule == "default" and len(values) <= 4 * 80:
         parts = []
         rank = 0
@@ -53,7 +54,6 @@ def ablate(table: str, rule: Literal["default", "one_row_nibbles"]) -> str:
             for i in range(count)
         )
         return "".join(parts) + "1g48*-\\/2%.@\n" + data
-    reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
     if len(values) > 1 << 10:
         return _packed_befunge(values, reads, None)
     plain = _plain_befunge(values, reads, None)

@@ -22,11 +22,11 @@ Size:
     35,074 chars.
 """
 
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from itertools import pairwise
+from itertools import chain, pairwise
 
 from esolangs.generation.helpers import (
     _validate_truth_table,
@@ -81,7 +81,10 @@ def _reads(level: int) -> int:
     return 1 if level == 0 else 8
 
 
-def _plan(truth_table: str) -> tuple[str, list[int], int]:
+type _InputPlan = tuple[str, list[int], int]
+
+
+def _plan(truth_table: str, *, used: list[int] | None = None) -> _InputPlan:
     """Return the essential-input table, the ``/ /`` count per switch, the tail.
 
     The tail is the ``/ /`` count owed after the last switch.  An ignored
@@ -89,7 +92,8 @@ def _plan(truth_table: str) -> tuple[str, list[int], int]:
     or the tail.  A constant table keeps every level, folded.
     """
     n = len(truth_table).bit_length() - 1
-    used = essential_inputs(truth_table, n)
+    if used is None:
+        used = essential_inputs(truth_table, n)
     if not used:
         return truth_table, [_reads(level) for level in range(n)], 0
     costs = [8 * used[0] + 1] + [8 * (b - a) for a, b in pairwise(used)]
@@ -198,7 +202,7 @@ class _TreePainter:
         truth_table: str,
         fold: int,
         answer_cols: int,
-        plan: tuple[str, list[int], int] | None = None,
+        plan: _InputPlan | None = None,
         *,
         constant: Callable[[int, int], bool] | None = None,
     ) -> None:
@@ -425,7 +429,9 @@ class _TopPainter(_TreePainter):
         return cells, [m - left for m in self.middles], self.leaf_top
 
 
-def _banded(table: str, split: int, fold: int) -> str:
+def _banded(
+    table: str, split: int, fold: int, *, plan: _InputPlan | None = None
+) -> str:
     """Stack the ``2**split`` subtrees of ``table`` and join their buses.
 
     A top tree over the first ``split`` inputs sits at the upper east and
@@ -434,7 +440,7 @@ def _banded(table: str, split: int, fold: int) -> str:
     band's bus runs west to a staircase column, turns down and joins the next
     band's bus, so one answer column serves all.
     """
-    reduced, costs, tail = _plan(table)
+    reduced, costs, tail = _plan(table) if plan is None else plan
     bands = len(reduced) >> (len(costs) - split)
     size = len(reduced) // bands
     subs = [reduced[b * size : (b + 1) * size] for b in range(bands)]
@@ -473,7 +479,12 @@ def _banded(table: str, split: int, fold: int) -> str:
 
 
 def _flowchart_cells(
-    truth_table: str, fold: int = 1, answer_cols: int = 1
+    truth_table: str,
+    fold: int = 1,
+    answer_cols: int = 1,
+    *,
+    plan: _InputPlan | None = None,
+    constant: Callable[[int, int], bool] | None = None,
 ) -> dict[tuple[int, int], str]:
     """Paint the decision tree onto a sparse ``(x, y) -> character`` grid.
 
@@ -484,17 +495,25 @@ def _flowchart_cells(
     ``fold`` (odd) snakes every read chain over that many columns, and
     ``answer_cols`` the answer column; ``1, 1`` is the plain tall drawing.
     """
-    return _TreePainter(truth_table, fold, answer_cols).paint()
+    return _TreePainter(truth_table, fold, answer_cols, plan, constant=constant).paint()
 
 
 def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
     """Flatten a painted cell map into the finished program text."""
-    height = max(y for _, y in cells) + 1
-    width = max(x for x, _ in cells) + 1
-    grid = [[" "] * width for _ in range(height)]
-    for (x, y), char in cells.items():
-        grid[y][x] = char
-    return "\n".join("".join(row).rstrip() for row in grid)
+    rows: defaultdict[int, list[tuple[int, int]]] = defaultdict(list)
+    for point in cells:
+        rows[point[1]].append(point)
+    output = []
+    for y in range(max(rows) + 1):
+        points = rows.get(y)
+        if not points:
+            output.append("")
+            continue
+        row = [" "] * (max(x for x, _ in points) + 1)
+        for point in points:
+            row[point[0]] = cells[point]
+        output.append("".join(row).rstrip())
+    return "\n".join(output)
 
 
 def _shareable(
@@ -840,7 +859,7 @@ def _deque_depth(levels: int) -> int:
     return max(1, (levels + 1) // 2)
 
 
-def _flowchart_deque(truth_table: str) -> str:
+def _flowchart_deque(truth_table: str, *, plan: _InputPlan | None = None) -> str:
     r"""Address one preloaded answer by walking the deque cursor to it.
 
     A deque holds ``2 ** k`` entries, ``k = ceil(m / 2)`` for ``m`` essential
@@ -856,11 +875,12 @@ def _flowchart_deque(truth_table: str) -> str:
     answer arm, ahead of its pop.
     """
     n = len(truth_table).bit_length() - 1
-    if not essential_inputs(truth_table, n):
+    used = essential_inputs(truth_table, n)
+    if not used:
         # Read only the value bit of the final byte; earlier bytes are skipped.
         nodes = ["( )", *["/ /"] * (8 * (n - 1) + 1), _set(truth_table[0]), *_ANSWER]
         return "─".join(reversed(nodes))
-    truth_table, skips, tail = _plan(truth_table)
+    truth_table, skips, tail = _plan(truth_table, used=used) if plan is None else plan
     cells: dict[tuple[int, int], str] = {}
     spine = 1
     col = 0
@@ -931,7 +951,7 @@ def _flowchart_deque(truth_table: str) -> str:
     return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
 
 
-def _banded_candidates(table: str) -> list[str]:
+def _banded_candidates(table: str, *, plan: _InputPlan | None = None) -> list[str]:
     """Return the banded drawing when ``m`` read levels leave room to split.
 
     Split ``(m - 3) // 2`` levels off the top, folded over 3 columns: the
@@ -940,11 +960,13 @@ def _banded_candidates(table: str) -> list[str]:
     corpus is unspecified; [ablations.banded_balance] records the separate
     seed-4242 fleet and its 1.3k-1.7k range.
     """
-    split = (len(_plan(table)[1]) - 3) // 2
-    return [_banded(table, split, 3)] if split > 0 else []
+    if plan is None:
+        plan = _plan(table)
+    split = (len(plan[1]) - 3) // 2
+    return [_banded(table, split, 3, plan=plan)] if split > 0 else []
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(table: str, default: str | None = None) -> str:
     """Return the squarest of the default, banded and trees snaked over columns.
 
     Candidates are the flat tree folded over 1, 3 or 5 columns per chain
@@ -959,32 +981,37 @@ def _balance(table: str, default: str) -> str:
     constant-input deque never beat the flat tree: 0 wins of ~1.5k tables at
     n=1..12 (exhaustive to n=3).
     """
+    plan = _plan(table)
+    if default is None:
+        default = _flowchart_deque(table, plan=plan)
+    constant = constant_span_test(plan[0])
+    folded = (
+        _flowchart_render(
+            _flowchart_cells(table, fold, cols, plan=plan, constant=constant)
+        )
+        for fold, cols in (
+            (1, 2),
+            (1, 4),
+            (1, 6),
+            (3, 2),
+            (3, 3),
+            (3, 4),
+            (3, 6),
+            (5, 4),
+            (5, 6),
+        )
+    )
     return min(
-        default,
-        *_banded_candidates(table),
-        *(
-            _flowchart_render(_flowchart_cells(table, fold, cols))
-            for fold, cols in (
-                (1, 2),
-                (1, 4),
-                (1, 6),
-                (3, 2),
-                (3, 3),
-                (3, 4),
-                (3, 6),
-                (5, 4),
-                (5, 6),
-            )
-        ),
+        chain((default,), _banded_candidates(table, plan=plan), folded),
         key=balance_score,
     )
 
 
 def flowchart_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return flowchart(request.table, request.width)
-    return flowchart(request.table)
+    if request.balance:
+        return _balance(request.table)
+    return flowchart(request.table, request.width)
 
 
 def flowchart_balance_request(request: BalanceRequest) -> Program:

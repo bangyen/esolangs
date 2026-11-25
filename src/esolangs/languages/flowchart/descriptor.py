@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.flowchart.generator", "flowchart_request"
         ),
         layout_width=True,
+        layout_balance=True,
         # Not a tree: one deque push per entry.
         shape=Shape.LOOKUP,
         balance=OperationRef[BalanceRequest, Program](

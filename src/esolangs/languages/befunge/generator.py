@@ -20,6 +20,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import cached_property
 from math import isqrt
 
 from esolangs.generation.algebraic import parity_bias
@@ -80,24 +81,10 @@ def _header(reads: str, width: str, offset: str) -> str:
     )
 
 
-def _natural_befunge(truth_table: str) -> str:
-    """Return a Befunge grid at the table's natural width.
-
-    The pre-#20 default build, kept for the smallest projections: a
-    straight header over a power-of-two table width near ``sqrt(T)``.
-    """
-    n = _validate_truth_table(truth_table)
-    _check_cap(n)
-    # An ignored input is read and popped; the table indexes the rest.
-    weights, table = input_weights(truth_table, n)
-    reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
-    count = len(table)
-    # The natural grid: a straight header over a power-of-two table width near
-    # ``sqrt(T)``.  At counts up to _NATURAL_LAYOUT_MAX_COUNT that is the
-    # header over one row, and the header is at most 49 cells (n=13), so it
-    # never needs the 80x25 fold the wide build has.
-    table_width, build_width = _natural_width(count)
-    return "\n".join(_rows(_header(reads, build_width, "1"), table, table_width))
+def _natural_befunge(table: str, reads: str) -> str:
+    """Put a straight header over the table's natural power-of-two rows."""
+    table_width, width_literal = _natural_width(len(table))
+    return "\n".join(_rows(_header(reads, width_literal, "1"), table, table_width))
 
 
 def _natural_width(count: int) -> tuple[int, str]:
@@ -118,36 +105,58 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     _check_cap(n)
     if len(set(truth_table)) == 1:
         return _constant(n, truth_table[0], width)
-    # An ignored input is read and popped; the table indexes the rest.
-    weights, table = input_weights(truth_table, n)
-    if width is None and len(table) <= _NATURAL_LAYOUT_MAX_COUNT:
-        # The smallest projections take the natural layout (see the
-        # cap's note); an explicit width keeps the wide build.
-        return _natural_befunge(truth_table)
-    # Literal y=1 addresses only one 80-cell row, four truth bits per cell.
-    if 4 <= len(table) <= 4 * 80:
-        nibble = _one_row_nibbles(table, weights)
-        needed = max(map(len, nibble.split("\n")))
-        if width is None or width >= needed:
-            return nibble
-    reads = "".join("&\\2*+" if weight else "&$" for weight in weights)
-    if len(table) > 1 << 10:
-        return _packed_befunge(table, reads, width)
-    if width is not None and width < 4:
-        bias = parity_bias(truth_table)
-        if bias is not None:
-            # One vertical column of sums modulo two: at most 25 commands even
-            # at n=10, within the native torus.
-            header = "v&" + "&+" * (n - 1) + "2%" + ("!" if bias else "") + _END
+    return _Lookup(truth_table, n).render(width)
+
+
+class _Lookup:
+    """Project and pack a table once for all requested widths."""
+
+    def __init__(self, truth_table: str, n: int) -> None:
+        self.original = truth_table
+        self.n = n
+        # An ignored input is read and popped; the table indexes the rest.
+        self.weights, self.table = input_weights(truth_table, n)
+        self.count = len(self.table)
+
+    @cached_property
+    def reads(self) -> str:
+        return "".join("&\\2*+" if weight else "&$" for weight in self.weights)
+
+    @cached_property
+    def packed(self) -> str:
+        return packed_cells(self.table, 6, offset=32)
+
+    @cached_property
+    def nibbles(self) -> tuple[str, int]:
+        program = _one_row_nibbles(self.table, self.weights)
+        return program, max(map(len, program.split("\n")))
+
+    @cached_property
+    def parity(self) -> int | None:
+        return parity_bias(self.original)
+
+    def render(self, width: int | None) -> str:
+        """Choose a lookup or parity spelling at the requested width."""
+        if width is None and self.count <= _NATURAL_LAYOUT_MAX_COUNT:
+            return _natural_befunge(self.table, self.reads)
+        # Literal y=1 addresses one 80-cell row, four bits per cell.
+        if 4 <= self.count <= 4 * 80:
+            nibble, needed = self.nibbles
+            if width is None or width >= needed:
+                return nibble
+        if self.count > 1 << 10:
+            return _packed_befunge(self.table, self.reads, width, data=self.packed)
+        if width is not None and width < 4 and self.parity is not None:
+            # At n=10 the vertical parity still fits within the 25-row torus.
+            header = (
+                "v&" + "&+" * (self.n - 1) + "2%" + ("!" if self.parity else "") + _END
+            )
             return "\n".join(header)
-    plain = _plain_befunge(table, reads, width)
-    # Outside one-row feasibility, retain the six-bit/plain area race
-    # ([ablations.six_bit_packing]); historical default savings were 40%/50%
-    # at n=8/9. Eight essential inputs now take the nibble construction.
-    packed = _packed_befunge(table, reads, width)
-    if _wins(packed, plain):
-        return packed
-    return plain
+        plain = _plain_befunge(self.table, self.reads, width)
+        # The six-bit/plain race saved 40-50% by area at n=8/9 before
+        # nibbles took the 8-input default ([ablations.six_bit_packing]).
+        packed = _packed_befunge(self.table, self.reads, width, data=self.packed)
+        return packed if _wins(packed, plain) else plain
 
 
 def _one_row_nibbles(table: str, weights: Sequence[int]) -> str:
@@ -268,7 +277,9 @@ def _fold_header(header: str, columns: int, header_rows: int) -> list[str]:
     return folded
 
 
-def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
+def _packed_befunge(
+    truth_table: str, reads: str, width: int | None, *, data: str | None = None
+) -> str:
     """Return a six-bit printable-ASCII lookup within the fixed torus."""
     count = (len(truth_table) + 5) // 6
     # Two-digit columns and a single-digit header offset cost 64 cells
@@ -300,7 +311,8 @@ def _packed_befunge(truth_table: str, reads: str, width: int | None) -> str:
         + _END
     )
     folded = _fold_header(header, columns, header_rows)
-    data = packed_cells(truth_table, 6, offset=32)
+    if data is None:
+        data = packed_cells(truth_table, 6, offset=32)
     folded.extend(data[base : base + columns] for base in range(0, count, columns))
     return "\n".join(folded)
 
@@ -311,7 +323,7 @@ def _literal(value: int) -> str:
     return digits[0] + "".join("91+*" + digit + "+" for digit in digits[1:])
 
 
-def balance_befunge(truth_table: str, default: str) -> str:
+def balance_befunge(truth_table: str, default: str | None = None) -> str:
     """Return the best-balanced supported Befunge grid within its 80x25 torus.
 
     Each fixed header bound B gives H=ceil(B/(W-2))+ceil(T/W).  With
@@ -322,41 +334,45 @@ def balance_befunge(truth_table: str, default: str) -> str:
     count = 1 << n
     _check_cap(n)
     if len(set(truth_table)) == 1:
+        bit = truth_table[0]
+        if default is None:
+            default = _constant(n, bit, None)
         length = 2 * n + 3
         # W = A*ceil(L/(W-2)); its crossing is 1+sqrt(1+A*L).
         side = 1 + isqrt(1 + CELL_ASPECT * length)
-        candidates = [default, befunge(truth_table, 1)]
+        candidates = [default, _constant(n, bit, 1)]
         candidates.extend(
-            befunge(truth_table, max(4, width))
+            _constant(n, bit, max(4, width))
             for width in range(side - 1, side + CELL_ASPECT + 2)
         )
         return min(candidates, key=balance_score)
-    candidates = [default]
-    layouts = [(5 * n + _BOUND_WIDE, 10, 80)]
+    lookup = _Lookup(truth_table, n)
+    candidates = [lookup.render(None) if default is None else default]
+    bound = 5 * n + _BOUND_WIDE
     if n > 10:
         count = (count + 5) // 6
-        layouts = [(5 * n + _BOUND_PACKED, 10, 80)]
-    for bound, low, high in layouts:
-        floor = max(low, _min_columns(count, bound))
-        # n <= 13 caps packed count+bound at 1495, hence floor <= 67 < 80.
-        side = isqrt(CELL_ASPECT * (count + bound) - 1) + 1
-        # H >= (B+T)/W and H <= (B+T)/(W-2)+2.  The winner is one of the
-        # crossing's neighbours: over 192 layouts (n=1..13) offsets -1..2
-        # from s won every one, and 3..4 never beat them (test oracle).
-        candidates.extend(
-            befunge(truth_table, min(high, max(floor, width)))
-            for width in (side - 1, side, side + 1, side + 2)
+        bound = 5 * n + _BOUND_PACKED
+    floor = max(10, _min_columns(count, bound))
+    # n <= 13 caps packed count+bound at 1495, hence floor <= 67 < 80.
+    side = isqrt(CELL_ASPECT * (count + bound) - 1) + 1
+    # H >= (B+T)/W and H <= (B+T)/(W-2)+2. Over 192 layouts (n=1..13),
+    # offsets -1..2 from the crossing won every one (test oracle).
+    candidates.extend(
+        lookup.render(width)
+        for width in dict.fromkeys(
+            min(80, max(floor, width)) for width in (side - 1, side, side + 1, side + 2)
         )
-    if n <= 10 and parity_bias(truth_table) is not None:
-        candidates.append(befunge(truth_table, 1))
+    )
+    if n <= 10 and lookup.parity is not None:
+        candidates.append(lookup.render(1))
     return min(candidates, key=balance_score)
 
 
 def befunge_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return befunge(request.table, request.width)
-    return befunge(request.table)
+    if request.balance:
+        return balance_befunge(request.table)
+    return befunge(request.table, request.width)
 
 
 def befunge_balance_request(request: BalanceRequest) -> Program:
