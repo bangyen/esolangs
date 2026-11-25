@@ -158,6 +158,25 @@ def test_a_repeated_heading_gets_a_suffix_anchor(tmp_path: Path) -> None:
     assert checker.broken_links(tmp_path, files) == []
 
 
+@pytest.mark.parametrize(
+    ("headings", "valid", "invalid"),
+    [
+        (("Setup", "Setup-1", "Setup"), "setup-2", "setup-1-1"),
+        (("Setup", "Setup", "Setup-1"), "setup-1-1", "setup-2"),
+    ],
+)
+def test_heading_suffixes_skip_slugs_already_used(tmp_path, headings, valid, invalid):
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {
+            "a.md": "".join(f"## {heading}\n\n" for heading in headings),
+            "b.md": f"[valid](a.md#{valid})\n\n[invalid](a.md#{invalid})\n",
+        },
+    )
+    assert checker.broken_links(tmp_path, files) == [("b.md", f"a.md#{invalid}")]
+
+
 def test_a_tilde_fenced_heading_is_not_an_anchor(tmp_path: Path) -> None:
     checker = load_script()
     files = _tree(

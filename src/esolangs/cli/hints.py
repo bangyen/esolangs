@@ -23,6 +23,7 @@ from esolangs.registry import (
     get_catalog,
 )
 from esolangs.registry._contracts import CHAR_STREAMS
+from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime.source_hints import (
     can_render_argument,
     display_label,
@@ -164,24 +165,55 @@ def _saved_template_hint(
 
 
 def _run_source_command(
-    language: str, path: str, catalog: Catalog, *, portable: bool = False
+    language: str,
+    path: str,
+    catalog: Catalog,
+    *,
+    portable: bool = False,
+    options: tuple[str, ...] = (),
 ) -> str | None:
     """Render a run command when its operands are printable."""
     encoding = _display_encoding(sys.stderr)
     operand = _as_argument(language, catalog=catalog, encoding=encoding)
     filename = shell_argument(path, encoding=encoding)
-    if operand is None or filename is None:
+    if (
+        operand is None
+        or filename is None
+        or any(not can_render_argument(option, encoding) for option in options)
+    ):
         return None
     if operand.startswith("-- "):
         filename = filename.removeprefix("-- ")
-    option = " --artifact" if portable else ""
-    return f"esolangs run{option} {operand} {filename}"
+    flags = ("--artifact", *options) if portable else options
+    command = shlex.join(("esolangs", "run", *flags))
+    return f"{command} {operand} {filename}"
 
 
-def _native_run_hint(language: str, path: str, catalog: Catalog) -> str:
+def _native_run_hint(
+    language: str, path: str, catalog: Catalog, options: tuple[str, ...]
+) -> str:
     hint = "remove --artifact to run native source"
-    command = _run_source_command(language, path, catalog)
-    return f"{hint}, for example: {command}" if command else hint
+    command = _run_source_command(language, path, catalog, options=options)
+    return _source_retry_hint(hint, command, options)
+
+
+def _portable_run_hint(
+    owner: str, path: str, catalog: Catalog, hint: str, options: tuple[str, ...]
+) -> str:
+    save = path == "-" and _runtime_reads_stdin(catalog.languages[owner].runtime)
+    command = _run_source_command(
+        owner, "program.json" if save else path, catalog, portable=True, options=options
+    )
+    if save and command:
+        return f"save the artifact as program.json and run {command}"
+    return _source_retry_hint(hint, command, options)
+
+
+def _source_retry_hint(hint: str, command: str | None, options: tuple[str, ...]) -> str:
+    """Retain the original execution options even without a rendered command."""
+    if command is not None:
+        return f"{hint}, for example: {command}"
+    return f"{hint}. Keep the original execution options." if options else hint
 
 
 #: The flag that raises each bound ``run`` can report.

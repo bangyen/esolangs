@@ -73,6 +73,42 @@ def test_artifact_run_suggests_the_native_command_for_json_shaped_source(
     assert call_main(retry[1:], capsys) == "\x01"
 
 
+@pytest.mark.parametrize("source_mode", ["missing flag", "native", "wrong language"])
+def test_source_retry_keeps_the_requested_execution_limits(
+    tmp_path, capsys, source_mode
+) -> None:
+    path = tmp_path / "owner's program.json"
+    source = "+" * 65 + ".+."
+    native = source_mode == "native"
+    path.write_text(source if native else esolangs.to_json(REFERENCE, source))
+    initial_mode = [] if source_mode == "missing flag" else ["--artifact"]
+    retry_mode = [] if native else ["--artifact"]
+    language = REFERENCE
+    if source_mode == "wrong language":
+        (language,) = one_where(
+            lambda facts: facts.name != REFERENCE,
+            source_kind="text",
+            boolean_generator=True,
+        )
+    options = ["--max-output", "1", "--total-timeout=10", "--isolated"]
+    output, error = _failure(
+        ["run", *initial_mode, *options, language, str(path)], capsys
+    )
+    assert output == ""
+    retry = shlex.split(error.split("for example: ", 1)[1])
+    assert retry[:2] == ["esolangs", "run"]
+    assert retry[-2:] == [REFERENCE, str(path)]
+    assert set(retry[2:-2]) == {
+        *retry_mode,
+        "--max-output=1",
+        "--total-timeout=10",
+        "--isolated",
+    }
+    output, error = _failure(retry[1:], capsys, code=124)
+    assert output == "A"
+    assert "output limit exceeded" in error
+
+
 @pytest.mark.parametrize("duplicate", [False, True])
 def test_native_run_keeps_json_with_only_a_similar_format_marker(
     tmp_path, capsys, duplicate

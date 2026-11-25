@@ -39,11 +39,11 @@ from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli._table_input import _TruthTablePipeCheck
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
-    _as_argument,
     _cli_error_text,
     _display_encoding,
     _exit_code,
     _native_run_hint,
+    _portable_run_hint,
     _run_source_command,
     _saved_template_hint,
     _timeout_text,
@@ -78,7 +78,6 @@ from esolangs.runtime._input import (
     input_read_error,
     read_input,
 )
-from esolangs.runtime._prepared import _runtime_reads_stdin
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import _GZIP_SIGNATURE, _FileSource, _open_program_path
 from esolangs.runtime._validate import _has_backing_type
@@ -167,6 +166,7 @@ def _read_program(
     catalog: Catalog | None = None,
     _settings_validated: bool = False,
     portable: bool = False,
+    retry_options: tuple[str, ...] = (),
 ) -> ProgramArtifact[Program]:
     """Read native source or a portable record under the acquisition deadline."""
     deadline = None if timeout is None else monotonic() + timeout
@@ -178,13 +178,13 @@ def _read_program(
         data = _bounded_source_stdin(timeout, timeout_flag, deadline, max_bytes)
         if len(data) > max_bytes:
             hint = "save the program to a file and pass its filename to esolangs run"
-            if (operand := _as_argument(language, catalog=catalog)) is not None:
-                option = " --artifact" if portable else ""
-                filename = "program.json" if portable else "program"
-                hint = (
-                    f"save the program as {filename} and run "
-                    f"`esolangs run{option} {operand} {filename}`"
-                )
+            filename = "program.json" if portable else "program"
+            if command := _run_source_command(
+                language, filename, catalog, portable=portable, options=retry_options
+            ):
+                hint = f"save the program as {filename} and run `{command}`"
+            elif retry_options:
+                hint += " with the original execution options"
             _fail(
                 f"stdin is larger than the {max_bytes // 1024} KiB program stream limit"
                 f"\nhint: {hint}"
@@ -202,8 +202,10 @@ def _read_program(
     def decode() -> ProgramArtifact[Program]:
         with nullcontext() if deadline is None else stream_read_deadline(deadline):
             if portable:
-                return _load_portable_source(language, path, data, settings, catalog)
-            _reject_portable_source(data, path, label, catalog)
+                return _load_portable_source(
+                    language, path, data, settings, catalog, retry_options
+                )
+            _reject_portable_source(data, path, label, catalog, retry_options)
             return _check_program(
                 language,
                 _FileSource(label, data),
@@ -239,7 +241,7 @@ def _portable_bom_error(label: str) -> ProgramError:
 
 
 def _reject_portable_source(
-    data: bytes, path: str, label: str, catalog: Catalog
+    data: bytes, path: str, label: str, catalog: Catalog, retry_options: tuple[str, ...]
 ) -> None:
     """Stop a portable envelope from reaching a native interpreter."""
     start = 0
@@ -274,18 +276,10 @@ def _reject_portable_source(
         )
     raise _with_cli_hint(
         ProgramError(message),
-        _portable_run_hint(owner, path, catalog, "use --artifact to run portable JSON"),
+        _portable_run_hint(
+            owner, path, catalog, "use --artifact to run portable JSON", retry_options
+        ),
     )
-
-
-def _portable_run_hint(owner: str, path: str, catalog: Catalog, hint: str) -> str:
-    if path == "-" and _runtime_reads_stdin(catalog.languages[owner].runtime):
-        command = _run_source_command(owner, "program.json", catalog, portable=True)
-        return (
-            f"save the artifact as program.json and run {command}" if command else hint
-        )
-    command = _run_source_command(owner, path, catalog, portable=True)
-    return f"{hint}, for example: {command}" if command else hint
 
 
 def _load_portable_source(
@@ -294,6 +288,7 @@ def _load_portable_source(
     data: bytes,
     settings: DialectSettings | None,
     catalog: Catalog,
+    retry_options: tuple[str, ...],
 ) -> ProgramArtifact[Program]:
     """Restore runnable JSON and combine any explicit compatible choices."""
     from esolangs.portable import (
@@ -309,7 +304,7 @@ def _load_portable_source(
                     f"{label}: --artifact expects portable JSON; "
                     f"the input is native {kind}"
                 ),
-                _native_run_hint(language, path, catalog),
+                _native_run_hint(language, path, catalog, retry_options),
             )
     try:
         artifact = _decode_portable_record(language, path, data, catalog)
@@ -324,14 +319,13 @@ def _load_portable_source(
                     path,
                     catalog,
                     "pass the artifact's recorded language to esolangs run --artifact",
+                    retry_options,
                 )
             raise _with_cli_hint(error, hint) from cause
         if not isinstance(cause, (JSONDecodeError, _MissingPortableEnvelopeError)):
             raise
-        raise _with_cli_hint(
-            error,
-            f"if this is a native program, {_native_run_hint(language, path, catalog)}",
-        ) from error
+        hint = _native_run_hint(language, path, catalog, retry_options)
+        raise _with_cli_hint(error, f"if this is a native program, {hint}") from error
     if isinstance(artifact, TemplateArtifact):
         raise _with_cli_hint(
             TemplateError(f"{label}: unfilled portable template"),

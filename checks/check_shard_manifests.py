@@ -80,7 +80,8 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
             raise ValueError("overlapping or unexpected shard selection")
         selected.update(nodes)
         actual = set()
-        for sidecar in path.parent.rglob("*.json.meta.json"):
+        sidecars = sorted(path.parent.rglob("*.json.meta.json"))
+        for sidecar in sidecars:
             metadata = read_completion_metadata(sidecar)
             if any(metadata["run"].get(key) != value for key, value in run.items()):
                 raise ValueError(
@@ -89,7 +90,7 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
             actual.update(metadata["collected"])
         if not nodes <= actual or not actual <= nodes | omissions or actual & executed:
             raise ValueError("missing, overlapping, or unexpected executed tests")
-        if actual:
+        if sidecars:
             load_run(path.parent, actual)
         executed.update(actual)
     if selected != expected - (excluded or set()) or executed != expected:

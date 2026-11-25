@@ -88,6 +88,29 @@ def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     check(paths, ["a", "b", "serial"], "slow", 2)
 
 
+def test_empty_shards_validate_completion_evidence_when_present(tmp_path) -> None:
+    paths = evidence(tmp_path)
+    corpus = ["a", "serial"]
+    for path in paths:
+        manifest = json.loads(path.read_text())
+        manifest["collected"] = corpus
+        if path == paths[1]:
+            manifest["selected"] = []
+        path.write_text(json.dumps(manifest))
+    recorder = Recorder(paths[1].parent / "test-durations.json")
+    sidecar = recorder.path.with_suffix(".json.meta.json")
+    recorder.pytest_sessionfinish(0)
+    check(paths, corpus, "slow", 2)
+
+    recorder.pytest_sessionfinish(1)
+    with pytest.raises(ValueError, match="failed, incomplete, or altered") as error:
+        check(paths, corpus, "slow", 2)
+    assert str(sidecar) in str(error.value)
+
+    sidecar.unlink()
+    check(paths, corpus, "slow", 2)
+
+
 def test_duplicate_manifest_fields_cannot_replace_a_shard_selection(tmp_path) -> None:
     paths = evidence(tmp_path)
     manifest = paths[0]

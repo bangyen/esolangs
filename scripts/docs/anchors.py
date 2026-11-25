@@ -66,15 +66,15 @@ def mask_hidden(
 def anchors(text: str) -> set[str]:
     """Return every heading and explicit anchor a reader can link to in ``text``."""
     text = mask_hidden(text, keep_columns=False)
-    headings = [slug(m.group(1)) for m in _HEADING.finditer(text)]
-    found = set(headings)
-    found |= {m.group(1) for m in _EXPLICIT_ANCHOR.finditer(text)}
-    # GitHub disambiguates a repeated heading, but a repeated anchor is a
-    # document bug rather than a link target, so only headings get suffixes.
-    seen: dict[str, int] = {}
-    for base in headings:
-        count = seen.get(base, 0)
-        seen[base] = count + 1
-        if count:
-            found.add(f"{base}-{count}")
-    return found
+    headings: set[str] = set()
+    next_suffix: dict[str, int] = {}
+    for match in _HEADING.finditer(text):
+        base = heading = slug(match.group(1))
+        suffix = next_suffix.get(base, 1)
+        while heading in headings:
+            heading = f"{base}-{suffix}"
+            suffix += 1
+        next_suffix[base] = suffix
+        headings.add(heading)
+    # Explicit anchors do not take part in heading suffix allocation.
+    return headings | {m.group(1) for m in _EXPLICIT_ANCHOR.finditer(text)}

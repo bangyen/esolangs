@@ -178,7 +178,7 @@ def test_run_dash_obeys_program_stream_size_limit(
 ) -> None:
     language = first(parameterized=True)
     monkeypatch.setattr("esolangs.cli.io._MAX_PROGRAM_BYTES", 1024)
-    command = ["run", *flags, language]
+    command = ["run", *flags, "--max-steps=5", language]
     out, error = _failure([*command, "-"], capsys, stdin=" " * 1025)
     assert out == ""
     assert "stdin is larger than the 1 KiB program stream limit" in error

@@ -25,6 +25,7 @@ from esolangs.cli.args import (
     _timeout_of,
 )
 from esolangs.cli.hints import (
+    _BOUND_FLAGS,
     _TIMEOUT_EXIT,
     _cli_error_text,
     _exit_code,
@@ -181,6 +182,14 @@ def _run(rest: list[str]) -> None:
             "this interpreter uses stdin for program input; "
             "pass a program file and pipe its input to stdin"
         )
+    retry_options = (
+        *(
+            f"{flag}={value}"
+            for flag, value in options.items()
+            if flag in _BOUND_FLAGS.values()
+        ),
+        *(("--isolated",) if isolated else ()),
+    )
     # No Boolean-answer notes here: run takes any program, and the
     # termination contract (halt 0, diverge 1) is a generated program's,
     # stated by describe and read-answer.
@@ -194,6 +203,7 @@ def _run(rest: list[str]) -> None:
         catalog=catalog,
         _settings_validated=True,
         portable="--artifact" in flags,
+        retry_options=retry_options,
     )
     unbounded = not worker and max_steps is None
     stdin: InputSource = ""
