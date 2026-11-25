@@ -256,18 +256,29 @@ def main() -> int:
         parser.error(str(exc))
     if packages and args.update:
         parser.error("--update rewrites the whole-tree baseline: name no languages")
-    shards = [path.resolve() for path in args.combine_data or ()]
-    if shards and (args.data is None or packages or args.data.resolve() in shards):
-        parser.error(
-            "--combine-data requires a distinct --data destination and no languages"
-        )
     try:
-        if args.data is None:
+        data = args.data.resolve() if args.data is not None else None
+        shards = [path.resolve() for path in args.combine_data or ()]
+        if shards and (data is None or packages):
+            parser.error(
+                "--combine-data requires a --data destination and no languages"
+            )
+        if data is None:
             with tempfile.TemporaryDirectory(prefix="deadcode-") as temporary:
                 found = _saved_report(Path(temporary) / ".coverage", packages, [])
         else:
-            found = _saved_report(args.data.resolve(), packages, shards)
-    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+            inputs = {
+                path.resolve(): path
+                for shard in shards
+                for path in (shard, evidence.sidecar(shard))
+            }
+            for output in (data, evidence.sidecar(data)):
+                if inputs and (source := inputs.get(output.resolve())) is not None:
+                    parser.error(
+                        f"coverage output {output} would replace input {source}"
+                    )
+            found = _saved_report(data, packages, shards)
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
         parser.error(str(exc))
     if args.update:
         _dump(found)

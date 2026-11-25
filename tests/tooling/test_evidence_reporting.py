@@ -177,6 +177,45 @@ def test_deadcode_refuses_stale_saved_coverage(
     assert baseline.read_text() == "# saved\n"
 
 
+@pytest.mark.parametrize(
+    "collision", ["database", "input receipt", "output receipt", "receipt alias"]
+)
+def test_deadcode_refuses_to_replace_either_coverage_input(
+    tmp_path, monkeypatch, capsys, collision
+) -> None:
+    import sys
+
+    from tests.tooling.script_support import REPO_ROOT, load
+
+    scripts = REPO_ROOT / "scripts"
+    monkeypatch.syspath_prepend(str(scripts))
+    module = load(scripts / "deadcode.py")
+    data = tmp_path / "combined.coverage"
+    shard = module.evidence.sidecar(data) if collision == "output receipt" else data
+    receipt = module.evidence.sidecar(shard)
+    if collision == "input receipt":
+        data = receipt
+    elif collision == "receipt alias":
+        data = tmp_path / "combined-alias.coverage"
+        data.symlink_to(receipt)
+    shard.write_bytes(b"previous database")
+    receipt.write_bytes(b"previous receipt")
+    monkeypatch.setattr(
+        module, "_saved_report", lambda *_: pytest.fail("combined inputs")
+    )
+    monkeypatch.setattr(
+        sys, "argv", ["deadcode", "--data", str(data), "--combine-data", str(shard)]
+    )
+    with pytest.raises(SystemExit) as caught:
+        module.main()
+    assert caught.value.code == 2
+    diagnostic = capsys.readouterr().err
+    expected = receipt if collision in {"input receipt", "receipt alias"} else shard
+    assert f"would replace input {expected.resolve()}" in diagnostic
+    assert shard.read_bytes() == b"previous database"
+    assert receipt.read_bytes() == b"previous receipt"
+
+
 def test_deadcode_combines_only_complete_bound_shards(tmp_path, monkeypatch):
     import subprocess
 

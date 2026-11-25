@@ -544,6 +544,11 @@ def _emit_generated(
     _note_export_settings(artifact, declaration)
 
 
+_PORTABLE_TEMPLATE_HINT = (
+    "regenerate with esolangs generate --artifact and pass the template JSON"
+)
+
+
 def _check_saved_template_format(data: bytes | bytearray, label: str) -> None:
     """Explain how to obtain retained bindings from native binary source."""
     if kind := _native_binary_format(data):
@@ -552,24 +557,35 @@ def _check_saved_template_format(data: bytes | bytearray, label: str) -> None:
                 f"{label}: --from-template expects portable JSON. "
                 f"The input is native {kind}."
             ),
-            "regenerate with esolangs generate --artifact and pass the template JSON",
+            _PORTABLE_TEMPLATE_HINT,
         )
 
 
 def _saved_template_pipe_check() -> Callable[[bytes, bytearray], None]:
-    """Refuse a BOM or invalid UTF-8 without waiting for the rest of a template."""
+    """Check the encoding and the JSON object opener before EOF."""
     decoder = UTF8Decoder()
+    started = False
 
     def check(chunk: bytes, received: bytearray) -> None:
+        nonlocal started
         _check_saved_template_format(received, "stdin")
         if received.startswith(BOM_UTF8):
             raise _portable_bom_error("stdin")
         try:
-            decoder.decode(chunk)
+            text = decoder.decode(chunk)
         except UnicodeDecodeError:
             # Re-decode only on failure to retain the complete stream's byte offset.
             received.decode("utf-8")
             raise
+        if not started and (prefix := text.lstrip(" \t\r\n")):
+            if not prefix.startswith("{"):
+                raise _with_cli_hint(
+                    ProgramError(
+                        "stdin: --from-template expects a portable JSON object"
+                    ),
+                    _PORTABLE_TEMPLATE_HINT,
+                )
+            started = True
 
     return check
 

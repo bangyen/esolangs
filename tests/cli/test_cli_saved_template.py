@@ -130,6 +130,7 @@ def test_saved_template_identifies_native_binary_files(
         (b'{"source":"\xff', b"position 11: invalid start byte"),
         (b"\x89PNG\r\n\x1a\n", b"input is native PNG"),
         (b"\x1f\x8b", b"input is native gzip"),
+        (b" \t\r\n+$.", b"--from-template expects a portable JSON object"),
     ],
 )
 def test_saved_template_pipe_reports_encoding_errors_before_eof(
@@ -156,7 +157,10 @@ def test_saved_template_pipe_reports_encoding_errors_before_eof(
             child.stdin.flush()
             assert child.wait(timeout=5) == 2
             assert child.stdout.read() == b""
-            assert diagnostic in child.stderr.read()
+            error = child.stderr.read()
+            assert diagnostic in error
+            if b"portable JSON object" in diagnostic:
+                assert b"esolangs generate --artifact" in error
         finally:
             if child.poll() is None:
                 child.kill()
@@ -180,7 +184,7 @@ def test_valid_saved_template_pipe_waits_for_eof(language) -> None:
     ) as child:
         assert child.stdin is not None
         try:
-            child.stdin.write(template)
+            child.stdin.write(b" \t\r\n" + template)
             child.stdin.flush()
             with pytest.raises(subprocess.TimeoutExpired):
                 child.wait(timeout=0.2)

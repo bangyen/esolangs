@@ -158,6 +158,38 @@ def test_a_repeated_heading_gets_a_suffix_anchor(tmp_path: Path) -> None:
     assert checker.broken_links(tmp_path, files) == []
 
 
+def test_underlined_headings_share_the_atx_anchor_order(tmp_path: Path) -> None:
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {
+            "guide.md": (
+                "Setup\n=====\n\n## Setup-1\n\nSetup\n-----\n\n"
+                "Long\nheading\n=====\n\nParagraph\n\n---\n\n"
+                "```md\nHidden\n---\n```\n\n"
+                "    Indented code\n---\n\n- List item\nContinuation\n---\n"
+            ),
+            "README.md": "\n\n".join(
+                f"[{slug}](guide.md#{slug})"
+                for slug in (
+                    "setup",
+                    "setup-1",
+                    "setup-2",
+                    "longheading",
+                    "paragraph",
+                    "hidden",
+                    "indented-code",
+                    "continuation",
+                )
+            ),
+        },
+    )
+    assert checker.broken_links(tmp_path, files) == [
+        ("README.md", f"guide.md#{slug}")
+        for slug in ("paragraph", "hidden", "indented-code", "continuation")
+    ]
+
+
 @pytest.mark.parametrize(
     ("headings", "valid", "invalid"),
     [
