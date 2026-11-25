@@ -95,3 +95,10 @@ class BalanceRequest:
         if not _has_backing_type(source, Raster):
             raise ProgramError("raster layout requires raster source")
         return source
+
+    def template_source(self) -> TemplateLayout:
+        """Return the template's source and ordered slots for reflow."""
+        source = self.source
+        if not isinstance(source, TemplateLayout):
+            raise TypeError("balancing needs a rendered template with slots")
+        return source

@@ -860,9 +860,7 @@ def smallfuck_request(request: GenerationRequest) -> TemplateLayout:
 
 def smallfuck_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Compare fits using the full and narrow setter layouts."""
-    default = request.source
-    if not isinstance(default, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
+    default = request.template_source()
     return min(
         default,
         _WRAPPER.fit_template(default, minimum=len(_INPUT)),

@@ -254,8 +254,6 @@ def bitdeque_request(request: GenerationRequest) -> TemplateLayout:
 
 def bitdeque_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Balance the default eleven-cell endpoint loads."""
-    if not isinstance(request.source, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
-    tokens = _bitdeque_tokens(request.source.tokens())
+    tokens = _bitdeque_tokens(request.template_source().tokens())
     widths = [token if isinstance(token, str) else "x" * len(token) for token in tokens]
     return layout_tokens(tokens, balanced_token_width(widths, " ", minimum=11))

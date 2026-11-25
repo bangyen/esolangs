@@ -461,6 +461,4 @@ def intercal_request(request: GenerationRequest) -> TemplateLayout:
 
 def intercal_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Pack rows and preserve the ordered input slots."""
-    if not isinstance(request.source, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
-    return balance_intercal(request.source)
+    return balance_intercal(request.template_source())

@@ -165,6 +165,13 @@ def thue(truth_table: str, width: int | None = None) -> str:
     out at the rest; the queue's five rules lose below that saving.  Plain
     and queued layouts compete on every path, nearest the width first.
     """
+    return _render(truth_table, width)
+
+
+def _render(
+    truth_table: str, width: int | None, *, tables: list[_Layout] | None = None
+) -> str:
+    """Render the best fit, reusing the balanced request's table plan."""
     n = _validate_truth_table(truth_table)
     limit = _width_limit(width)
     constant = None
@@ -172,7 +179,8 @@ def thue(truth_table: str, width: int | None = None) -> str:
         constant = _constant(n, bit, limit)
         if limit is None or n > 3 or grid_width(constant) <= limit:
             return constant
-    tables = _tables(truth_table)
+    if tables is None:
+        tables = _tables(truth_table)
     layouts = [_thue_layout(*layout, width) for layout in tables]
     layouts.extend(
         shared
@@ -473,7 +481,7 @@ def _marker_digits(length: int, base: int) -> int:
     return digits
 
 
-def balance_thue(truth_table: str, default: str) -> str:
+def balance_thue(truth_table: str, default: str | None = None) -> str:
     """Balance chunk payloads at their quadratic crossing, plus the small tree.
 
     H=23+ceil(T/p). Above the rule floor, W=p+2d+3, plus at most one cell for d=1.
@@ -482,8 +490,10 @@ def balance_thue(truth_table: str, default: str) -> str:
     Each layout (see :func:`_tables`) is tuned at its own rule count.
     """
     layouts = _tables(truth_table)
+    if default is None:
+        default = _render(truth_table, None, tables=layouts)
     plain = min((_thue_layout(*layout, None) for layout in layouts), key=len)
-    candidates = [default, plain, thue(truth_table, 1)]
+    candidates = [default, plain, _render(truth_table, 1, tables=layouts)]
     cap = max(grid_width(default), grid_width(plain))
     for table, rounds, extra in layouts:
         size = len(table) // (2 if _is_packed(extra) else 1)
@@ -504,9 +514,11 @@ def balance_thue(truth_table: str, default: str) -> str:
 
 def thue_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
+    if request.balance:
+        return balance_thue(request.table)
     return thue(request.table, request.width)
 
 
 def thue_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
+    """Balance source emitted by a replacement entrypoint."""
     return balance_thue(request.table, request.text_source())

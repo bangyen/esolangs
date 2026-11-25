@@ -142,9 +142,7 @@ def moar_cheese_3_balance_request(request: BalanceRequest) -> TemplateLayout:
     A newline replaces a space one for one, so every slot keeps its offset;
     the space inside ``( )`` is a byte, not a separator.
     """
-    layout = request.source
-    if not isinstance(layout, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
+    layout = request.template_source()
     source = layout.source
     breaks = [
         i for i, c in enumerate(source) if c == " " and source[i - 1 : i + 2] != "( )"

@@ -85,8 +85,14 @@ class BooleanBackend:
     balance: OperationRef[BalanceRequest, GeneratedProgram] | Balancer | None = None
     #: Native arity check, shared with direct generator calls for its diagnostic.
     arity_guard: Callable[[int], None] | None = None
-    #: The generator can select balanced layouts in one request.
-    layout_balance: bool = False
+    #: Native balance may be restricted to one entrypoint when a reflow hook remains.
+    layout_balance: bool | OperationRef[GenerationRequest, GeneratedProgram] = False
+
+    @property
+    def balances_natively(self) -> bool:
+        """Whether this entrypoint accepts a native balance request."""
+        native = self.layout_balance
+        return native if isinstance(native, bool) else native == self.entrypoint
 
     @recursive_repr()
     def __repr__(self) -> str:

@@ -180,6 +180,4 @@ def underload_request(request: GenerationRequest) -> TemplateLayout:
 
 def underload_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Balance the default selector layout at its whole-token fit."""
-    if not isinstance(request.source, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
-    return _WRAPPER.fit_template(request.source, minimum=5)
+    return _WRAPPER.fit_template(request.template_source(), minimum=5)

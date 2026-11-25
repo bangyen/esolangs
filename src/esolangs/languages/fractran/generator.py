@@ -180,9 +180,7 @@ def fractran_request(request: GenerationRequest) -> TemplateLayout:
 
 def fractran_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Return the default or its fractions at the squarest token width."""
-    layout = request.source
-    if not isinstance(layout, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
+    layout = request.template_source()
     tokens = layout.source.split()
     width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))
     fitted = wrap_fractions(layout, width)

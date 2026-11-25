@@ -16,13 +16,15 @@ def _backend() -> BackendDefinition:
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
+    entrypoint = OperationRef[GenerationRequest, Program](
+        "esolangs.languages.thue.generator", "thue_request"
+    )
     return BooleanBackend(
-        entrypoint=OperationRef[GenerationRequest, Program](
-            "esolangs.languages.thue.generator", "thue_request"
-        ),
+        entrypoint=entrypoint,
         layout_width=True,
         # Not a tree: the table is the state, and each read halves it.
         shape=Shape.LOOKUP,
+        layout_balance=entrypoint,
         balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.thue.generator", "thue_balance_request"
         ),

@@ -272,7 +272,7 @@ def _generate(
             f"generator contracts. `esolangs list --details` marks it 'int'"
         )
     truth_table = check_table_text(truth_table)
-    if balance and not backend.layout_balance:
+    if balance and not backend.balances_natively:
         return _generate_balanced(
             resolved, truth_table, options, settings, catalog=catalog, probes=probes
         )
@@ -703,7 +703,7 @@ def _is_template_for(
 
     def matches_balance() -> bool:
         if (
-            not backend.layout_balance
+            not backend.balances_natively
             and backend.balance is None
             and (
                 backend.wrap_balance is not None

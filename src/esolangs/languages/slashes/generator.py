@@ -116,9 +116,7 @@ def slashes_request(request: GenerationRequest) -> TemplateLayout:
 
 def slashes_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Compare the original with a character fold guarded by a newline rule."""
-    layout = request.source
-    if not isinstance(layout, TemplateLayout):
-        raise TypeError("balancing needs a rendered template with slots")
+    layout = request.template_source()
     prefixed = TemplateLayout(
         _NEWLINES + layout.source,
         tuple(
