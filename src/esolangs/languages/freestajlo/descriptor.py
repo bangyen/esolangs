@@ -12,7 +12,7 @@ _UNIT = r'"[^"]*"|\'[\s\S]|\d+|[\s\S]'
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import TokenWrapper
     from esolangs.registry._backend import BooleanBackend, Shape
     from esolangs.registry._operations import OperationRef
@@ -26,9 +26,6 @@ def _backend() -> BackendDefinition:
         layout_width=False,
         shape=Shape.LOOKUP,
         wrap=TokenWrapper(_UNIT),
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.freestajlo.generator", "freestajlo_balance_request"
-        ),
     )
 
 

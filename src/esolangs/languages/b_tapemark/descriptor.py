@@ -18,7 +18,7 @@ def _dialect(swap_marker: str = "new") -> None:
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.registry._backend import BooleanBackend, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -31,9 +31,6 @@ def _backend() -> BackendDefinition:
         layout_balance=True,
         # Not a tree: the table copied onto the grid, one mark per row.
         shape=Shape.LOOKUP,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.b_tapemark.generator", "b_tapemark_balance_request"
-        ),
         grid=True,
     )
 

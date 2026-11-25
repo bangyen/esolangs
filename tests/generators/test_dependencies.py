@@ -94,7 +94,7 @@ def test_dependencies_exhaustive() -> None:
                     ]
                     == bit
                 )
-            symmetric = helpers.symmetric_weights(table, n)
+            symmetric = helpers.symmetric_lookup(lookup)
             counts: dict[int, set[str]] = {}
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
                 counts.setdefault(sum(row[i] for i in dependencies), set()).add(bit)

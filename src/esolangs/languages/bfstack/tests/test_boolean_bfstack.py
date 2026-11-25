@@ -113,7 +113,7 @@ class TestBfstack:
 
     def test_generated_structure_and_written_payload(self) -> None:
         """Program shape and the payload used by workspace proofs."""
-        assert_analysis_complement("BFStack", "symmetric_weights", "01101001")
+        assert_analysis_complement("BFStack", "symmetric_lookup", "01101001")
         assert_analysis_complement("BFStack", "input_weights", "00010011")
         """Program shape and the payload used by workspace proofs."""
         program = boolean.bfstack("1101")  # asymmetric: the weighted encoder

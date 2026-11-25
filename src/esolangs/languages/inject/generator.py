@@ -38,7 +38,7 @@ from esolangs.generation.helpers import (
     short_name,
     subtree_ids,
 )
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
 
@@ -317,11 +317,3 @@ def _balance(default: str, lookup: WeightedLookup) -> str:
 def inject_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
     return _program(request.table, request.width, balance=request.balance)
-
-
-def inject_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    table = request.table
-    return _balance(
-        request.text_source(), input_weights(table, _validate_truth_table(table))
-    )

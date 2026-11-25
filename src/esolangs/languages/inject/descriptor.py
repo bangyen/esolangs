@@ -12,7 +12,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.registry._backend import BooleanBackend
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -23,9 +23,6 @@ def _backend() -> BackendDefinition:
         ),
         layout_balance=True,
         layout_width=True,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.inject.generator", "inject_balance_request"
-        ),
         no_wrap="blocks and executable commands are delimited by source lines",
     )
 

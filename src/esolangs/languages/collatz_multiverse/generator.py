@@ -36,7 +36,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.lookup import constant_output, exceptional_row, packed_cells
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
 
@@ -575,8 +575,3 @@ def collatz_multiverse_request(request: GenerationRequest) -> Program:
     if request.balance:
         return balance_collatz_multiverse(request.table)
     return collatz_multiverse(request.table, request.width)
-
-
-def collatz_multiverse_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return balance_collatz_multiverse(request.table, request.text_source())

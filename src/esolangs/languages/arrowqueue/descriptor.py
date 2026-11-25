@@ -24,6 +24,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.arrowqueue.generator", "arrowqueue_request"
         ),
         layout_width=True,
+        layout_balance=True,
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.arrowqueue.generator", "arrowqueue_balance_request"
         ),

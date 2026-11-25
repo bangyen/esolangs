@@ -36,7 +36,7 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.b_tapemark.dialect import (
     validate_swap_marker,
@@ -270,13 +270,10 @@ def _program(
     *,
     swap_marker: str,
     balance: bool = False,
-    default: str | None = None,
 ) -> str:
     validate_swap_marker(swap_marker)
     depth = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
-        if default is not None:
-            return default
         answer = truth_table[0]
         horizontal = ">" + "-|" * (depth - 1) + "-" + answer + "!"
         if width is None or len(horizontal) <= width:
@@ -292,8 +289,7 @@ def _program(
         return wide
     candidates = [wide, *_closed_forms(truth_table, swap_marker, projected=projected)]
     # The closed forms and wide strip compete by area. See [ablations.area_default].
-    if default is None:
-        default = min(candidates, key=grid_rank)
+    default = min(candidates, key=grid_rank)
     return min(default, *candidates, key=balance_score) if balance else default
 
 
@@ -498,13 +494,3 @@ def b_tapemark_request(request: GenerationRequest) -> Program:
     if request.balance:
         return _program(request.table, swap_marker=marker, balance=True)
     return b_tapemark(request.table, request.width, swap_marker=marker)
-
-
-def b_tapemark_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _program(
-        request.table,
-        swap_marker=request.options.text("swap_marker"),
-        balance=True,
-        default=request.text_source(),
-    )

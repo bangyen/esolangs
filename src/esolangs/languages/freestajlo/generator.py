@@ -28,7 +28,7 @@ from esolangs.generation.helpers import (
     read_at,
 )
 from esolangs.generation.lookup import symmetric_outputs
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_program, balance_score
 from esolangs.runtime._program import Program
@@ -57,29 +57,26 @@ def _reads(n: int, used: list[int], combine: str) -> str:
     return "".join(reads)
 
 
-def _program(
-    truth_table: str, *, balance: bool = False, default: str | None = None
-) -> str:
+def _program(truth_table: str, *, balance: bool = False) -> str:
     """Reuse the projected lookup and reads when racing chunked layouts."""
     n = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, n)
     reduced = read_at(truth_table, used, n)
     if not used:
-        constant = ";" * n + reduced + ":" if default is None else default
+        constant = ";" * n + reduced + ":"
         return balance_program(constant, "freestajlo") if balance else constant
 
     tail = _reads(n, used, "2*;+")
     packed = _pack(reduced)
-    if default is None:
-        forms = [f'"{reduced}"{tail}&.', f'"{packed}"{tail}{_DECODE}']
-        if (
-            len(used) >= 2
-            and (symmetric := symmetric_outputs(reduced, len(used))) is not None
-        ):
-            # The count picks one of len(used) + 1 entries.
-            # See [ablations.symmetric_count].
-            forms.append(f'"{symmetric}"{_reads(n, used, ";+")}&.')
-        default = min(forms, key=len)
+    forms = [f'"{reduced}"{tail}&.', f'"{packed}"{tail}{_DECODE}']
+    if (
+        len(used) >= 2
+        and (symmetric := symmetric_outputs(reduced, len(used))) is not None
+    ):
+        # The count picks one of len(used) + 1 entries.
+        # See [ablations.symmetric_count].
+        forms.append(f'"{symmetric}"{_reads(n, used, ";+")}&.')
+    default = min(forms, key=len)
     if not balance:
         return default
 
@@ -117,8 +114,3 @@ def freestajlo_request(request: GenerationRequest) -> Program:
     if request.balance:
         return _program(request.table, balance=True)
     return freestajlo(request.table)
-
-
-def freestajlo_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return _program(request.table, balance=True, default=request.text_source())

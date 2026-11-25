@@ -19,10 +19,11 @@ from collections.abc import Sequence
 
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
+    WeightedLookup,
     _validate_truth_table,
     input_weights,
     subtree_ids,
-    symmetric_weights,
+    symmetric_lookup,
 )
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
@@ -93,17 +94,18 @@ def bfstack(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     if len(set(truth_table)) == 1:
         return _constant_leaf(n, truth_table[0])[:-1]
-    symmetric = symmetric_weights(truth_table, n)
+    projected = input_weights(truth_table, n)
+    symmetric = symmetric_lookup(projected)
     if symmetric is None or len(symmetric.table) > (1 << _BLOCK_INPUTS):
-        return _bfstack_plain(truth_table)
+        return _bfstack_plain(truth_table, projected=projected)
     return _bfstack_small(truth_table, n, symmetric)
 
 
-def _bfstack_plain(truth_table: str) -> str:
+def _bfstack_plain(truth_table: str, *, projected: WeightedLookup | None = None) -> str:
     """Route wide tables using bottom-up subtable dependencies."""
     n = _validate_truth_table(truth_table)
     if n <= _BLOCK_INPUTS:
-        return _bfstack_small(truth_table, n)
+        return _bfstack_small(truth_table, n, projected)
 
     ids = subtree_ids(truth_table)
     # A level's input matters exactly when its children denote different
@@ -128,7 +130,11 @@ def _bfstack_plain(truth_table: str) -> str:
         elif dependencies[node].bit_count() <= _BLOCK_INPUTS:
             lo = index << remaining
             parts.append(
-                _bfstack_small(truth_table[lo : lo + (1 << remaining)], remaining)
+                _bfstack_small(
+                    truth_table[lo : lo + (1 << remaining)],
+                    remaining,
+                    projected if level == 0 else None,
+                )
             )
             if level:
                 parts.append("<")

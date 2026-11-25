@@ -103,7 +103,7 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [resource_evidence.scaling]
 # Full-support nonsymmetric doubling attains through six inputs.
-# The n=1 identity stays on doubling: symmetric_weights requires m>=2.
+# The n=1 identity stays on doubling: count lookup requires m>=2.
 # A projection costs 2**m+2n+2m+80, plus21 if n=2. Pair packing
 # from m=7 instead costs <=2**(m-1)+2n+2m+115, below this ceiling.
 # The mask layout uses at most T+n+1724 characters from n=55041.

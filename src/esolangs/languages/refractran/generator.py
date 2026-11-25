@@ -25,8 +25,10 @@ Size:
 
 from __future__ import annotations
 
+from functools import cached_property
+
 from esolangs.generation.algebraic import parity_bias
-from esolangs.generation.decision import reduced_diagram
+from esolangs.generation.decision import DecisionNode, reduced_diagram
 from esolangs.generation.fraction_templates import fraction_template, wrap_fractions
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
@@ -57,7 +59,27 @@ def _primes(count: int) -> list[int]:
     raise AssertionError("prime bound exhausted")
 
 
-def _diagram(table: str, n: int) -> tuple[list[tuple[int, int, int]], int]:
+class _Plan:
+    """Share analysis and prime lists within one balanced generation."""
+
+    def __init__(self, table: str) -> None:
+        self.table = table
+        self.n = _validate_truth_table(table)
+        self._lists: dict[int, list[int]] = {}
+
+    @cached_property
+    def diagram(self) -> tuple[tuple[DecisionNode, ...], int]:
+        return reduced_diagram(self.table, self.n)
+
+    def primes(self, count: int) -> list[int]:
+        if count not in self._lists:
+            self._lists[count] = _primes(count)
+        return self._lists[count]
+
+
+def _diagram(
+    table: str, n: int, *, plan: _Plan | None = None
+) -> tuple[list[tuple[int, int, int]], int]:
     """Return dependency-ordered nodes and root; negative references select NOT."""
     nodes: list[tuple[int, int, int]] = []
     # [ablations.parity_complement]: one XOR chain, with polarity on the root.
@@ -71,7 +93,7 @@ def _diagram(table: str, n: int) -> tuple[list[tuple[int, int, int]], int]:
         )
         root = n + 1
         return nodes, -root if table[0] == "1" else root
-    diagram, root = reduced_diagram(table, n)
+    diagram, root = reduced_diagram(table, n) if plan is None else plan.diagram
     rails = {0: 0, 1: 1}
 
     def place(reference: int) -> int:
@@ -103,16 +125,23 @@ def refractran(truth_table: str, width: int | None = None) -> str:
     return _layout(truth_table, width).source
 
 
-def _layout(truth_table: str, width: int | None) -> TemplateLayout:
-    n = _validate_truth_table(truth_table)
-    nodes, root = _diagram(truth_table, n)
+def _layout(
+    truth_table: str, width: int | None, *, plan: _Plan | None = None
+) -> TemplateLayout:
+    if plan is None:
+        n = _validate_truth_table(truth_table)
+        nodes, root = _diagram(truth_table, n)
+    else:
+        n = plan.n
+        nodes, root = _diagram(truth_table, n, plan=plan)
     if not nodes:
         # Ignored exponents may share an odd prime: only parity carries output.
         layout = fraction_template([3] * n, [], root="1" if root else "2")
         return wrap_fractions(layout, width)
     # Leaf constants no longer need rails. Keep only output and scratch fixed.
     reserved = {2, 3, 11, 13, 17}
-    free = [p for p in _primes(5 + n + 2 * len(nodes)) if p not in reserved]
+    primes = _primes if plan is None else plan.primes
+    free = [p for p in primes(5 + n + 2 * len(nodes)) if p not in reserved]
     inputs = free[:n]
     rails = [(free[n + 2 * i], free[n + 2 * i + 1]) for i in range(len(nodes))]
 
@@ -143,10 +172,10 @@ def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     return wrap_fractions(layout, width)
 
 
-def _path_program(table: str) -> TemplateLayout | None:
+def _path_program(table: str, *, plan: _Plan | None = None) -> TemplateLayout | None:
     """Return root-first transfers with an O(n log n) initial token."""
-    n = len(table).bit_length() - 1
-    diagram, root = reduced_diagram(table, n)
+    n = len(table).bit_length() - 1 if plan is None else plan.n
+    diagram, root = reduced_diagram(table, n) if plan is None else plan.diagram
     if root < 2:
         return None
     needed: set[int] = set()
@@ -160,9 +189,10 @@ def _path_program(table: str) -> TemplateLayout | None:
 
     visit(root)
     references = sorted(needed, reverse=True)
+    primes = _primes if plan is None else plan.primes
     free = [
         prime
-        for prime in _primes(5 + n + 2 * len(references))
+        for prime in primes(5 + n + 2 * len(references))
         if prime not in {2, 3, 11, 13, 17}
     ]
     inputs = free[:n]
@@ -183,6 +213,10 @@ def _path_program(table: str) -> TemplateLayout | None:
 
 def refractran_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
+    if request.balance:
+        plan = _Plan(request.table)
+        default = _layout(request.table, None, plan=plan)
+        return _balance(request.table, default, plan=plan)
     return _layout(request.table, request.width)
 
 
@@ -191,8 +225,14 @@ def refractran_balance_request(request: BalanceRequest) -> TemplateLayout:
     default = request.source
     if not isinstance(default, TemplateLayout):
         raise TypeError("balancing needs a rendered template with slots")
+    return _balance(request.table, default)
+
+
+def _balance(
+    table: str, default: TemplateLayout, *, plan: _Plan | None = None
+) -> TemplateLayout:
     candidates = [default]
-    for layout in (default, _path_program(request.table)):
+    for layout in (default, _path_program(table, plan=plan)):
         if layout is not None:
             tokens = layout.source.split()
             width = balanced_token_width(tokens, " ", minimum=max(map(len, tokens)))

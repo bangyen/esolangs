@@ -30,12 +30,14 @@ Decisions:
     loop, so no output flip either; no loop-less mirror exists.
 """
 
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from functools import cache
 from math import isqrt
 from typing import cast
 
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.helpers import (
+    WeightedLookup,
     _validate_truth_table,
     grid_rank,
     input_weights,
@@ -89,13 +91,20 @@ def arrowqueue(truth_table: str, width: int | None = None) -> str:
     return _layout(truth_table, width).source
 
 
-def _layout(truth_table: str, width: int | None) -> TemplateLayout:
-    program = _program(truth_table, width)
-    if width is None and constant_output(truth_table) is None:
-        return min(
-            (program, *_folds(truth_table)), key=lambda layout: grid_rank(layout.source)
-        )
-    return program
+def _layout(
+    truth_table: str, width: int | None, *, balance: bool = False
+) -> TemplateLayout:
+    if width is not None:
+        return _program(truth_table, width)
+    n = _validate_truth_table(truth_table)
+    if constant_output(truth_table) is not None:
+        return _program(truth_table)
+
+    projected = input_weights(truth_table, n)
+    program = _program(truth_table, projected=projected)
+    folds = _folds(truth_table, projected=projected)
+    default = min((program, *folds), key=lambda layout: grid_rank(layout.source))
+    return _balance(default, folds) if balance else default
 
 
 def _render_grid(rows: Iterable[_Row]) -> TemplateLayout:
@@ -140,10 +149,19 @@ def _constant_ring(n: int, width: int) -> TemplateLayout:
     return _render_grid(rows)
 
 
-def _program(truth_table: str, width: int | None = None) -> TemplateLayout:
+def _program(
+    truth_table: str,
+    width: int | None = None,
+    *,
+    projected: WeightedLookup | None = None,
+) -> TemplateLayout:
     """Build the marker cascade, or a direct constant halt/ring."""
-    n = _validate_truth_table(truth_table)
-    if (constant := constant_output(truth_table)) is not None:
+    n = (
+        _validate_truth_table(truth_table)
+        if projected is None
+        else len(projected.weights)
+    )
+    if projected is None and (constant := constant_output(truth_table)) is not None:
         if constant == "0":
             return _render_grid(("+", *((_INPUT,),) * n))
         if n >= 3:
@@ -166,7 +184,7 @@ def _program(truth_table: str, width: int | None = None) -> TemplateLayout:
             )
         )
     width = max(width or 0, 0)  # 0, None and negative all mean unbounded
-    weights, table = input_weights(truth_table, n)
+    weights, table = projected or input_weights(truth_table, n)
     if 0 < width < 5:
         return _four_column_cascade(table, weights)
     narrow = 0 < width < 6
@@ -221,7 +239,13 @@ _LEAF_END = {"0": "  ++", "1": "   +~+"}
 type _Block = tuple[Sequence[_Row], int, int]
 
 
-def _folded(table: str, height: int) -> TemplateLayout | None:
+def _folded(
+    table: str,
+    height: int,
+    *,
+    projected: WeightedLookup | None = None,
+    ordered: Callable[[tuple[int, ...]], str] | None = None,
+) -> TemplateLayout | None:
     """Fold the cascade into side-by-side strips at most ``height`` rows tall.
 
     Each strip but the last ends in a corridor: ``*`` turns left below its
@@ -234,8 +258,10 @@ def _folded(table: str, height: int) -> TemplateLayout | None:
     when that order puts an ignored setter where a stage stands, or when one
     strip holds everything.  ``height`` >= 10 fits the middle.
     """
-    n = _validate_truth_table(table)
-    weights, _ = input_weights(table, n)
+    if projected is None:
+        projected = input_weights(table, _validate_truth_table(table))
+    n = len(projected.weights)
+    weights = projected.weights
     cap = height - 3
     strips: list[list[_Block]] = [[]]
     used = [0]
@@ -258,7 +284,8 @@ def _folded(table: str, height: int) -> TemplateLayout | None:
         if bool(weights[j]) != bool(weights[rank]):
             return None
         reads[j] = rank
-    leaves = read_at(table, [reads[j] for j in range(n) if weights[j]], n)
+    order = tuple(reads[j] for j in range(n) if weights[j])
+    leaves = read_at(table, order, n) if ordered is None else ordered(order)
     tail = len(leaves.rstrip(leaves[-1]))
     # Only a preceding one uses the lower ring at columns 4/5.  The selector
     # stays in column 1, zero halts in columns 2/3, and corridors stay outside.
@@ -333,7 +360,9 @@ def _render_strips(strips: list[list[_Block]]) -> TemplateLayout:
     return TemplateLayout("\n".join(rendered), tuple(spans))
 
 
-def _folds(table: str) -> list[TemplateLayout]:
+def _folds(
+    table: str, *, projected: WeightedLookup | None = None
+) -> list[TemplateLayout]:
     """Folds at distinct heights around where the strips' width meets twice the height.
 
     A fold is ``F`` lines (``6n + 7 +`` one a table entry) cut into strips of
@@ -341,17 +370,28 @@ def _folds(table: str) -> list[TemplateLayout]:
     ``h = (3 + sqrt(9 + 12F)) / 2``.  That lands within one row of the best
     height at n=3..10 (4 random tables each; e.g. 59 vs 58-60 at n=10).
     """
-    n = _validate_truth_table(table)
+    if projected is None:
+        projected = input_weights(table, _validate_truth_table(table))
+    n = len(projected.weights)
     lines = 6 * n + 7 + len(table)
     centre = (3 + isqrt(9 + 12 * lines)) // 2
     heights = dict.fromkeys(max(10, height) for height in range(centre - 1, centre + 3))
-    folds = (_folded(table, height) for height in heights)
+
+    # Strip heights can produce the same setter order.
+    @cache
+    def ordered(order: tuple[int, ...]) -> str:
+        return read_at(table, order, n)
+
+    folds = (
+        _folded(table, height, projected=projected, ordered=ordered)
+        for height in heights
+    )
     return [fold for fold in folds if fold is not None]
 
 
 def arrowqueue_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return _layout(request.table, request.width)
+    return _layout(request.table, request.width, balance=request.balance)
 
 
 def arrowqueue_balance_request(request: BalanceRequest) -> TemplateLayout:
@@ -361,7 +401,8 @@ def arrowqueue_balance_request(request: BalanceRequest) -> TemplateLayout:
         raise TypeError("balancing needs a rendered template with slots")
     if constant_output(request.table) is not None:
         return default
-    return min(
-        (default, *_folds(request.table)),
-        key=lambda layout: balance_score(layout.source),
-    )
+    return _balance(default, _folds(request.table))
+
+
+def _balance(default: TemplateLayout, folds: list[TemplateLayout]) -> TemplateLayout:
+    return min((default, *folds), key=lambda layout: balance_score(layout.source))

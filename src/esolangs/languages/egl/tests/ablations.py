@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from esolangs.generation.helpers import input_weights, symmetric_weights
+from esolangs.generation.helpers import input_weights, symmetric_lookup
 
 
 def _grid(weights: list[int], table: str, *, folded: bool) -> str:
@@ -31,7 +31,8 @@ def ablate(table: str, rule: Literal["default", "folded_rows"]) -> str:
     n = len(table).bit_length() - 1
     if len(set(table)) == 1:
         return "2,1:" + "x" * n + ">" + "+" * int(table[0]) + "="
-    builds = [input_weights(table, n), symmetric_weights(table, n)]
+    projected = input_weights(table, n)
+    builds = (projected, symmetric_lookup(projected))
     return min(
         (
             _grid(*build, folded=k == 0 and rule == "default")

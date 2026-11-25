@@ -18,7 +18,6 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
     symmetric_lookup,
-    symmetric_weights,
 )
 from esolangs.generation.lookup import prefix_counts, symmetric_outputs
 from esolangs.generation.packed_decoder import packed_decoder
@@ -61,7 +60,6 @@ def assert_analysis_complement(
         "input_weights": input_weights,
         "symmetric_outputs": symmetric_outputs,
         "symmetric_lookup": symmetric_lookup,
-        "symmetric_weights": symmetric_weights,
         "flag_tree_body": flag_tree_body,
     }[attribute]
     assert getattr(module, attribute) is query

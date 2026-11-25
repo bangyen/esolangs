@@ -35,9 +35,9 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     grid_width,
-    symmetric_weights,
+    read_at,
 )
-from esolangs.generation.lookup import constant_output
+from esolangs.generation.lookup import constant_output, symmetric_outputs
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
@@ -150,12 +150,14 @@ def _short_operand(source: str, here: int) -> str:
 
 def _preset_family(table: str, n: int) -> bool:
     """Recognize parity and thresholds over the inputs the table retains."""
-    if len(essential_inputs(table, n)) == 1:
-        return True
-    symmetric = symmetric_weights(table, n)
+    essential = essential_inputs(table, n)
+    kept = len(essential)
+    if kept < 2:
+        return kept == 1
+    symmetric = symmetric_outputs(read_at(table, essential, n), kept)
     if symmetric is None:
         return False
-    changes = [a != b for a, b in pairwise(symmetric.table)]
+    changes = [a != b for a, b in pairwise(symmetric)]
     return all(changes) or sum(changes) == 1
 
 

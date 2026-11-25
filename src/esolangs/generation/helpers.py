@@ -452,23 +452,6 @@ def symmetric_lookup(projected: WeightedLookup) -> WeightedLookup | None:
     return WeightedLookup(tuple(int(bool(weight)) for weight in weights), outputs)
 
 
-def symmetric_weights(truth_table: str, n: int) -> WeightedLookup | None:
-    """Weight 1 per essential input and the table by popcount, if it is symmetric.
-
-    A table that depends only on how many essential inputs are 1 (parity,
-    majority, thresholds, and/or) is indexed by their sum: ``m + 1`` entries
-    against ``2**m``.  None for asymmetric tables and fewer than two inputs.
-    """
-    essential = essential_inputs(truth_table, n)
-    if len(essential) < 2:
-        return None
-    outputs = _symmetric_outputs(read_at(truth_table, essential, n), len(essential))
-    if outputs is None:
-        return None
-    weights = tuple(int(i in essential) for i in range(n))
-    return WeightedLookup(weights, outputs)
-
-
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     """Return the *stream* inputs a decision tree over ``perm`` has to keep.
 

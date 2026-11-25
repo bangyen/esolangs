@@ -11,7 +11,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.registry._backend import BooleanBackend
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -22,9 +22,6 @@ def _backend() -> BackendDefinition:
         ),
         layout_width=True,
         layout_balance=True,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.container.generator", "container_balance_request"
-        ),
         no_wrap="each line declares a container or one of its rules",
     )
 

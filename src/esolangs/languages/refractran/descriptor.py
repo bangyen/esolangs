@@ -26,6 +26,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.refractran.generator", "refractran_request"
         ),
         layout_width=True,
+        layout_balance=True,
         wrap=wrap_space_delimited,
         same_layout=FunctionRef(
             "esolangs.generation.helpers",
