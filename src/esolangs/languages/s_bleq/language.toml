@@ -98,7 +98,6 @@ witnesses = "esolangs.languages.s_bleq.tests.resource_witnesses:resource_tables"
 # route and take 28–108s standalone, up to ~2.4× under load.
 provider = "esolangs.languages.s_bleq.tests.resource_witnesses:sparse_rows"
 arities = [21, 22, 23, 24, 25, 26]
-columns = []
 bands = { "21" = "slow", "22" = "weekly", "23" = "weekly", "24" = "weekly", "25" = "weekly", "26" = "weekly" }
 
 [resource_evidence.execution]

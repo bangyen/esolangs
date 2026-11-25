@@ -1,52 +1,31 @@
-"""Named-row evidence for exact cells the all-row suites cannot reach.
-
-The execution and workspace suites step every row of every corpus table,
-paying one parse a row; where that price explodes, registrations stop while
-the clauses run to every n.  These suites step a fixed set of named rows
-of each witness table instead, one fresh VM a row: every stepped row
-must answer its table bit and stay under the bound, the witness row
-must attain the formula exactly, and the workspace suite samples the
-witness row alone.  Registrations live in each language's resource evidence.
-A builder returns
-one witness or a tuple of them, and a registration whose columns are
-empty checks answers only, for a route with no bound yet.
-"""
+"""Execute named rows of tables too large for the all-row suites."""
 
 import pytest
 
 import esolangs
 from esolangs.debugger import make_vm
 from esolangs.registry import LANGUAGES
-from esolangs.vm import _capture_workspace
-from scripts.benchmark import WrittenState
 from tests.proofs._witnesses import SparseRows, band_marks, sparse_registrations
 from tests.proofs.deep.execution import run_to_answer
-from tests.proofs.execution import FORMULAS as EXECUTION_FORMULAS
-from tests.proofs.workspace import FORMULAS as WORKSPACE_FORMULAS
 from tests.support.witness_tables import row_bits
 
 _REGISTRATIONS = sparse_registrations()
 
 
-def _cases(column: str) -> list[object]:
+def _cases() -> list[object]:
     return [
         pytest.param(
             name,
             n,
-            marks=band_marks(
-                registration.bands[n], f"{name} {column} exact at n = {n}"
-            ),
+            marks=band_marks(registration.bands[n], f"{name} named rows at n = {n}"),
         )
         for name, registration in sorted(_REGISTRATIONS.items())
-        if column == "execution" or column in registration.columns
         for n in registration.arities
     ]
 
 
-def _step_row(
-    name: str, program: esolangs.Artifact, table: str, row: int, *, written: bool
-) -> tuple[int, int]:
-    """Steps and written bits for one named row, on a freshly parsed VM."""
+def _check_row(name: str, program: esolangs.Artifact, table: str, row: int) -> None:
+    """Check one named row on a fresh VM."""
     facts = esolangs.describe(name)
     halts = None
     if facts.answer_mode == "termination":
@@ -59,15 +38,12 @@ def _step_row(
     else:
         source, stdin = program, esolangs.encode_inputs(name, bits, truth_table=table)
     machine = make_vm(name, source, stdin=stdin)
-    state = WrittenState(_capture_workspace(machine)) if written else None
-    steps = run_to_answer(machine, sample=state.sample if state is not None else None)
-    assert steps is not None  # no cap
+    assert run_to_answer(machine) is not None  # no cap
     if halts is None:
         answer = esolangs.read_answer(name, machine.output)
         assert answer == table[row], (
             f"{name} n={n} row {row}: answer {answer} != {table[row]}"
         )
-    return steps, state.bits if state is not None else 0
 
 
 def _specs(name: str, n: int) -> tuple[SparseRows, ...]:
@@ -76,45 +52,22 @@ def _specs(name: str, n: int) -> tuple[SparseRows, ...]:
     return (built,) if isinstance(built, SparseRows) else built
 
 
-@pytest.mark.parametrize(("name", "n"), _cases("execution"))
+@pytest.mark.parametrize(("name", "n"), _cases())
 def test_sparse_execution_rows(name: str, n: int) -> None:
-    """Named rows answer correctly; the witness row attains E exactly."""
-    checked = "execution" in _REGISTRATIONS[name].columns
+    """Every named row answers correctly."""
     for spec in _specs(name, n):
         program = esolangs.generate(name, spec.table)
-        claim = EXECUTION_FORMULAS[name][0](n, program.source) if checked else None
         for row in spec.rows:
-            steps, _ = _step_row(name, program, spec.table, row, written=False)
-            if claim is not None:
-                assert steps <= claim, f"{name} n={n} row {row}: {steps} > {claim}"
-                if row == spec.witness:
-                    assert steps == claim, f"{name} n={n} row {row}: {steps} != {claim}"
-
-
-@pytest.mark.parametrize(("name", "n"), _cases("workspace"))
-def test_sparse_workspace_rows(name: str, n: int) -> None:
-    """The sampled witness row attains W exactly."""
-    for spec in _specs(name, n):
-        program = esolangs.generate(name, spec.table)
-        claim = WORKSPACE_FORMULAS[name][0](n, program.source)
-        row = spec.witness if spec.ws_witness is None else spec.ws_witness
-        _, bits = _step_row(name, program, spec.table, row, written=True)
-        assert bits == claim, f"{name} n={n}: {bits} != {claim}"
+            _check_row(name, program, spec.table, row)
 
 
 @pytest.mark.slow
 def test_sparse_registrations_are_real() -> None:
     """Every registration names a generator, its arities and its witness."""
-    for name, (build, arities, columns, _bands) in _REGISTRATIONS.items():
+    for name, registration in _REGISTRATIONS.items():
         assert name in LANGUAGES, f"{name} is not a registered generator"
-        assert columns <= {"execution", "workspace"}
-        if "execution" in columns:
-            assert name in EXECUTION_FORMULAS
-        if "workspace" in columns:
-            assert name in WORKSPACE_FORMULAS
-        for n in arities:
-            built = build(n)
-            for spec in (built,) if isinstance(built, SparseRows) else built:
+        for n in registration.arities:
+            for spec in _specs(name, n):
                 assert len(spec.table) == 1 << n
                 assert spec.witness in spec.rows
                 assert all(0 <= row < len(spec.table) for row in spec.rows)

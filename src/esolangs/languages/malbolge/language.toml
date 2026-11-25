@@ -93,7 +93,6 @@ corpus = "esolangs.languages.malbolge.tests.resource_witnesses:resource_corpus"
 # Generation plus stepping took ~1.9s standalone.
 provider = "esolangs.languages.malbolge.tests.resource_witnesses:sparse_rows"
 arities = [17]
-columns = []
 bands = { "17" = "medium" }
 
 [resource_evidence.execution]

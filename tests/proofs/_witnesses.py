@@ -690,26 +690,18 @@ _WITNESS_BAND = {
 
 
 class SparseRows(NamedTuple):
-    """Named rows of one witness table, stepped by the sparse-row suites.
-
-    ``table`` is the witness table at arity ``n``; ``rows`` every row the
-    execution suite steps; ``witness`` the row that must attain the
-    formulas named by the registration.  The workspace suite samples the
-    witness row alone, or ``ws_witness`` when W peaks on another row.
-    """
+    """Named rows of one truth table, including its construction witness."""
 
     table: str
     rows: tuple[int, ...]
     witness: int
-    ws_witness: int | None = None
 
 
 class SparseRegistration(NamedTuple):
-    """Language-owned sparse witnesses, formula columns and run bands."""
+    """Language-owned sparse witnesses and run bands."""
 
     build: Callable[[int], SparseRows | tuple[SparseRows, ...]]
     arities: tuple[int, ...]
-    columns: frozenset[str]
     bands: dict[int, str]
 
 
@@ -724,20 +716,16 @@ def sparse_registrations() -> dict[str, SparseRegistration]:
         if not isinstance(row, dict) or set(row) != {
             "provider",
             "arities",
-            "columns",
             "bands",
         }:
             raise ValueError(f"{path}: invalid sparse witness declaration")
         arities = row["arities"]
-        columns = row["columns"]
         bands = row["bands"]
         if (
             not isinstance(arities, list)
             or not arities
             or any(type(arity) is not int or arity < 1 for arity in arities)
             or len(arities) != len(set(arities))
-            or not isinstance(columns, list)
-            or any(column not in ("execution", "workspace") for column in columns)
             or not isinstance(bands, dict)
             or set(bands) != {str(arity) for arity in arities}
             or any(band not in ("medium", "slow", "weekly") for band in bands.values())
@@ -746,7 +734,6 @@ def sparse_registrations() -> dict[str, SparseRegistration]:
         found[name] = SparseRegistration(
             _provider(name, row["provider"]),
             tuple(arities),
-            frozenset(columns),
             {int(arity): band for arity, band in bands.items()},
         )
     return found

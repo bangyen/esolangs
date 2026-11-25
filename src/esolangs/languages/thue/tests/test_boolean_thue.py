@@ -2,6 +2,7 @@
 
 import itertools
 import random
+from collections.abc import Iterable
 from dataclasses import replace
 from math import isqrt
 from unittest.mock import patch
@@ -31,24 +32,23 @@ def test_short_tree_interns_constant_residuals() -> None:
     _check_constants()
     program = boolean._thue_short_tree("0" * 8)
     assert len(program.splitlines()) == 13
-    for row in range(8):
-        _execute("0" * 8, row, 1)
+    _execute_rows("0" * 8, 1, range(8))
 
 
-def _execute(table: str, row: int, width: int | None) -> None:
+def _execute_rows(table: str, width: int | None, rows: Iterable[int]) -> None:
     n = len(table).bit_length() - 1
-    io = ScriptedIO("\n".join(f"{row:0{n}b}"))
-    machine = _Machine(
-        esolangs.generate("Thue", table, width=width).source, io, Seeded(row)
-    )
-    for _ in range(5 * len(table) + 4 * n + 10):
-        if machine.halted:
-            break
-        assert len(_matches(machine.state, machine.rules)) == 1
-        machine.step()
-    assert machine.halted
-    assert io.getvalue() == table[row]
-    assert io.reads == n
+    program = esolangs.generate("Thue", table, width=width).source
+    for row in rows:
+        io = ScriptedIO("\n".join(f"{row:0{n}b}"))
+        machine = _Machine(program, io, Seeded(row))
+        for _ in range(5 * len(table) + 4 * n + 10):
+            if machine.halted:
+                break
+            assert len(_matches(machine.state, machine.rules)) == 1
+            machine.step()
+        assert machine.halted
+        assert io.getvalue() == table[row]
+        assert io.reads == n
 
 
 @pytest.mark.medium
@@ -81,8 +81,7 @@ def test_narrow_sources_execute_every_three_input_table(width: int) -> None:
     for table in witnesses(3):
         floor = max(map(len, thue(table, 1).splitlines()))
         assert max(map(len, thue(table, width).splitlines())) <= max(width, floor)
-        for row in range(8):
-            _execute(table, row, width)
+        _execute_rows(table, width, range(8))
 
 
 def test_layout_never_widens_the_natural_source() -> None:
@@ -98,8 +97,7 @@ def test_layout_never_widens_the_natural_source() -> None:
             assert thue(table, width) == plain
         for width in range(1, natural):
             assert max(map(len, thue(table, width).splitlines())) <= max(width, 9)
-            for row in range(len(table)):
-                _execute(table, row, width)
+            _execute_rows(table, width, range(len(table)))
 
 
 @pytest.mark.medium
@@ -110,8 +108,7 @@ def test_expansion_crosses_name_widths_without_rewrite_collisions() -> None:
             program = thue(table, width)
             if width < len(table) + 3:
                 assert max(map(len, program.splitlines())) < len(table) + 3
-            for row in (0, 1, len(table) // 2, len(table) - 1):
-                _execute(table, row, width)
+            _execute_rows(table, width, (0, 1, len(table) // 2, len(table) - 1))
 
 
 @pytest.mark.medium
@@ -123,8 +120,7 @@ def test_chunk_bounds_stay_narrower_across_marker_digit_boundaries() -> None:
         assert max(map(len, thue(table, 1).splitlines())) == floor
         for width in (1, natural - 1):
             assert max(map(len, thue(table, width).splitlines())) < natural
-        for row in (0, len(table) - 1):
-            _execute(table, row, 1 if n < 12 else 80)
+        _execute_rows(table, 1 if n < 12 else 80, (0, len(table) - 1))
 
 
 @pytest.mark.medium
@@ -134,8 +130,7 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
         for value in range(1 << (1 << n)):
             table = format(value, f"0{1 << n}b")
             assert max(map(len, thue(table, 1).splitlines())) == 7
-            for row in range(1 << n):
-                _execute(table, row, 1)
+            _execute_rows(table, 1, range(1 << n))
     assert len(thue("0110", 1)) == 90
 
 
@@ -163,8 +158,8 @@ def test_thue_answers_the_same_under_every_draw(table: str) -> None:
     """Three seeds and the unseeded ``secrets`` draw agree, row by row."""
     n = len(table).bit_length() - 1
     program = boolean.thue(table)
-    for row in range(2**n):
-        _execute(table, row, None)
+    _execute_rows(table, None, range(1 << n))
+    for row in range(1 << n):
         stdin = "".join(f"{bit}\n" for bit in _bits(row, n))
         answers = set()
         for rng in (Seeded(0), Seeded(1), Seeded(9), None):
@@ -237,8 +232,7 @@ def test_narrow_layouts_drop_ignored_inputs() -> None:
     full = "0110100110010110" + "0110100110010111"
     for width in (1, 8):
         assert len(thue(table, width)) < 0.8 * len(thue(full, width))
-        for row in (0, 5, 18, 31):
-            _execute(table, row, width)
+        _execute_rows(table, width, (0, 5, 18, 31))
 
 
 def test_a_constant_half_is_stored_once_and_stays_deterministic() -> None:

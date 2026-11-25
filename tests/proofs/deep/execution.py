@@ -124,7 +124,9 @@ def run_to_answer(
     The answer is a halt or a repeated pass-start state, found by Brent's
     over pass starts. EOF on a wrapped read is already spelled ``halted``.
     """
-    tortoise, power, passes, steps = machine.snapshot(), 1, 0, 0
+    check_cycle = not machine.steppable_to_answer
+    tortoise = machine.snapshot() if check_cycle else None
+    power, passes, steps = 1, 0, 0
     while not machine.halted:
         if cap is not None and steps >= cap:
             return None
@@ -132,7 +134,7 @@ def run_to_answer(
         steps += 1
         if sample is not None:
             sample(_capture_workspace(machine))
-        if not machine.steppable_to_answer and machine.ip == 0:
+        if check_cycle and machine.ip == 0:
             passes += 1
             state = machine.snapshot()
             if state == tortoise:
