@@ -38,6 +38,10 @@ class _StrictTarInfo(tarfile.TarInfo):
         try:
             return super().fromtarfile(archive)
         # Typeshed declares their base HeaderError but not these subclasses.
+        except tarfile.EmptyHeaderError as error:  # type: ignore[attr-defined]
+            raise tarfile.ReadError(
+                f"missing TAR end marker at byte {offset}"
+            ) from error
         except (
             tarfile.InvalidHeaderError,  # type: ignore[attr-defined]
             tarfile.TruncatedHeaderError,  # type: ignore[attr-defined]
@@ -84,9 +88,16 @@ def _staged_normalization(
                 target.addfile(
                     member, source.extractfile(member) if member.isfile() else None
                 )
-            # Tar's end marker can precede validation of the gzip trailer.
-            while uncompressed.read(64 * 1024):
-                pass
+            # TarFile stops after one zero block. Check the other and drain
+            # the padding to validate both the TAR ending and the gzip trailer.
+            zero_block = bytes(tarfile.BLOCKSIZE)
+            if uncompressed.read(tarfile.BLOCKSIZE) != zero_block:
+                raise tarfile.ReadError(
+                    "invalid TAR end marker: expected two zero blocks"
+                )
+            while padding := uncompressed.read(64 * 1024):
+                if padding.strip(b"\0"):
+                    raise tarfile.ReadError("nonzero data after TAR end marker")
         staged.chmod(stat.S_IMODE(path.stat().st_mode))
         yield path, staged
     finally:

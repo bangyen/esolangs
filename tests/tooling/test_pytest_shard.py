@@ -152,6 +152,41 @@ def test_shard_refuses_to_overwrite_timings_before_collection(
     assert timing.read_bytes() == original
 
 
+@pytest.mark.parametrize("use_receipt", [False, True])
+def test_shard_refuses_a_manifest_over_coverage_before_collection(
+    tmp_path, monkeypatch, capsys, use_receipt
+) -> None:
+    shard = load_script()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(shard, "collect_ids", lambda _: pytest.fail("collected tests"))
+    data = tmp_path / ".coverage"
+    receipt = shard.coverage_evidence.sidecar(data)
+    data.write_bytes(b"existing coverage")
+    receipt.write_bytes(b"existing receipt")
+    manifest = receipt if use_receipt else data
+    assert (
+        shard.shard_main(
+            [
+                "--marker=",
+                "--shard=0",
+                "--shards=1",
+                "--manifest",
+                str(manifest),
+                "--bind-coverage",
+                data.name,
+                "--",
+                "--cov-branch",
+            ]
+        )
+        == 2
+    )
+    diagnostic = capsys.readouterr().err
+    assert "would replace --bind-coverage" in diagnostic
+    assert str(manifest) in diagnostic
+    assert data.read_bytes() == b"existing coverage"
+    assert receipt.read_bytes() == b"existing receipt"
+
+
 def test_stale_exclusions_name_the_nodes_without_replacing_the_manifest(
     tmp_path, monkeypatch, capsys
 ) -> None:

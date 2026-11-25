@@ -84,6 +84,20 @@ def post_record(
             pass
 
 
+def check_piped_rows(
+    parser: argparse.ArgumentParser,
+    rows: list[int] | None,
+    language: str,
+    cap: int | None,
+) -> None:
+    """Refuse row indices beyond the generator's maximum before reading stdin."""
+    max_row = max(rows or (0,))
+    if cap is not None and max_row.bit_length() > cap:
+        parser.error(
+            f"--row {max_row} exceeds {language}'s generator limit (max-inputs={cap})"
+        )
+
+
 def argument_parser(description: str) -> argparse.ArgumentParser:
     """Build the benchmark CLI parser."""
     parser = argparse.ArgumentParser(

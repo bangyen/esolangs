@@ -303,16 +303,24 @@ def shard_main(argv: list[str] | None = None) -> int:
     args, rest = _parse_args(argv)
     try:
         data = args.bind_coverage.resolve() if args.bind_coverage is not None else None
+        coverage_outputs = (
+            (
+                ("--bind-coverage", data),
+                ("--bind-coverage receipt", coverage_evidence.sidecar(data)),
+            )
+            if data is not None
+            else ()
+        )
+        if args.manifest is not None and coverage_outputs:
+            manifest = args.manifest.resolve()
+            for option, output in coverage_outputs:
+                if output.resolve() == manifest:
+                    raise ValueError(
+                        f"--manifest {args.manifest} would replace {option} {output}"
+                    )
         if args.durations is not None:
             timing = args.durations.resolve()
-            outputs = (
-                ("--manifest", args.manifest),
-                ("--bind-coverage", data),
-                (
-                    "--bind-coverage receipt",
-                    coverage_evidence.sidecar(data) if data is not None else None,
-                ),
-            )
+            outputs = (("--manifest", args.manifest), *coverage_outputs)
             for option, output in outputs:
                 if output is not None and output.resolve() == timing:
                     raise ValueError(

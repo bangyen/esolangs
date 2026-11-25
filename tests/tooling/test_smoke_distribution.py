@@ -154,6 +154,10 @@ def test_normalize_rejects_invalid_epoch_before_opening_archives(
         "invalid-crc",
         "bad-header",
         "short-header",
+        "missing-end",
+        "short-end",
+        "early-end",
+        "data-after-end",
         "publish",
     ],
 )
@@ -184,6 +188,16 @@ def test_normalize_preserves_archives_when_a_batch_fails(
         else:
             del contents[offset + 100 :]
         second.write_bytes(gzip.compress(contents))
+    elif failure in {"missing-end", "short-end", "early-end", "data-after-end"}:
+        block = tarfile.BLOCKSIZE
+        contents = gzip.decompress(second.read_bytes())[: 2 * block]
+        if failure == "short-end":
+            contents += bytes(block + 1)
+        elif failure == "early-end":
+            contents = bytes(block) + contents + bytes(2 * block)
+        elif failure == "data-after-end":
+            contents += bytes(2 * block) + b"unexpected data"
+        second.write_bytes(gzip.compress(contents))
     original = first.read_bytes(), second.read_bytes()
     replace = Path.replace
 
@@ -202,6 +216,10 @@ def test_normalize_preserves_archives_when_a_batch_fails(
     assert str(second) in diagnostic
     if failure in {"bad-header", "short-header"}:
         assert f"invalid TAR header at byte {tarfile.BLOCKSIZE}" in diagnostic
+    if failure in {"missing-end", "short-end", "early-end"}:
+        assert "TAR end marker" in diagnostic
+    if failure == "data-after-end":
+        assert "nonzero data after TAR end marker" in diagnostic
     assert (first.read_bytes(), second.read_bytes()) == original
     assert set(tmp_path.iterdir()) == {first, second}
 
@@ -212,6 +230,16 @@ def test_normalize_preserves_archives_when_a_batch_fails(
         with tarfile.open(path) as archive:
             assert archive.getnames() == ["example", "second"]
             assert archive.getmember("example").mtime == 1700000000
+
+
+def test_normalize_accepts_an_empty_archive_with_exactly_two_zero_blocks(
+    tmp_path,
+) -> None:
+    path = tmp_path / "empty.tar.gz"
+    path.write_bytes(gzip.compress(bytes(2 * tarfile.BLOCKSIZE)))
+    smoke.normalize(path, 0)
+    with tarfile.open(path) as archive:
+        assert archive.getnames() == []
 
 
 def test_failed_release_restore_preserves_the_original_for_recovery(

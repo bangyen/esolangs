@@ -32,7 +32,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(1, str(Path(__file__).resolve().parent))
 sys.path.insert(2, str(Path(__file__).resolve().parents[1]))
 
-from benchmark_options import BenchmarkDeadline, argument_parser, post_record
+import benchmark_options
+from benchmark_options import BenchmarkDeadline, check_piped_rows
 from source_units import source_units
 from verify.process import (
     EXCERPT_BYTES,
@@ -806,7 +807,7 @@ def measure(
 
 def main(argv: list[str] | None = None) -> int:
     """Print the evidence; fail if any requested row is wrong or undecided."""
-    parser = argument_parser(__doc__ or "")
+    parser = benchmark_options.argument_parser(__doc__ or "")
     args = parser.parse_args(argv)
     if args.repeat < 1 or args.step_cap < 1:
         parser.error("--repeat and --step-cap must be positive")
@@ -834,6 +835,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         table = args.truth_table
         if table == "-":
+            check_piped_rows(parser, args.row, declaration.name, backend.max_inputs)
             table = _read_truth_table(
                 declaration,
                 timeout=deadline.remaining(),
@@ -983,7 +985,7 @@ class Worker:
                                 }
                             }
                         )
-                    post_record(messages, stopped, line)
+                    benchmark_options.post_record(messages, stopped, line)
                     if line is None or oversized:
                         break
 
@@ -1072,7 +1074,7 @@ class Worker:
                     failure = json.dumps(
                         {"error": {"type": type(error).__name__, "message": str(error)}}
                     )
-                    post_record(messages, stopped, failure)
+                    benchmark_options.post_record(messages, stopped, failure)
 
             self.writer = threading.Thread(target=send, daemon=True)
             self.writer.start()

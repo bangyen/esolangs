@@ -134,6 +134,36 @@ def test_benchmark_checks_arity_before_starting_a_worker(monkeypatch, capsys) ->
     assert f"max-inputs={cap}" in capsys.readouterr().err
 
 
+def test_benchmark_checks_row_against_generator_cap_before_stdin(
+    monkeypatch, capsys
+) -> None:
+    from scripts import benchmark
+
+    language = next(
+        lang for lang in LANGUAGES.values() if lang.runtime.compressed_source
+    )
+    cap = language.backend.max_inputs
+    assert cap is not None
+    assert cap > 1
+    rows = 1 << cap
+    monkeypatch.setattr(
+        benchmark,
+        "_read_truth_table",
+        lambda *_args, **_kwargs: pytest.fail("read stdin"),
+    )
+    with pytest.raises(SystemExit) as caught:
+        benchmark.main([language.name, "-", "--row", "0", "--row", str(rows)])
+    assert caught.value.code == 2
+    assert f"--row {rows}" in (diagnostic := capsys.readouterr().err)
+    assert f"max-inputs={cap}" in diagnostic
+
+    monkeypatch.setattr(benchmark, "_read_truth_table", lambda *_args, **_kwargs: "01")
+    with pytest.raises(SystemExit) as caught:
+        benchmark.main([language.name, "-", "--row", str(rows - 1)])
+    assert caught.value.code == 2
+    assert "--row must be in [0, 1]" in capsys.readouterr().err
+
+
 def test_benchmark_rejects_conflicting_row_selectors_before_reading_stdin(
     monkeypatch, capsys
 ):
