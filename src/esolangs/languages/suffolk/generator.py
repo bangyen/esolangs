@@ -88,6 +88,15 @@ def _checked_output(check_at: int, mask_cell: int, *parts: tuple[int, int]) -> s
     return copy + "".join(mask) + "".join(_read(cell) for cell, _ in parts) + "."
 
 
+type _Projection = tuple[list[int], str]
+
+
+def _project(table: str, inputs: int) -> _Projection:
+    used = essential_inputs(table, inputs)
+    reduced = read_at(table, used, inputs) if 0 < len(used) < inputs else table
+    return used, reduced
+
+
 def suffolk(truth_table: str) -> str:
     """Return the smaller of the countdown-sweep and shared-NOR-DAG programs.
 
@@ -95,12 +104,13 @@ def suffolk(truth_table: str) -> str:
     otherwise -- or when it is longer -- the countdown sweep wins.
     """
     n = _validate_truth_table(truth_table)
-    lookup = _lookup(truth_table, n)
-    shared = shared_dag(truth_table, n)
+    projection = _project(truth_table, n)
+    lookup = _lookup(truth_table, n, projection=projection)
+    shared = shared_dag(truth_table, n, projection=projection)
     return lookup if shared is None or len(shared) >= len(lookup) else shared
 
 
-def _lookup(truth_table: str, n: int) -> str:
+def _lookup(truth_table: str, n: int, *, projection: _Projection | None = None) -> str:
     """Render one countdown sweep for a validated truth table.
 
     ``!`` is the only write and computes ``max(0, cell + 1 - acc)``, a
@@ -120,8 +130,7 @@ def _lookup(truth_table: str, n: int) -> str:
         answer = _ASCII_ONE + int(constant)
         return reads + _set(1, answer - 1) + "<" * answer + _write(1) + _read(1) + "."
 
-    used = essential_inputs(truth_table, n)
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    used, reduced = projection if projection is not None else _project(truth_table, n)
     half = len(reduced) // 2
     halves = (reduced[:half], reduced[half:])
     # Each half's (falling, rising) step counters, in table order.
@@ -251,12 +260,14 @@ def _nor(target: int, *operands: int) -> str:
     return _read(target) + "".join(_read(cell) for cell in operands) + _write(target)
 
 
-def shared_dag(table: str, inputs: int) -> str | None:
+def shared_dag(
+    table: str, inputs: int, *, projection: _Projection | None = None
+) -> str | None:
     """Return a reduced cofactor circuit within the existing workspace ledger."""
-    used = essential_inputs(table, inputs)
+    used, reduced = projection if projection is not None else _project(table, inputs)
     if not used:
         return None
-    ids = subtree_ids(read_at(table, used, inputs))
+    ids = subtree_ids(reduced)
     count = len(used)
     # Store complemented cofactors: false/true use the shared one/zero cells.
     slots = {0: _ZERO_CELL, 1: _ONE_CELL}

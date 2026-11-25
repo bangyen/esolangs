@@ -102,8 +102,9 @@ def brainif(truth_table: str, width: int | None = None) -> str:
         )
         return _resolve(reads + tail)
     if width is not None:
-        plain = _brainif_tree(truth_table)
-        if len(essential_inputs(truth_table, n)) > _TREE_LEVELS:
+        essential = essential_inputs(truth_table, n)
+        plain = _brainif_tree(truth_table, essential=essential)
+        if len(essential) > _TREE_LEVELS:
             # The lookup is the narrow fallback; where the tree fits it is
             # 25-59% shorter at n=3..14 ([ablations.wide_tree_race]).
             tree = _resolve(_brainif_tree_entries(truth_table, n, prune=True))
@@ -406,7 +407,9 @@ def _brainif_tree_entries(truth_table: str, n: int, *, prune: bool) -> list[str]
     return entries
 
 
-def _brainif_tree(truth_table: str, *, prune: bool = True) -> str:
+def _brainif_tree(
+    truth_table: str, *, prune: bool = True, essential: list[int] | None = None
+) -> str:
     """Build the tree/spatial candidate computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -425,10 +428,13 @@ def _brainif_tree(truth_table: str, *, prune: bool = True) -> str:
     n = _validate_truth_table(truth_table)
     # Equal halves skip exactly the nonessential inputs. Decide before
     # allocating entries; the unpruned tree retains its arity cutoff.
-    if (len(essential_inputs(truth_table, n)) if prune else n) > _TREE_LEVELS:
-        if prune:
-            weights, projected = input_weights(truth_table, n)
+    if prune:
+        if essential is None:
+            essential = essential_inputs(truth_table, n)
+        if len(essential) > _TREE_LEVELS:
+            weights, projected = input_weights(truth_table, n, essential=essential)
             return _brainif_linear(projected, weights)
+    elif n > _TREE_LEVELS:
         return _brainif_linear(truth_table)
     entries = _brainif_tree_entries(truth_table, n, prune=prune)
     return _resolve(entries)
