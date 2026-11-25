@@ -50,11 +50,12 @@ check or weakening a contract.
 
 ## Engineering
 
-- **Malbolge read-only decoder placement.** Reuse the 20-target control
-  with four late frames. The 21-target layout needs a fifth. Derive a frame
-  placement or shorten the writer to free one, then run the resulting
-  installer and replay the 7,112 queries with zero writes to the packed
-  table. Price the replay under the existing Malbolge budget.
+- **Malbolge read-only decoder placement.** Filling each bounded hole
+  exactly with movable code blocks fits 22 one-port targets: 283 native
+  decoder words, 841 host-staged, 7,112 queries with zero writes to the
+  packed table. At 23 targets the zero-slack fill leaves 40 contiguous cells
+  for seven late frames that need 56. Free 16 cells by shortening the writer
+  or counted code, or place frames across fixed cells.
 
 - **Malbolge navigation, inexpressibility for an algebraic
   signature:** the [bounded-read lower bound](limitations.md#searches)
