@@ -37,6 +37,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_split_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.persistent import (
@@ -289,10 +290,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Share source lines and parse each reached line on demand."""
-    if not isinstance(source, list):
-        raise TypeError("brainif machines require split text source")
-    if options:
-        raise TypeError("brainif machines accept no runtime options")
+    source = require_split_source(source, options, "brainif")
     code = tuple(source)
     parse_line = cache(_parse)
 

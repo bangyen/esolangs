@@ -4,6 +4,7 @@ import pytest
 
 from esolangs.languages.streetcode import interpreter
 from esolangs.runtime.io import ScriptedIO
+from tests.support.prepared_support import check_split_factory_rejections
 
 
 def test_factory_reuses_geometry_with_fresh_run_state(monkeypatch):
@@ -45,10 +46,4 @@ def test_factory_reuses_geometry_with_fresh_run_state(monkeypatch):
     assert second.io.getvalue() == "C"
     assert third.io.getvalue() == ""
     assert len(calls) == 1
-
-
-def test_factory_rejects_unprepared_source_and_options():
-    with pytest.raises(TypeError, match="split text"):
-        interpreter.prepare_machine("C;", {})
-    with pytest.raises(TypeError, match="no runtime options"):
-        interpreter.prepare_machine(["C;"], {"unexpected": True})
+    check_split_factory_rejections(interpreter.prepare_machine, ["C;"])

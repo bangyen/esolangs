@@ -121,6 +121,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_split_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
@@ -1074,10 +1075,7 @@ class _Tick:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain the parsed grid and its startup paths."""
-    if not isinstance(source, list):
-        raise TypeError("flowchart machines require split text source")
-    if options:
-        raise TypeError("flowchart machines accept no runtime options")
+    source = require_split_source(source, options, "flowchart")
     image = _prepare_source(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 

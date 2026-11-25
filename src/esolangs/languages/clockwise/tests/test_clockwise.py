@@ -19,7 +19,10 @@ from tests.interpreters.contract import (
     StateViewContract,
 )
 from tests.interpreters.runner import run_lines
-from tests.support.prepared_support import check_image_reuse
+from tests.support.prepared_support import (
+    check_image_reuse,
+    check_split_factory_rejections,
+)
 from tests.support.raises import raises_message
 from tests.support.vm_support import assert_rejected_output_retry
 
@@ -154,10 +157,7 @@ class TestStepMachine:
 
         assert other.snapshot() == untouched
         assert machine.out == ()
-        with pytest.raises(TypeError, match="split text"):
-            prepare_machine("R", {})
-        with pytest.raises(TypeError, match="no runtime options"):
-            prepare_machine([], {"unexpected": True})
+        check_split_factory_rejections(prepare_machine, [])
 
 
 def test_reading_with_no_input_is_eof() -> None:

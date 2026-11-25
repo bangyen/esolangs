@@ -1,7 +1,5 @@
 """Prepared commands share immutable tokens and keep queue state per run."""
 
-import pytest
-
 from esolangs.languages.taglate import interpreter
 from esolangs.runtime.io import ScriptedIO
 
@@ -37,7 +35,10 @@ def test_factory_keeps_cached_tokens_and_fresh_run_state(monkeypatch):
     assert third.match is second.match
     assert calls == ["efgyfgz"]
 
-    from tests.support.prepared_support import check_image_reuse
+    from tests.support.prepared_support import (
+        check_image_reuse,
+        check_split_factory_rejections,
+    )
 
     check_image_reuse(
         "Taglate",
@@ -47,10 +48,4 @@ def test_factory_keeps_cached_tokens_and_fresh_run_state(monkeypatch):
         monkeypatch,
         cases=(("A", "AA"), ("B", "AB"), ("C", "AC")),
     )
-
-
-def test_factory_rejects_unprepared_source_and_options():
-    with pytest.raises(TypeError, match="split text"):
-        interpreter.prepare_machine("A\ni", {})
-    with pytest.raises(TypeError, match="no runtime options"):
-        interpreter.prepare_machine(["A", "i"], {"unexpected": True})
+    check_split_factory_rejections(interpreter.prepare_machine, ["A", "i"])

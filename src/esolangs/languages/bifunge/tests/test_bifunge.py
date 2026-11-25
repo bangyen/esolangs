@@ -7,6 +7,7 @@ from esolangs.exceptions import ExecutionBudgetError
 from esolangs.languages.bifunge._commands import Command
 from esolangs.languages.bifunge.interpreter import _Machine, _parse, run
 from esolangs.runtime.io import ScriptedIO
+from tests.support.prepared_support import check_split_factory_rejections
 from tests.support.witness_tables import SMALL_TABLES, row_bits, witnesses
 
 
@@ -82,3 +83,9 @@ def test_leading_ignored_input_needs_no_empty_stack_pop(table: str) -> None:
             machine.step()
         assert machine.halted
         assert (io.getvalue(), io.reads) == (answer, n)
+
+
+def test_split_factory_rejects_raw_source_and_options():
+    from esolangs.languages.bifunge.interpreter import prepare_machine
+
+    check_split_factory_rejections(prepare_machine, ["@"])

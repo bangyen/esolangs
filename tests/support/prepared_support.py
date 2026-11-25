@@ -2,6 +2,8 @@
 
 from dataclasses import replace
 
+import pytest
+
 import esolangs
 from esolangs.vm import complete_vm
 
@@ -115,3 +117,10 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
             assert complete_vm(first) == complete_vm(second) == want.output
         assert calls == [shaped]
         assert shape_calls == [shaped]
+
+
+def check_split_factory_rejections(prepare, source):
+    with pytest.raises(TypeError, match="split text source"):
+        prepare("\n".join(source), {"unexpected": True})
+    with pytest.raises(TypeError, match="no runtime options"):
+        prepare(source, {"unexpected": True})

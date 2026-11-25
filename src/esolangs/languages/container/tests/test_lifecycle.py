@@ -4,6 +4,7 @@ import pytest
 
 from esolangs.languages.container import interpreter
 from esolangs.runtime.io import ScriptedIO
+from tests.support.prepared_support import check_split_factory_rejections
 
 
 def test_factory_binds_source_with_private_rules_and_tick_state(monkeypatch):
@@ -47,8 +48,4 @@ def test_factory_binds_source_with_private_rules_and_tick_state(monkeypatch):
         (["EXIT=1:", "-1 EXIT>=1"], 0),
     ):
         assert interpreter.run(code, ScriptedIO()) == expected
-
-    with pytest.raises(TypeError, match="split text"):
-        interpreter.prepare_machine("EXIT:", {})
-    with pytest.raises(TypeError, match="no runtime options"):
-        interpreter.prepare_machine([], {"unexpected": True})
+    check_split_factory_rejections(interpreter.prepare_machine, [])

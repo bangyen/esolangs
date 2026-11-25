@@ -39,6 +39,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_split_source
 from esolangs.runtime.brackets import unmatched
 from esolangs.runtime.io import IO, _BufferedOutput
 
@@ -329,10 +330,7 @@ def _advance_bulk(state: _State, tokens: tuple[str, ...]) -> _State | None:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain queue seed, tokens and loop partners across invocations."""
-    if not isinstance(source, list):
-        raise TypeError("taglate machines require split text source")
-    if options:
-        raise TypeError("taglate machines accept no runtime options")
+    source = require_split_source(source, options, "taglate")
     image = _prepare_source(source)
     return RuntimePlan(lambda io: _Machine(image, io), lambda io: _execute(image, io))
 

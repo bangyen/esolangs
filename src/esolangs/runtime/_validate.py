@@ -7,7 +7,10 @@ from collections.abc import Callable
 from inspect import Signature, signature
 from reprlib import recursive_repr
 from sys import getrecursionlimit
-from typing import TypeGuard
+from typing import TYPE_CHECKING, TypeGuard
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 # Preserve quoted literals as a group when removing default repr addresses.
 _REPR_ADDRESS = re.compile(
@@ -69,6 +72,17 @@ def _argument_repr(value: object) -> str:
     # A default repr carries an address ("<object object at 0x10...>") that
     # differs per run; strip it, keeping the rest ("[<object object>]").
     return _REPR_ADDRESS.sub(r"\1", shown)
+
+
+def require_split_source(
+    source: object, options: Mapping[str, object], language: str
+) -> list[str]:
+    """Validate the source and options for a split-text machine."""
+    if not isinstance(source, list):
+        raise TypeError(f"{language} machines require split text source")
+    if options:
+        raise TypeError(f"{language} machines accept no runtime options")
+    return source
 
 
 def check_whole(value: object, name: str) -> int:

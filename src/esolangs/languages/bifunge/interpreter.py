@@ -28,6 +28,7 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_split_source
 from esolangs.runtime.io import _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
@@ -201,10 +202,7 @@ def _drive(grid: _Grid, io: IO) -> CompletionReport:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain the decoded playfield across invocations."""
-    if not isinstance(source, list):
-        raise TypeError("Bifunge machines require split text source")
-    if options:
-        raise TypeError("Bifunge machines accept no runtime options")
+    source = require_split_source(source, options, "Bifunge")
     grid = _parse(source)
     return RuntimePlan(partial(_Machine, grid), partial(_drive, grid))
 

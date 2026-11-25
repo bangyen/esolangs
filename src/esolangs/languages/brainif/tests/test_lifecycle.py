@@ -1,9 +1,8 @@
 """Prepared source and tape/input state stay private across BrainIf runs."""
 
-import pytest
-
 from esolangs.languages.brainif import interpreter
 from esolangs.runtime.io import ScriptedIO
+from tests.support.prepared_support import check_split_factory_rejections
 
 
 def test_factory_shares_source_with_private_tape(monkeypatch):
@@ -42,8 +41,4 @@ def test_factory_shares_source_with_private_tape(monkeypatch):
     factory.run(native_io)
     assert native_io.getvalue() == "A"
     assert parsed == list(second.code)
-
-    with pytest.raises(TypeError, match="split text"):
-        interpreter.prepare_machine("if 0 input", {})
-    with pytest.raises(TypeError, match="no runtime options"):
-        interpreter.prepare_machine([], {"unexpected": True})
+    check_split_factory_rejections(interpreter.prepare_machine, ["if 0 input"])

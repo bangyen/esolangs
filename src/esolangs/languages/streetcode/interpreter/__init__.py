@@ -70,6 +70,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_split_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import syntax_error
 
@@ -446,10 +447,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh run state to cached, validated street geometry."""
-    if not isinstance(source, list):
-        raise TypeError("streetcode machines require split text source")
-    if options:
-        raise TypeError("streetcode machines accept no runtime options")
+    source = require_split_source(source, options, "streetcode")
     code = tuple(source)
     compiled = _Machine._compile(code)  # noqa: SLF001
 

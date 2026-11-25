@@ -16,6 +16,7 @@ from tests.interpreters.oracle_support import check_terminal
 from tests.interpreters.runner import run_program as _run_program
 from tests.support.fixtures import grid
 from tests.support.paths import ROOT
+from tests.support.prepared_support import check_split_factory_rejections
 from tests.support.vm_support import assert_rejected_output_retry
 
 # The wiki's truth machine: read a bit, and on 0 print it once and halt, on
@@ -34,7 +35,6 @@ KOLAKOSKI = grid("flowchart", "kolakoski.txt")
 # The Kolakoski program on the current wiki page.  Bits 0 and 1 stand for 1
 # and 2, so its output is the Kolakoski sequence, which the page names.
 WIKI_KOLAKOSKI = grid("flowchart", "wiki_kolakoski.txt")
-
 
 run_program = partial(_run_program, run, suppress_eof=False)
 
@@ -524,10 +524,7 @@ class TestPureTransition:
             port = ScriptedIO("A")
             factory.run(port)
             assert port.getvalue() == "\x01"
-        with pytest.raises(TypeError, match="split text"):
-            prepare_machine("( )", {})
-        with pytest.raises(TypeError, match="no runtime options"):
-            prepare_machine([], {"unexpected": True})
+        check_split_factory_rejections(prepare_machine, [])
 
     def test_a_read_is_requested_rather_than_performed(self) -> None:
         from esolangs.languages.flowchart.interpreter import _advance, _NeedBitError

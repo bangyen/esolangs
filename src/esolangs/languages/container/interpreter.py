@@ -30,6 +30,7 @@ from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_split_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import parse_integer
 from esolangs.runtime.source_hints import syntax_error
@@ -319,10 +320,7 @@ def _advance(
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain parsed rules and give each invocation private containers."""
-    if not isinstance(source, list):
-        raise TypeError("container machines require split text source")
-    if options:
-        raise TypeError("container machines accept no runtime options")
+    source = require_split_source(source, options, "container")
     containers, start = _parse(source)
     image = (
         tuple((container.name, tuple(container.rules)) for container in containers),
