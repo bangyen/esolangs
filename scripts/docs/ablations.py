@@ -232,11 +232,25 @@ def parse_audits(language: str, group: str, data: dict[str, Any]) -> AuditFile:
     )
 
 
+def _read_current(language: str) -> dict[str, Any]:
+    path = ROOT / "src/esolangs/languages" / LANGUAGES[language].id / "language.toml"
+    return tomllib.loads(path.read_text(encoding="utf-8"))
+
+
 def load(language: str, group: str = "ablations") -> AuditFile | None:
     """Read only the requested audit section from its owning language."""
-    path = ROOT / "src/esolangs/languages" / LANGUAGES[language].id / "language.toml"
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    data = _read_current(language)
     return parse_audits(language, group, data[group]) if group in data else None
+
+
+def load_groups(language: str) -> dict[str, AuditFile]:
+    """Read all present audit sections from one package TOML parse."""
+    data = _read_current(language)
+    return {
+        group: parse_audits(language, group, data[group])
+        for group in GROUPS
+        if group in data
+    }
 
 
 def verify_archive(audit: AuditFile) -> None:

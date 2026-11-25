@@ -612,10 +612,9 @@ def quick_tests(name: str) -> list[str]:
         # A bare machine factory instead of a RuntimePlan failed only in finish.
         "tests/runtime/test_lifecycle.py"
         "::test_every_runtime_declares_preparation_and_capabilities",
-        "tests/api/test_language_coupling.py::test_no_file_cites_another_language",
-        # ~4 s; these three first failed in finish's 655 s pytest (Q-BAL,
+        # ~4 s; these checks first failed in finish's 655 s pytest (Q-BAL,
         # GridScript, 2026-11-17).
-        "tests/api/test_language_coupling.py::test_no_file_names_another_language",
+        "tests/api/test_language_coupling.py::test_no_file_names_or_cites_another_language",
         "tests/tooling/test_source_conventions.py"
         "::test_the_complexity_excuses_only_go_down",
         "tests/runtime/test_vm_protocol.py::TestEveryLanguageHonoursTheProtocol"

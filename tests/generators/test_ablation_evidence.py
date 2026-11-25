@@ -34,30 +34,30 @@ _PILOTS = {
 
 def _cases():
     for name in sorted(LANGUAGES):
+        audits = ablations.load_groups(name)
         bands = [
             record.band
-            for group in ablations.GROUPS
-            if (audit := ablations.load(name, group)) is not None
+            for audit in audits.values()
             for record in audit.records.values()
             if isinstance(record, ablation_replay.ReplayRecord)
         ]
         marks = pytest.mark.slow if "slow" in bands else pytest.mark.medium
-        yield pytest.param(name, marks=marks)
+        yield pytest.param(name, audits, id=name, marks=marks)
 
 
-@pytest.mark.parametrize("language", list(_cases()))
+@pytest.mark.parametrize(("language", "audits"), list(_cases()))
 @pytest.mark.usefixtures("retired_source_adapters")
-def test_audit_evidence(language: str, tmp_path: Path, monkeypatch) -> None:
-    for group in ablations.GROUPS:
-        audit = ablations.load(language, group)
-        if group == "ablations" and LANGUAGES[language].backend is not None:
-            assert audit is not None
-            assert audit.context.get("audited") or any(
-                isinstance(r, ablation_replay.ReplayRecord)
-                for r in audit.records.values()
-            )
-        if audit is not None:
-            ablations.verify(audit, tmp_path)
+def test_audit_evidence(
+    language: str, audits: dict[str, ablations.AuditFile], tmp_path: Path, monkeypatch
+) -> None:
+    if LANGUAGES[language].backend is not None:
+        assert "ablations" in audits
+        audit = audits["ablations"]
+        assert audit.context.get("audited") or any(
+            isinstance(r, ablation_replay.ReplayRecord) for r in audit.records.values()
+        )
+    for audit in audits.values():
+        ablations.verify(audit, tmp_path)
     if language in _PILOTS:
         _pilot(language, tmp_path)
     if language == REFERENCE:

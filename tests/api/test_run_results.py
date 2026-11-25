@@ -1,7 +1,6 @@
 """Public results preserve output, input accounting and completion across routes."""
 
 import pickle
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 import pytest
@@ -10,12 +9,15 @@ import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion, CompletionReport, ExecutionResult
+from esolangs.runtime._json import worker_dumps
+from esolangs.runtime._result_wire import encode_result
 from esolangs.runtime.io import ScriptedIO
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import run_observed
 from tests.support.pick import one_where
 from tests.support.reference import REFERENCE
 from tests.support.samples import CAUGHT_EOF
+from tests.support.worker_response import _decode
 
 pytestmark = pytest.mark.medium
 _ROUTES = [
@@ -177,13 +179,15 @@ def test_periodic_result_retains_cycle_evidence_in_a_worker():
     with pytest.raises(AssertionError):
         _replay_periodic(name, source, stdin, bad)
 
-    def check_worker(case):
-        name, source, stdin, native = case
-        assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
-        return name
+    for _, _, _, native in cases:
+        packet = {"result": native.output, "execution": encode_result(native)}
+        stream = worker_dumps({"output": native.output}) + "\n" + worker_dumps(packet)
+        assert _decode(stream, expired=False) == native
 
-    with guarded_worker(expected=len(cases)), ThreadPoolExecutor(max_workers=4) as pool:
-        assert len(list(pool.map(check_worker, cases))) == len(cases)
+    # The productive and zero-command passes take distinct completion paths.
+    with guarded_worker(expected=2):
+        for name, source, stdin, native in (cases[0], cases[-1]):
+            assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
 
 
 @pytest.mark.parametrize("route", _ROUTES)

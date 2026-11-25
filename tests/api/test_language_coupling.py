@@ -14,7 +14,6 @@ import re
 import subprocess
 import tokenize
 from collections import Counter
-from functools import cache
 from pathlib import Path
 
 import pytest
@@ -43,9 +42,8 @@ MANAGED = frozenset(
 )
 
 
-def _mentions(path: str) -> Counter[str]:
+def _mentions(tree: ast.AST) -> Counter[str]:
     """Count the names a file's code (not its docstrings) spells."""
-    tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
     docs = {
         node.value
         for node in ast.walk(tree)
@@ -106,19 +104,11 @@ _CITATION_SOURCE = re.compile(
 )
 #: Prose that records history, not a statement about a live language.
 _HISTORY = frozenset({"docs/CHANGELOG.md"})
-#: The file kinds whose prose is scanned for citations.
-_PROSE = (".py", ".md", ".tex")
 
 
-def _prose(path: Path, text: str) -> list[str]:
-    """Return a file's docstrings and comments, or its lines if it is text."""
-    if path.suffix != ".py":
-        return text.splitlines()
+def _python_prose(tree: ast.AST, text: str) -> list[str]:
+    """Return Python docstrings and comments using the shared parse."""
     lines: list[str] = []
-    try:
-        tree = ast.parse(text)
-    except SyntaxError:
-        return lines
     for node in ast.walk(tree):
         if (
             isinstance(node, ast.Expr)
@@ -148,57 +138,6 @@ def _cites(line: str, name: re.Pattern[str], phrase: re.Pattern[str]) -> bool:
         or line[match.end() :].startswith(_CITATION_SUFFIXES)
         or _CITATION_SOURCE.match(line[match.end() :])
         for match in name.finditer(line)
-    )
-
-
-@cache
-def _citations() -> list[str]:
-    """Return each docstring, comment or text line that cites a language.
-
-    A file's own language is skipped: its prose is free to describe its
-    dialect.  Only the names it does not own count, which is what lets the
-    possessive suffix above stand without flagging every language's own
-    documentation.
-    """
-    langs = sorted(LANGUAGES.values(), key=lambda lang: -len(lang.name))
-    phrase = re.compile(
-        r"(?i)\b(" + "|".join(re.escape(p) for p in _CITATION_PHRASES) + r")\s*$"
-    )
-    owned = {lang.name: _own(lang)[1] for lang in langs}
-    files = subprocess.run(
-        ["git", "ls-files", "-co", "--exclude-standard", "*.py", "*.md", "*.tex"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.split()
-    found: list[str] = []
-    for relative in files:
-        if relative in _HISTORY:
-            continue
-        others = [name for name in owned if not relative.startswith(owned[name])]
-        if not others:
-            continue
-        name = re.compile(rf"(?<!\w)(?:{'|'.join(re.escape(n) for n in others)})(?!\w)")
-        path = ROOT / relative
-        text = path.read_text(encoding="utf-8")
-        if not name.search(text):
-            continue
-        found.extend(
-            f"{relative}: {line.strip()[:100]}"
-            for line in _prose(path, text)
-            if _cites(line, name, phrase)
-        )
-    return sorted(set(found))
-
-
-@pytest.mark.medium
-def test_no_file_cites_another_language() -> None:
-    """A fact about one language does not name a second as its example."""
-    found = _citations()
-    assert not found, (
-        "a shared file cites another language; state the fact without naming a "
-        f"second language: {found}"
     )
 
 
@@ -235,42 +174,91 @@ def _own(lang: LanguageDeclaration) -> tuple[set[str], tuple[str, ...]]:
     return spellings, tuple(prefixes)
 
 
-@cache
-def _counts() -> dict[str, int]:
-    """Count, per file, its mentions of languages it does not belong to."""
+def _foreign_mentions(
+    tree: ast.AST, relative: str, owned: dict[str, tuple[set[str], tuple[str, ...]]]
+) -> int:
+    found = _mentions(tree)
+    return sum(
+        found[spelling]
+        for name, (spellings, prefixes) in owned.items()
+        if name != REFERENCE and not relative.startswith(prefixes)
+        for spelling in spellings
+        # Some language IDs are common words or argument names, and
+        # FALSE is also GridScript's BOOL literal. Their module imports
+        # and attributes still count as coupling.
+        if spelling.startswith(".")
+        or spelling not in {"line", "eval", "false", "FALSE"}
+    )
+
+
+def _scan() -> tuple[dict[str, int], list[str]]:
+    """Find foreign code mentions and prose citations in one source scan."""
+    langs = sorted(LANGUAGES.values(), key=lambda lang: -len(lang.name))
+    owned = {lang.name: _own(lang) for lang in langs}
+    phrase = re.compile(
+        r"(?i)\b(" + "|".join(re.escape(p) for p in _CITATION_PHRASES) + r")\s*$"
+    )
     files = subprocess.run(
-        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "*.py"],
+        ["git", "ls-files", "-co", "--exclude-standard", "*.py", "*.md", "*.tex"],
         cwd=ROOT,
         capture_output=True,
         text=True,
         check=True,
     ).stdout.split()
-    owned = [_own(lang) for name, lang in LANGUAGES.items() if name != REFERENCE]
     counts: dict[str, int] = {}
-    for path in files:
-        if path in MANAGED or not path.startswith(TREES):
+    citations: list[str] = []
+    for relative in files:
+        path = ROOT / relative
+        python = path.suffix == ".py"
+        check_names = python and relative not in MANAGED and relative.startswith(TREES)
+        others = [
+            name
+            for name, (_, prefixes) in owned.items()
+            if relative not in _HISTORY and not relative.startswith(prefixes)
+        ]
+        if not (check_names or others):
             continue
-        found = _mentions(path)
-        total = sum(
-            found[spelling]
-            for spellings, prefixes in owned
-            if not path.startswith(prefixes)
-            for spelling in spellings
-            # Some language IDs are common words or argument names, and
-            # FALSE is also GridScript's BOOL literal. Their module imports
-            # and attributes still count as coupling.
-            if spelling.startswith(".")
-            or spelling not in {"line", "eval", "false", "FALSE"}
+        text = path.read_text(encoding="utf-8")
+        name = (
+            re.compile(rf"(?<!\w)(?:{'|'.join(re.escape(n) for n in others)})(?!\w)")
+            if others
+            else None
         )
-        if total:
-            counts[path] = total
-    return counts
+        check_prose = name is not None and name.search(text) is not None
+        tree = None
+        if python and (check_names or check_prose):
+            try:
+                tree = ast.parse(text)
+            except SyntaxError:
+                if check_names:
+                    raise
+                continue
+        if check_names:
+            assert tree is not None
+            if total := _foreign_mentions(tree, relative, owned):
+                counts[relative] = total
+        if name is not None and check_prose:
+            lines = _python_prose(tree, text) if tree is not None else text.splitlines()
+            citations.extend(
+                f"{relative}: {line.strip()[:100]}"
+                for line in lines
+                if _cites(line, name, phrase)
+            )
+    return counts, sorted(set(citations))
 
 
 @pytest.mark.medium
-def test_no_file_names_another_language() -> None:
-    counts = _counts()
-    assert not counts, (
-        "per-language mentions outside the language's own files -- put the "
-        f"fact on the language's LANGUAGE or in its own test file instead: {counts}"
-    )
+def test_no_file_names_or_cites_another_language() -> None:
+    counts, citations = _scan()
+    errors = []
+    if counts:
+        errors.append(
+            "per-language mentions outside the language's own files -- put the "
+            f"fact on the language's LANGUAGE or in its own test file instead: {counts}"
+        )
+    if citations:
+        errors.append(
+            "a shared file cites another language; state the fact without naming a "
+            f"second language: {citations}"
+        )
+    assert not errors, "\n".join(errors)

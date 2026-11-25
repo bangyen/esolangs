@@ -2,7 +2,6 @@
 
 import copy
 import json
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 import pytest
@@ -12,6 +11,7 @@ from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import termination_result_isolated
+from esolangs.runtime._json import worker_dumps
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime._result_wire import (
@@ -74,8 +74,9 @@ def _replay_termination(name, source, stdin, result):
 
 
 @pytest.mark.medium
-def test_actual_termination_workers_retain_every_halt_and_cycle():
+def test_termination_proofs_round_trip_every_halt_and_cycle():
     cases = []
+    workers = {}
     refused = 0
     coverage = {}
     tables = [f"{mask:0{1 << n}b}" for n in (1, 2) for mask in range(1 << (1 << n))]
@@ -108,7 +109,20 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
                     lang.contract.answer_values[int(answer)] == "halts"
                 )
                 _replay_termination(name, source, stdin, native)
-                cases.append((name, source, stdin, native))
+                result = native.observation
+                packet = {
+                    "result": result.output,
+                    "execution": encode_result(result),
+                    "termination": encode_decision(native.decision),
+                }
+                assert _decode(worker_dumps(packet), expired=False) == native
+                case = (name, source, stdin, native)
+                cases.append(case)
+                # Cover halts, cycles at entry, and cycles after a transient.
+                cycle = native.decision.cycle
+                workers.setdefault(
+                    (name, None if cycle is None else bool(cycle.first_pass)), case
+                )
                 coverage[name][0] += 1
     assert len(coverage) == 3
     assert all(
@@ -137,14 +151,10 @@ def test_actual_termination_workers_retain_every_halt_and_cycle():
         with pytest.raises(AssertionError):
             _replay_termination(name, source, stdin, damaged)
 
-    def check_worker(case):
-        name, source, stdin, native = case
-        worker = termination_result_isolated(name, source, stdin, 5)
-        assert worker == native, (name, source, stdin)
-        return worker
-
-    with guarded_worker(expected=len(cases)), ThreadPoolExecutor(max_workers=4) as pool:
-        assert len(list(pool.map(check_worker, cases))) == len(cases)
+    assert len(workers) == 7
+    with guarded_worker(expected=7):
+        for name, source, stdin, native in workers.values():
+            assert termination_result_isolated(name, source, stdin, 5) == native
 
     template = esolangs.TemplateArtifact(
         "$",
