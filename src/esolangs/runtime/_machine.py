@@ -41,6 +41,15 @@ class RuntimePlan:
         default=None, repr=False, compare=False
     )
 
+    @classmethod
+    def driven(cls, machine: MachineFactory, *, policy: Completion) -> RuntimePlan:
+        """Drive fresh machines with the interpreter's completion policy."""
+
+        def execute(io: IO) -> CompletionReport:
+            return drive(machine(io), policy=policy)
+
+        return cls(machine, execute)
+
     def __call__(self, io: IO) -> _StepMachine:
         """Construct independent state from the retained parse data."""
         return self.machine(io)

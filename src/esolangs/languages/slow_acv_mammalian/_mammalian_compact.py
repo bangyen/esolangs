@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
-from esolangs.generation.helpers import essential_inputs, read_at
+from esolangs.generation.helpers import read_at
 from esolangs.languages.slow_acv_mammalian._sums import (
     _aim,
     _crossing_pair,
@@ -410,13 +410,11 @@ class _Chain:
         tokens += ["SEED"] * (target - 1 - len(tokens))
         return [*tokens, "SPRINT", "CONSUME", "PRONOUNCE"], base
 
-    def build(self, table: str, inputs: int, *, project_inputs: bool = False) -> str:
+    def build(
+        self, table: str, inputs: int, *, essential: list[int] | None = None
+    ) -> str:
         original_inputs = inputs
-        used = (
-            essential_inputs(table, inputs) if project_inputs else list(range(inputs))
-        )
-        if not used:
-            used = list(range(inputs))
+        used = essential or list(range(inputs))
         inputs = len(used)
         plan, free, stride, unit = self.plan(inputs)
         if inputs < original_inputs:
@@ -446,9 +444,9 @@ def compact_chain(
     *,
     modulus: int,
     io_modulus: int | None = None,
-    project_inputs: bool = False,
+    essential: list[int] | None = None,
 ) -> str:
     """Emit pooled-weight chains with leaves in I/O-aligned blocks."""
     return _Chain(modulus, io_modulus=io_modulus).build(
-        table, inputs, project_inputs=project_inputs
+        table, inputs, essential=essential
     )

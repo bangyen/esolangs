@@ -30,6 +30,7 @@ Decisions:
 """
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 from esolangs.languages.monotonic_boolfuck.lifecycle import CAPABILITIES
@@ -66,14 +67,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     """Retain validated loops while each run owns its tape and byte buffers."""
     source = require_text_source(source, options, "monotonic_boolfuck")
     program = BracketProgram.parse(source)
-
-    def build(io: IO) -> _Machine:
-        return _Machine(program, io)
-
-    def execute(io: IO) -> CompletionReport:
-        return drive(build(io), policy=CAPABILITIES.completion)
-
-    return RuntimePlan(build, execute)
+    return RuntimePlan.driven(
+        partial(_Machine, program), policy=CAPABILITIES.completion
+    )
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

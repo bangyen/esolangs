@@ -738,7 +738,7 @@ def _program_255(truth_table: str, n: int, io_modulus: int) -> str:
     if not used or len(used) == n:
         return legacy
     projected = compact_chain(
-        truth_table, n, modulus=255, io_modulus=io_modulus, project_inputs=True
+        truth_table, n, modulus=255, io_modulus=io_modulus, essential=used
     )
     return min(legacy, projected, key=len)
 

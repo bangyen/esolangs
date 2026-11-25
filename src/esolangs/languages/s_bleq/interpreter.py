@@ -327,14 +327,10 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     indirect = options.get("indirect", False)
 
     image = tuple(_parse(source))
-
-    def build(io: IO) -> _Machine:
-        return _Machine(image, io, store=store, indirect=indirect)
-
-    def execute(io: IO) -> CompletionReport:
-        return drive(build(io), policy=CAPABILITIES.completion)
-
-    return RuntimePlan(build, execute)
+    return RuntimePlan.driven(
+        partial(_Machine, image, store=store, indirect=indirect),
+        policy=CAPABILITIES.completion,
+    )
 
 
 def _execute(

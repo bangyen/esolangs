@@ -147,14 +147,7 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     source = require_text_source(source, options, "subleq")
 
     image = tuple(parse_int_memory(source))
-
-    def build(io: IO) -> _Machine:
-        return _Machine(image, io)
-
-    def execute(io: IO) -> CompletionReport:
-        return drive(build(io), policy=CAPABILITIES.completion)
-
-    return RuntimePlan(build, execute)
+    return RuntimePlan.driven(partial(_Machine, image), policy=CAPABILITIES.completion)
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

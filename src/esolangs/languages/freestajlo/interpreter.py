@@ -59,6 +59,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from string import ascii_lowercase, ascii_uppercase
 from typing import Any, NamedTuple
 
@@ -573,14 +574,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     source = require_text_source(source, options, "freestajlo")
 
     program = (_parse(source), len(source))
-
-    def build(io: IO) -> _Machine:
-        return _Machine(program, io)
-
-    def execute(io: IO) -> CompletionReport:
-        return drive(build(io), policy=CAPABILITIES.completion)
-
-    return RuntimePlan(build, execute)
+    return RuntimePlan.driven(
+        partial(_Machine, program), policy=CAPABILITIES.completion
+    )
 
 
 def _execute(code: str, io: IO) -> CompletionReport:

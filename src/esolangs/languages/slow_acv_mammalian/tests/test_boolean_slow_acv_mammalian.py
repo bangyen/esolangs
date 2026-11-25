@@ -55,7 +55,7 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
         str(sum((row >> (7 - bit)) & 1 for bit in used) % 2) for row in range(256)
     )
     program = compact_chain(
-        table, 8, modulus=255, io_modulus=io_modulus, project_inputs=True
+        table, 8, modulus=255, io_modulus=io_modulus, essential=used
     )
     settings = esolangs.Language("SLOW ACV MAMMALIAN").settings(
         cell_modulus=255, io_modulus=io_modulus
