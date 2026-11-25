@@ -13,11 +13,17 @@ from tests.support.generator_support import probe_table
 from tests.support.samples import SAMPLES
 
 
+def _check_completion_worker(language, source, options, expected) -> None:
+    with guarded_worker():
+        assert esolangs.run(language, source, isolated=True, **options) == expected
+
+
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_native_driver_reports_completion(language):
     lang = LANGUAGES[language]
+    sample, sample_stdin = SAMPLES[language]
     if lang.backend is None:
-        source, stdin = SAMPLES[language]
+        source, stdin = sample, sample_stdin
     else:
         table = (
             "00"
@@ -44,11 +50,33 @@ def test_native_driver_reports_completion(language):
         )
     options = {
         "stdin": stdin,
-        "seed": 7 if LANGUAGES[language].runtime.random else None,
+        "seed": 7 if lang.runtime.random else None,
     }
     result = esolangs.run(language, source, **options)
-    with guarded_worker():
-        assert esolangs.run(language, source, isolated=True, **options) == result
+    _check_completion_worker(language, source, options, result)
+    caps = lang.runtime.capabilities
+    if (
+        caps is not None
+        and caps.completion is Completion.HALTED
+        and caps.self_halts
+        and isinstance(source, esolangs.ProgramArtifact)
+        and (
+            # Ordinary text reaches the same worker route in either form.
+            # Retain distinct wire encodings and raw calls with other options.
+            not isinstance(sample, str)
+            or not isinstance(source.source, str)
+            or source.settings is not None
+            or source.scale is not None
+            or lang.runtime.random
+        )
+    ):
+        raw_options = {
+            "stdin": sample_stdin,
+            "seed": lang.runtime.reproducible_seed if lang.runtime.random else None,
+        }
+        native_sample = esolangs.run(language, sample, **raw_options)
+        assert native_sample.completion.kind is Completion.HALTED
+        _check_completion_worker(language, sample, raw_options, native_sample)
     assert isinstance(result.completion, CompletionReport)
     if result.completion.kind is Completion.PERIODIC:
         assert result.completion.cycle is not None

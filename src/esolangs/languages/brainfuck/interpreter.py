@@ -27,6 +27,7 @@ from esolangs.runtime._lifecycle import HALTED_REPORT, CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.brackets import BracketProgram
 from esolangs.runtime.brackets import match_brackets as matches
 from esolangs.runtime.io import IO, _BufferedOutput
@@ -315,10 +316,7 @@ def _advance_compiled(
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Retain the loop map and lazily share native compilation across runs."""
-    if not isinstance(source, str):
-        raise TypeError("Brainfuck machines require text source")
-    if options:
-        raise TypeError("Brainfuck machines accept no runtime options")
+    source = require_text_source(source, options, "Brainfuck")
     program = _Program.parse(source)
 
     def build(io: IO) -> _Machine:

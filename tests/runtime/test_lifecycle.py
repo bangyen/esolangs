@@ -318,29 +318,12 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
         check=True,
         timeout=10,
     )
-    from concurrent.futures import ThreadPoolExecutor
-
-    def isolated_result(name):
-        source, stdin = SAMPLES[name]
-        runtime = selected[name].runtime
-        seed = runtime.reproducible_seed if runtime.random else None
-        return esolangs.run(name, source, stdin=stdin, seed=seed, isolated=True)
-
-    # Each disposable worker is independent; serial startup exceeded 18s at 104.
-    with (
-        guarded_worker(expected=len(selected)),
-        ThreadPoolExecutor(max_workers=4) as workers,
-    ):
-        isolated = dict(
-            zip(selected, workers.map(isolated_result, selected), strict=True)
-        )
     for name, language in selected.items():
         caps = language.runtime.capabilities
         source, stdin = SAMPLES[name]
         seed = language.runtime.reproducible_seed if language.runtime.random else None
         native = esolangs.run(name, source, stdin=stdin, seed=seed)
         assert native.completion.kind is Completion.HALTED
-        assert isolated[name] == native
         module = interpreter_module(name)
         with monkeypatch.context() as control:
             control.setattr(

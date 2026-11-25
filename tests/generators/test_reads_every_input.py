@@ -34,7 +34,6 @@ def _audit(
     name,
     program,
     n,
-    _mp,
     *,
     table=None,
     selected=None,
@@ -103,20 +102,20 @@ GENERATED = [n for n, i in INFOS.items() if i.boolean_generator and not i.parame
 
 
 @pytest.mark.medium
-def test_the_audit_sees_unread_input(monkeypatch) -> None:
-    assert _audit(REFERENCE, ",.", 2, monkeypatch) == (4, 4, 0, 4)
+def test_the_audit_sees_unread_input() -> None:
+    assert _audit(REFERENCE, ",.", 2) == (4, 4, 0, 4)
 
 
 @pytest.mark.medium
-def test_the_audit_sees_early_output(monkeypatch) -> None:
-    assert _audit("brainfuck", ",+.,", 2, monkeypatch) == (4, 0, 0, 4)
+def test_the_audit_sees_early_output() -> None:
+    assert _audit("brainfuck", ",+.,", 2) == (4, 0, 0, 4)
 
 
 @pytest.mark.medium
 def test_the_audit_checks_cycling_answers(monkeypatch) -> None:
     info = replace(INFOS[REFERENCE], answer_mode="termination")
     monkeypatch.setitem(INFOS, REFERENCE, info)
-    assert _audit(REFERENCE, ",[]", 1, monkeypatch) == (2, 0, 0, 0)
+    assert _audit(REFERENCE, ",[]", 1) == (2, 0, 0, 0)
 
 
 @pytest.mark.medium
@@ -136,61 +135,88 @@ def test_the_audit_rejects_a_crash_after_the_final_read(monkeypatch, table, fail
 
     monkeypatch.setattr(__name__ + ".ScriptedIO", CrashIO)
     with pytest.raises(failure, match="input-audit crash control"):
-        _audit(REFERENCE, program, 3, monkeypatch, table=table)
+        _audit(REFERENCE, program, 3, table=table)
     assert hits == [3], "the control never reached the final input"
 
 
-# One case per language and path: the whole sweep in one test overran its band.
+_PATHS = ({}, {"width": 1}, {"balance": True})
+
+
+def _audit_paths(name):
+    return [
+        path
+        for path in _PATHS
+        if "width" not in path or INFOS[name].width_effect != "none"
+    ]
+
+
+def _matches_earlier_build(name, table, path, program):
+    earlier = _audit_paths(name)
+    if not (prior := earlier[: earlier.index(path)]):
+        return False
+    artifact = esolangs.to_json(name, program)
+    for options in prior:
+        try:
+            other = esolangs.generate(name, table, **options)
+        except esolangs.GeneratorCapError:
+            continue
+        if esolangs.to_json(name, other) == artifact:
+            return True
+    return False
+
+
+# Keep the variants separately scheduled. Two grouped language cases exceeded 5s.
 @pytest.mark.medium
 @pytest.mark.parametrize(
     ("name", "path"),
-    [
-        (name, path)
-        for path in ({}, {"width": 1}, {"balance": True})
-        for name in GENERATED
-        if "width" not in path or INFOS[name].width_effect != "none"
-    ],
+    [(name, path) for name in GENERATED for path in _audit_paths(name)],
     ids=str,
 )
-def test_every_input_is_read(monkeypatch, name, path) -> None:
+def test_every_input_is_read(name, path) -> None:
     built = 0
     controls = load_certification(LANGUAGES[name]).benchmark_tables if not path else ()
     if controls:
         assert_proved_resource_cap(name)
     for table in dict.fromkeys((*IGNORING, *controls)):
         n = (len(table) - 1).bit_length()
-        if n <= (INFOS[name].generator_max_inputs or 6):
-            try:
-                program = esolangs.generate(name, table, **path)
-            except esolangs.GeneratorCapError:
-                if table in controls:
-                    raise
-                assert_proved_resource_cap(name)
-                continue
-            built += 1
-            whole_stream = []
-            rows, unread, past, early = _audit(
-                name, program, n, monkeypatch, table=table, whole_stream=whole_stream
+        if n > (INFOS[name].generator_max_inputs or 6):
+            continue
+        try:
+            program = esolangs.generate(name, table, **path)
+        except esolangs.GeneratorCapError:
+            if table in controls:
+                raise
+            assert_proved_resource_cap(name)
+            continue
+        built += 1
+        if _matches_earlier_build(name, table, path, program):
+            continue
+        whole_stream = []
+        rows, unread, past, early = _audit(
+            name, program, n, table=table, whole_stream=whole_stream
+        )
+        assert rows > 0
+        assert unread == 0, (name, table)
+        assert early == 0, (name, table)  # output follows the last read
+        # A language that ends at EOF probes it once a row, no more.
+        assert past in (0, rows), (name, table)
+        if past == 0 and not whole_stream:
+            assert _audit(name, program, n, table=table, sentinel=True) == (
+                rows,
+                0,
+                0,
+                0,
             )
-            assert rows > 0
-            assert unread == 0, (name, table)
-            assert early == 0, (name, table)  # output follows the last read
-            # A language that ends at EOF probes it once a row, no more.
-            assert past in (0, rows), (name, table)
-            if past == 0 and not whole_stream:
-                assert _audit(
-                    name, program, n, monkeypatch, table=table, sentinel=True
-                ) == (rows, 0, 0, 0)
     assert built, f"{name} never built an input-consumption control"
 
 
 @pytest.mark.medium
-def test_the_audit_sees_overreading(monkeypatch) -> None:
+def test_the_audit_sees_overreading() -> None:
     with pytest.raises(AssertionError, match="over-read"):
-        _audit(REFERENCE, ",,", 1, monkeypatch, sentinel=True)
+        _audit(REFERENCE, ",,", 1, sentinel=True)
 
 
-def _audit_tables(monkeypatch, name, n, tables):
+def _audit_tables(name, n, tables):
     executed = attempted = 0
     selected = sorted({0, 1, (1 << n) - 1, *[1 << bit for bit in range(n)]})
     for table in tables:
@@ -201,7 +227,7 @@ def _audit_tables(monkeypatch, name, n, tables):
             assert_proved_resource_cap(name)
             continue
         rows, unread, past, early = _audit(
-            name, program, n, monkeypatch, table=table, selected=selected
+            name, program, n, table=table, selected=selected
         )
         assert rows > 0, (name, n, "no rows executed")
         assert (unread, early) == (0, 0), (name, n)
@@ -224,15 +250,15 @@ def _audit_tables(monkeypatch, name, n, tables):
         )
     ],
 )
-def test_contract_at_larger_arities(monkeypatch, name, n) -> None:
+def test_contract_at_larger_arities(name, n) -> None:
     """Sample rows at n=4 and n=6 (or the declared cap)."""
-    _audit_tables(monkeypatch, name, n, witnesses(n))
+    _audit_tables(name, n, witnesses(n))
 
 
 @pytest.mark.medium
-def test_the_audit_rejects_wrong_input_order(monkeypatch) -> None:
+def test_the_audit_rejects_wrong_input_order() -> None:
     with pytest.raises(AssertionError):
-        _audit(REFERENCE, ",>,.", 2, monkeypatch, table="0011")
+        _audit(REFERENCE, ",>,.", 2, table="0011")
 
 
 @pytest.mark.slow
@@ -245,7 +271,7 @@ def test_the_audit_rejects_wrong_input_order(monkeypatch) -> None:
         for n in (cap - 1, cap)
     ],
 )
-def test_contract_at_declared_cap(monkeypatch, name, n) -> None:
+def test_contract_at_declared_cap(name, n) -> None:
     """Exercise constants and either-end projections at and below the cap."""
     size = 1 << n
     tables = (
@@ -254,7 +280,7 @@ def test_contract_at_declared_cap(monkeypatch, name, n) -> None:
         "01" * (size // 2),
         "0" * (size // 2) + "1" * (size // 2),
     )
-    _audit_tables(monkeypatch, name, n, tables)
+    _audit_tables(name, n, tables)
 
 
 @pytest.mark.parametrize(
@@ -273,7 +299,7 @@ def test_arity_audits_report_complete_refusal(monkeypatch, audit):
 
     monkeypatch.setattr(esolangs, "generate", decline)
     with pytest.raises(pytest.skip.Exception, match=f"no executable witness at n={n}"):
-        audit(monkeypatch, name, n)
+        audit(name, n)
     assert refused, "the control never attempted generation"
 
 
@@ -283,18 +309,18 @@ def test_arity_audit_rejects_an_unproved_refusal(monkeypatch):
 
     monkeypatch.setattr(esolangs, "generate", decline)
     with pytest.raises(AssertionError):
-        _audit_tables(monkeypatch, REFERENCE, 1, ["01"])
+        _audit_tables(REFERENCE, 1, ["01"])
 
 
 def test_arity_audit_rejects_zero_executed_rows(monkeypatch):
     monkeypatch.setattr(__name__ + "._audit", lambda *_args, **_options: (0, 0, 0, 0))
     with pytest.raises(AssertionError, match="no rows executed"):
-        _audit_tables(monkeypatch, REFERENCE, 1, ["01"])
+        _audit_tables(REFERENCE, 1, ["01"])
 
 
-def test_arity_audit_rejects_an_empty_corpus(monkeypatch):
+def test_arity_audit_rejects_an_empty_corpus():
     with pytest.raises(AssertionError, match="empty witness corpus"):
-        _audit_tables(monkeypatch, REFERENCE, 1, [])
+        _audit_tables(REFERENCE, 1, [])
 
 
 @pytest.mark.medium
@@ -311,6 +337,6 @@ def test_arity_audit_executes_remaining_witnesses(monkeypatch):
 
     monkeypatch.setattr(esolangs, "generate", partial)
     try:
-        assert _audit_tables(monkeypatch, name, 1, ["00", "01"]) == 2
+        assert _audit_tables(name, 1, ["00", "01"]) == 2
     except pytest.skip.Exception as error:
         raise AssertionError("an executable witness was skipped") from error

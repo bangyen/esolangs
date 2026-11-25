@@ -74,6 +74,17 @@ def _argument_repr(value: object) -> str:
     return _REPR_ADDRESS.sub(r"\1", shown)
 
 
+def require_text_source(
+    source: object, options: Mapping[str, object], language: str
+) -> str:
+    """Validate the source and options for a whole-text machine."""
+    if not isinstance(source, str):
+        raise TypeError(f"{language} machines require text source")
+    if options:
+        raise TypeError(f"{language} machines accept no runtime options")
+    return source
+
+
 def require_split_source(
     source: object, options: Mapping[str, object], language: str
 ) -> list[str]:

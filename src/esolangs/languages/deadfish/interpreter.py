@@ -39,6 +39,7 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
 
@@ -144,10 +145,7 @@ class _Machine:
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind fresh machines; deadfish has no runtime options."""
-    if not isinstance(source, str):
-        raise TypeError("deadfish machines require text source")
-    if options:
-        raise TypeError("deadfish machines accept no runtime options")
+    source = require_text_source(source, options, "deadfish")
     return RuntimePlan(partial(_Machine, source), partial(_execute, source))
 
 
