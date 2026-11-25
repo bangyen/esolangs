@@ -42,7 +42,7 @@ def evidence(tmp_path):
                     "collected": ["a", "b", "serial"],
                     "selected": selected,
                     "excluded": ["serial"],
-                    "run": run,
+                    "run": {key: run[key] for key in ("id", "attempt", "commit")},
                 }
             )
         )
@@ -86,6 +86,24 @@ def test_timing_refresh_rejects_duplicate_runs(
 def test_complete_shards_include_serial_exclusion(tmp_path) -> None:
     paths = evidence(tmp_path)
     check(paths, ["a", "b", "serial"], "slow", 2)
+
+
+def test_shard_completion_must_match_the_verifiers_python(tmp_path) -> None:
+    paths = evidence(tmp_path)
+    sidecar = paths[1].parent / "test-durations.json.meta.json"
+    metadata = json.loads(sidecar.read_text(encoding="utf-8"))
+    python = f"{sys.version_info.major}.{sys.version_info.minor}"
+    metadata["run"]["python"] = f"{python}.99"
+    sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+    check(paths, ["a", "b", "serial"], "slow", 2)
+
+    metadata["run"]["python"] = (
+        f"{sys.version_info.major}.{sys.version_info.minor + 1}.0"
+    )
+    sidecar.write_text(json.dumps(metadata), encoding="utf-8")
+    with pytest.raises(ValueError, match=r"completion Python.*verifier") as error:
+        check(paths, ["a", "b", "serial"], "slow", 2)
+    assert str(sidecar) in str(error.value)
 
 
 def test_empty_shards_validate_completion_evidence_when_present(tmp_path) -> None:

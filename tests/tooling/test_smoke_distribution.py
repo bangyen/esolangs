@@ -441,6 +441,21 @@ def test_release_notes_keep_fenced_headings_in_the_original_body() -> None:
     assert smoke.notes("v1.1.0", changelog) == body
 
 
+def test_release_notes_require_content_besides_html_comments() -> None:
+    comment = "<!-- Draft\nnotes -->\n"
+    heading = "## 1.1.0\n\n"
+    with pytest.raises(SystemExit, match="section is empty"):
+        smoke.notes("v1.1.0", heading + comment)
+
+    for content in (
+        "- Visible.\n",
+        "```\n<!-- example -->\n```\n",
+        "    <!-- example -->\n",
+    ):
+        body = content + "\n" + comment
+        assert smoke.notes("v1.1.0", heading + body) == body
+
+
 def test_release_notes_require_a_visible_version_heading() -> None:
     changelog = "~~~md\n## 1.1.0\nExample.\n~~~\n\n## 1.0.0\n\nOld.\n"
     with pytest.raises(SystemExit, match=r"no '## 1\.1\.0' section"):

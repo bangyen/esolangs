@@ -114,6 +114,26 @@ def test_external_links_and_code_spans_are_ignored(tmp_path: Path) -> None:
     assert checker.broken_links(tmp_path, files) == []
 
 
+def test_indented_code_hides_links_but_indented_prose_does_not(tmp_path: Path) -> None:
+    checker = load_script()
+    files = _tree(
+        tmp_path,
+        {
+            "a.md": (
+                "# Example\n    [hidden](code.md)\n\n"
+                " \t[hidden](tabbed.md)\n    <!--\n"
+                "Prose continues\n    <!-- inline -->\n    [visible](paragraph.md)\n\n"
+                "- List item\n\n    [visible](list.md)\n\n"
+                "      [hidden](list-code.md)\n\n"
+                "[visible](after.md)\n"
+            ),
+        },
+    )
+    assert checker.broken_links(tmp_path, files) == [
+        ("a.md", target) for target in ("paragraph.md", "list.md", "after.md")
+    ]
+
+
 def test_comments_hide_links_definitions_headings_and_explicit_anchors(tmp_path):
     checker = load_script()
     files = _tree(

@@ -177,10 +177,10 @@ def notes(version: str, changelog: str) -> str:
         (i for i in range(start, len(visible)) if visible[i].startswith("## ")),
         len(lines),
     )
-    body = "\n".join(lines[start:end]).strip()
-    if not body:
+    body = "\n".join(lines[start:end])
+    if not mask_hidden(body, code_blocks=False).strip():
         raise SystemExit(f"docs/CHANGELOG.md's {heading!r} section is empty")
-    return body + "\n"
+    return re.sub(r"\A(?:[ \t]*\n)+|(?:\n[ \t]*)+\Z", "", body) + "\n"
 
 
 def _cli(args: list[str], stdin: str = "") -> str:

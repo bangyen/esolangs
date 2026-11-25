@@ -17,6 +17,20 @@ from ci.shard import (
 )
 
 
+def _check_completion_identity(
+    sidecar: Path, completion: dict[str, object], manifest: Path, run: dict[str, object]
+) -> None:
+    python = f"{sys.version_info.major}.{sys.version_info.minor}"
+    version = completion.get("python")
+    if not isinstance(version, str) or not version.startswith(f"{python}."):
+        raise ValueError(
+            f"{sidecar}: completion Python {version!r} does not match "
+            f"the verifier's Python {python}"
+        )
+    if any(completion.get(key) != value for key, value in run.items()):
+        raise ValueError(f"{sidecar}: completion field 'run' differs from {manifest}")
+
+
 def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> None:
     """Check all shard manifests and completion sidecars against fresh collection."""
     if shards < 1:
@@ -83,10 +97,7 @@ def check(paths: list[Path], corpus: list[str], marker: str, shards: int) -> Non
         sidecars = sorted(path.parent.rglob("*.json.meta.json"))
         for sidecar in sidecars:
             metadata = read_completion_metadata(sidecar)
-            if any(metadata["run"].get(key) != value for key, value in run.items()):
-                raise ValueError(
-                    f"{sidecar}: completion field 'run' differs from {path}"
-                )
+            _check_completion_identity(sidecar, metadata["run"], path, run)
             actual.update(metadata["collected"])
         if not nodes <= actual or not actual <= nodes | omissions or actual & executed:
             raise ValueError("missing, overlapping, or unexpected executed tests")

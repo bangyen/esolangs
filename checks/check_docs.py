@@ -17,7 +17,7 @@ and a ``#fragment`` must match a heading (GitHub's slug) or an explicit
 ``<a id="...">`` anchor in the target.  External URLs are left to CI's own
 reachability, which this is not.
 
-Fenced code blocks and inline code spans are stripped first, so an example
+Code blocks and inline code spans are stripped first, so an example
 that spells a link is not read as one.  Headings are slugged the way GitHub
 does -- lowercased, punctuation dropped, spaces to hyphens -- with a
 ``-1``/``-2`` suffix for a repeated heading, and the Unicode letters some
@@ -134,8 +134,8 @@ def _references(text: str, visible: str) -> tuple[dict[str, str], str]:
 
 def _targets(text: str) -> Iterator[str]:
     """Yield destinations from inline links and resolved references."""
-    text = mask_hidden(text)
     visible = mask_hidden(text, inline_code=True)
+    text = mask_hidden(text)
     references, visible = _references(text, visible)
     openings: list[int] = []
     cursor = 0

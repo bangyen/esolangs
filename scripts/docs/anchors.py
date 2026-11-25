@@ -11,7 +11,7 @@ from collections.abc import Iterator
 
 _MARKUP = re.compile(
     r"(?P<fenced>^ {0,3}(?:(?P<backticks>`{3,})[^`\n]*|(?P<tildes>~{3,})[^\n]*)$)"
-    r"|(?P<comment><!--[\s\S]*?(?:-->|\Z))"
+    r"|(?P<comment><!--)"
     r"|(?P<inline>(?<!`)(?P<ticks>`+)(?!`)[^\n]*?(?<!`)(?P=ticks)(?!`))"
     r"|(?P<escape>\\[\\<`])",
     re.MULTILINE,
@@ -23,6 +23,7 @@ _THEMATIC = re.compile(r" {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3
 _BLOCK_START = re.compile(
     r" {0,3}(?:>|(?:[-+*]|[0-9]{1,9}[.)])(?:[ \t]|$)|\[[^\]]+\]:|<(?:/?[a-zA-Z]|[!?]))"
 )
+_LIST_ITEM = re.compile(r" {0,3}(?:[-+*]|[0-9]{1,9}[.)])(?P<padding> +|$)")
 _EXPLICIT_ANCHOR = re.compile(r"<a\s+(?:id|name)=\"([^\"]+)\"")
 
 
@@ -38,33 +39,108 @@ def slug(heading: str) -> str:
     return text.replace(" ", "-")
 
 
-def mask_hidden(
-    text: str, *, inline_code: bool = False, keep_columns: bool = True
-) -> str:
-    """Hide comments and code blocks while retaining line boundaries."""
-    # Match constructs in source order so a literal opener inside a code
-    # span or fenced block never starts a comment outside it.
-    parts: list[str] = []
-    cursor = 0
-    while (match := _MARKUP.search(text, cursor)) is not None:
-        parts.append(text[cursor : match.start()])
+class _IndentedBlocks:
+    """Track paragraph and list indentation before reading inline markup."""
+
+    def __init__(self) -> None:
+        self.paragraph = False
+        self.margins: list[int] = []
+
+    def code(self, line: str) -> bool:
+        line = line.removesuffix("\r").expandtabs(4)
+        content = line.lstrip(" ")
+        if not content:
+            self.paragraph = False
+            return False
+        indent = len(line) - len(content)
+        depth = len(self.margins)
+        while depth and self.margins[depth - 1] > indent:
+            depth -= 1
+        margin = self.margins[depth - 1] if depth else 0
+        content = line[margin:]
+        if indent >= margin + 4 and not self.paragraph:
+            del self.margins[depth:]
+            return True
+        if (
+            _HEADING.fullmatch(content)
+            or _THEMATIC.fullmatch(content)
+            or (self.paragraph and _UNDERLINE.fullmatch(content))
+            or (indent < margin + 4 and content.lstrip(" ").startswith("<!--"))
+        ):
+            del self.margins[depth:]
+            self.paragraph = False
+        elif item := _LIST_ITEM.match(content):
+            del self.margins[depth:]
+            padding = len(item["padding"])
+            has_body = bool(content[item.end() :])
+            offset = (
+                item.end() if has_body and padding <= 4 else item.start("padding") + 1
+            )
+            self.margins.append(margin + offset)
+            self.paragraph = has_body and padding <= 4
+            return has_body and padding > 4
+        else:
+            if not self.paragraph:
+                del self.margins[depth:]
+            self.paragraph = True
+        return False
+
+
+def _markup_spans(text: str) -> Iterator[tuple[int, int, str]]:
+    """Find opaque spans in source order, including literal comment openers."""
+    blocks = _IndentedBlocks()
+    position = 0
+    while position < len(text):
+        newline = text.find("\n", position)
+        line_end = len(text) if newline == -1 else newline
+        if (position == 0 or text[position - 1] == "\n") and blocks.code(
+            text[position:line_end]
+        ):
+            yield position, line_end, "block"
+            position = line_end + 1
+            continue
+        match = _MARKUP.search(text, position, line_end)
+        if match is None:
+            position = line_end + 1
+            continue
         kind = match.lastgroup
-        cursor = match.end()
+        position = match.end()
         if kind == "fenced":
             fence = match["backticks"] or match["tildes"]
             # Shorter runs and runs with trailing text are literal code.
-            cursor = next(
+            position = next(
                 (
                     end.end()
-                    for end in _FENCE_END.finditer(text, cursor)
+                    for end in _FENCE_END.finditer(text, position)
                     if end[1][0] == fence[0] and len(end[1]) >= len(fence)
                 ),
                 len(text),
             )
-        chunk = text[match.start() : cursor]
-        if kind in {"fenced", "comment"} or (inline_code and kind == "inline"):
-            chunk = re.sub(r"[^\n]", " " if keep_columns else "", chunk)
-        parts.append(chunk)
+            blocks.paragraph = False
+            yield match.start(), position, "block"
+        elif kind == "comment":
+            end = text.find("-->", position)
+            position = len(text) if end == -1 else end + 3
+            yield match.start(), position, kind
+        elif kind == "inline":
+            yield match.start(), position, kind
+
+
+def mask_hidden(
+    text: str,
+    *,
+    code_blocks: bool = True,
+    inline_code: bool = False,
+    keep_columns: bool = True,
+) -> str:
+    """Hide comments and selected code while retaining line boundaries."""
+    parts: list[str] = []
+    cursor = 0
+    for start, end, kind in _markup_spans(text):
+        if kind == "comment" or (code_blocks if kind == "block" else inline_code):
+            parts.append(text[cursor:start])
+            parts.append(re.sub(r"[^\n]", " " if keep_columns else "", text[start:end]))
+            cursor = end
     parts.append(text[cursor:])
     return "".join(parts)
 
