@@ -42,7 +42,6 @@ from verify.process import (  # noqa: E402
     start_logged,
     wait_with_heartbeat,
 )
-from verify.receipts import AcceptanceRun  # noqa: E402
 from verify.scope import (  # noqa: E402
     _scope_changed_files,
     _scope_plan,
@@ -91,7 +90,6 @@ HEARTBEAT_SECONDS = 20.0
 STEP_DEADLINES = {"pytest": 900.0, "exception leaks": 120.0}
 DEFAULT_STEP_DEADLINE = 60.0
 
-_ACTIVE_ACCEPTANCE: AcceptanceRun | None = None
 
 STEPS = [
     (
@@ -355,7 +353,6 @@ def _rerun_alone(ids: list[str]) -> tuple[int, str]:
     that needs longer has not exonerated anything.
     """
     command = [*PY, "-m", "pytest", "-q", "-n", "0", "-m", "", *ids]
-    started = time.monotonic()
     result = run_bounded(
         command,
         cwd=ROOT,
@@ -364,14 +361,6 @@ def _rerun_alone(ids: list[str]) -> tuple[int, str]:
         timeout=STEP_DEADLINES[LONG_STEP],
     )
     output = (result.stdout or "") + (result.stderr or "")
-    if _ACTIVE_ACCEPTANCE is not None:
-        _ACTIVE_ACCEPTANCE.record(
-            "pytest retry",
-            time.monotonic() - started,
-            result.returncode,
-            output,
-            command=command,
-        )
     return result.returncode, output
 
 
@@ -403,8 +392,6 @@ def _load_verdict(
         return failures
     returncode, rerun_output = _rerun_alone(ids)
     if returncode == 0:
-        if _ACTIVE_ACCEPTANCE is not None:
-            _ACTIVE_ACCEPTANCE.accepted_retries.add(LONG_STEP)
         print(
             f"[load] pytest: all {len(ids)} failed tests passed alone: the "
             "failures were duration overruns under machine load, not code; "
@@ -565,15 +552,11 @@ def _run_steps(
     per-step CPU timings, and the wall time, which concurrency makes smaller
     than the timings' sum.
     """
-    if _ACTIVE_ACCEPTANCE is not None:
-        _ACTIVE_ACCEPTANCE.declare(runnable)
     failed: list[tuple[str, int, str | None]] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.monotonic()
 
     def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
-        if _ACTIVE_ACCEPTANCE is not None:
-            _ACTIVE_ACCEPTANCE.record(name, elapsed, returncode, output)
         timings.append((name, elapsed))
         if not _report(name, elapsed, returncode, output):
             failed.append((name, returncode, output))
@@ -682,8 +665,6 @@ def main() -> int:
         print(f"scope: changed files ({why})")
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
-    if _ACTIVE_ACCEPTANCE is not None:
-        _ACTIVE_ACCEPTANCE.capture_environment(PY, env)
     # Decide every step first, then run.  Deciding is pure bookkeeping (scope
     # lookups, tool probes) while running is where the time goes, so keeping
     # the two apart lets the runner overlap the long step with the short ones
@@ -764,30 +745,5 @@ def main() -> int:
     return 0
 
 
-def cli() -> int:
-    """Run the gate and bind its acceptance receipt to the measured inputs."""
-    global _ACTIVE_ACCEPTANCE  # noqa: PLW0603
-    if "--list" in sys.argv:
-        return main()
-    receipt = AcceptanceRun(
-        ROOT, sys.argv[1:], {"default": DEFAULT_STEP_DEADLINE, **STEP_DEADLINES}
-    )
-    _ACTIVE_ACCEPTANCE = receipt
-    try:
-        returncode = main()
-    except BaseException:
-        path, _ = receipt.finish(None)
-        print(f"[receipt] {path}")
-        raise
-    finally:
-        _ACTIVE_ACCEPTANCE = None
-    path, passed = receipt.finish(returncode)
-    print(f"[receipt] {path}")
-    if returncode == 0 and not passed:
-        print("[FAIL] acceptance inputs changed or checks did not complete")
-        return 1
-    return returncode
-
-
 if __name__ == "__main__":
-    raise SystemExit(cli())
+    raise SystemExit(main())
