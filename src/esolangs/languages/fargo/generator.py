@@ -37,6 +37,7 @@ Decisions:
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from functools import cache
 from math import isqrt
 from string import ascii_lowercase
 
@@ -195,19 +196,35 @@ def _arm_expression(
     return "".join(builder.pieces)
 
 
-def _expression(truth_table: str, n: int) -> str:
-    """Return the shorter of the arm expression and the complement's, negated."""
-    return _expression_program(truth_table, n)[0]
+class _Expression:
+    """Intern an expression and count its uses once for the packing race."""
+
+    def __init__(self, text: str, n: int) -> None:
+        self.text = text
+        self.literals = max(n, 2)
+        self.nodes, self.root = _intern(text, n)
+        self.uses = [0] * len(self.nodes)
+        for _, children in self.nodes:
+            for child in children:
+                if child >= self.literals:
+                    self.uses[child - self.literals] += 1
+        if self.root >= self.literals:
+            self.uses[self.root - self.literals] += 1
+
+    @property
+    def compact(self) -> str:
+        return f"% 0 {self.text}\n$\n"
 
 
-def _expression_program(truth_table: str, n: int) -> tuple[str, str]:
+def _expression_program(truth_table: str, n: int) -> tuple[_Expression, str]:
     """Return the chosen expression and the packed program used to price it."""
     at = tuple(range(n))
     plain = _arm_expression(truth_table, anf.anf_coefficients(truth_table), n, at)
     flip = truth_table.translate(str.maketrans("01", "10"))
     negated = "^ 1 " + _arm_expression(flip, anf.anf_coefficients(flip), n, at)
+    plans = (_Expression(text, n) for text in (plain, negated))
     return min(
-        ((e, _packed_program(e, n, len(f"% 0 {e}\n$\n"))) for e in (plain, negated)),
+        ((plan, _packed_program(plan, len(plan.compact))) for plan in plans),
         key=lambda pair: len(pair[1]),
     )
 
@@ -286,10 +303,10 @@ def _intern(expression: str, n: int) -> tuple[list[tuple[int, tuple[int, ...]]],
     return unique, canonical[stack[0]]
 
 
-def _definition_program(expression: str, n: int) -> str:
+def _definition_program(expression: _Expression) -> str:
     """Return shared definitions, one distinct node per line."""
-    unique, root = _intern(expression, n)
-    references = [f"{value:b}" for value in range(max(n, 2))]
+    unique, root = expression.nodes, expression.root
+    references = [f"{value:b}" for value in range(expression.literals)]
     lines: list[str] = []
     for tag, children in unique:
         name = short_name(len(lines), ascii_lowercase)
@@ -299,7 +316,7 @@ def _definition_program(expression: str, n: int) -> str:
     return "\n".join([*lines, f"% 0 {references[root]}", "$", ""])
 
 
-def _packed_program(expression: str, n: int, width: int, *, share: bool = True) -> str:
+def _packed_program(expression: _Expression, width: int, *, share: bool = True) -> str:
     """Return definitions with width-guided inlining of unshared nodes.
 
     Children first, a node is named when sharing it is shorter or when
@@ -307,15 +324,8 @@ def _packed_program(expression: str, n: int, width: int, *, share: bool = True) 
     children go first.
     Lengths, not texts, decide, so the build stays linear.
     """
-    unique, root = _intern(expression, n)
-    lits = max(n, 2)
-    uses = [0] * len(unique)
-    for _, children in unique:
-        for child in children:
-            if child >= lits:
-                uses[child - lits] += 1
-    if root >= lits:
-        uses[root - lits] += 1
+    unique, root = expression.nodes, expression.root
+    lits, uses = expression.literals, expression.uses
     names: dict[int, str] = {}
     inline = [0] * len(unique)  # length of a node's text inlined
 
@@ -373,24 +383,28 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         # Loading still reads input; the output number starts at zero.
-        return "$" if truth_table[0] == "0" else "% 0 1\n$"
+        return _constant_program(truth_table[0])
     expression, packed = _expression_program(truth_table, n)
-    compact = f"% 0 {expression}\n$\n"
+    compact = expression.compact
     # Naming only the nodes sharing shortens (``[ablations.profitability_packing]``);
     # it is never longer than the inline or the one-node-per-line form, so
     # without a width it is the whole race (``[ablations.default_race]``).
     if width is None:
         return packed
-    shared = _definition_program(expression, n)
+    shared = _definition_program(expression)
     fitting = [
         program
-        for program in (compact, shared, packed, _packed_program(expression, n, width))
+        for program in (compact, shared, packed, _packed_program(expression, width))
         if grid_width(program) <= width
     ]
     return min(fitting, key=len) if fitting else shared
 
 
-def _balance(table: str, default: str) -> str:
+def _constant_program(bit: str) -> str:
+    return "$" if bit == "0" else "% 0 1\n$"
+
+
+def _balance(table: str, default: str | None = None) -> str:
     """Return the squarest of the default and ten packings (shared and unshared walks).
 
     A packing at width ``w`` has about ``w`` columns and ``H(w)`` lines, with
@@ -401,29 +415,42 @@ def _balance(table: str, default: str) -> str:
     tables; one step fewer missed it on up to 7 of 270.
     """
     n = _validate_truth_table(table)
-    expression = _expression(table, n)
+    expression, normal = _expression_program(table, n)
+    if default is None:
+        default = (
+            _constant_program(table[0])
+            if table.count(table[0]) == len(table)
+            else normal
+        )
     # The one-node-per-line form only seeds the walk: it never renders
     # squarer than the default or a packing (``[ablations.balance_race]``).
-    shared = _definition_program(expression, n)
-    compact = len(f"% 0 {expression}\n$\n")
+    shared = _definition_program(expression)
+    compact = len(expression.compact)
+
+    @cache
+    def pack(width: int, *, share: bool) -> str:
+        if width == compact and share:
+            return normal
+        return _packed_program(expression, width, share=share)
+
     packed = []
     for share, seed in ((True, max(len(shared), compact)), (False, compact)):
         width = isqrt(2 * seed)
         walk = []
         for _ in range(4):
-            walk.append(_packed_program(expression, n, width, share=share))
+            walk.append(pack(width, share=share))
             width = max(1, (width + 2 * len(walk[-1].split("\n")) + 1) // 2)
         side = balance_score(min(walk, key=balance_score))[0]
-        walk.append(_packed_program(expression, n, side, share=share))
+        walk.append(pack(side, share=share))
         packed += walk
     return min(default, *packed, key=balance_score)
 
 
 def fargo_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return fargo(request.table, request.width)
-    return fargo(request.table)
+    if request.balance:
+        return _balance(request.table)
+    return fargo(request.table, request.width)
 
 
 def fargo_balance_request(request: BalanceRequest) -> Program:

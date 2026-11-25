@@ -8,7 +8,7 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fargo import generator as boolean
-from esolangs.languages.fargo.generator import _expression, _packed_program
+from esolangs.languages.fargo.generator import _expression_program, _packed_program
 from tests.interpreters.runner import run_program
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate
@@ -146,7 +146,8 @@ def test_default_names_only_the_nodes_sharing_shortens() -> None:
 @pytest.mark.parametrize("width", [1, 12, 40, 10**6])
 def test_packed_lines_name_shared_or_overlong_nodes(width: int) -> None:
     table = format(random.Random(1847).getrandbits(64), "064b")
-    program = _packed_program(_expression(table, 6), 6, width)
+    expression, _ = _expression_program(table, 6)
+    program = _packed_program(expression, width)
     assert _evaluate("Fargo", program, inputs=6) == table
     if width >= 12:
         # Up to a name's length past the width, from lettering in line order.

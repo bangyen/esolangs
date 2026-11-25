@@ -358,7 +358,7 @@ def test_shared_residual_buses_execute_within_ledger(monkeypatch) -> None:
         layouts = iter((plain, rotated))
         calls = []
 
-        def narrow(_table, source, _width):
+        def narrow(_table, source, _width, **_kwargs):
             calls.append(source)
             return next(layouts)
 

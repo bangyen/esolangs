@@ -15,7 +15,8 @@ Size:
 """
 
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from functools import cache
 from math import isqrt, prod
 from typing import NamedTuple
 
@@ -435,20 +436,21 @@ def _program(
     _dialect(expression_syntax, list_update)
     if width is not None and width < 1:
         raise ValueError("width must be at least 1")
-    weights, projected = input_weights(truth_table, n)
-    essential = [bool(weight) for weight in weights]
-    # An ignored input is read and dropped, and the table is indexed by the
-    # rest, including the one-entry table of a constant.
-    dropped = not all(weights)
-    build = _Build(
-        truth_table=truth_table,
-        n=n,
-        width=width,
-        projected=projected,
-        essential=essential,
-        dropped=dropped,
-    )
+    build = _project(truth_table, n, width)
     return _STRATEGIES[expression_syntax, width is None](build)
+
+
+def _project(truth_table: str, n: int, width: int | None) -> _Build:
+    weights, projected = input_weights(truth_table, n)
+    # The table keeps only indexed inputs, including none for constants.
+    return _Build(
+        truth_table,
+        n,
+        width,
+        projected,
+        [bool(weight) for weight in weights],
+        not all(weights),
+    )
 
 
 def _postfix_units(
@@ -478,14 +480,20 @@ def _folds(
     essential: list[bool] | None,
     *,
     postfix: bool = False,
-    columns: int = 0,
+    wide: Iterable[int] = (),
+    unchunked: list[list[str]] | None = None,
 ) -> list[str]:
-    """Return each chunk size folded at ``columns``, else as narrow as it goes."""
+    """Fold each chunk narrowly and reuse the unchunked commands at wider widths."""
+
+    @cache
+    def units(chunk: int) -> list[list[str]]:
+        if unchunked is not None and chunk == len(table):
+            return unchunked
+        return _alight_units(table, n, chunk, essential, postfix=postfix)
+
     return [
-        _alight_folded(
-            _alight_units(table, n, chunk, essential, postfix=postfix), columns
-        )
-        for chunk in sorted(chunks)
+        *(_alight_folded(units(chunk), 0) for chunk in sorted(chunks)),
+        *(_alight_folded(units(len(table)), columns) for columns in wide),
     ]
 
 
@@ -513,60 +521,55 @@ def select_alight(
     flat = _alight_flat_compact(table, n, essential)
     chunks = _square_chunks(len(table), "minimax")
     chunks.add(min(len(table), _alight_chunk(len(table), width)))
-    layouts = [flat, "\n".join(flat), *_folds(table, n, chunks, essential)]
-    for columns in _square_columns(len(flat), "minimax"):
-        layouts += _folds(
-            table, n, {len(table)}, essential, columns=min(width, columns)
-        )
+    columns = (min(width, span) for span in _square_columns(len(flat), "minimax"))
+    layouts = [
+        flat,
+        "\n".join(flat),
+        *_folds(table, n, chunks, essential, wide=columns),
+    ]
     return _smallest(*(_fit(layout, width) for layout in layouts))
 
 
 def balance_alight(
     table: str,
-    default: str,
+    default: str | None = None,
     *,
     expression_syntax: str = "infix",
+    list_update: str = "in_place",
 ) -> str:
-    """Balance the layouts that can win the native minimax width selector."""
+    """Balance the indexed lookup over the essential inputs."""
     n = _validate_truth_table(table)
-    weights, projected = input_weights(table, n)
-    # Constants have no index inputs; reads remain in stream order.
-    essential = [bool(weight) for weight in weights]
-    return _balance_projected(projected, n, default, essential, expression_syntax)
-
-
-def _balance_projected(
-    table: str, n: int, default: str, essential: list[bool], expression_syntax: str
-) -> str:
-    """Balance an indexed lookup after projecting its input dimensions.
-
-    Folds at the square-root chunk counts of both aspect ratios compete with
-    ``default``: geometry ignores the literal's bits, so the best count is a
-    function of the table size alone.
-    """
     postfix = expression_syntax == "postfix"
+    build = _project(table, n, None)
+    table, essential = build.projected, build.essential
+    unchunked = None
+    if default is None:
+        _dialect(expression_syntax, list_update)
+        if postfix:
+            unchunked = _postfix_units(table, n, len(table), essential)
+            default = _flatten(unchunked)
+        else:
+            default = _layout_flat_infix(build)
+
+    # Geometry ignores the literal's bits, so the fit depends on table size.
     chunks = _square_chunks(len(table), "balance")
-    candidates = [default, *_folds(table, n, chunks, essential, postfix=postfix)]
-    for columns in _square_columns(len(default), "balance"):
-        candidates += _folds(
-            table, n, {len(table)}, essential, postfix=postfix, columns=columns
-        )
-    return min(candidates, key=balance_score)
+    columns = _square_columns(len(default), "balance")
+    folds = _folds(
+        table, n, chunks, essential, postfix=postfix, wide=columns, unchunked=unchunked
+    )
+    return min(default, *folds, key=balance_score)
 
 
 def alight_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return alight(
-            request.table,
-            request.width,
-            expression_syntax=request.options.text("expression_syntax"),
-            list_update=request.options.text("list_update"),
+    syntax = request.options.text("expression_syntax")
+    update = request.options.text("list_update")
+    if request.balance:
+        return balance_alight(
+            request.table, expression_syntax=syntax, list_update=update
         )
     return alight(
-        request.table,
-        expression_syntax=request.options.text("expression_syntax"),
-        list_update=request.options.text("list_update"),
+        request.table, request.width, expression_syntax=syntax, list_update=update
     )
 
 

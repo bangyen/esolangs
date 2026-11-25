@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.fargo.generator", "fargo_request"
         ),
         layout_width=True,
+        layout_balance=True,
         balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.fargo.generator", "fargo_balance_request"
         ),

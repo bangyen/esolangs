@@ -38,6 +38,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.alight.generator", "alight_request"
         ),
         layout_width=True,
+        layout_balance=True,
         # Not a tree: a Horner row index into a string literal.
         shape=Shape.LOOKUP,
         balance=OperationRef[BalanceRequest, Program](

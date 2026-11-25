@@ -18,6 +18,7 @@ Decisions:
 
 from collections import defaultdict
 from collections.abc import Sequence
+from functools import cached_property
 from itertools import pairwise
 from math import isqrt
 from typing import Literal, NamedTuple
@@ -425,10 +426,52 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
             if width and 0 < width < grid_width(program)
             else program
         )
-    return _coalesce(_diagram(truth_table, width))
+    return _coalesce(_diagram(truth_table, width, plan=_DiagramPlan(truth_table, n)))
 
 
-def _diagram(truth_table: str, width: int | None = None) -> str:
+class _DiagramPlan:
+    """Share the input selection and drawn candidates across layouts."""
+
+    def __init__(self, table: str, n: int) -> None:
+        self.table = table
+        self.n = n
+
+    @cached_property
+    def essential(self) -> list[int]:
+        return essential_inputs(self.table, self.n)
+
+    @cached_property
+    def projected(self) -> str:
+        return read_at(self.table, self.essential, self.n)
+
+    @cached_property
+    def flat(self) -> str:
+        return _coalesce(_tree(self.table, flat=True, plan=self))
+
+    @cached_property
+    def plain(self) -> str:
+        # The balanced pitch saves 7.12% of exhaustive n=3 commands.
+        # See [ablations.default_flat].
+        return min(_coalesce(_tree(self.table, plan=self)), self.flat, key=grid_rank)
+
+    @cached_property
+    def program(self) -> str:
+        plain = self.plain
+        shared = shared_tree(self.table, plan=self)
+        if shared is not None:
+            candidate, cycles = shared
+            if _admit_shared(plain, candidate, cycles, self.n):
+                return candidate
+        return plain
+
+    @cached_property
+    def strip(self) -> str:
+        return _strip_tree(self.table, plan=self)
+
+
+def _diagram(
+    truth_table: str, width: int | None = None, *, plan: _DiagramPlan | None = None
+) -> str:
     """Return a linear-area tree or a bounded DAG with shared residuals.
 
     The DAG uses directed crossings within the O(T) area of the plain tree;
@@ -440,26 +483,16 @@ def _diagram(truth_table: str, width: int | None = None) -> str:
         # Top-to-bottom update order reads the first input first; the result
         # returns along the lower wire to its input node, which now prints.
         return "▣\n│\n◇\n║\n▦\n║\n◇\n│\n▣"
-    # Reuse the balanced pitch: 7.12% fewer exhaustive n=3 commands after
-    # literal leaves, without larger or slower tables. See [ablations.default_flat].
-    plain = min(
-        (_coalesce(_tree(truth_table)), _coalesce(_tree(truth_table, flat=True))),
-        key=grid_rank,
-    )
-    program = plain
-
-    shared = shared_tree(truth_table)
-    if shared is not None:
-        candidate, cycles = shared
-        if _admit_shared(plain, candidate, cycles, _validate_truth_table(truth_table)):
-            program = candidate
+    if plan is None:
+        plan = _DiagramPlan(truth_table, _validate_truth_table(truth_table))
+    program = plan.program
     if width is None or width <= 0:
         return program
-    plain, program = _coalesce(plain), _coalesce(program)
-    narrow_plain = _narrow_tree(truth_table, plain, width)
+    plain, program = _coalesce(plan.plain), _coalesce(program)
+    narrow_plain = _narrow_tree(truth_table, plain, width, plan=plan)
     if program == plain:
         return narrow_plain
-    narrow_shared = _narrow_tree(truth_table, program, width)
+    narrow_shared = _narrow_tree(truth_table, program, width, plan=plan)
     if grid_width(narrow_shared) <= max(width, grid_width(narrow_plain)) and (
         grid_area(narrow_shared) < grid_area(narrow_plain)
     ):
@@ -486,7 +519,9 @@ def _admit_shared(plain: str, shared: str, cycles: int, n: int) -> bool:
     )
 
 
-def _narrow_tree(truth_table: str, program: str, width: int) -> str:
+def _narrow_tree(
+    truth_table: str, program: str, width: int, *, plan: _DiagramPlan | None = None
+) -> str:
     """Compare rotation, strip and tiny streaming forms of one candidate."""
     lines = program.splitlines()
     span = max(map(len, lines))
@@ -499,10 +534,10 @@ def _narrow_tree(truth_table: str, program: str, width: int) -> str:
     # A strip needs O(T log T) wires in general; bounding it at three inputs
     # keeps this fallback and the larger linear-area trees uniformly O(T).
     # Counted on the kept inputs: an ignored input only lengthens the loader.
-    n = _validate_truth_table(truth_table)
-    if len(essential_inputs(truth_table, n)) <= 3:
-        narrow = _strip_tree(truth_table)
-        program = narrowest_grid(program, narrow)
+    if plan is None:
+        plan = _DiagramPlan(truth_table, _validate_truth_table(truth_table))
+    if len(plan.essential) <= 3:
+        program = narrowest_grid(program, plan.strip)
     if len(truth_table) <= 4 and grid_width(program) > width:
         streamed = _stream_tree(truth_table)
         return narrowest_grid(program, streamed)
@@ -547,11 +582,11 @@ def _rotate_tree(program: str) -> str:
     )
 
 
-def _strip_tree(truth_table: str) -> str:
+def _strip_tree(truth_table: str, *, plan: _DiagramPlan | None = None) -> str:
     """Build a small-arity vertical decision strip with channel-separated nodes."""
-    n = _validate_truth_table(truth_table)
-    essential = essential_inputs(truth_table, n)
-    table = read_at(truth_table, essential, n)
+    if plan is None:
+        plan = _DiagramPlan(truth_table, _validate_truth_table(truth_table))
+    n, essential, table = plan.n, plan.essential, plan.projected
     depth = len(essential)
     builder = _Builder()
     _StripTree(builder, table, depth).run(0, 0, len(table), (0, 0), (0, 0))
@@ -573,7 +608,13 @@ def _strip_tree(truth_table: str) -> str:
     return builder.render()
 
 
-def _tree(truth_table: str, *, prune: bool = True, flat: bool = False) -> str:
+def _tree(
+    truth_table: str,
+    *,
+    prune: bool = True,
+    flat: bool = False,
+    plan: _DiagramPlan | None = None,
+) -> str:
     """Build the tree; ``prune=False`` keeps every input and unfolds spans.
 
     ``flat`` halves the vertical spans (twice as wide as tall).
@@ -581,10 +622,12 @@ def _tree(truth_table: str, *, prune: bool = True, flat: bool = False) -> str:
     Ignored inputs are read and dropped.  Kept inputs are tested in input
     order at every node; the root's arms are not swapped.
     """
-    n = _validate_truth_table(truth_table)
-    essential = essential_inputs(truth_table, n) if prune else list(range(n))
+    if plan is None:
+        plan = _DiagramPlan(truth_table, _validate_truth_table(truth_table))
+    n = plan.n
+    essential = plan.essential if prune else list(range(n))
     if len(essential) < n:
-        truth_table = read_at(truth_table, essential, n)
+        truth_table = plan.projected
     return _layout(truth_table, n, essential, prune=prune, flat=flat)
 
 
@@ -621,7 +664,7 @@ def _layout(
     return builder.render()
 
 
-def _balance(truth_table: str, default: str) -> str:
+def _balance(truth_table: str, default: str | None = None) -> str:
     """Compare the default, the narrowest grid and the flat tree.
 
     The flat tree halves the vertical pitch, so even arities (square
@@ -633,15 +676,20 @@ def _balance(truth_table: str, default: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if truth_table == truth_table[0] * len(truth_table):
+        if default is None:
+            default = _constant_diagram(n, truth_table[0], n + 3)
         return min(
             default,
             _constant_diagram(n, truth_table[0], isqrt(n + 2) + 1),
             key=balance_score,
         )
+    plan = _DiagramPlan(truth_table, n)
+    if default is None:
+        default = _coalesce(plan.program)
     return min(
         default,
-        thisthat(truth_table, 1),
-        _coalesce(_tree(truth_table, flat=True)),
+        _coalesce(_diagram(truth_table, 1, plan=plan)),
+        plan.flat,
         key=balance_score,
     )
 
@@ -796,14 +844,17 @@ def _draw_input_chain(builder: _Builder, n: int, m: int, ess: list[int]) -> None
     )
 
 
-def shared_tree(table: str) -> tuple[str, int] | None:
+def shared_tree(
+    table: str, *, plan: _DiagramPlan | None = None
+) -> tuple[str, int] | None:
     """Return a shared grid and maximum cycles within the previous area envelope."""
-    n = _validate_truth_table(table)
+    if plan is None:
+        plan = _DiagramPlan(table, _validate_truth_table(table))
+    n, ess = plan.n, plan.essential
     limit = max(_MIN_NODE_BUDGET, 2 * isqrt(len(table)))
-    ess = essential_inputs(table, n)
     if not ess:
         return None
-    table = read_at(table, ess, n)
+    table = plan.projected
     m = len(ess)
     layers, children, terminal, incoming = _build_dag(decision_layers(table))
     if not any(key[0] >= 0 and count > 1 for key, count in incoming.items()):
@@ -837,9 +888,9 @@ def shared_tree(table: str) -> tuple[str, int] | None:
 
 def thisthat_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return thisthat(request.table, request.width)
-    return thisthat(request.table)
+    if request.balance:
+        return _balance(request.table)
+    return thisthat(request.table, request.width)
 
 
 def thisthat_balance_request(request: BalanceRequest) -> Program:
