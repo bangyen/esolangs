@@ -284,23 +284,19 @@ def _columns(program: esolangs.Program) -> int:
     return max(len(line) for line in program.split("\n"))
 
 
-def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
-    """``name``'s program for ``table`` and ``bits``, laid out to ``width``."""
-    example = EXAMPLE_BY_ID[LANGUAGES[name].id]
-    variant = replace(
-        example,
-        table=table,
-        bits=tuple(int(bit) for bit in bits) if example.fill else (),
-        inputs=() if example.fill else tuple(bits),
-        scale=1,
-    )
-    return variant.build(width).source
+def _laid_out(
+    example: BooleanExample, program: esolangs.Program, bits: str, width: int | None
+) -> esolangs.Program:
+    """Render one row from source already emitted for this width."""
+    if example.fill is not None:
+        example = replace(example, bits=tuple(map(int, bits)))
+    return example._layout(program, width).source
 
 
 @pytest.mark.parametrize("name", WIDTH_HONOURING)
 def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     """The layout fits the width whenever the generator can build it that narrow."""
-    language = next(lang for lang in LANGUAGES.values() if lang.id == name)
+    example = replace(EXAMPLE_BY_ID[name], scale=1)
     tables = _HONOUR_TABLES
     if name == "inject":
         tables = {**tables, "parity5": parity(5)}
@@ -309,9 +305,11 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     for label, table in tables.items():
         arity = len(table).bit_length() - 1
         bits = "0" * arity
-        narrowest = _columns(_laid_out(language.name, table, bits, 1))
+        narrowest = _columns(_laid_out(example, example.emit(table, width=1), bits, 1))
         for width in _HONOUR_WIDTHS:
-            columns = _columns(_laid_out(language.name, table, bits, width))
+            columns = _columns(
+                _laid_out(example, example.emit(table, width=width), bits, width)
+            )
             assert columns <= max(width, narrowest), (
                 f"{name}: {label} at width {width} came out {columns} columns, "
                 f"wider than both the width and its {narrowest}-column floor"
@@ -330,7 +328,7 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
 def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     """Laying the program out to a width does not change what it computes."""
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    example = EXAMPLE_BY_ID[language.id]
+    example = replace(EXAMPLE_BY_ID[language.id], scale=1)
     relaid = 0
     tables = _HONOUR_TABLES
     if name == "circuit_diagram":
@@ -340,7 +338,13 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
         tables = {**tables, "parity5": parity(5)}
     if name == "thue":
         tables = {**tables, "parity4": parity(4)}
+    widths = (
+        (1, *_HONOUR_WIDTHS)
+        if name in {"arrowqueue", "container", "crement"}
+        else _HONOUR_WIDTHS
+    )
     for label, table in tables.items():
+        emitted = {width: example.emit(table, width=width) for width in (None, *widths)}
         arity = len(table).bit_length() - 1
         for combo in range(2**arity):
             bits = format(combo, f"0{arity}b")
@@ -350,20 +354,15 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
                 if example.fill
                 else esolangs.encode_inputs(language.name, [int(bit) for bit in bits])
             )
-            compact = _laid_out(language.name, table, bits, None)
+            compact = _laid_out(example, emitted[None], bits, None)
             expected = _behaviour(language.name, compact, stdin)
             if name == "back":
                 assert len(expected.split()) == arity + 1
                 assert set(expected.split()) <= {"0", "1"}
                 expected = esolangs.read_answer(language.name, expected)
                 assert expected == table[combo]
-            widths = (
-                (1, *_HONOUR_WIDTHS)
-                if name in {"arrowqueue", "container", "crement"}
-                else _HONOUR_WIDTHS
-            )
             for width in widths:
-                folded = _laid_out(language.name, table, bits, width)
+                folded = _laid_out(example, emitted[width], bits, width)
                 relaid += folded != compact
                 actual = _behaviour(language.name, folded, stdin)
                 if name == "back":

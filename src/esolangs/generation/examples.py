@@ -151,9 +151,10 @@ class BooleanExample:
                 artifact = artifact.fill(self.bits)
             assert isinstance(artifact, ProgramArtifact)
             return artifact
-        backend = LANGUAGES[resolve(self.language)].backend
-        assert backend is not None
-        program = self.emit(self.table, width=width)
+        return self._layout(self.emit(self.table, width=width), width)
+
+    def _layout(self, program: Program, width: int | None) -> ProgramArtifact[Program]:
+        """Render an emitted program with this example's inputs and scale."""
         if isinstance(program, CompressedText):
             return ProgramArtifact(program.wrapped(width), self.language)
         if isinstance(program, Raster):

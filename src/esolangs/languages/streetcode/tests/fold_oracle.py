@@ -15,6 +15,7 @@ from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
     _drive,
     _Grid,
+    _Halt,
     _initial_heading,
     _State,
 )
@@ -160,8 +161,22 @@ def car(rows: list[str]) -> tuple[_Grid, _State]:
     return grid, _State(*start, _initial_heading(grid, start), _NO_LATCHES)
 
 
+class FlatStreet:
+    """Share pure reference transitions across folds of one street."""
+
+    def __init__(self, source: str) -> None:
+        self._grid, self.start = car(source.splitlines())
+        self._moves: dict[tuple[_State, tuple[int, int]], _State | _Halt | None] = {}
+
+    def move(self, state: _State, bits: tuple[int, int]) -> _State | _Halt | None:
+        key = state, bits
+        if key not in self._moves:
+            self._moves[key] = _drive(self._grid, state, *bits)
+        return self._moves[key]
+
+
 def drives_alike(
-    flat: str, fold: str, origin: dict[tuple[int, int], tuple[int, int]]
+    flat: FlatStreet, fold: str, origin: dict[tuple[int, int], tuple[int, int]]
 ) -> bool:
     """Whether the fold's car makes the flat car's every move, bends aside.
 
@@ -172,7 +187,7 @@ def drives_alike(
     A bend corner can line up with another strip's ``+`` and read as a
     junction (a crossing mouth at n=7, first input only), so it is needed.
     """
-    flat_grid, flat_car = car(flat.splitlines())
+    flat_car = flat.start
     fold_grid, fold_car = car(fold.splitlines())
     if origin.get((fold_car.row, fold_car.col)) != (flat_car.row, flat_car.col):
         return False
@@ -181,7 +196,7 @@ def drives_alike(
     while pending:
         flat_state, fold_state = pending.pop()
         for bits in BITS:
-            want = _drive(flat_grid, flat_state, *bits)
+            want = flat.move(flat_state, bits)
             got = _drive(fold_grid, fold_state, *bits)
             # A bend is at most a few dozen cells; its steering ignores bits.
             for _ in range(64):

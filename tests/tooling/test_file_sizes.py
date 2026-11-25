@@ -25,12 +25,6 @@ def _sizes() -> dict[str, int]:
     }
 
 
-def test_no_file_is_over_the_cap() -> None:
-    """A file over the cap must be split."""
-    over = {name: lines for name, lines in _sizes().items() if lines > MAX_LINES}
-    assert not over, f"over {MAX_LINES} lines: {over}. Split the file."
-
-
 #: A per-language helper module under ``src/**/tests`` with a name like this
 #: is an independent oracle or accounting model: migration-acceptance evidence
 #: with its own ceiling, not regression tests.  ``test_*`` files never match.
@@ -61,25 +55,33 @@ def _category(name: str) -> str:
     return "tests"
 
 
-def test_tests_stay_below_their_sources() -> None:
-    """Test code stays below the code it tests; oracles have their own ceiling.
-
-    ``tests/`` + ``src/**/tests`` < ``src``, and ``tests/tooling`` < ``scripts``.
-    """
+def test_source_stays_within_file_and_suite_budgets() -> None:
+    """Cap each file and keep test code below the code it tests."""
+    sizes = _sizes()
+    over = {name: count for name, count in sizes.items() if count > MAX_LINES}
     lines: dict[str, int] = defaultdict(int)
-    for name, count in _sizes().items():
+    for name, count in sizes.items():
         lines[_category(name)] += count
-    assert lines["tests"] > 10_000, "test files were not found"
-    assert lines["oracle"] > 1_000, "oracle files were not found"
-    assert lines["tests"] < lines["source"], (
-        f"tests: {lines['tests']} lines, src: {lines['source']}; prune, don't offset"
+    checks = (
+        (not over, f"over {MAX_LINES} lines: {over}. Split the file."),
+        (lines["tests"] > 10_000, "test files were not found"),
+        (lines["oracle"] > 1_000, "oracle files were not found"),
+        (
+            lines["tests"] < lines["source"],
+            f"tests: {lines['tests']} lines, src: {lines['source']}"
+            "; prune, don't offset",
+        ),
+        (
+            lines["oracle"] < MAX_ORACLE_LINES,
+            f"oracles: {lines['oracle']} lines, ceiling {MAX_ORACLE_LINES}; condense",
+        ),
+        (
+            0 < lines["tooling"] < lines["scripts"],
+            f"tests/tooling: {lines['tooling']}, scripts: {lines['scripts']}",
+        ),
     )
-    assert lines["oracle"] < MAX_ORACLE_LINES, (
-        f"oracles: {lines['oracle']} lines, ceiling {MAX_ORACLE_LINES}; condense"
-    )
-    assert 0 < lines["tooling"] < lines["scripts"], (
-        f"tests/tooling: {lines['tooling']}, scripts: {lines['scripts']}"
-    )
+    errors = [message for ok, message in checks if not ok]
+    assert not errors, "\n".join(errors)
 
 
 #: Shared tests outside the registry contracts (user budget 10,000 on

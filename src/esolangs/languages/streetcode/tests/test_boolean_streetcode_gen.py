@@ -306,6 +306,7 @@ def test_a_stacked_room_street_computes_its_table() -> None:
 def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:
     """Positive control: the shared-sill fold's strip end frames a mouth."""
     from esolangs.languages.streetcode.tests.fold_oracle import (
+        FlatStreet,
         drives_alike,
         shared_sill_fold,
     )
@@ -314,14 +315,15 @@ def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:
     run = import_module("esolangs.languages.streetcode.interpreter").run
     table = "0" * 64 + "1" * 64
     flat = generator._streetcode_flat(table, 7)
+    reference = FlatStreet(flat)
     fold, origin = shared_sill_fold(flat, 30, east=True)
-    assert not drives_alike(flat, fold, origin)
+    assert not drives_alike(reference, fold, origin)
     io = ScriptedIO("0" * 7)
     with pytest.raises(Exception, match="read past the end of input"):
         run(fold.splitlines(), io)
     # The same target, folded with a gap and wide margins, drives alike.
     sound, origin = generator._streetcode_fold(flat, 30, east=True)
-    assert drives_alike(flat, sound, origin)
+    assert drives_alike(reference, sound, origin)
 
 
 def _random_table(rng: random.Random, n: int) -> str:
@@ -330,17 +332,18 @@ def _random_table(rng: random.Random, n: int) -> str:
 
 def _assert_every_fold_drives_alike(n: int, tables: int, step: int) -> None:
     """Every ``step``-th target, both cut directions, random tables."""
-    from esolangs.languages.streetcode.tests.fold_oracle import drives_alike
+    from esolangs.languages.streetcode.tests.fold_oracle import FlatStreet, drives_alike
 
     generator = import_module("esolangs.languages.streetcode.generator")
     rng = random.Random(n)
     for _ in range(tables):
         flat = generator._streetcode_flat(_random_table(rng, n), n)
+        reference = FlatStreet(flat)
         span = max(map(len, flat.splitlines()))
         for target in range(8, span + 1, step):
             for east in (False, True):
                 fold, origin = generator._streetcode_fold(flat, target, east=east)
-                assert drives_alike(flat, fold, origin), (n, target, east)
+                assert drives_alike(reference, fold, origin), (n, target, east)
 
 
 @pytest.mark.medium
