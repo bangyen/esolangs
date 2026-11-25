@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping, Sequence
+from functools import partial
 from types import MappingProxyType
 from typing import Any, NamedTuple, Never, cast
 
@@ -621,14 +622,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     if options.keys() - {"rng"}:
         raise TypeError("fish machines accept only the rng runtime option")
     image = _prepare_grid(source)
-
-    def build(io: IO, rng: Randomness | None) -> _Machine:
-        return _Machine(image, io, rng)
-
-    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
-        return drive(build(io, rng), policy=CAPABILITIES.completion)
-
-    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
+    return RandomRuntimePlan.driven(
+        partial(_Machine, image), policy=CAPABILITIES.completion
+    ).bind(options.get("rng"))
 
 
 def _execute(

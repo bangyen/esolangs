@@ -8,11 +8,11 @@ steps. Geometry outside these examples remains in the raw regression suite.
 import re
 from functools import cache
 from itertools import product
-from pathlib import Path
 
 import pytest
 
 from esolangs.languages.line.interpreter import _execute, _Machine
+from esolangs.languages.line.tests import fixture_image
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, reject_faults, stable_halt
@@ -62,8 +62,7 @@ def _view(machine):
 
 @cache
 def _fixture(example):
-    path = Path(__file__).parent / "fixtures" / (example + ".png")
-    return Raster.from_png(path.read_bytes())
+    return Raster.from_png(fixture_image(f"{example}.png").read_bytes())
 
 
 def _check(factory, example, stdin):

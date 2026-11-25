@@ -55,6 +55,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from ctypes import c_long, sizeof
+from functools import partial
 from typing import Any, NamedTuple, cast
 
 from esolangs.exceptions import HaltError
@@ -437,14 +438,9 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
     if options.keys() - {"rng"}:
         raise TypeError("befunge machines accept only the rng runtime option")
     program = _parse_grid(source)
-
-    def build(io: IO, rng: Randomness | None) -> _Machine:
-        return _Machine(program, io, rng)
-
-    def execute(io: IO, rng: Randomness | None) -> CompletionReport:
-        return drive(build(io, rng), policy=CAPABILITIES.completion)
-
-    return RandomRuntimePlan(build, execute).bind(options.get("rng"))
+    return RandomRuntimePlan.driven(
+        partial(_Machine, program), policy=CAPABILITIES.completion
+    ).bind(options.get("rng"))
 
 
 def _execute(

@@ -22,6 +22,7 @@ from esolangs.languages.line.interpreter.extract import (
 from esolangs.languages.line.interpreter.lattice import _DIRS, Stroke, Vertex
 from esolangs.languages.line.interpreter.mask import Mask, from_grey
 from esolangs.languages.line.interpreter.simulate import IO, run
+from esolangs.languages.line.tests import fixture_image
 from esolangs.raster.png import read_grey
 
 
@@ -43,12 +44,6 @@ def test_transition_preserves_prior_states_and_requests_output() -> None:
     assert _advance(halted, program) == (halted, None)
     with pytest.raises(ValueError, match="requires a value"):
         _advance(initial, program)
-
-
-# Anchored to this file rather than the working directory, so the wiki
-# fixtures resolve no matter where pytest is invoked from.
-FIXTURES = str(Path(__file__).parents[1] / "fixtures")
-INVALID_FIXTURES = Path(__file__).parents[1] / "fixtures"
 
 
 def test_lattice_probe_length_is_derived_from_unit() -> None:
@@ -226,7 +221,7 @@ class TestWikiFixtures:
     def test_addition(self, a: int, b: int, expected: int) -> None:
         """addition.png computes a + b for several input pairs, including 0."""
         io, outputs = _io([a, b])
-        run(extract(f"{FIXTURES}/addition.png"), io=io)
+        run(extract(str(fixture_image("addition.png"))), io=io)
         assert outputs == [expected]
 
     @pytest.mark.parametrize(
@@ -236,12 +231,12 @@ class TestWikiFixtures:
     def test_multiplication(self, a: int, b: int, expected: int) -> None:
         """multiplication.png computes a * b for several input pairs."""
         io, outputs = _io([a, b])
-        run(extract(f"{FIXTURES}/multiplication.png"), io=io)
+        run(extract(str(fixture_image("multiplication.png"))), io=io)
         assert outputs == [expected]
 
     def test_antialiased_scan(self) -> None:
         """Softened 3px strokes retain their program and arithmetic."""
-        path = Path(FIXTURES) / "addition_antialiased_3x.png"
+        path = fixture_image("addition_antialiased_3x.png")
         levels = {level for row in read_grey(path.read_bytes()) for level in row}
         assert len(levels) == 12
         stroke = extract(str(path))
@@ -253,7 +248,7 @@ class TestWikiFixtures:
 
 def test_antialiased_resample_is_rejected() -> None:
     """A resample that erases the stroke core fails instead of changing it."""
-    path = INVALID_FIXTURES / "addition_antialiased.png"
+    path = fixture_image("addition_antialiased.png")
     levels = {level for row in read_grey(path.read_bytes()) for level in row}
     assert len(levels) == 194
     with pytest.raises(ValueError, match="left 921 source pixels unaccounted"):
@@ -374,7 +369,7 @@ def test_pixel_vm_matches_the_native_arithmetic_fixture(fixture: str) -> None:
     from esolangs.raster import Raster
     from esolangs.vm import make_vm, run_until_halt
 
-    source = Raster.from_png((Path(FIXTURES) / fixture).read_bytes())
+    source = Raster.from_png(fixture_image(fixture).read_bytes())
     stdin = "3\n2\n"
     vm = make_vm("Line", source, stdin=stdin)
     assert run_until_halt(vm, 1000)

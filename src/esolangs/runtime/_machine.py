@@ -6,9 +6,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
+from esolangs.runtime._drive import drive
+
 if TYPE_CHECKING:
     from esolangs._cycles import _StepMachine
-    from esolangs.runtime._lifecycle import CompletionReport
+    from esolangs.runtime._lifecycle import Completion, CompletionReport
     from esolangs.runtime._program import RunnerProgram
     from esolangs.runtime.io import IO
     from esolangs.runtime.randomness import Randomness
@@ -50,6 +52,20 @@ class RandomRuntimePlan:
 
     machine: Callable[[IO, Randomness | None], _StepMachine]
     run: Callable[[IO, Randomness | None], CompletionReport]
+
+    @classmethod
+    def driven(
+        cls,
+        machine: Callable[[IO, Randomness | None], _StepMachine],
+        *,
+        policy: Completion,
+    ) -> RandomRuntimePlan:
+        """Drive fresh machines with the interpreter's completion policy."""
+
+        def execute(io: IO, rng: Randomness | None) -> CompletionReport:
+            return drive(machine(io, rng), policy=policy)
+
+        return cls(machine, execute)
 
     def bind(self, rng: Randomness | None) -> RuntimePlan:
         """Bind caller-owned randomness without retaining it in the source plan."""

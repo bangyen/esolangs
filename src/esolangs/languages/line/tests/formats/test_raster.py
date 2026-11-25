@@ -9,6 +9,7 @@ from esolangs import run
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.render import render
 from esolangs.languages.line.interpreter import run as run_line
+from esolangs.languages.line.tests import FIXTURES, SHARED_IMAGES
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 
@@ -98,9 +99,7 @@ def _fixture_images(directory: Path) -> list[Path]:
 
 
 @pytest.mark.medium
-@pytest.mark.parametrize(
-    "image", _fixture_images(Path(__file__).parents[1] / "fixtures")
-)
+@pytest.mark.parametrize("image", [*_fixture_images(FIXTURES), *SHARED_IMAGES.values()])
 def test_every_wiki_fixture_extracts(image: Path) -> None:
     from esolangs.languages.line.interpreter.extract import extract
 

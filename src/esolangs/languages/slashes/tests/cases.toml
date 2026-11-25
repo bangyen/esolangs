@@ -118,7 +118,7 @@ source_file = "fixtures/slashes_counter.txt"
 [[examples]]
 id = "quine-slashes"
 source_file = "fixtures/slashes_quine-slashes.txt"
-expected_file = "fixtures/slashes_quine-slashes_out.txt"
+expected_file = "fixtures/slashes_quine-slashes.txt"
 
 [[spec_triggers]]
 program = "Hi"
