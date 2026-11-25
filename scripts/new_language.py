@@ -188,9 +188,19 @@ def _readmission(name: str) -> str:
 
 def scaffold(name: str, category: str, *, generator: bool = True) -> list[Path]:
     """Create and return the interpreter, generator and test stubs."""
+    from esolangs.registry import LANGUAGES
+    from esolangs.registry._catalog import _folded_spelling
+
     if removed_ground(name):
         raise ValueError(_readmission(name))
     slug = _slug(name)
+    proposed = {_folded_spelling(name), _folded_spelling(slug)}
+    for owner in LANGUAGES.values():
+        for spelling in (owner.name, owner.id, *owner.aliases):
+            if _folded_spelling(spelling) in proposed:
+                raise ValueError(
+                    f"{spelling!r} is already registered to {owner.name!r}"
+                )
     package = ROOT / "src/esolangs/languages" / slug
     # JSON's string escapes also work inside the generated Python docstrings.
     escaped_name = json.dumps(name, ensure_ascii=False)[1:-1]

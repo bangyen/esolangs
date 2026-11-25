@@ -16,7 +16,7 @@ from docs.writing import publish_generated
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
 from esolangs.exceptions import ProgramError
-from esolangs.generation.examples import BOOLEAN_EXAMPLES, BooleanExample
+from esolangs.generation.examples import BOOLEAN_EXAMPLES
 from esolangs.operations.source import read_png_source
 from esolangs.portable import to_file
 from esolangs.raster import Raster, png
@@ -38,40 +38,6 @@ def boolean_programs() -> Iterator[tuple[str, ProgramArtifact[Program]]]:
 def _display_name(stem: str) -> str:
     """Return the registry display name for an example's filename stem."""
     return _BY_ID.get(canonical_id(stem.replace("-", " ")), stem)
-
-
-def _logical_row(stem: str, example: BooleanExample) -> str:
-    """Return the input row as plain bits, however the language spells it.
-
-    The Input column shows the *encoded* stdin, which made this table
-    unusable for judging an example programmatically: a reader had to work
-    back from encoded characters or a decimal row index to plain bits.
-    A template language already records its bits; a reading one does not.
-    Recover its row by encoding each candidate and keeping the match.
-
-    That search is also a check.  There are only ``2**n`` candidates and
-    exactly one can match, so a stored input that no row encodes to is a
-    disagreement between the committed example and ``encode_inputs`` -- and
-    it is reported here rather than written as a confident wrong row.
-    """
-    import esolangs
-
-    if example.fill is not None:
-        return "".join(str(bit) for bit in example.bits)
-    inputs = list(example.inputs)
-    if not inputs:
-        return "(none)"
-    name = _display_name(stem)
-    arity = len(example.table).bit_length() - 1
-    for row in range(2**arity):
-        candidate = [(row >> (arity - 1 - i)) & 1 for i in range(arity)]
-        encoded = esolangs.encode_inputs(name, candidate).strip().split("\n")
-        if encoded == inputs:
-            return "".join(str(b) for b in candidate)
-    raise AssertionError(
-        f"{stem}: no input row encodes to {inputs!r}; the committed example "
-        f"and encode_inputs disagree"
-    )
 
 
 def boolean_manifest_text() -> str:
@@ -107,17 +73,19 @@ def boolean_manifest_text() -> str:
         "| --- | --- | --- | --- | --- | --- |",
     ]
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
+        row = "".join(str(bit) for bit in example.bits)
         if example.fill is not None:
-            given = "embedded " + "".join(str(b) for b in example.bits)
+            given = "embedded " + row
         else:
             given = (
                 " ".join(
-                    value if value.isprintable() else repr(value)
+                    value
+                    if value.isprintable() and value == value.strip()
+                    else repr(value)
                     for value in example.inputs
                 )
                 or "(none)"
             )
-        row = _logical_row(stem, example)
         if not example.expected_compared:
             expected = "not the answer -- see note"
         else:

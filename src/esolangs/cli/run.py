@@ -30,8 +30,10 @@ from esolangs.cli.hints import (
     _cli_error_text,
     _exit_code,
     _RunRetry,
+    _swapped_run_hint,
     _template_hint,
     _timeout_text,
+    _with_cli_hint,
 )
 from esolangs.cli.io import (
     _emit_partial,
@@ -49,6 +51,7 @@ from esolangs.exceptions import (
     EsolangError,
     ExecutionBudgetError,
     TemplateError,
+    UnknownLanguageError,
 )
 from esolangs.operations.execution import (
     _execute_loaded,
@@ -163,8 +166,23 @@ def _run(rest: list[str]) -> None:
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
     # have answered without reading a byte.
-    with _errors():
+    try:
         declaration = catalog.languages[catalog.resolve(language)]
+    except UnknownLanguageError as lookup_error:
+        hint = _swapped_run_hint(
+            path,
+            language,
+            catalog,
+            portable="--artifact" in flags,
+            options=(
+                *sorted(flags - {"--artifact"}),
+                *(f"{option}={value}" for option, value in options.items()),
+                *(f"--set={pair}" for pair in set_pairs),
+            ),
+        )
+        if hint is not None:
+            _with_cli_hint(lookup_error, hint)
+        _fail(lookup_error)
     if max_memory is not None:
         try:
             check_memory(max_memory, isolated=True)

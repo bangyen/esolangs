@@ -125,6 +125,17 @@ def test_scaffold_refuses_an_existing_namespace_module(root: Path) -> None:
     assert not target.with_suffix("").exists()
 
 
+@pytest.mark.parametrize("name", ["Slashalash", "SLASHALASH!"])
+def test_start_rejects_names_and_ids_owned_by_a_language_alias(
+    root: Path, capsys: pytest.CaptureFixture[str], name: str
+) -> None:
+    with pytest.raises(SystemExit) as caught:
+        new_language.main(["start", name, "--category", "other"])
+    assert caught.value.code == 2
+    assert "'Slashalash' is already registered to '///'" in capsys.readouterr().err
+    assert not (root / "src/esolangs/languages").exists()
+
+
 @pytest.mark.parametrize("argv", [[], ["Tiny", "--category", "other"]])
 def test_start_requires_an_explicit_command(root: Path, argv: list[str]) -> None:
     with pytest.raises(SystemExit) as caught:

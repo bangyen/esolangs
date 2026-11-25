@@ -1,6 +1,7 @@
 """Run every committed example program and check its output."""
 
 import sys
+from dataclasses import replace
 from itertools import zip_longest
 from pathlib import Path
 
@@ -126,6 +127,14 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
         f"languages/EXAMPLES.md is stale; run {REGENERATE}"
     )
+
+
+def test_manifest_uses_declared_bits_with_whitespace_in_stdin(monkeypatch) -> None:
+    from scripts.docs import examples
+
+    example = replace(BOOLEAN_GENERATED[REFERENCE], bits=(1, 0), inputs=(" 10 ",))
+    monkeypatch.setattr(examples, "BOOLEAN_EXAMPLES", {REFERENCE: example})
+    assert "| `10` | ' 10 ' |" in examples.boolean_manifest_text()
 
 
 def test_boolean_examples_cover_every_committed_file() -> None:

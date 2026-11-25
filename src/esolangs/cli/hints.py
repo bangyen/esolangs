@@ -220,6 +220,29 @@ def _native_run_hint(
     return _source_retry_hint(hint, command, options)
 
 
+def _swapped_run_hint(
+    language: str,
+    path: str,
+    catalog: Catalog,
+    *,
+    portable: bool,
+    options: tuple[str, ...],
+) -> str | None:
+    """Suggest the filename after the language when the operands look reversed."""
+    try:
+        declaration = catalog.languages[catalog.resolve(language)]
+    except UnknownLanguageError:
+        return None
+    hint = "the language comes before the program file."
+    if path == "-" and _runtime_reads_stdin(declaration.runtime):
+        path = "program.json" if portable else "program"
+        hint += f" Save the program as {path} so stdin can carry its input."
+    command = _run_source_command(
+        language, path, catalog, portable=portable, options=options
+    )
+    return f"{hint} Try {command}" if command is not None else hint
+
+
 def _portable_run_hint(
     owner: str, path: str, catalog: Catalog, hint: str, options: tuple[str, ...]
 ) -> str:

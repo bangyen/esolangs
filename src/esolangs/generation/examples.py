@@ -54,8 +54,8 @@ class BooleanExample:
     ``generator(table)`` produces the program (or the template ``fill``
     instantiates with ``bits``); ``interpreter`` is the dotted module,
     ``split`` passes lines, ``kwargs`` extra ``run()`` ints (``seed`` becomes
-    a ``Seeded`` where the language is random); ``inputs`` are encoded stdin
-    chunks; ``expected`` is the whole stdout.
+    a ``Seeded`` where the language is random); ``bits`` are the input row,
+    ``inputs`` are encoded stdin chunks, and ``expected`` is the whole stdout.
     """
 
     generator: Generator
@@ -215,6 +215,7 @@ def _reader(
     generator: Generator,
     interpreter: str,
     *,
+    bits: tuple[int, ...],
     table: str = AND2,
     inputs: tuple[str, ...] = ("0", "1"),
     expected: str = "0",
@@ -232,6 +233,7 @@ def _reader(
         interpreter=interpreter,
         expected=expected,
         inputs=inputs,
+        bits=bits,
         split=split,
         kwargs=kwargs,
     )
@@ -313,6 +315,7 @@ def _register() -> None:
                 lang.backend.entrypoint,
                 lang.runtime.interpreter,
                 table=spec.table,
+                bits=spec.bits,
                 inputs=(stdin,)
                 if lang.contract.input_shape == "char_stream"
                 else tuple(stdin.splitlines()),
