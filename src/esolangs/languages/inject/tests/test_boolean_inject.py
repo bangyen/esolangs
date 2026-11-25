@@ -9,7 +9,6 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import read_at
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.inject import generator as boolean
 from esolangs.languages.inject.generator import _half_pattern, _Names, _tree
@@ -22,7 +21,6 @@ from tests.support.generator_support import (
     assert_parity_at_most_doubles,
     assert_saved_rows,
     constant_programs,
-    evaluate_generated,
     measure_run,
     three_input_corpus_size,
 )
@@ -113,9 +111,7 @@ class TestInject:
             for row in range(1 << n):
                 assert run_inject(program, list(f"{row:0{n}b}")) == table[row] + "\n"
 
-    def test_chunked_lookup_drops_ignored_inputs(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_chunked_lookup_drops_ignored_inputs(self) -> None:
         """Input 2 of 7 is read and never tested; the table is indexed without it."""
         small = "".join(str((row * 73 + row // 3) & 1) for row in range(64))
         table = "".join(small[r >> 1 & 32 | r & 31] for r in range(128))
@@ -126,17 +122,7 @@ class TestInject:
         )
         for row in range(128):
             assert run_inject(program, list(f"{row:07b}")) == table[row] + "\n"
-        assert boolean.read_at is read_at
-        monkeypatch.setattr(
-            boolean,
-            "read_at",
-            lambda table, order, n: read_at(
-                table.translate(str.maketrans("01", "10")), order, n
-            ),
-        )
-        assert evaluate_generated("Inject", table, width=1) == table.translate(
-            str.maketrans("01", "10")
-        )
+        assert_analysis_complement("Inject", "input_weights", table, width=1)
 
     def test_chunked_source_growth_is_linear(self) -> None:
         sizes = [

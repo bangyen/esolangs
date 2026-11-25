@@ -31,11 +31,10 @@ Decisions:
 import string
 
 from esolangs.generation.helpers import (
+    WeightedLookup,
     _validate_truth_table,
-    essential_inputs,
     grid_width,
     input_weights,
-    read_at,
     short_name,
     subtree_ids,
 )
@@ -196,31 +195,44 @@ def inject(truth_table: str, width: int | None = None) -> str:
     Width selects a chunked lookup with an O(n) floor; complete commands
     never split.
     """
+    return _program(truth_table, width)
+
+
+def _program(
+    truth_table: str, width: int | None = None, *, balance: bool = False
+) -> str:
     n = _validate_truth_table(truth_table)
-    if truth_table.count(truth_table[0]) == len(truth_table):
+    constant = truth_table.count(truth_table[0]) == len(truth_table)
+    lookup = None
+    if constant:
         # [ablations.constant_table_audit_20261101]: one scratch block, inert tail.
-        return "readto a\n" * n + f"send z\nz;\n{truth_table[0]}\nz;\na;\na;"
-    if len(truth_table) <= 16:
+        program = "readto a\n" * n + f"send z\nz;\n{truth_table[0]}\nz;\na;\na;"
+    elif len(truth_table) <= 16:
         program = _inject_ordered(truth_table)
     else:
-        program = _inject_halving(truth_table)
-    widest = grid_width(program)
-    if width is None or widest <= width:
+        lookup = input_weights(truth_table, n)
+        program = _inject_halving(lookup)
+    if balance:
+        return _balance(program, lookup or input_weights(truth_table, n))
+    if width is None or constant:
         return program
-    banded = _inject_banded(truth_table)
+    widest = grid_width(program)
+    if widest <= width:
+        return program
+    banded = _inject_banded(lookup or input_weights(truth_table, n))
     return banded if grid_width(banded) < widest else program
 
 
-def _inject_banded(truth_table: str, *, square: bool = False) -> str:
+def _inject_banded(lookup: WeightedLookup, *, square: bool = False) -> str:
     """Select an O(m)-bit chunk of the ``m`` essential inputs, then halve it.
 
     ``square`` sizes the chunk to ``2**((m + 4) // 2)`` characters, so chunk
     width and the tree's line count both grow as ``sqrt(T)``.
     Ignored inputs are read and never tested (see :func:`_inject_halving`).
     """
-    n = _validate_truth_table(truth_table)
-    essential = essential_inputs(truth_table, n)
-    table = read_at(truth_table, essential, n)
+    weights, table = lookup
+    n = len(weights)
+    essential = [i for i, weight in enumerate(weights) if weight]
     m = len(essential)
     # >= m rows per chunk amortize O(m)-letter unique labels over the table.
     low = min(m, (m - 1).bit_length())
@@ -254,15 +266,14 @@ def _inject_banded(truth_table: str, *, square: bool = False) -> str:
     return "\n".join([*lines, *_data(names, "0")])
 
 
-def _inject_halving(truth_table: str) -> str:
+def _inject_halving(lookup: WeightedLookup) -> str:
     """Select one table character with linear total regex text.
 
     An input's halving is its weight; an ignored input, weight 0, is read
     and never tested, and the table is indexed by the rest.
     """
-    n = _validate_truth_table(truth_table)
-    weights, projected = input_weights(truth_table, n)
-    names = _Names(n)
+    weights, projected = lookup
+    names = _Names(len(weights))
     lines = _reads(names)
     lines += _halve(
         names, [(h, i) for h, i in zip(weights, names.inputs, strict=True) if h]
@@ -289,7 +300,7 @@ def _inject_ordered(truth_table: str) -> str:
     return "\n".join([*body, *tail, *_data(names, None)])
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(default: str, lookup: WeightedLookup) -> str:
     """Race both banded lookups against the default by area.
 
     The narrow chunk wins at n=3..4 (``[ablations.balance_banded]``); the
@@ -297,19 +308,20 @@ def _balance(table: str, default: str) -> str:
     """
     return min(
         default,
-        _inject_banded(table),
-        _inject_banded(table, square=True),
+        _inject_banded(lookup),
+        _inject_banded(lookup, square=True),
         key=balance_score,
     )
 
 
 def inject_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    if request.width is not None:
-        return inject(request.table, request.width)
-    return inject(request.table)
+    return _program(request.table, request.width, balance=request.balance)
 
 
 def inject_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+    table = request.table
+    return _balance(
+        request.text_source(), input_weights(table, _validate_truth_table(table))
+    )

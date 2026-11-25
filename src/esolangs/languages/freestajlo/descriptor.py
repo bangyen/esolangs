@@ -22,6 +22,7 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.freestajlo.generator", "freestajlo_request"
         ),
+        layout_balance=True,
         layout_width=False,
         shape=Shape.LOOKUP,
         wrap=TokenWrapper(_UNIT),

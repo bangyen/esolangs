@@ -19,7 +19,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
     symmetric_weights,
 )
-from esolangs.generation.lookup import prefix_counts
+from esolangs.generation.lookup import prefix_counts, symmetric_outputs
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.registry import LANGUAGES
@@ -58,6 +58,7 @@ def assert_analysis_complement(
         "prefix_counts": prefix_counts,
         "read_at": read_at,
         "input_weights": input_weights,
+        "symmetric_outputs": symmetric_outputs,
         "symmetric_weights": symmetric_weights,
         "flag_tree_body": flag_tree_body,
     }[attribute]

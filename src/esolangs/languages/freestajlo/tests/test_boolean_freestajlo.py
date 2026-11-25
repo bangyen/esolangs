@@ -44,7 +44,7 @@ def test_balance_of_n8_cuts_the_literal() -> None:
 
 def _check_constants() -> None:
     assert_analysis_complement("Freestajlo", "read_at")
-    assert_analysis_complement("Freestajlo", "symmetric_weights", "0110")
+    assert_analysis_complement("Freestajlo", "symmetric_outputs", "0110")
     from esolangs.languages.freestajlo.interpreter import run
 
     for n, bit, _options, program in constant_programs("Freestajlo", range(1, 13)):

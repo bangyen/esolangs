@@ -26,8 +26,8 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
     read_at,
-    symmetric_weights,
 )
+from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_program, balance_score
@@ -47,25 +47,51 @@ _DECODE = f"${_WORD}%\\{_WORD}/1+&{_BASE}-\\2\\^/2%:"
 
 def freestajlo(truth_table: str) -> str:
     """Build a Freestajlo program printing ``truth_table[row]`` for the inputs."""
+    return _program(truth_table)
+
+
+def _reads(n: int, used: list[int], combine: str) -> str:
+    reads = [";#"] * n
+    for k, i in enumerate(used):
+        reads[i] = combine if k else ";"
+    return "".join(reads)
+
+
+def _program(
+    truth_table: str, *, balance: bool = False, default: str | None = None
+) -> str:
+    """Reuse the projected lookup and reads when racing chunked layouts."""
     n = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, n)
     reduced = read_at(truth_table, used, n)
     if not used:
-        return ";" * n + reduced + ":"
-    reads = [";#" for _ in range(n)]
-    for k, i in enumerate(used):
-        reads[i] = "2*;+" if k else ";"
-    plain = f'"{reduced}"' + "".join(reads) + "&."
-    packed = f'"{_pack(reduced)}"' + "".join(reads) + _DECODE
-    forms = [plain, packed]
-    if (symmetric := symmetric_weights(truth_table, n)) is not None:
-        # The count picks one of len(used) + 1 entries
-        # ([ablations.symmetric_count]).
-        counts = [";#" for _ in range(n)]
-        for k, i in enumerate(used):
-            counts[i] = ";+" if k else ";"
-        forms.append(f'"{symmetric.table}"' + "".join(counts) + "&.")
-    return min(forms, key=len)
+        constant = ";" * n + reduced + ":" if default is None else default
+        return balance_program(constant, "freestajlo") if balance else constant
+
+    tail = _reads(n, used, "2*;+")
+    packed = _pack(reduced)
+    if default is None:
+        forms = [f'"{reduced}"{tail}&.', f'"{packed}"{tail}{_DECODE}']
+        if (
+            len(used) >= 2
+            and (symmetric := symmetric_outputs(reduced, len(used))) is not None
+        ):
+            # The count picks one of len(used) + 1 entries.
+            # See [ablations.symmetric_count].
+            forms.append(f'"{symmetric}"{_reads(n, used, ";+")}&.')
+        default = min(forms, key=len)
+    if not balance:
+        return default
+
+    literal, chunk = _cut(reduced)
+    plain = f"{literal}{tail}${chunk}/+&."
+    literal, chunk = _cut(packed)
+    decode = _DECODE.replace("1+&", f"${chunk}/+1+&", 1)
+    candidates = (default, plain, literal + tail + decode)
+    return min(
+        (balance_program(form, "freestajlo") for form in candidates),
+        key=balance_score,
+    )
 
 
 def _cut(literal: str) -> tuple[str, int]:
@@ -78,28 +104,6 @@ def _cut(literal: str) -> tuple[str, int]:
     return "".join(f'"{c}"' for c in reversed(chunks)), chunk
 
 
-def _balance(table: str, default: str) -> str:
-    """Return the default or its literal cut into chunks, the least balanced side."""
-    n = _validate_truth_table(table)
-    used = essential_inputs(table, n)
-    reduced = read_at(table, used, n)
-    best = balance_program(default, "freestajlo")
-    if not used:
-        return best
-    reads = [";#" for _ in range(n)]
-    for k, i in enumerate(used):
-        reads[i] = "2*;+" if k else ";"
-    tail = "".join(reads)
-    forms = []
-    literal, chunk = _cut(reduced)
-    forms.append(f"{literal}{tail}${chunk}/+&.")
-    literal, chunk = _cut(_pack(reduced))
-    decode = _DECODE.replace("1+&", f"${chunk}/+1+&", 1)
-    forms.append(literal + tail + decode)
-    candidates = [best, *(balance_program(form, "freestajlo") for form in forms)]
-    return min(candidates, key=balance_score)
-
-
 def _pack(table: str) -> str:
     """Return ``table`` as printable characters, entry ``i`` at bit ``i % 6``."""
     return "".join(
@@ -110,9 +114,11 @@ def _pack(table: str) -> str:
 
 def freestajlo_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
+    if request.balance:
+        return _program(request.table, balance=True)
     return freestajlo(request.table)
 
 
 def freestajlo_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return _balance(request.table, request.text_source())
+    return _program(request.table, balance=True, default=request.text_source())

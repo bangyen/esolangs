@@ -172,7 +172,7 @@ def _chunked_columns(size: int, suffix_lengths: list[int]) -> int:
     return max(_MIN_CHUNK_WIDTH + 3, isqrt(4 * size + 2 * suffix) + 1)
 
 
-def _balance(table: str, default: str) -> str:
+def _balance(_table: str, default: str) -> str:
     """Return the squarest rendering of the table lookup program.
 
     Keeps the ``balance_score`` minimum of the unwrapped ``default``, whole
@@ -184,15 +184,15 @@ def _balance(table: str, default: str) -> str:
     atoms = re.findall(_BRACKET_LITERAL, default)
     floor = max(map(len, atoms))
     width = balanced_token_width(atoms, minimum=floor)
-    candidates = [default, modulous(table, width)]
+    candidates = [default, _bracket_literal(default, width)]
     if default.startswith("[INP INT]"):
         return min(candidates, key=balance_score)
-    size = len(atoms[0]) - _TABLE_PUSH_OVERHEAD
-    # Skip the ``[PSH STR "`` prologue, the table, and the ``"]`` closer: the
-    # rest is the instruction suffix the chunked rows pack beside the pushes.
-    suffix = _TOKEN.findall(default[size + _TABLE_PUSH_OVERHEAD :])
-    centre = _chunked_columns(size, list(map(len, suffix)))
-    candidates.extend(modulous(table, centre + offset) for offset in (-3, -1, 1, 3))
+    literal = atoms[0].removeprefix('[PSH STR "').removesuffix('"]')
+    suffix = _TOKEN.findall(default[len(atoms[0]) :])
+    centre = _chunked_columns(len(literal), list(map(len, suffix)))
+    candidates.extend(
+        _fit(default, literal, centre + offset) for offset in (-3, -1, 1, 3)
+    )
     return min(candidates, key=balance_score)
 
 

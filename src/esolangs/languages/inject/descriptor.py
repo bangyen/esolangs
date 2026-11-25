@@ -21,6 +21,7 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.inject.generator", "inject_request"
         ),
+        layout_balance=True,
         layout_width=True,
         balance=OperationRef[BalanceRequest, Program](
             "esolangs.languages.inject.generator", "inject_balance_request"
