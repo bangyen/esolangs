@@ -166,7 +166,15 @@ def _dump(
 ) -> tuple[Outputs, Timings]:
     """Run :func:`outputs` against the tree at ``src``; return it and its time."""
     env = dict(os.environ, PYTHONPATH=str(src))
-    command = [sys.executable, __file__, "--dump", name, "--max-n", str(max_n)]
+    command = [
+        sys.executable,
+        __file__,
+        "--dump",
+        str(src),
+        name,
+        "--max-n",
+        str(max_n),
+    ]
     try:
         result = run_bounded(
             command,
@@ -337,7 +345,7 @@ def main(
         "larger arities use named witnesses",
     )
     parser.add_argument("--speed", action="store_true", help="also compare time")
-    parser.add_argument("--dump", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--dump", type=Path, help=argparse.SUPPRESS)
     argv = sys.argv[1:] if argv is None else argv
     args = parser.parse_args(argv)
     if args.mutant_target is not None and args.mutant is None:
@@ -347,6 +355,15 @@ def main(
     except ValueError as error:
         parser.error(str(error))
     if args.dump:
+        import esolangs
+
+        origin = esolangs.__file__
+        if origin is None or not Path(origin).resolve().is_relative_to(
+            args.dump.resolve()
+        ):
+            raise SystemExit(
+                "generation worker imported esolangs from the wrong source tree"
+            )
         witnesses = json.load(sys.stdin)
         dumped, seconds = _timed_outputs(args.language, args.max_n, witnesses)
         print(json.dumps({"outputs": dumped, "seconds": seconds}))

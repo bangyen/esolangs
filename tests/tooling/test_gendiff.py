@@ -36,6 +36,15 @@ def test_differences_include_a_missing_request() -> None:
     assert gendiff.differences({"a": "x", "b": "y"}, {"a": "x"}) == ["b"]
 
 
+def test_dump_refuses_the_editable_install_when_its_source_is_missing(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "missing-src"
+    with pytest.raises(SystemExit, match="wrong source tree") as error:
+        gendiff._dump(source, REFERENCE, 1, {})
+    assert str(source) in str(error.value)
+
+
 def test_construction_layouts_extend_exhaustive_requests(monkeypatch) -> None:
     from docs import evidence
 

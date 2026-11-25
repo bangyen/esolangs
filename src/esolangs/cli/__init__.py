@@ -37,11 +37,9 @@ import os
 import re
 import shlex
 import sys
-from codecs import BOM_UTF8
 from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import asdict, replace
-from encodings.utf_8 import IncrementalDecoder as UTF8Decoder
 from itertools import chain, pairwise
 from typing import cast, get_args
 
@@ -53,6 +51,7 @@ from esolangs import (
 )
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.cli._answer_input import _AnswerTail, _snapshot_answer
+from esolangs.cli._portable_input import _native_binary_format, _portable_pipe_check
 from esolangs.cli.args import (
     _FLAG_OPTIONS,
     _VALUE_OPTIONS,
@@ -97,7 +96,6 @@ from esolangs.cli.io import (
     _diagnostic,
     _fail,
     _flush_stdout,
-    _native_binary_format,
     _output_unavailable,
     _read_stdin,
     _read_truth_table,
@@ -119,7 +117,6 @@ from esolangs.operations.boolean_io import (
     _encode_inputs,
     _read_output_answer,
 )
-from esolangs.portable import _portable_bom_error
 from esolangs.raster import png
 from esolangs.registry import Catalog, LanguageDeclaration, SourceKind, get_catalog
 from esolangs.registry._contracts import AnswerMode, InputShape, SourceForm
@@ -561,35 +558,6 @@ def _check_saved_template_format(data: bytes | bytearray, label: str) -> None:
         )
 
 
-def _saved_template_pipe_check() -> Callable[[bytes, bytearray], None]:
-    """Check the encoding and the JSON object opener before EOF."""
-    decoder = UTF8Decoder()
-    started = False
-
-    def check(chunk: bytes, received: bytearray) -> None:
-        nonlocal started
-        _check_saved_template_format(received, "stdin")
-        if received.startswith(BOM_UTF8):
-            raise _portable_bom_error("stdin")
-        try:
-            text = decoder.decode(chunk)
-        except UnicodeDecodeError:
-            # Re-decode only on failure to retain the complete stream's byte offset.
-            received.decode("utf-8")
-            raise
-        if not started and (prefix := text.lstrip(" \t\r\n")):
-            if not prefix.startswith("{"):
-                raise _with_cli_hint(
-                    ProgramError(
-                        "stdin: --from-template expects a portable JSON object"
-                    ),
-                    _PORTABLE_TEMPLATE_HINT,
-                )
-            started = True
-
-    return check
-
-
 def _read_saved_template(
     path: str, name: str, catalog: Catalog, *, retry_options: list[str]
 ) -> TemplateArtifact:
@@ -599,7 +567,13 @@ def _read_saved_template(
     label = "stdin" if path == "-" else display_label(path)
     if path == "-":
         data = _bounded_source_stdin(
-            None, "", None, _MAX_PROGRAM_BYTES, pipe_check=_saved_template_pipe_check()
+            None,
+            "",
+            None,
+            _MAX_PROGRAM_BYTES,
+            pipe_check=_portable_pipe_check(
+                "--from-template", lambda: _PORTABLE_TEMPLATE_HINT
+            ),
         )
         if len(data) > _MAX_PROGRAM_BYTES:
             _fail(

@@ -36,6 +36,7 @@ from time import monotonic, sleep
 from typing import BinaryIO, NoReturn, TextIO, cast
 
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
+from esolangs.cli._portable_input import _native_binary_format, _portable_pipe_check
 from esolangs.cli._table_input import _TruthTablePipeCheck
 from esolangs.cli.hints import (
     _TIMEOUT_EXIT,
@@ -59,7 +60,6 @@ from esolangs.exceptions import (
 )
 from esolangs.operations.source import _check_program
 from esolangs.portable import _portable_bom_error, _portable_file_record
-from esolangs.raster.png import _SIGNATURE as _PNG_SIGNATURE
 from esolangs.registry import Catalog, LanguageDeclaration, get_catalog
 from esolangs.runtime._files import (
     _BLOCK,
@@ -81,7 +81,7 @@ from esolangs.runtime._input import (
     read_input,
 )
 from esolangs.runtime._program import Program
-from esolangs.runtime._source import _GZIP_SIGNATURE, _FileSource, _open_program_path
+from esolangs.runtime._source import _FileSource, _open_program_path
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime._wait import wait_slice
 from esolangs.runtime.source_hints import (
@@ -177,7 +177,18 @@ def _read_program(
     label = "stdin" if path == "-" else display_label(path)
     max_bytes = _MAX_GZIP_NATIVE_PROGRAM_BYTES if gzip_native else _MAX_PROGRAM_BYTES
     if path == "-":
-        data = _bounded_source_stdin(timeout, timeout_flag, deadline, max_bytes)
+
+        def native_hint() -> str:
+            return _native_run_hint(
+                language, path, catalog, retry.options_for(language)
+            )
+
+        pipe_check = (
+            _portable_pipe_check("--artifact", native_hint) if portable else None
+        )
+        data = _bounded_source_stdin(
+            timeout, timeout_flag, deadline, max_bytes, pipe_check=pipe_check
+        )
         if len(data) > max_bytes:
             retry_options = retry.options_for(language)
             hint = "save the program to a file and pass its filename to esolangs run"
@@ -265,14 +276,6 @@ def _reject_portable_source(
             retry.options_for(owner),
         ),
     )
-
-
-def _native_binary_format(data: bytes | bytearray) -> str | None:
-    """Recognize native binary source by its signature."""
-    for signature, kind in ((_PNG_SIGNATURE, "PNG"), (_GZIP_SIGNATURE, "gzip")):
-        if data.startswith(signature):
-            return kind
-    return None
 
 
 def _load_portable_source(

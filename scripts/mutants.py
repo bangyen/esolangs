@@ -317,6 +317,35 @@ def _incomplete(reason: str, code: int = 124) -> int:
     return code
 
 
+def _check_output_paths(outputs: tuple[Path, ...], sources: set[Path]) -> None:
+    """Refuse to write reports or logs over checkout inputs."""
+    roots = tuple(
+        (ROOT / name).resolve() for name in ("src", "scripts", "checks", "tests")
+    )
+    sources = {path.resolve() for path in sources}
+    for path in outputs:
+        try:
+            destination = path.resolve()
+        except RuntimeError as error:  # Path.resolve on Python 3.12 symlink loops.
+            raise ValueError(
+                f"cannot resolve mutation output {path}: {error}"
+            ) from error
+        if not destination.is_file():
+            continue
+        if destination in sources or any(
+            destination.is_relative_to(root) for root in roots
+        ):
+            raise ValueError(
+                f"mutation output {path} would overwrite source {destination}"
+            )
+        if destination.stat().st_nlink > 1:
+            for source in sorted(sources):
+                if destination.samefile(source):
+                    raise ValueError(
+                        f"mutation output {path} would overwrite source {source}"
+                    )
+
+
 def sweep(packages: list[str], out: Path, per_language: int, budget: float) -> int:
     """Run the mutation cases allowed by the finite sweep budget."""
     termination = _Termination()
@@ -354,6 +383,14 @@ def _sweep(
         planned.append((package, command, sample))
     if time.monotonic() - began >= budget:
         return _incomplete("global budget spent during preflight")
+    logs = {
+        package: out.with_name(f"{out.stem}-{package}-baseline.log")
+        for package, _, _ in planned
+    }
+    _check_output_paths(
+        (out, *logs.values()),
+        {ROOT / mutant["file"] for _, _, sample in planned for mutant in sample},
+    )
     statuses: set[str] = set()
     # A baseline alone may take minutes with nothing printed; say what runs.
     print(
@@ -374,9 +411,7 @@ def _sweep(
             status, output = _run(command, min(60, remaining), termination)
             termination.check()
             baseline = time.monotonic() - start
-            out.with_name(f"{out.stem}-{package}-baseline.log").write_text(
-                output, encoding="utf-8"
-            )
+            logs[package].write_text(output, encoding="utf-8")
             print(
                 f"{package}: baseline {baseline:.2f} s; {per_language} mutants "
                 f"priced at most {per_language * max(60, 3 * baseline):.1f} s "
@@ -468,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("mutants edit source in place: run a sweep in a git worktree")
     try:
         return sweep(args.packages, args.out, args.per_language, args.budget)
-    except ValueError as error:
+    except (OSError, ValueError) as error:
         parser.error(str(error))
 
 

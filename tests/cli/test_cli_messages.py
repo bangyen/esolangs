@@ -4,6 +4,7 @@ import io
 import json
 import os
 import shlex
+import subprocess
 import sys
 from ast import literal_eval
 from codecs import BOM_UTF8
@@ -71,6 +72,73 @@ def test_artifact_run_suggests_the_native_command_for_json_shaped_source(
     retry = shlex.split(error.split("for example: ", 1)[1])
     assert retry == ["esolangs", "run", REFERENCE, str(path)]
     assert call_main(retry[1:], capsys) == "\x01"
+
+
+@pytest.mark.parametrize(
+    ("payload", "diagnostic"),
+    [
+        (b" \t\r\nH", b"expects a portable JSON object"),
+        (b"\x1f\x8b", b"the input is native gzip"),
+        (b"\x89PNG\r\n\x1a\n", b"the input is native PNG"),
+    ],
+)
+def test_artifact_run_rejects_native_source_before_eof(payload, diagnostic) -> None:
+    with subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "esolangs",
+            "run",
+            "--artifact",
+            "--max-steps=8",
+            "HQ9+",
+            "-",
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as child:
+        assert child.stdin is not None
+        assert child.stdout is not None
+        assert child.stderr is not None
+        try:
+            child.stdin.write(payload)
+            child.stdin.flush()
+            assert child.wait(timeout=5) == 2
+            assert child.stdout.read() == b""
+            error = child.stderr.read()
+            assert diagnostic in error
+            assert b"remove --artifact" in error
+            assert b"esolangs run --max-steps=8 HQ9+ -" in error
+        finally:
+            if child.poll() is None:
+                child.kill()
+
+
+def test_artifact_run_waits_for_eof_on_a_valid_pipe() -> None:
+    api = esolangs.Language("HQ9+")
+    document = api.to_json(api.from_source("H")).encode("utf-8")
+    with subprocess.Popen(
+        [sys.executable, "-m", "esolangs", "run", "--artifact", api.name, "-"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as child:
+        assert child.stdin is not None
+        assert child.stdout is not None
+        assert child.stderr is not None
+        try:
+            child.stdin.write(b" \t\r\n" + document)
+            child.stdin.flush()
+            with pytest.raises(subprocess.TimeoutExpired):
+                child.wait(timeout=0.2)
+            child.stdin.close()
+            assert child.wait(timeout=5) == 0
+            assert child.stdout.read() == b"Hello, world!\n"
+            assert child.stderr.read() == b""
+        finally:
+            if child.poll() is None:
+                child.kill()
 
 
 @pytest.mark.parametrize("source_mode", ["missing flag", "native", "wrong language"])

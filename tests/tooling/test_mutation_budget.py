@@ -92,6 +92,42 @@ def test_preflight_uses_the_sweep_budget(tmp_path, monkeypatch, capsys):
     assert not out.exists()
 
 
+@pytest.mark.parametrize("overlap", ["report", "baseline symlink", "report hardlink"])
+def test_mutation_outputs_cannot_replace_source(tmp_path, monkeypatch, capsys, overlap):
+    languages = tmp_path / "src" / "esolangs" / "languages"
+    source = languages / "probe" / "generator.py"
+    source.parent.mkdir(parents=True)
+    original = b"NUMBER = 2\n"
+    source.write_bytes(original)
+    report = tmp_path / "out.jsonl"
+    log = tmp_path / "out-probe-baseline.log"
+    if overlap == "report":
+        report = source
+    elif overlap == "report hardlink":
+        report.hardlink_to(source)
+    else:
+        try:
+            log.symlink_to(source)
+        except OSError as error:
+            pytest.skip(f"symlinks unavailable: {error}")
+    monkeypatch.setattr(mutants, "ROOT", tmp_path)
+    monkeypatch.setattr(mutants, "LANGUAGES", languages)
+    monkeypatch.setattr(mutants, "_pytest", lambda _: [])
+    monkeypatch.setattr(mutants, "_in_worktree", lambda: True)
+    monkeypatch.setattr(mutants, "_run", lambda *_: pytest.fail("ran a baseline"))
+
+    with pytest.raises(SystemExit) as caught:
+        mutants.main(["probe", "--out", str(report), "--per-language", "1"])
+    assert caught.value.code == 2
+    diagnostic = capsys.readouterr().err
+    assert f"would overwrite source {source.resolve()}" in diagnostic
+    assert str(log if overlap == "baseline symlink" else report) in diagnostic
+    assert source.read_bytes() == original
+    if overlap == "baseline symlink":
+        assert log.is_symlink()
+        assert not report.exists()
+
+
 @pytest.mark.parametrize("duration_only", [False, True])
 def test_an_inconclusive_verdict_fails_a_sweep(
     tmp_path, monkeypatch, capsys, duration_only
