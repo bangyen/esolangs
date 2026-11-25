@@ -202,12 +202,15 @@ def _price(
 
 
 def _render(
-    table: str, ids: Sequence[Sequence[int]], plan: _Plan, build: _Builder
+    table: str,
+    ids: Sequence[Sequence[int]],
+    metrics: list[dict[int, _Metric]],
+    plan: _Plan,
+    build: _Builder,
 ) -> tuple[str, int]:
     n = len(ids) - 1
     depth, rows = plan.depth, plan.rows
     remaining = n - depth
-    metrics = _inline_metrics(ids)
     width, _, bank_bodies = _bank(ids, metrics, depth, rows)
     bodies: dict[int, str] = {}
 
@@ -244,26 +247,34 @@ def _render(
     return program, plan.metric.commands
 
 
+def _check_bank(
+    ids: Sequence[Sequence[int]], depth: int, rows: tuple[int, ...]
+) -> None:
+    """Check the unread-input budget and distinct aligned residuals."""
+    n = len(ids) - 1
+    width = (len(rows) - 1).bit_length()
+    if not 0 <= depth <= n - 2 or width > 3 * (n - depth) - 2:
+        raise ValueError("binary labels exceed the unread-input bit budget")
+    span = 1 << (n - depth)
+    if any(row < 0 or row % span or row + span > len(ids[-1]) for row in rows):
+        raise ValueError("definitions must name aligned table spans")
+    keys = [ids[depth][row // span] for row in rows]
+    if len(set(keys)) != len(keys) or any(key < 2 for key in keys):
+        raise ValueError("definitions must name distinct nonconstant residuals")
+
+
 def binary_bank(
     table: str, blocks: tuple[tuple[int, int], ...], build: _Builder
 ) -> tuple[str, int]:
     """Emit one same-level bank whose bit word fits the retired-input budget."""
     ids = subtree_ids(table)
-    n = len(ids) - 1
     if len(blocks) < 2 or len({depth for depth, _ in blocks}) != 1:
         raise ValueError("a binary bank needs multiple definitions at one level")
     depth = blocks[0][0]
-    width = (len(blocks) - 1).bit_length()
-    if not 0 <= depth <= n - 2 or width > 3 * (n - depth) - 2:
-        raise ValueError("binary labels exceed the unread-input bit budget")
-    span = 1 << (n - depth)
     rows = tuple(row for _, row in blocks)
-    if any(row < 0 or row % span or row + span > len(table) for row in rows):
-        raise ValueError("definitions must name aligned table spans")
-    keys = [ids[depth][row // span] for row in rows]
-    if len(set(keys)) != len(keys) or any(key < 2 for key in keys):
-        raise ValueError("definitions must name distinct nonconstant residuals")
-    return _render(table, ids, _price(ids, _inline_metrics(ids), depth, rows), build)
+    _check_bank(ids, depth, rows)
+    metrics = _inline_metrics(ids)
+    return _render(table, ids, metrics, _price(ids, metrics, depth, rows), build)
 
 
 def best_binary_bank(
@@ -293,8 +304,7 @@ def best_binary_bank(
     # Prefixes stop at their bank level: sum_d 2**d = O(T). For a span 2**r,
     # there are at most T/2**r bank states, each carrying O(r) label digits;
     # decoder and body work summed over all levels is O(T) as well.
-    return (
-        None
-        if best is None
-        else binary_bank(table, tuple((best.depth, row) for row in best.rows), build)
-    )
+    if best is None:
+        return None
+    _check_bank(ids, best.depth, best.rows)
+    return _render(table, ids, metrics, best, build)

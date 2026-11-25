@@ -210,9 +210,15 @@ def _fold(truth_table: str) -> tuple[str, str, tuple[str, ...]] | None:
     """
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n)
+    return _fold_projected(read_at(truth_table, essential, n), n, essential)
+
+
+def _fold_projected(
+    table: str, n: int, essential: list[int]
+) -> tuple[str, str, tuple[str, ...]] | None:
+    """Fold a constant half after projecting away ignored inputs."""
     if len(essential) < 2:
         return None
-    table = read_at(truth_table, essential, n)
     half = len(table) // 2
     low, high = table[:half], table[half:]
     if (constant := constant_output(high)) is not None:
@@ -247,10 +253,13 @@ def _tables(truth_table: str) -> list[_Layout]:
     n = _validate_truth_table(truth_table)
     layouts: list[_Layout] = [(truth_table, None, ())]
     essential = essential_inputs(truth_table, n)
+    projected = (
+        read_at(truth_table, essential, n) if len(essential) < n else truth_table
+    )
     if len(essential) < n:
         rounds = "".join("K" if i in essential else "S" for i in reversed(range(n)))
-        layouts.append((read_at(truth_table, essential, n), rounds, ()))
-    if (fold := _fold(truth_table)) is not None:
+        layouts.append((projected, rounds, ()))
+    if (fold := _fold_projected(projected, n, essential)) is not None:
         layouts.append(fold)
     layouts += [
         (table, rounds, (*extra, *_PACK_RULES))
@@ -472,12 +481,11 @@ def balance_thue(truth_table: str, default: str) -> str:
     sweep around it saved 8 of 13,486 side over the corpus (0.06%).
     Each layout (see :func:`_tables`) is tuned at its own rule count.
     """
-    plain = min(
-        (_thue_layout(*layout, None) for layout in _tables(truth_table)), key=len
-    )
+    layouts = _tables(truth_table)
+    plain = min((_thue_layout(*layout, None) for layout in layouts), key=len)
     candidates = [default, plain, thue(truth_table, 1)]
     cap = max(grid_width(default), grid_width(plain))
-    for table, rounds, extra in _tables(truth_table):
+    for table, rounds, extra in layouts:
         size = len(table) // (2 if _is_packed(extra) else 1)
         digits = _marker_digits(size, len(_alphabet(rounds, extra)))
         base = _RULES if rounds is None else _QUEUED_RULES
