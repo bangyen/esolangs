@@ -12,7 +12,13 @@ from esolangs import run as execute
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.slow_acv_mammalian import generator as boolean
+from esolangs.languages.slow_acv_mammalian._banking import (
+    _build_pool,
+    _pool_bank,
+    _w_raise,
+)
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain
+from esolangs.languages.slow_acv_mammalian._sums import _Sums
 from esolangs.languages.slow_acv_mammalian.generator import (
     _merge_address,
     _stash_chunk,
@@ -213,32 +219,22 @@ class TestSlowAcvMammalian:
 
     def test_a_pooled_weight_is_blind_to_what_array_16_holds(self) -> None:
         """The pool banks its byte from any starting sum, unchanged."""
-        import importlib
-
-        module = importlib.import_module(
-            "esolangs.languages.slow_acv_mammalian.generator"
-        )
         banked = set()
         for offset in (0, 1, 17, 255, 256, 4097):
-            st = module._Sums()
-            _ = module._build_pool(st, 32, 4)
+            st = _Sums()
+            _ = _build_pool(st, 32, 4)
             st.nw += offset
             before = st.nw
-            module._pool_bank(st, 32, 4)
+            _pool_bank(st, 32, 4)
             banked.add(st.nw - before)
         assert banked == {32}
 
     @pytest.mark.parametrize("amount", [0, 100, 255, 256, 600, 2000])
     def test_a_weight_raise_is_exact_on_the_machine(self, amount: int) -> None:
         """``_w_raise`` moves array 16's non-head sum by exactly its ask."""
-        import importlib
-
-        module = importlib.import_module(
-            "esolangs.languages.slow_acv_mammalian.generator"
-        )
-        st = module._Sums()
+        st = _Sums()
         st.ptr, st.hw, st.nw = 16, 9, 255
-        tokens = module._w_raise(st, amount)
+        tokens = _w_raise(st, amount)
         machine = _Machine(" ".join(tokens), ScriptedIO(""), io_modulus=256)
         machine.ptr = 16
         machine.lst = tuple((9, 200, 55) if k == 16 else (0,) for k in range(23))

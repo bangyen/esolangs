@@ -8,12 +8,12 @@ Each shape check is a function returning a violation message or ``None``;
 from collections import deque
 from typing import Literal
 
+from esolangs.languages.streetcode.interpreter._steering import _drive
 from esolangs.languages.streetcode.interpreter.geometry import (
     _DELTA,
     _NO_LATCHES,
     _WALL_FORMS,
     _WALLS,
-    _drive,
     _drives_on_the_right,
     _Grid,
     _initial_heading,

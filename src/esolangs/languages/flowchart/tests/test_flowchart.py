@@ -155,7 +155,7 @@ class TestParsing:
 
     def test_turning_left_rotates_every_heading(self) -> None:
         """A left turn is a rotation, so four of them return the heading."""
-        from esolangs.languages.flowchart.interpreter import _turn_left
+        from esolangs.languages.flowchart._diagram import _turn_left
 
         north, south, west, east = (-1, 0), (1, 0), (0, -1), (0, 1)
         assert _turn_left(north) == west
@@ -481,7 +481,8 @@ class TestPureTransition:
     """``_advance`` owns the pointers, deques and output; ``step`` is the shell."""
 
     def test_advance_is_pure_and_repeatable(self, monkeypatch) -> None:
-        from esolangs.languages.flowchart.interpreter import _advance, prepare_machine
+        from esolangs.languages.flowchart._transition import _advance
+        from esolangs.languages.flowchart.interpreter import prepare_machine
 
         machine = _Machine(TRUTH_MACHINE, ScriptedIO("0"))
         before = machine.snapshot()
@@ -527,7 +528,7 @@ class TestPureTransition:
         check_split_factory_rejections(prepare_machine, [])
 
     def test_a_read_is_requested_rather_than_performed(self) -> None:
-        from esolangs.languages.flowchart.interpreter import _advance, _NeedBitError
+        from esolangs.languages.flowchart._transition import _advance, _NeedBitError
 
         machine = _Machine(TRUTH_MACHINE, ScriptedIO("0"))
         with pytest.raises(_NeedBitError):
@@ -641,7 +642,7 @@ def test_a_failed_tick_does_not_repeat_accepted_io(monkeypatch) -> None:
 
 
 def test_workspace_ignores_pointer_cycle_views_and_sorted_caches(monkeypatch):
-    from esolangs.languages.flowchart.interpreter import _Memory, _Pointer
+    from esolangs.languages.flowchart._transition import _Memory, _Pointer
 
     machine = _Machine(CAT, ScriptedIO("A"))
     for _ in range(24):

@@ -55,10 +55,10 @@ from esolangs.runtime._drive import (
 )
 from esolangs.runtime._execution import (
     check_seed_for,
-    interpreter_errors,
     interpreter_module,
 )
 from esolangs.runtime._input import CheckedInput, InputSource, check_input
+from esolangs.runtime._interpreter_errors import interpreter_errors
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._prepared import (
     _check_source_options,

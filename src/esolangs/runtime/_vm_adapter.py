@@ -23,8 +23,8 @@ from esolangs.runtime._drive import (
     drive_periodic,
     drive_until_repeat,
 )
-from esolangs.runtime._execution import interpreter_errors
 from esolangs.runtime._input import CheckedInput, InputSource
+from esolangs.runtime._interpreter_errors import interpreter_errors
 from esolangs.runtime._lifecycle import Completion, CompletionReport
 from esolangs.runtime._prepared import _PreparedRuntime
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant

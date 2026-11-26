@@ -129,7 +129,7 @@ def test_interpreter_errors_are_preserved() -> None:
 
 def test_a_program_error_echoing_the_digit_cap_text_stays_a_program_error() -> None:
     """Malformed source reading "Exceeds the limit (" is not a host limit."""
-    from esolangs.runtime._execution import interpreter_errors
+    from esolangs.runtime._interpreter_errors import interpreter_errors
 
     with pytest.raises(esolangs.ProgramError) as caught, interpreter_errors("deep"):
         raise ValueError("invalid expression: Exceeds the limit (")

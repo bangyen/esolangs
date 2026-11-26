@@ -55,8 +55,8 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.modulous.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._execution import interpreter_errors
 from esolangs.runtime._input_retry import RejectedInput
+from esolangs.runtime._interpreter_errors import interpreter_errors
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram

@@ -1,10 +1,10 @@
 """How the car steers: the ambiguous-turn rule, and the two-phase lane merge."""
 
 from esolangs.languages.streetcode.interpreter import _Machine
+from esolangs.languages.streetcode.interpreter._steering import _choose_heading
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
     _Car,
-    _choose_heading,
     _crossing_mouth,
     _Grid,
     _junction_choices,

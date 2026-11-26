@@ -16,12 +16,12 @@ from esolangs.compressed import CompressedText
 from esolangs.raster import Raster
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._error_causes import cause_chain
-from esolangs.runtime._execution import interpreter_errors
 from esolangs.runtime._failure_wire import (
     _OUTPUT_LIMIT,
     _failure_text,
 )
 from esolangs.runtime._input import InputSource
+from esolangs.runtime._interpreter_errors import interpreter_errors
 from esolangs.runtime._raster_wire import _raster_rows
 from esolangs.runtime._request_wire import read_request
 from esolangs.runtime._result_wire import (

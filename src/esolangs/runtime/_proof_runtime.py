@@ -112,7 +112,7 @@ _BRANCH_RUNTIME_ERRORS = (ValueError, OverflowError, RecursionError, MemoryError
 
 
 def _branch_fault(error: Exception, language: str) -> EsolangError:
-    from esolangs.runtime._execution import interpreter_errors
+    from esolangs.runtime._interpreter_errors import interpreter_errors
 
     try:
         with interpreter_errors(

@@ -54,9 +54,9 @@ from types import MappingProxyType
 from typing import Any, Literal, NamedTuple, assert_never
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.streetcode.interpreter._steering import _drive
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
-    _drive,
     _Grid,
     _Heading,
     _initial_heading,

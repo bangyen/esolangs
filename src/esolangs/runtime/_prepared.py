@@ -20,12 +20,12 @@ from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     execute_prepared,
     execution_options,
-    interpreter_errors,
     interpreter_module,
     prepare_call,
     runtime_hook,
 )
 from esolangs.runtime._input import CheckedInput, InputFrame, InputSource
+from esolangs.runtime._interpreter_errors import interpreter_errors
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import (
     MachineFactory,

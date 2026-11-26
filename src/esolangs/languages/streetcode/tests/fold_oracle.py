@@ -12,11 +12,10 @@ from itertools import pairwise
 
 from esolangs.languages.streetcode._folding import _WALLS
 from esolangs.languages.streetcode.generator import _KERB, _SILL
+from esolangs.languages.streetcode.interpreter._steering import _drive, _Halt
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
-    _drive,
     _Grid,
-    _Halt,
     _initial_heading,
     _State,
 )

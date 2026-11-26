@@ -4,11 +4,15 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.languages.streetcode.interpreter import _Machine, _State
-from esolangs.languages.streetcode.interpreter import geometry as module
+from esolangs.languages.streetcode.interpreter import (
+    _Machine,
+    _State,
+    _steering,
+    geometry,
+)
+from esolangs.languages.streetcode.interpreter._steering import _drive
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
-    _drive,
     _Grid,
     _Latches,
     _Merge,
@@ -130,7 +134,7 @@ class TestStreetcodeDriveStates:
         """The check fires when the movement rules do run out of road."""
         with (
             patch.object(
-                module,
+                _steering,
                 "_heading_from_hug",
                 lambda _grid, _car, latches: (None, latches),
             ),
@@ -155,12 +159,12 @@ class TestStreetcodeDriveStates:
         start = (machine.row, machine.col)
         shipped = drive_states(machine.grid, start)
 
-        original = module._MOUTH_MAX_DEPTH
-        module._MOUTH_MAX_DEPTH = machine.grid.height + machine.grid.width
+        original = geometry._MOUTH_MAX_DEPTH
+        geometry._MOUTH_MAX_DEPTH = machine.grid.height + machine.grid.width
         try:
             generous = drive_states(machine.grid, start)
         finally:
-            module._MOUTH_MAX_DEPTH = original
+            geometry._MOUTH_MAX_DEPTH = original
         assert shipped == generous
 
 

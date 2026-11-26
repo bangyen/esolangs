@@ -8,6 +8,7 @@ import pytest
 
 from esolangs import run as public_run
 from esolangs.exceptions import ArgumentError
+from esolangs.languages.flowchart import _transition
 from esolangs.languages.flowchart import interpreter as native
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import observed, overread, stalled
@@ -43,7 +44,7 @@ class _Held(NamedTuple):
 
 
 def _actual(machine, case):
-    assert type(machine.state) is native._Run
+    assert type(machine.state) is _transition._Run
     assert machine.grid == case.rows
     assert machine.width == len(case.rows[0])
     nodes = {
@@ -54,7 +55,7 @@ def _actual(machine, case):
     assert machine.nodes == nodes
     pointers = []
     for pointer in machine.pointers:
-        assert type(pointer) is native._Pointer
+        assert type(pointer) is _transition._Pointer
         assert type(pointer.row) is type(pointer.col) is type(pointer.deque) is int
         assert type(pointer.done) is bool
         assert pointer.reg is None or type(pointer.reg) is int
@@ -67,7 +68,7 @@ def _actual(machine, case):
             and len(pointer.prev) == 2
             and all(type(v) is int for v in pointer.prev)
         )
-        assert type(pointer.memory) is native._Memory
+        assert type(pointer.memory) is _transition._Memory
         assert type(pointer.memory._exits) is dict
         pointers.append(
             (
@@ -402,7 +403,7 @@ def _fork_controls():
 
         class WrongFork(native._Machine):
             def step(self, _mode=mode):
-                original = native._Tick.fork
+                original = _transition._Tick.fork
 
                 def incorrect(tick, index):
                     before = tick.pointers[index]
@@ -420,11 +421,11 @@ def _fork_controls():
                         memory = dict(parent.memory._exits)
                         memory.pop(key, None)
                         tick.pointers[index] = replace(
-                            parent, memory=native._Memory(memory)
+                            parent, memory=_transition._Memory(memory)
                         )
 
                 with pytest.MonkeyPatch.context() as patch:
-                    patch.setattr(native._Tick, "fork", incorrect)
+                    patch.setattr(_transition._Tick, "fork", incorrect)
                     super().step()
 
         for case, cap in ((_fork_case(), 64), (_reentry_case(), 8)):
@@ -457,13 +458,13 @@ def _fork_controls():
 
     class ForgottenExit(native._Machine):
         def step(self):
-            original = native._Memory.exit_from
+            original = _transition._Memory.exit_from
 
             def forgotten(memory, cell):
                 return None if cell == (4, 4) else original(memory, cell)
 
             with pytest.MonkeyPatch.context() as patch:
-                patch.setattr(native._Memory, "exit_from", forgotten)
+                patch.setattr(_transition._Memory, "exit_from", forgotten)
                 super().step()
 
     case = _memory_case()
@@ -484,7 +485,7 @@ def _sharing_control():
 
     class IsolatedPush(native._Machine):
         def step(self):
-            original = native._Tick.operate
+            original = _transition._Tick.operate
 
             def private_queue(tick, spelling, pointer):
                 if spelling != "\\[ ]/":
@@ -497,7 +498,7 @@ def _sharing_control():
                     tick.deques = shared
 
             with pytest.MonkeyPatch.context() as patch:
-                patch.setattr(native._Tick, "operate", private_queue)
+                patch.setattr(_transition._Tick, "operate", private_queue)
                 super().step()
 
     with pytest.raises(AssertionError):
