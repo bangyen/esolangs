@@ -55,6 +55,13 @@ evidence, not optimization tasks.
     distinct bit positions. A separate layout moved 448 primary words by
     reassigning 3,008 spill bits. All eight values worked at 434 of the
     new destinations in 10,416 runs.
+  - *Bank capacity:* one layout gained 36 writable bit positions after
+    accounting for every control read (116 gained, 80 lost). All 116 passed
+    eight label tests each. With 2,048 bits assigned to each 729-word bank
+    and control words and calibration markers reserved, 15 of the 64 banks
+    still fell short by 4,335 bits in total. A separate layout moved 24
+    primary words between banks, kept every spill address, and gained three
+    writable bit positions net. All eight labels worked at all 24 destinations.
   - *Storage shared with the decoder:* 93 words in the jump workspace
     stored three answer bits each. In the same layout, 63 fixed instructions
     encoded three bits each through selectable markers. All eight values
