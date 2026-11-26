@@ -65,9 +65,12 @@ evidence, not optimization tasks.
     phase read 94 cells earlier made room for a pointer shortcut. Clearing
     one temporary register and rotating the calibration byte earlier freed
     161 more three-bit words. All eight values passed in 3,864 executions.
-    With 2,048 bits per 729-word bank and control words and calibration
-    markers reserved, the smallest measured shortfall is 1,213 bits
-    across five banks. A separate layout moved 24 primary words between
+    Routing startup around one output routine reduced the fixed-bank
+    shortfall from 1,213 bits to 961 across eight banks, with 2,048 bits
+    per 729-word bank and control words and calibration markers reserved.
+    Both reads and the output slot matched on all 131,072 rows of each
+    random table. This layout answered 129,805 and 129,560 rows correctly.
+    A separate layout moved 24 primary words between
     banks, kept every spill address, and gained three writable bit positions
     net. All eight labels worked at
     all 24 destinations.
