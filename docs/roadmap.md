@@ -97,7 +97,12 @@ evidence, not optimization tasks.
     phase lookup 36,450 cells freed 185 occupied words at its old location.
     All eight labels there passed across 554 row bits in 4,432 executions.
     After packing the new layout, seven banks still lacked 360 bits in
-    total. Universal placement remains open.
+    total. In the single-marker layout, eight instruction substitutions
+    moved the phase workspace 10,935 cells. Delaying the lookup six steps
+    freed seven three-bit words. The two random tables answered 130,075
+    and 130,030 rows correctly. Reserving the control cells used by either
+    table left 176 bits short, including 165 in bank 41. Universal
+    placement remains open.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
