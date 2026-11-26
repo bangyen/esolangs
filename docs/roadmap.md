@@ -89,7 +89,12 @@ evidence, not optimization tasks.
     filled bank deficits. Banks 15, 24 and 26 still lacked 25, 29 and 124
     bits, respectively (178 total). All 1,232 local bit patterns passed in
     3,848 row executions. The two random tables produced 129,909 and
-    129,878 correct answers out of 131,072 each. Universal placement remains open.
+    129,878 correct answers out of 131,072 each.
+    A different layout selected one of two adjacent calibration cells by
+    address. Each of 84 marker pairs encoded all four bit combinations
+    with both data words held fixed (672 row executions). Two ordinary
+    words per pair retained all eight labels in 16,128 executions.
+    Universal placement remains open.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
