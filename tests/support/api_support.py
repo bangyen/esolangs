@@ -90,6 +90,7 @@ PUBLIC_MEMBERS = {
         "make_debugger",
     },
     esolangs.Raster: {
+        "dimensions",
         "from_png",
         "rows",
         "to_png",

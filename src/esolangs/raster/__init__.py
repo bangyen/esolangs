@@ -19,6 +19,7 @@ from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_
 from esolangs.runtime.source_hints import syntax_error
 
 from . import png
+from ._grey import GreyImage, GreyRows, channels, pixel_hash
 from ._png_chunks import _backing_bytes
 
 Pixel = tuple[int, int, int]
@@ -224,7 +225,27 @@ class Raster:
 
     def __eq__(self, other: object) -> bool:
         """Whether two rasters have identical RGB pixels."""
-        return _has_backing_type(other, Raster) and self.rows == other.rows
+        if not _has_backing_type(other, Raster):
+            return False
+        if self is other:
+            return True
+        left, right = self._grey_rows(), other._grey_rows()
+        if left is None and right is None:
+            return self.rows == other.rows
+        if left is not None and right is not None:
+            return left == right
+        grey, rgb = (left, other) if left is not None else (right, self)
+        assert grey is not None
+        if len(grey) != len(rgb.rows):
+            return False
+        checked = set()
+        for levels, pixels in zip(grey, rgb.rows, strict=True):
+            key = (id(levels), id(pixels))
+            if key not in checked:
+                if channels(pixels) != (levels, levels, levels):
+                    return False
+                checked.add(key)
+        return True
 
     def __reduce__(self) -> tuple[object, tuple[object, ...]]:
         """Pickle pixels; a lazy renderer may be a closure."""
@@ -234,9 +255,23 @@ class Raster:
         """Hash the immutable RGB pixels, once."""
         cached = self._hash
         if cached is None:
-            cached = hash(self.rows)
+            grey = self._grey_rows()
+            cached = pixel_hash(self.rows if grey is None else grey)
             object.__setattr__(self, "_hash", cached)
         return cached
+
+    def _grey_rows(self) -> GreyRows | None:
+        backing = self._materialize
+        return backing.rows if isinstance(backing, GreyImage) else None
+
+    @property
+    def dimensions(self) -> tuple[int, int]:
+        """Return width and height, using the drawing plan when available."""
+        backing = self._materialize
+        if isinstance(backing, GreyImage):
+            return backing.size
+        rows = self.rows
+        return len(rows[0]), len(rows)
 
     @property
     def rows(self) -> Rows:
@@ -266,8 +301,7 @@ class Raster:
         if scale == 1:
             return self
 
-        def check(base: Rows) -> None:
-            width, height = len(base[0]) * scale, len(base) * scale
+        def check(width: int, height: int) -> None:
             pixels = width * height
             if pixels > MAX_UPSCALED_PIXELS:
                 raise ArgumentError(
@@ -279,11 +313,28 @@ class Raster:
         # Known rows refuse now: generate(scale=10**30) returned and only a
         # later pickle, dump or run refused it.
         if self._rows is not None:
-            check(self.rows)
+            check(len(self.rows[0]) * scale, len(self.rows) * scale)
+
+        backing = self._materialize
+        if isinstance(backing, GreyImage):
+            width, height = backing.size
+            size = width * scale, height * scale
+
+            def scaled() -> GreyRows:
+                check(*size)
+                deadline = _STREAM_DEADLINE.get()
+                output = []
+                for row in backing.rows:
+                    _time_remaining(deadline)
+                    expanded = b"".join(bytes([v]) * scale for v in row)
+                    output.extend([expanded] * scale)
+                return tuple(output)
+
+            return lazy_raster(GreyImage(size, scaled), self._payload)
 
         def materialize() -> Rows:
             base = self.rows
-            check(base)
+            check(len(base[0]) * scale, len(base) * scale)
             deadline = _STREAM_DEADLINE.get()
             block = max(1, 8192 // scale)
 
@@ -330,4 +381,5 @@ class Raster:
 
     def to_png(self) -> bytes:
         """Encode as PNG within Pillow's hard decode pixel limit."""
-        return png.write_rgb(self.rows)
+        grey = self._grey_rows()
+        return png.write_rgb(self.rows) if grey is None else png._write_grey_rgb(grey)  # noqa: SLF001

@@ -416,12 +416,13 @@ def test_line_fast_path_avoids_subtree_walks(monkeypatch: pytest.MonkeyPatch) ->
 @pytest.mark.medium
 def test_balance_retains_a_more_balanced_shared_raster() -> None:
     """A shared return can improve both area and the old orientation's shape."""
-    from esolangs.languages.line.generator import _render_node, balance, line
+    from esolangs.languages.line.generator import _raster, _tree_plan, balance, line
 
     residual = "0010" * 16
     table = residual * 3 + "0" * len(residual)
     program = line(table)
-    plain = Raster(_render_node(line_boolean(table)))
+    tree = line_boolean(table)
+    plain = Raster(_raster(tree, _tree_plan(tree, small=False, unit=20)).rows)
     balanced = balance(table, program)
     previous = balance(table, plain)
     h, w = len(balanced.rows), len(balanced.rows[0])

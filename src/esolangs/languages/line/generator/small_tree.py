@@ -22,6 +22,8 @@ from esolangs.languages.line.generator.render import (
     _check_unit,
 )
 
+from .shared import CanvasPlan
+
 _DIRS = [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]
 _SOUTH = 4
 _GAP = 30
@@ -83,10 +85,10 @@ def _draw(
     )
 
 
-def small_tree_canvas(
+def small_tree_plan(
     root: Node, *, compact: bool = True, tight: bool = True, unit: int = _UNIT
-) -> Canvas:
-    """Rasterize the tree at ``root`` with the repo's stroke and arrow primitives."""
+) -> CanvasPlan:
+    """Plan the tree at ``root`` with the repo's stroke and arrow primitives."""
     _check_unit(unit)
     stem = unit if compact else 3 * unit // 2
     gap = unit // 2 if compact and tight else 3 * unit // 2
@@ -95,8 +97,20 @@ def small_tree_canvas(
     xs = [x for s in strokes for _, x in s]
     tip = round(unit * 0.35)
     top, left = min(ys) - 2 * tip, min(xs)
-    canvas = Canvas(max(xs) - left + 2 * _MARGIN + 1, max(ys) - top + 2 * _MARGIN + 1)
-    for s in strokes:
-        canvas.line([(x - left + _MARGIN, y - top + _MARGIN) for y, x in s])
-    _arrowhead(canvas, -tip - top + _MARGIN, _MARGIN - left, (1, 0), unit)
-    return canvas
+    width, height = max(xs) - left + 2 * _MARGIN + 1, max(ys) - top + 2 * _MARGIN + 1
+
+    def draw() -> Canvas:
+        canvas = Canvas(width, height)
+        for stroke in strokes:
+            canvas.line([(x - left + _MARGIN, y - top + _MARGIN) for y, x in stroke])
+        _arrowhead(canvas, -tip - top + _MARGIN, _MARGIN - left, (1, 0), unit)
+        return canvas
+
+    return CanvasPlan(draw, width, height)
+
+
+def small_tree_canvas(
+    root: Node, *, compact: bool = True, tight: bool = True, unit: int = _UNIT
+) -> Canvas:
+    """Draw a compact tree at its measured dimensions."""
+    return small_tree_plan(root, compact=compact, tight=tight, unit=unit)()

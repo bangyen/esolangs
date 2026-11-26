@@ -21,8 +21,7 @@ Size:
 
 from __future__ import annotations
 
-import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from functools import lru_cache, partial
 from typing import NamedTuple, cast
 
@@ -45,9 +44,10 @@ from esolangs.languages.line.generator.layout import (
 )
 from esolangs.languages.line.generator.render import _UNIT, Canvas, _check_unit
 from esolangs.languages.line.generator.shared import CanvasPlan
-from esolangs.languages.line.generator.small_tree import small_tree_canvas
+from esolangs.languages.line.generator.small_tree import small_tree_plan
 from esolangs.languages.line.generator.tree_layout import tree_extents
-from esolangs.raster import Pixel, Raster, Rows, lazy_raster
+from esolangs.raster import Raster, lazy_raster
+from esolangs.raster._grey import GreyImage, GreyRows
 from esolangs.runtime._program import Program
 
 
@@ -172,61 +172,26 @@ def _project_loader(n: int, kept: Sequence[int], node: Node) -> Node:
 
 _SMALL_MAX = 5  # tight tree layout through n=5 (see small_tree)
 _BOOLEAN_UNIT = _UNIT
-_GREY_RUN = re.compile(rb"(.)\1*", re.DOTALL)
 
 
-def _render_node(
-    node: Node,
-    *,
-    compact: bool = True,
-    tight: bool = True,
-    unit: int = _BOOLEAN_UNIT,
-) -> Rows:
-    """Render a generated Line graph into shared RGB rows."""
-    # Local: a top-level `render` would shadow the submodule on the package.
+def _tree_plan(node: Node, *, small: bool, unit: int, tight: bool = True) -> CanvasPlan:
+    if small:
+        return small_tree_plan(node, tight=tight, unit=unit)
     from esolangs.languages.line.generator.render import render
 
-    return _grey_rows(
-        render(
-            node,
-            acyclic=True,
-            compact=compact,
-            tight=tight,
-            unit=unit,
-        )
+    y0, y1, x0, x1 = tree_extents(node, tight=tight)[id(node)]
+    return CanvasPlan(
+        partial(render, node, acyclic=True, tight=tight, unit=unit),
+        (x1 - x0 + 2) * unit,
+        (y1 - y0 + 2) * unit,
     )
 
 
-def _grey_rows(canvas: Canvas) -> Rows:
-    """Expand a greyscale canvas into shared RGB rows."""
-    palette = tuple((level, level, level) for level in range(256))
-    cache: dict[bytes, tuple[Pixel, ...]] = {}
-    rows = []
-    for row in canvas.pixels:
-        key = bytes(row)
-        pixels = cache.get(key)
-        if pixels is None:
-            expanded = []
-            for run in _GREY_RUN.finditer(key):
-                expanded.extend([palette[run[1][0]]] * (run.end() - run.start()))
-            pixels = tuple(expanded)
-            if len(cache) < 1024:
-                cache[key] = pixels
-        rows.append(pixels)
-    return tuple(rows)
+def _raster(node: Node, plan: CanvasPlan) -> Raster:
+    def scanlines() -> GreyRows:
+        return tuple(map(bytes, plan().pixels))
 
-
-class _Candidate(NamedTuple):
-    """Smallest layout so far; ``rows`` draws it only when the raster is read."""
-
-    node: Node
-    area: int
-    rows: Callable[[], Rows]
-
-
-def _planned_rows(plan: CanvasPlan) -> Rows:
-    """Run a deferred canvas plan into shared RGB rows."""
-    return _grey_rows(plan())
+    return lazy_raster(GreyImage((plan.width, plan.height), scanlines), node)
 
 
 @lru_cache(maxsize=8)
@@ -235,25 +200,14 @@ def _generate(table: TruthTable, unit: int = _BOOLEAN_UNIT) -> Raster:
     _check_unit(unit)
     n, truth_table = table.arity, table.bits
 
-    def candidate(tree: Node) -> _Candidate:
-        if n <= _SMALL_MAX and (drawn := small_tree_canvas(tree, unit=unit)):
-            return _Candidate(
-                tree, drawn.width * drawn.height, partial(_grey_rows, drawn)
-            )
-        top, bottom, left, right = tree_extents(tree)[id(tree)]
-        return _Candidate(
-            tree,
-            (bottom - top + 2) * (right - left + 2) * unit**2,
-            partial(_render_node, tree, unit=unit),
-        )
-
     # Inline tests plus projected readers cost at most 3n+2 commands; folds
     # retain 3n+4. See [ablations.inline_level_reads] for the pixel cost.
-    best = candidate(
+    tree = (
         line_boolean(truth_table)
         if n <= _SMALL_MAX
         else _inline_boolean(project_inputs(table))
     )
+    best = _tree_plan(tree, small=n <= _SMALL_MAX, unit=unit)
     # Large inline readers already project; small trees retain their loader.
     projected = (
         next(_projected_booleans(project_inputs(table), (False,)), None)
@@ -261,15 +215,15 @@ def _generate(table: TruthTable, unit: int = _BOOLEAN_UNIT) -> Raster:
         else None
     )
     if projected is not None:
-        other = candidate(projected)
+        other = _tree_plan(projected, small=True, unit=unit)
         if other.area < best.area:
-            best = other
+            tree, best = projected, other
     # Sharing stays canonical; complete folds must fit the inline fallback.
     # A complete fold wins a fallback tie.
     fold = streaming_canvas(truth_table, best.area + 1, unit=unit)
     if fold is not None:
-        best = _Candidate(fold[0], fold[1].area, partial(_planned_rows, fold[1]))
-    return lazy_raster(best.rows, best.node)
+        tree, best = fold
+    return _raster(tree, best)
 
 
 def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Raster:
@@ -288,8 +242,7 @@ class _Score(NamedTuple):
 class _Choice(NamedTuple):
     score: _Score
     node: Node
-    canvas: Canvas | None
-    tight: bool
+    plan: CanvasPlan
 
 
 def _best_choice(
@@ -303,18 +256,10 @@ def _best_choice(
     """Return the most balanced option."""
     choices = [] if initial is None else [initial]
     for node in options:
-        canvas = (
-            small_tree_canvas(node, compact=True, tight=tight, unit=unit)
-            if small
-            else None
-        )
-        if canvas is not None:
-            width, height = canvas.width, canvas.height
-        else:
-            y0, y1, x0, x1 = tree_extents(node, tight=tight)[id(node)]
-            width, height = (x1 - x0 + 2) * unit, (y1 - y0 + 2) * unit
+        plan = _tree_plan(node, small=small, unit=unit, tight=tight)
+        width, height = plan.width, plan.height
         score = _Score(max(width, height), width * height, 0 if small else width)
-        choices.append(_Choice(score, node, canvas, tight))
+        choices.append(_Choice(score, node, plan))
     return min(choices, key=lambda choice: choice.score)
 
 
@@ -357,12 +302,12 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
 def _balance(table: TruthTable, default: Raster, unit: int) -> Raster:
     _check_unit(unit)
     small = table.arity <= _SMALL_MAX
-    score, selected, canvas, tight = _balanced_choice(table, small=small, unit=unit)
-    width = canvas.width if canvas is not None else score.tiebreak
+    score, selected, plan = _balanced_choice(table, small=small, unit=unit)
+    width = plan.width
     if default._payload is not None and (  # noqa: SLF001 - generator-owned graph
         not small or _has_goto(cast("Node | None", default._payload))  # noqa: SLF001
     ):
-        height, shared_width = len(default.rows), len(default.rows[0])
+        shared_width, height = default.dimensions
         shared_area = shared_width * height
         if (max(shared_width, height), shared_area, shared_width) <= (
             score.side,
@@ -370,14 +315,7 @@ def _balance(table: TruthTable, default: Raster, unit: int) -> Raster:
             width,
         ) and shared_area <= score.area:
             return default
-    return lazy_raster(
-        lambda: (
-            _grey_rows(canvas)
-            if canvas is not None
-            else _render_node(selected, compact=True, tight=tight, unit=unit)
-        ),
-        selected,
-    )
+    return _raster(selected, plan)
 
 
 def line_request(request: GenerationRequest) -> Program:

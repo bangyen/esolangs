@@ -7,7 +7,7 @@ import re
 from collections.abc import Buffer, Sequence
 from contextlib import ExitStack
 from os import fsdecode, fsencode, fspath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from esolangs._dialect import DialectSettings
 from esolangs.exceptions import (
@@ -51,7 +51,7 @@ from esolangs.runtime.source_hints import (
 )
 
 if TYPE_CHECKING:
-    from esolangs.raster import Pixel, Rows
+    from esolangs.raster import Pixel, Raster, Rows
     from esolangs.registry._catalog import Catalog
 
 _UNLOADED = object()
@@ -363,8 +363,19 @@ def write_rgb(pixels: Sequence[Sequence[tuple[int, int, int]]]) -> bytes:
     return _write(image, "RGB", width, height, b"".join(parts))
 
 
+def _write_grey_rgb(rows: tuple[bytes, ...]) -> bytes:
+    """Encode greyscale levels with the same RGB PNG mode as ordinary rasters."""
+    image = _require_image()
+    size = len(rows[0]), len(rows)
+    _check_pixel_limit(*size, image.MAX_IMAGE_PIXELS)
+    output = io.BytesIO()
+    with image.frombytes("L", size, b"".join(rows)) as grey, grey.convert("RGB") as rgb:
+        rgb.save(output, format="PNG")
+    return output.getvalue()
+
+
 def write_source(
-    pixels: Rows,
+    pixels: Rows | Raster,
     language: str | None,
     settings: DialectSettings | None,
     scale: int | None,
@@ -373,11 +384,17 @@ def write_source(
     catalog: Catalog | None = None,
 ) -> bytes:
     """Encode pixels and explicit native source metadata without retagging."""
+    from esolangs.raster import Raster
+
     try:
         claims = _source_claims(
             language, settings, scale, input_arity=input_arity, catalog=catalog
         )
-        image = write_rgb(pixels)
+        image = (
+            Raster.to_png(pixels)
+            if _has_backing_type(pixels, Raster)
+            else write_rgb(cast("Rows", pixels))
+        )
         return (
             image
             if claims is None

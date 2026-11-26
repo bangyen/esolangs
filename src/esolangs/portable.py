@@ -115,7 +115,7 @@ def to_json(
             document["input_arity"] = artifact.input_arity
         body = artifact.source
         if _has_backing_type(body, Raster):
-            image = png.write_rgb(body.rows)
+            image = Raster.to_png(body)
             try:
                 image = png.attach_source_metadata(
                     image, name, settings, artifact.scale

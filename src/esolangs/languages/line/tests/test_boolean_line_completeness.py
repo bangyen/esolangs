@@ -181,7 +181,7 @@ def test_complete_fold_wins_fallback_tie(monkeypatch) -> None:
         return (graph, plan) if plan.area < limit else None
 
     # Supply an equally sized, executable fallback to exercise the tie policy.
-    monkeypatch.setattr(generator, "small_tree_canvas", lambda *_args, **_kw: plan())
+    monkeypatch.setattr(generator, "small_tree_plan", lambda *_args, **_kw: plan)
     monkeypatch.setattr(generator, "streaming_canvas", first)
     _generate.cache_clear()
     try:

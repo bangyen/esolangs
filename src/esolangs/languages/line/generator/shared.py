@@ -13,7 +13,13 @@ class CanvasPlan:
     """A checked layout with its area before pixel allocation."""
 
     draw: Callable[[], Canvas]
-    area: int
+    width: int
+    height: int
+
+    @property
+    def area(self) -> int:
+        """Number of pixels in the planned canvas."""
+        return self.width * self.height
 
     def __call__(self) -> Canvas:
         """Rasterize the checked strokes."""
@@ -48,4 +54,4 @@ def stroke_plan(
         _arrowhead(canvas, y, x, heading, unit)
         return canvas
 
-    return CanvasPlan(rasterize, width * height)
+    return CanvasPlan(rasterize, width, height)

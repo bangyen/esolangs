@@ -114,9 +114,9 @@ def _grey_rows(rows: Rows) -> list[bytearray]:
 
 @lru_cache(maxsize=8)
 def _compiled(program: Raster, scale: int | None = None) -> _Compiled:
-    return compile_program(
-        extract_mask(from_grey(_grey_rows(program.rows)), scale=scale)
-    )
+    grey = program._grey_rows()  # noqa: SLF001 - native greyscale scanlines
+    rows = _grey_rows(program.rows) if grey is None else grey
+    return compile_program(extract_mask(from_grey(rows), scale=scale))
 
 
 _WORKSPACE_MODEL = WorkspaceModel(

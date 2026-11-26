@@ -65,7 +65,7 @@ def _native_file_bytes(
             raise ProgramError("gzip export requires text; rasters use PNG")
         return (
             png.write_source(
-                body.rows,
+                body,
                 record.language,
                 record.settings,
                 record.scale,

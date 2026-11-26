@@ -187,3 +187,41 @@ def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="is a JPEG") as caught:
         extract.load_binary(str(path))
     assert "PNG" in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("n", "unit", "scale"), [(1, 8, 1), (2, 12, 2), (3, 16, 3), (4, 20, 1), (5, 24, 2)]
+)
+def test_balanced_tree_paints_only_its_selected_canvas(n, unit, scale, monkeypatch):
+    from esolangs.languages.line.generator import _generate, balance, line
+    from esolangs.languages.line.generator.render import Canvas
+    from esolangs.raster import Raster
+
+    calls = []
+    paint = Canvas.__init__
+
+    def count(canvas, width, height):
+        calls.append((width, height))
+        paint(canvas, width, height)
+
+    monkeypatch.setattr(Canvas, "__init__", count)
+    table = "".join(str(row.bit_count() % 2) for row in range(1 << n))
+    _generate.cache_clear()
+    image = balance(table, line(table, unit=unit), unit=unit).upscaled(scale)
+    width, height = image.dimensions
+    assert calls == []
+    encoded = image.to_png()
+    assert calls == [(width // scale, height // scale)]
+    rgb = Raster.from_png(encoded)
+    from esolangs.languages.line.interpreter import _compiled
+
+    if unit == 20:
+        _compiled.cache_clear()
+        generated = _compiled(image, scale)
+        _compiled.cache_clear()
+        assert generated == _compiled(rgb, scale)
+    assert rgb.dimensions == (width, height)
+    assert rgb == image
+    assert hash(rgb) == hash(image)
+    assert rgb.to_png() == encoded
+    assert image._rows is None

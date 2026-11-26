@@ -392,7 +392,7 @@ def _emit(
         assert isinstance(artifact, ProgramArtifact)
         _write_output(
             png.write_source(
-                program.rows,
+                program,
                 artifact.language,
                 artifact.settings,
                 artifact.scale,

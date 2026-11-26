@@ -203,7 +203,7 @@ class Mask:
         return cls(height, width, packed)
 
 
-def from_grey(grey: list[bytearray], threshold: int = 128) -> Mask:
+def from_grey(grey: list[bytearray] | tuple[bytes, ...], threshold: int = 128) -> Mask:
     """Threshold greyscale rows into an ink mask (ink = darker than mid-grey)."""
     height = len(grey)
     width = len(grey[0]) if height else 0
