@@ -27,6 +27,7 @@ from functools import lru_cache, partial
 from typing import NamedTuple, cast
 
 from esolangs.generation.helpers import (
+    ResidualDiagram,
     _residual_ids,
     _validate_truth_table,
     essential_inputs,
@@ -63,12 +64,26 @@ def line_boolean(
     grow past the tested tree's ([ablations.level_skip]).
     """
     n = _validate_truth_table(truth_table)
-    if skip is None:
-        skip = n <= _SMALL_MAX
+    plan = _line_plan(truth_table, n, reverse=reverse)
+    return _line_tree(*plan, skip=n <= _SMALL_MAX if skip is None else skip)
+
+
+def _line_plan(
+    truth_table: str, n: int, *, reverse: bool
+) -> tuple[tuple[int, ...], ResidualDiagram]:
+    """Analyze the residuals in one input order."""
     order = tuple(range(n - 1, -1, -1)) if reverse else tuple(range(n))
     if reverse:
         truth_table = permute_truth_table(truth_table, order)
-    levels, children, _ = _residual_ids(truth_table, n)
+    return order, _residual_ids(truth_table, n)
+
+
+def _line_tree(
+    order: tuple[int, ...], residuals: ResidualDiagram, *, skip: bool
+) -> Node:
+    """Build fresh nodes for a tested or skipped tree."""
+    n = len(order)
+    levels, children, _ = residuals
 
     # Read n inputs into cells 0..n-1, one `i` per cell, `>` between them.
     head = chain(*("i" + ">i" * (n - 1)))
@@ -303,7 +318,9 @@ def _best_choice(
 
 def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
     """Most balanced compact tree over the previous and projected trees."""
-    previous = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
+    n = _validate_truth_table(truth_table)
+    plans = [_line_plan(truth_table, n, reverse=reverse) for reverse in (False, True)]
+    previous = [_line_tree(*plan, skip=n <= _SMALL_MAX) for plan in plans]
     nodes = [*previous, *_projected_booleans(truth_table, (False, True))]
     preceding = _best_choice(nodes, tight=False, small=small, unit=unit)
     tight = _best_choice(nodes, small=small, unit=unit)
@@ -313,10 +330,7 @@ def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
     # Skipped trees stay candidates past five inputs: compact, they balance
     # OR n=8 to 900x1880 where the tested tree gives 3480x4440.  Raced as a
     # second pool so the area rules never make the tested choice worse.
-    skipped = [
-        line_boolean(truth_table, reverse=reverse, skip=True)
-        for reverse in (False, True)
-    ]
+    skipped = [_line_tree(*plan, skip=True) for plan in plans]
     other = _ceilinged_choice(
         _best_choice(skipped, tight=False, small=False, unit=unit, initial=preceding),
         _best_choice(skipped, small=False, unit=unit, initial=tight),

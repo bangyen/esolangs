@@ -508,8 +508,7 @@ class _Machine:
             self.io.progress(),
         )
         snapshot = self._input_retry.snapshot(boundary)
-        accepted = self._writer.accepted
-        return snapshot if accepted is None else (*snapshot, accepted)
+        return self._writer.snapshot(snapshot)
 
     # The all-random-outcomes search.  ``_State`` is already the whole
     # machine -- ``done`` included -- so the branching state is that value

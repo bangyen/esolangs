@@ -205,8 +205,7 @@ class _Machine:
         )
         if self._rejected_input is not None:
             state = (*state, self._rejected_input)
-        accepted = self._writer.accepted
-        return state if accepted is None else (*state, accepted)
+        return self._writer.snapshot(state)
 
     def _read(self) -> int:
         """Return the next stream bit: a marker 1 before each input bit."""
