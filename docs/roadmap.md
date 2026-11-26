@@ -134,6 +134,10 @@ evidence, not optimization tasks.
     executions per table. Both tables printed one digit and halted on all
     131,072 inputs, with 33 and 41 wrong answers. The independent storage gap
     fell from 115 to 83 positions (78 primary and five spill).
+    A shorter pointer walk and alternative encodings for control words
+    reduced the gap to 68 positions (67 primary and one spill). Four tables
+    printed one digit and halted on every input, with 25, 34, 24 and 28
+    wrong answers. Every mismatch fell within those 68 positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
