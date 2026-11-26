@@ -41,7 +41,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+    pending_input_cursor,
+)
 from esolangs.runtime._validate import check_address, require_text_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
@@ -178,13 +183,7 @@ class _Machine:
         return (*boundary, accepted) if accepted else boundary
 
     def _input_cursor(self) -> int | WorkspaceVariant:
-        cursor = self.io.progress()
-        byte = self._input_byte
-        return (
-            cursor
-            if byte is None
-            else WorkspaceVariant("pending_input", (cursor, byte))
-        )
+        return pending_input_cursor(self.io.progress(), self._input_byte)
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer.

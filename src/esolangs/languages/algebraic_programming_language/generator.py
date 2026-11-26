@@ -331,13 +331,17 @@ class _WidthLayouts:
         self.span = grid_width(self.shared)
 
     @cached_property
+    def short_projection(self) -> tuple[str, list[str]]:
+        return _essential(self.table, self.perm)
+
+    @cached_property
     def definitions(self) -> tuple[str, int]:
-        program = _apl_short_definitions(self.table, self.perm)
+        program = _apl_short_definitions(*self.short_projection, self.inputs)
         return program, grid_width(program)
 
     @cached_property
     def operators(self) -> str:
-        return _apl_short_operators(self.table, self.perm)
+        return _apl_short_operators(*self.short_projection, self.inputs)
 
     def layout(self, width: int) -> tuple[str, int | None]:
         """Return the chosen spelling and its next frame or format fit."""
@@ -472,9 +476,8 @@ def _apl_narrow_layout(
     return _WidthLayouts(table, perm).layout(width)
 
 
-def _apl_short_definitions(table: str, perm: tuple[int, ...]) -> str:
+def _apl_short_definitions(reduced: str, selectors: list[str], inputs: int) -> str:
     """Return one-character definitions for a table of at most three inputs."""
-    reduced, selectors = _essential(table, perm)
     constant = constant_span_test(reduced)
     definitions: list[str] = []
     made: dict[str, str] = {}
@@ -512,7 +515,7 @@ def _apl_short_definitions(table: str, perm: tuple[int, ...]) -> str:
     result = tree(0, len(reduced), 0)
     # '&' binds before '|'; the zero prefix pre-binds every input without
     # parentheses, preserving input order even when a Boolean arm folds.
-    reads = _reads(len(perm), "&")
+    reads = _reads(inputs, "&")
     return "\n".join([_NOT_TIGHT, *definitions, f"{reads}|{result}"])
 
 
@@ -528,10 +531,8 @@ def _essential(table: str, perm: tuple[int, ...]) -> tuple[str, list[str]]:
     return read_at(table, used, n), [_NAMES[perm[i]] for i in used]
 
 
-def _apl_short_operators(table: str, perm: tuple[int, ...]) -> str:
+def _apl_short_operators(table: str, selectors: list[str], inputs: int) -> str:
     """Return five-column operator definitions for at most three inputs."""
-    inputs = len(perm)
-    table, selectors = _essential(table, perm)
     constant = constant_span_test(table)
     symbols = iter("!?:;~^@")
     lines: list[str] = []

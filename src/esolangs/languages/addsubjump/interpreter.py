@@ -46,7 +46,12 @@ from esolangs.runtime._entry import script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+    pending_input_cursor,
+)
 from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer
@@ -617,10 +622,7 @@ class _Machine:
         )
 
     def _input_boundary(self) -> int | WorkspaceVariant:
-        cursor = self.io.progress()
-        if self._pending_selector is None:
-            return cursor
-        return WorkspaceVariant("pending_input", (cursor, self._pending_selector))
+        return pending_input_cursor(self.io.progress(), self._pending_selector)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""

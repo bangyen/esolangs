@@ -57,7 +57,12 @@ from esolangs.languages.alight.interpreter._walk import (
     _turned,
 )
 from esolangs.languages.alight.interpreter._workspace import _Graph
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+    pending_input_cursor,
+)
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.source_hints import keyword_hint, syntax_error
 
@@ -753,9 +758,7 @@ class _Machine:
         """Capture semantic walkers and reachable lists without cycle serializers."""
         graph = _Graph()
         walkers = tuple(graph.walker(walker) for walker in self.walkers)
-        cursor: int | WorkspaceVariant = self.io.progress()
-        if self._pending_input is not None:
-            cursor = WorkspaceVariant("pending_input", (cursor, self._pending_input))
+        cursor = pending_input_cursor(self.io.progress(), self._pending_input)
         accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             walkers=walkers,

@@ -156,3 +156,14 @@ class WorkspaceVariant:
             elif left != right:
                 return False
         return True
+
+
+def pending_input_cursor(
+    progress: int, pending: Hashable | None
+) -> int | WorkspaceVariant:
+    """Include a consumed value until the instruction commits it."""
+    return (
+        progress
+        if pending is None
+        else WorkspaceVariant("pending_input", (progress, pending))
+    )
