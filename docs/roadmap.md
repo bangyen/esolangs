@@ -84,11 +84,12 @@ evidence, not optimization tasks.
     A separate marker distinguished two fixed instructions while preserving
     all eight values at 101 writable words in its bank. Shortening two output
     routines in the 961-bit layout left 587 bits short with control words
-    reserved. Sharing instructions and calibration markers supplied 412
-    independently writable bits. Of those, 376 filled bank deficits, leaving
-    211 bits across five banks. All 1,194 local bit patterns passed in 3,762
-    row executions. The two random tables produced 129,875 and 129,887
-    correct answers out of 131,072 each. Universal placement remains open.
+    reserved. Calibration markers let instructions carry answer bits even
+    after startup encrypted them. Of 431 independently writable bits, 409
+    filled bank deficits. Banks 15, 24 and 26 still lacked 25, 29 and 124
+    bits, respectively (178 total). All 1,232 local bit patterns passed in
+    3,848 row executions. The two random tables produced 129,909 and
+    129,878 correct answers out of 131,072 each. Universal placement remains open.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
