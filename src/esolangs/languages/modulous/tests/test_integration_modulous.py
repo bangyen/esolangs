@@ -115,12 +115,12 @@ class TestOutputSurvivesAFailure:
 
     def test_a_timeout_carries_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """An execution timeout retains the loop's output."""
-        from esolangs.runtime import _isolated
+        from esolangs.runtime import _worker_response
 
         budget = 5.0
         elapsed = 0.0
         printed = 0
-        decode = _isolated.worker_loads
+        decode = _worker_response.worker_loads
 
         def decode_record(record: str) -> object:
             nonlocal elapsed, printed
@@ -133,8 +133,10 @@ class TestOutputSurvivesAFailure:
 
         # Expire after streamed output so coverage overhead during input
         # acquisition cannot spend the short execution window.
-        monkeypatch.setattr(_isolated, "monotonic", lambda: monotonic() + elapsed)
-        monkeypatch.setattr(_isolated, "worker_loads", decode_record)
+        monkeypatch.setattr(
+            _worker_response, "monotonic", lambda: monotonic() + elapsed
+        )
+        monkeypatch.setattr(_worker_response, "worker_loads", decode_record)
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
             run(
                 "Modulous",

@@ -5,9 +5,9 @@ from typing import Any
 
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.results import ExecutionResult
-from esolangs.runtime._isolated import _decode_outcome
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._snapshot_wire import _state_wire
+from esolangs.runtime._worker_response import _decode_outcome
 
 
 def _decode(text: str, *, expired: bool) -> ExecutionResult | TerminationResult:

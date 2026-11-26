@@ -885,7 +885,7 @@ def _check_preparation_timeout(monkeypatch):
 
 def _check_outcomes_are_the_internal_boundary(monkeypatch):
     from esolangs.operations import execution
-    from esolangs.runtime import _isolated
+    from esolangs.runtime import _worker_response
 
     def refuse_legacy_run(*_args, **_kwargs):
         raise AssertionError("execute used the raising result adapter")
@@ -913,7 +913,7 @@ def _check_outcomes_are_the_internal_boundary(monkeypatch):
         failed.unwrap()
     assert caught.value is fault
     assert "retain this note" in fault.__notes__[0]
-    response = _isolated._decode_outcome('{"output":"prefix"}\n', expired=True)
+    response = _worker_response._decode_outcome('{"output":"prefix"}\n', expired=True)
     assert response.status == "limit"
     assert response.observation == esolangs.ExecutionResult("prefix", None, None, None)
     assert response.observation.completion is None
@@ -934,7 +934,7 @@ def test_longest_execution_timeout_leaves_time_for_worker_startup() -> None:
 def test_an_execution_budget_outlasts_the_default_total() -> None:
     """An implicit total includes startup time beyond the execution budget."""
     from esolangs.operations import execution
-    from esolangs.runtime import _isolated
+    from esolangs.runtime import _worker_response
 
     with patch.object(execution, "_ISOLATED_TIMEOUT", 3.0):
         total = execution.default_total(None, 4.0)
@@ -943,8 +943,10 @@ def test_an_execution_budget_outlasts_the_default_total() -> None:
     for deadline, bound in ((total, "execution_timeout"), (explicit, "total_timeout")):
         records = Queue()
         records.put('{"prepared":true}\n')
-        with patch.object(_isolated, "monotonic", side_effect=(0.0, 0.0, 5.0)):
-            stopped = _isolated._read_worker_output(None, records, deadline, None, 4.0)
+        with patch.object(_worker_response, "monotonic", side_effect=(0.0, 0.0, 5.0)):
+            stopped = _worker_response._read_worker_output(
+                None, records, deadline, None, 4.0
+            )
         assert stopped.bound == bound
 
     source = "+.[]"

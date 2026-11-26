@@ -499,7 +499,7 @@ def test_worker_integer_tag_is_lossless_and_canonical() -> None:
 
 @pytest.mark.parametrize("termination", [None, CycleDecision(halts=True, commands=0)])
 def test_successful_workers_must_report_known_input_counters(termination) -> None:
-    from esolangs.runtime._isolated import _decode_outcome
+    from esolangs.runtime._worker_response import _decode_outcome
 
     report = CompletionReport(Completion.HALTED) if termination is None else None
     unknown = ExecutionResult("prefix", None, None, None, completion=report)
@@ -521,11 +521,11 @@ def test_successful_workers_must_report_known_input_counters(termination) -> Non
 
 
 def test_worker_budget_errors_preserve_the_named_bound() -> None:
-    from esolangs.runtime import _isolated
+    from esolangs.runtime import _worker_response
 
     unknown = esolangs.ExecutionBudgetError("no phase declared")
     assert (
-        _isolated._decode_outcome(
+        _worker_response._decode_outcome(
             json.dumps(_failure_wire(unknown)), expired=False
         ).bound
         is None
@@ -535,7 +535,7 @@ def test_worker_budget_errors_preserve_the_named_bound() -> None:
         (esolangs.ExecutionTimeoutError("preparation expired"), "preparation_timeout"),
     ):
         error.bound = bound
-        outcome = _isolated._decode_outcome(
+        outcome = _worker_response._decode_outcome(
             json.dumps(_failure_wire(error)), expired=False
         )
         assert type(outcome.error) is type(error)

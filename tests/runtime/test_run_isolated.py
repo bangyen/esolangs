@@ -59,12 +59,12 @@ def test_timeout_retains_streamed_output(bound) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bound", ["total_timeout", "preparation_timeout"])
 def test_timeout_retains_output_already_queued(monkeypatch, spawned, bound) -> None:
-    from esolangs.runtime import _isolated
+    from esolangs.runtime import _worker_response
 
     queued = Event()
-    monotonic = _isolated.monotonic
+    monotonic = _worker_response.monotonic
     displacement = 0.0
-    read_output = _isolated._read_worker_output
+    read_output = _worker_response._read_worker_output
 
     class ObservedQueue(Queue):
         def put(self, item, *args, **kwargs):
@@ -78,10 +78,12 @@ def test_timeout_retains_output_already_queued(monkeypatch, spawned, bound) -> N
         displacement = 10.0
         return read_output(*args)
 
-    monkeypatch.setattr(_isolated, "Queue", ObservedQueue)
-    monkeypatch.setattr(_isolated, "monotonic", lambda: monotonic() + displacement)
+    monkeypatch.setattr(_worker_response, "Queue", ObservedQueue)
     monkeypatch.setattr(
-        _isolated, "_read_worker_output", expire_after_output_was_queued
+        _worker_response, "monotonic", lambda: monotonic() + displacement
+    )
+    monkeypatch.setattr(
+        _worker_response, "_read_worker_output", expire_after_output_was_queued
     )
     outcome = esolangs.execute(
         REFERENCE,
@@ -547,7 +549,7 @@ from io import StringIO
 from time import monotonic
 
 from esolangs import ExecutionLimits, Language
-from esolangs.runtime import _acquire, _isolated
+from esolangs.runtime import _acquire, _isolated, _worker_response
 
 phase, language = sys.argv[1:]
 started = []
@@ -578,7 +580,7 @@ class BlockedRead:
 parked = threading.Thread(target=release.wait, daemon=True)
 parked.start()
 BaseChild = subprocess.Popen
-BaseQueue = _isolated.Queue
+BaseQueue = _worker_response.Queue
 BaseThread = _acquire.Thread
 
 class AcquiringThread(BaseThread):
@@ -607,7 +609,7 @@ class ObservedQueue(BaseQueue):
         return super().get(*args, **kwargs)
 
 _isolated.subprocess.Popen = QuietChild
-_isolated.Queue = ObservedQueue
+_worker_response.Queue = ObservedQueue
 if phase == "source":
     _acquire.Thread = AcquiringThread
 program = BlockedRead(",.") if phase == "source" else ",."
@@ -641,7 +643,7 @@ finally:
             child.wait()
 if phase == "source":
     _isolated.subprocess.Popen = BaseChild
-    _isolated.Queue = BaseQueue
+    _worker_response.Queue = BaseQueue
     _acquire.Thread = BaseThread
     assert api.run(StringIO(",."), stdin=stdin, limits=limits).output == "A"
     assert stdin.tell() == 1
@@ -672,14 +674,14 @@ def test_bulk_worker_receives_a_request_larger_than_a_pipe_buffer(spawned) -> No
 def test_worker_reaps_if_transport_thread_start_is_interrupted(
     monkeypatch, spawned, streaming
 ) -> None:
-    from esolangs.runtime import _isolated, _worker_pipe
+    from esolangs.runtime import _isolated, _worker_pipe, _worker_response
 
     class InterruptedThread(Thread):
         def start(self):
             raise KeyboardInterrupt
 
     monkeypatch.setattr(
-        _isolated if streaming else _worker_pipe, "Thread", InterruptedThread
+        _worker_response if streaming else _worker_pipe, "Thread", InterruptedThread
     )
     with pytest.raises(KeyboardInterrupt):
         _isolated._launch("{}", monotonic() + 4, max_output=1 if streaming else None)
@@ -840,7 +842,7 @@ def protocol_child():
 
 
 def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None:
-    from esolangs.runtime._isolated import _bounded_output
+    from esolangs.runtime._worker_response import _bounded_output
 
     for malformed in (
         '{"output":',
@@ -861,7 +863,7 @@ def test_broken_request_pipe_still_drains_worker_failure(protocol_child) -> None
     from io import StringIO
 
     from esolangs.runtime._failure_wire import _failure_wire
-    from esolangs.runtime._isolated import _bounded_output
+    from esolangs.runtime._worker_response import _bounded_output
 
     class ClosedInput(StringIO):
         def write(self, _text):
@@ -886,7 +888,7 @@ def test_capped_protocol_verdict_does_not_excuse_a_lingering_worker(
 ) -> None:
     import subprocess
 
-    from esolangs.runtime._isolated import _bounded_output
+    from esolangs.runtime._worker_response import _bounded_output
 
     child = protocol_child(['{"output":"prefix"}\n', '{"result":"prefix"}\n'])
     original_wait = child.wait

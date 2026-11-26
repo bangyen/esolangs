@@ -73,7 +73,7 @@ _LAZY = {
     "instantiate": "esolangs.operations.instantiation",
     "to_json": "esolangs.portable",
     "from_json": "esolangs.portable",
-    "to_file": "esolangs.portable",
+    "to_file": "esolangs.operations.export",
     "LanguageInfo": "esolangs.registry._info",
     "LanguageDeclaration": "esolangs.registry._language",
     "describe": "esolangs.registry._describe",
@@ -91,13 +91,13 @@ if TYPE_CHECKING:
     from esolangs.operations.execution import execute as execute
     from esolangs.operations.execution import prepare as prepare
     from esolangs.operations.execution import run as run
+    from esolangs.operations.export import to_file as to_file
     from esolangs.operations.generation import generate as generate
     from esolangs.operations.instantiation import instantiate as instantiate
     from esolangs.operations.prepared import PreparedProgram as PreparedProgram
     from esolangs.operations.source import from_file as from_file
     from esolangs.operations.source import from_source as from_source
     from esolangs.portable import from_json as from_json
-    from esolangs.portable import to_file as to_file
     from esolangs.portable import to_json as to_json
     from esolangs.registry._catalog import Catalog as Catalog
     from esolangs.registry._describe import describe as describe

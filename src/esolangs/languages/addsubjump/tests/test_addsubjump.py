@@ -4,9 +4,9 @@ import pytest
 
 from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.exceptions import HaltError
+from esolangs.languages.addsubjump._assembly import _assembly
 from esolangs.languages.addsubjump.interpreter import (
     _advance,
-    _assembly,
     _Machine,
     _pack,
     _store,
