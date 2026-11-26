@@ -145,6 +145,11 @@ evidence, not optimization tasks.
     leaving 60 primary positions and no spills. Four tables printed one
     digit and halted on all 131,072 inputs. Their 24, 24, 29 and 32 wrong
     answers all fell within those 60 positions.
+    Four requested bits now select the output lookup using XOR and three
+    pairwise ANDs. All 16 settings passed 4,544 control-word and 280,800
+    ordinary-word runs in total. The gap fell to 57 primary positions.
+    Four tables halted on every input with 20, 24, 31 and 29 wrong answers,
+    all within those 57 positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
