@@ -93,8 +93,11 @@ evidence, not optimization tasks.
     A different layout selected one of two adjacent calibration cells by
     address. Each of 84 marker pairs encoded all four bit combinations
     with both data words held fixed (672 row executions). Two ordinary
-    words per pair retained all eight labels in 16,128 executions.
-    Universal placement remains open.
+    words per pair retained all eight labels in 16,128 executions. Moving the
+    phase lookup 36,450 cells freed 185 occupied words at its old location.
+    All eight labels there passed across 554 row bits in 4,432 executions.
+    After packing the new layout, seven banks still lacked 360 bits in
+    total. Universal placement remains open.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
