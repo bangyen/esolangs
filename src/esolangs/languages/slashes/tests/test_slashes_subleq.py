@@ -6,6 +6,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.exceptions import TemplateError
 from esolangs.languages.slashes import interpreter as native
@@ -104,7 +105,7 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
         == "$"
     )
     template = esolangs.generate("///", "01")
-    restored = esolangs.from_json("///", esolangs.to_json("///", template))
+    restored = serialization.from_json("///", serialization.to_json("///", template))
     with pytest.raises(TemplateError, match="fill the template"):
         esolangs.run("///", restored).unwrap()
     partial = esolangs.generate("///", "0110").source.replace("$", "a", 1)

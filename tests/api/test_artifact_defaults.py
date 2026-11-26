@@ -5,6 +5,7 @@ import inspect
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.generation import wrap
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
@@ -61,14 +62,14 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
             program, (esolangs.ProgramArtifact, esolangs.TemplateArtifact)
         )
         assert program.language == bound.name
-        document = esolangs.to_json(language, program)
-        restored = esolangs.from_json(language, document)
+        document = serialization.to_json(language, program)
+        restored = serialization.from_json(language, document)
         assert type(restored) is type(program)
-        assert esolangs.to_json(language, restored) == document
+        assert serialization.to_json(language, restored) == document
         assert _evaluate(language, restored, inputs=1) == "01"
         if not options:
             for bit in (0, 1):
-                result = bound.evaluate(restored, [bit])
+                result = restored.evaluate([bit])
                 assert result.answer == str(bit)
                 if bound.describe().answer_mode == "termination":
                     assert result.termination is not None

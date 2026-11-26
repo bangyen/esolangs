@@ -13,6 +13,7 @@ from esolangs.languages.befunge.interpreter import (
     prepare_machine,
     run,
 )
+from esolangs.registry import Catalog
 from esolangs.runtime.io import IO
 from esolangs.runtime.randomness import Seeded
 from esolangs.vm import (
@@ -63,31 +64,37 @@ def test_scoped_termination_keeps_public_failure_evidence() -> None:
     contract = replace(
         record.contract, answer_mode="termination", answer_values=("halts", "diverges")
     )
-    scoped = esolangs.Catalog([replace(record, contract=contract)]).bind(api.name)
+    scoped = Catalog([replace(record, contract=contract)]).bind(api.name)
     local = esolangs.ExecutionLimits(max_steps=500)
     worker = esolangs.ExecutionLimits(max_steps=500, total_timeout=5)
     successes = []
     for limits in (local, worker):
-        halted = scoped.evaluate(scoped.from_source("@"), [0], limits=limits)
+        halted = scoped.from_source("@").evaluate(
+            [0], limits=limits, catalog=scoped.catalog
+        )
         assert halted.answer == "0"
         successes.append(halted)
         with pytest.raises(
             esolangs.InterpreterLimitError, match="depends on its own draws"
         ) as stopped:
-            scoped.evaluate(scoped.from_source("?@"), [0], limits=limits)
+            scoped.from_source("?@").evaluate(
+                [0], limits=limits, catalog=scoped.catalog
+            )
         assert stopped.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
         assert stopped.value.__notes__
         with pytest.raises(
             esolangs.InterpreterLimitError, match="cannot be safely forked"
         ) as unforkable:
-            scoped.evaluate(scoped.from_source("&@"), [0], limits=limits)
+            scoped.from_source("&@").evaluate(
+                [0], limits=limits, catalog=scoped.catalog
+            )
         assert unforkable.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
     assert successes[0] == successes[1]
     with pytest.raises(esolangs.InterpreterLimitError, match="cannot be safely forked"):
-        scoped.evaluate(scoped.from_source("&@"), [0])
+        scoped.from_source("&@").evaluate([0])
     with pytest.raises(esolangs.ExecutionCapError, match="branching states") as capped:
-        scoped.evaluate(
-            scoped.from_source("@"), [0], limits=esolangs.ExecutionLimits(max_steps=0)
+        scoped.from_source("@").evaluate(
+            [0], limits=esolangs.ExecutionLimits(max_steps=0), catalog=scoped.catalog
         )
     assert capped.value.bound == "max_steps"
     _check_shared_branch_evidence(scoped, local, worker)
@@ -100,8 +107,8 @@ def _check_shared_branch_evidence(scoped, local, worker) -> None:
 
     for source, answer in ((">   <", "1"), ("@", "0")):
         program = scoped.from_json(scoped.to_json(scoped.from_source(source)))
-        native = scoped.evaluate(program, [0], limits=local)
-        isolated = scoped.evaluate(program, [0], limits=worker)
+        native = program.evaluate([0], limits=local)
+        isolated = program.evaluate([0], limits=worker)
         assert native == isolated
         assert isolated.answer == answer
         for result in (native, isolated):

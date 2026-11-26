@@ -27,7 +27,7 @@ def test_constant_uses_one_empty_production_and_deletes_each_embedded_input(
         assert _evaluate("Cyclic tag", program, inputs=n) == table
     for row in range(1 << n):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-        filled = esolangs.instantiate("Cyclic tag", template, bits)
+        filled = esolangs.Language("Cyclic tag").instantiate(template, bits)
         io = ScriptedIO("")
         machine = _Machine(filled.source, io)
         assert machine.program == ("",)
@@ -54,7 +54,7 @@ def _check_constants() -> None:
     for n, bit, _options, template in constant_artifacts("Cyclic tag", range(1, 13)):
         assert template.source.count("$") == n
         for bits in ([0] * n, [1] * n):
-            program = esolangs.instantiate("Cyclic tag", template, bits)
+            program = esolangs.Language("Cyclic tag").instantiate(template, bits)
             io = ScriptedIO("7")
             machine = _Machine(program.source, io)
             assert machine.data == [str(b) for b in bits] + [bit]

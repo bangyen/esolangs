@@ -74,7 +74,7 @@ def test_balance_executes(name: str, table: str) -> None:
     for row, expected in enumerate(table):
         bits = row_bits(row, inputs)
         if esolangs.describe(name).parameterized:
-            source, stdin = esolangs.instantiate(name, program, bits), ""
+            source, stdin = esolangs.Language(name).instantiate(program, bits), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         assert (

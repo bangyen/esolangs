@@ -2,7 +2,8 @@
 
 from itertools import product
 
-from esolangs import generate, instantiate, run
+from esolangs import generate, run
+from esolangs.operations.instantiation import instantiate
 
 
 def test_folded_and_wrapped_templates() -> None:

@@ -16,7 +16,9 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.raster import _png_chunks, _png_validation, png
+from esolangs.registry import Catalog
 from esolangs.runtime._artifact_source import read_png_artifact
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
@@ -540,7 +542,7 @@ def test_png_metadata_stops_at_iend(language: str, tmp_path: Path) -> None:
     expected = esolangs.Language(language).from_source(esolangs.Raster((((0, 0, 0),),)))
     path = tmp_path / "program"
     path.write_bytes(expected.source.to_png() + _chunk(b"esOL", b'{"version":9}'))
-    assert esolangs.from_file(language, path) == expected
+    assert serialization.from_file(language, path) == expected
 
 
 @pytest.mark.parametrize(
@@ -609,7 +611,7 @@ def test_named_png_damage_and_portable_wrapper_keep_repair_notes(
     with pytest.raises(
         esolangs.ProgramError, match="requires text source"
     ) as wrong_kind:
-        esolangs.from_file(REFERENCE, path)
+        serialization.from_file(REFERENCE, path)
     assert str(path) in str(wrong_kind.value)
 
 
@@ -628,14 +630,14 @@ def test_png_source_kind_checked_before_dependency(
     portable["language"] = REFERENCE
     monkeypatch.setattr(png, "Image", None)
     with pytest.raises(esolangs.MissingDependencyError):
-        esolangs.from_file(language, path)
+        serialization.from_file(language, path)
     for load in (
-        lambda: esolangs.from_file(REFERENCE, path),
+        lambda: serialization.from_file(REFERENCE, path),
         lambda: esolangs.from_source(REFERENCE, generated.source),
         lambda: esolangs.prepare(REFERENCE, generated.source),
         lambda: esolangs.prepare(REFERENCE, image),
-        lambda: esolangs.to_json(REFERENCE, image),
-        lambda: esolangs.from_json(REFERENCE, json.dumps(portable)),
+        lambda: serialization.to_json(REFERENCE, image),
+        lambda: serialization.from_json(REFERENCE, json.dumps(portable)),
     ):
         with pytest.raises(
             esolangs.ProgramError, match="requires text source"
@@ -751,6 +753,8 @@ def test_text_import_defers_pillow_until_png_io() -> None:
     source = """
 import sys
 import esolangs
+from esolangs import serialization
+from esolangs.registry import Catalog
 assert 'PIL.Image' not in sys.modules
 raster = esolangs.Raster((((1, 2, 3),),))
 data = raster.to_png()
@@ -976,7 +980,7 @@ def test_png_writer_retains_dialect_owner(language: str, tmp_path: Path) -> None
         aliases=(alias, language),
         backend=None,
     )
-    api = esolangs.Catalog([declaration]).bind(name)
+    api = Catalog([declaration]).bind(name)
     pixels = esolangs.Raster((((1, 2, 3),),))
     raw = pixels.to_png()
     settings = api.settings(ink=1)
@@ -1007,7 +1011,7 @@ def test_png_writer_retains_dialect_owner(language: str, tmp_path: Path) -> None
     assert api.from_file(path).settings == empty
     with pytest.raises(esolangs.ProgramError, match="generated for Scoped Raster"):
         installed.from_file(path)
-    other = esolangs.Catalog([replace(original, aliases=(name,))])
+    other = Catalog([replace(original, aliases=(name,))])
     with pytest.raises(esolangs.ArgumentError, match="dialect settings belong to"):
         png.attach_source_metadata(raw, None, settings, 1, catalog=other)
     with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
@@ -1041,9 +1045,7 @@ def test_typed_png_writers_validate_dialect_schema(
     original = api.catalog.languages[language]
     schema = esolangs.DialectSchema(language, {"ink": (0, 1)}, {"ink": 0})
     runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
-    scoped = esolangs.Catalog([replace(original, runtime=runtime, backend=None)]).bind(
-        language
-    )
+    scoped = Catalog([replace(original, runtime=runtime, backend=None)]).bind(language)
     artifact = api.generate("01")
     assert isinstance(artifact, esolangs.ProgramArtifact)
     pixels = artifact.source
@@ -1074,7 +1076,7 @@ def test_typed_png_writers_validate_dialect_schema(
         path.write_bytes(tagged)
         restored = api.from_file(path)
         assert restored == replace(artifact, settings=installed)
-        assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+        assert [restored.evaluate([bit]).answer for bit in (0, 1)] == ["0", "1"]
 
 
 @pytest.mark.parametrize(
@@ -1152,7 +1154,7 @@ def test_non_ascii_dialect_metadata_uses_utf8_only_when_needed(
     note = "é" * 4096
     schema = esolangs.DialectSchema(language, {"note": ("é", note)}, {"note": "é"})
     runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
-    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(language)
+    api = Catalog([replace(original, runtime=runtime)]).bind(language)
     path = tmp_path / "source.png"
     ordinary = api.from_source(pixels, settings=api.settings(note="é"))
     api.to_file(ordinary, path)
@@ -1171,7 +1173,7 @@ def test_declarations_cannot_persist_surrogate_metadata(language, tmp_path) -> N
     original = esolangs.Language(language).catalog.languages[language]
     schema = esolangs.DialectSchema(language, {"note": ("\ud800",)}, {"note": "\ud800"})
     runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
-    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(language)
+    api = Catalog([replace(original, runtime=runtime)]).bind(language)
     path = tmp_path / "source.png"
     record = api.from_source(pixels, settings=api.settings(note="\ud800"))
     for save in (lambda: api.to_file(record, path), lambda: api.to_json(record)):

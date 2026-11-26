@@ -11,7 +11,7 @@ from time import monotonic
 import pytest
 
 import esolangs
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import complete_vm
 from tests.support.reference import REFERENCE
@@ -107,7 +107,7 @@ def _check_no_stdin_invocation(prepared, route) -> None:
         without_stdin = replace(
             reference, runtime=replace(reference.runtime, reads_stdin=False)
         )
-        scoped = esolangs.Catalog([without_stdin]).bind(REFERENCE)
+        scoped = Catalog([without_stdin]).bind(REFERENCE)
         assert scoped.run("+.", stdin=stdin).unwrap().output == "\x01"
         with pytest.raises(esolangs.ArgumentError, match="runtime declared"):
             scoped.run("+.", stdin=stdin, isolated=True).unwrap()
@@ -387,7 +387,7 @@ def test_acquisition_failure_keeps_the_nested_error_and_its_completed_result(
     class Reader:
         def read(self):
             try:
-                return api.evaluate(inner, [1]).answer
+                return inner.evaluate([1]).answer
             except esolangs.ProgramError as failure:
                 failures.append(failure)
                 raise

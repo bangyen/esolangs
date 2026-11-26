@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.generation.wrap import wrap_chars
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.registry._backend import BooleanBackend
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._language import LanguageDeclaration
@@ -71,7 +71,7 @@ def test_scoped_arity_cap_refuses_before_generation_or_layout() -> None:
 
     record = LANGUAGES[REFERENCE]
     backend = BooleanBackend(generate, max_inputs=1, balance=balance, wrap=wrap_chars)
-    scoped = esolangs.Catalog([replace(record, backend=backend)]).bind(REFERENCE)
+    scoped = Catalog([replace(record, backend=backend)]).bind(REFERENCE)
     assert scoped.describe().generator_max_inputs == 1
     for layout in ({}, {"width": 1}, {"balance": True}):
         with pytest.raises(esolangs.GeneratorCapError, match="max-inputs=1, got 2"):
@@ -79,14 +79,14 @@ def test_scoped_arity_cap_refuses_before_generation_or_layout() -> None:
     assert entered == []
     program = scoped.generate("01", balance=True)
     assert entered == ["01", "01"]
-    assert [scoped.evaluate(program, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+    assert [program.evaluate([bit]).answer for bit in (0, 1)] == ["0", "1"]
     wrapped = scoped.generate("01", width=1)
     assert type(wrapped.source) is str
     assert wrapped.source == ",\n."
     assert wrapped == esolangs.generate(
         REFERENCE, "01", width=1, catalog=scoped.catalog
     )
-    assert [scoped.evaluate(wrapped, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+    assert [wrapped.evaluate([bit]).answer for bit in (0, 1)] == ["0", "1"]
 
 
 def test_arity_refusal_does_not_load_the_entrypoint() -> None:
@@ -94,7 +94,7 @@ def test_arity_refusal_does_not_load_the_entrypoint() -> None:
     backend = BooleanBackend(
         OperationRef("esolangs", "_absent_generator"), max_inputs=1
     )
-    scoped = esolangs.Catalog([replace(record, backend=backend)]).bind(REFERENCE)
+    scoped = Catalog([replace(record, backend=backend)]).bind(REFERENCE)
     with pytest.raises(esolangs.GeneratorCapError, match="max-inputs=1"):
         scoped.generate("0110")
     with pytest.raises(esolangs.ProgramError, match="_absent_generator"):

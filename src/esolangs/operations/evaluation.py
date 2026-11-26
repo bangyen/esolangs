@@ -184,37 +184,3 @@ def _prepare_evaluator(
         termination_answer if contract.answer_mode == "termination" else output_answer
     )
     return evaluate_row
-
-
-def evaluate(
-    language: str,
-    artifact: Artifact,
-    bits: list[int] | tuple[int, ...],
-    *,
-    limits: ExecutionLimits | None = None,
-    catalog: Catalog | None = None,
-) -> BooleanEvaluation:
-    """Run one Boolean row and return its answer and execution evidence.
-
-    Raises:
-        UnknownLanguageError: ``language`` is not registered.
-        ProgramError: ``artifact`` is not an artifact, belongs to another
-            language, or that language's Boolean contract is invalid.
-        ArgumentError: ``bits`` is not one 0 or 1 per input, or an embedded
-            input requires the unfilled template.
-        TemplateError: ``artifact`` is a template for a stdin language.
-        EsolangError: Any error :func:`esolangs.run` raises for the row.
-    """
-    from esolangs.registry._catalog import get_catalog
-
-    catalog = get_catalog(catalog)
-    name = catalog.resolve(language)
-    if not (
-        _has_backing_type(artifact, ProgramArtifact)
-        or _has_backing_type(artifact, TemplateArtifact)
-    ):
-        raise ProgramError("evaluation requires a program or template artifact")
-    from esolangs.runtime._artifact_source import check_origin
-
-    check_origin(name, artifact.language, catalog=catalog)
-    return evaluate_artifact(artifact, bits, limits=limits, catalog=catalog)

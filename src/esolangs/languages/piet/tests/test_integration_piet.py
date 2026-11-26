@@ -12,7 +12,7 @@ from threading import Event, current_thread
 import pytest
 
 import esolangs
-from esolangs import Raster, run
+from esolangs import Raster, run, serialization
 from esolangs.exceptions import TemplateError
 from esolangs.raster import _png_validation, png
 from esolangs.registry import CATALOG, INTERPRETERS, LANGUAGES
@@ -97,7 +97,7 @@ def test_raster_interpreter_retains_geometry_hint() -> None:
 def test_a_raster_is_refused_as_a_template() -> None:
     """Typed ``Program`` so generate's result type-checks; no raster embeds."""
     with pytest.raises(TemplateError, match="raster programs read"):
-        esolangs.instantiate("Piet", esolangs.generate("Piet", XOR), [0, 1])
+        esolangs.Language("Piet").instantiate(esolangs.generate("Piet", XOR), [0, 1])
 
 
 @pytest.mark.medium
@@ -120,7 +120,7 @@ def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path, monkeypatch) -> 
             path.write_bytes(pixels)
         else:
             artifact = esolangs.ProgramArtifact(image, "Piet", scale=scale)
-            esolangs.to_file("Piet", artifact, path)
+            serialization.to_file("Piet", artifact, path)
         result = subprocess.run(
             command, input=b"", capture_output=True, check=True, timeout=5
         )
@@ -209,7 +209,10 @@ def _check_png_acquisition_timeout(path, monkeypatch) -> None:
     )
     restored = api.from_json(api.to_json(api.from_file(path)))
     assert restored == program
-    assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+    assert [restored.evaluate([bit]).answer for bit in (0, 1)] == [
+        "0",
+        "1",
+    ]
     _check_inflate_block_timeout(path, monkeypatch)
 
 

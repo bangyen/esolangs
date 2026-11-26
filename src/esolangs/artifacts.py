@@ -126,8 +126,8 @@ class _CatalogOwner:
     __slots__ = ("_catalog",)
 
     def _evaluation_catalog(
-        self, catalog: esolangs.Catalog | None
-    ) -> esolangs.Catalog | None:
+        self, catalog: esolangs.registry.Catalog | None
+    ) -> esolangs.registry.Catalog | None:
         return catalog if catalog is not None else getattr(self, "_catalog", None)
 
 
@@ -192,7 +192,7 @@ class ProgramArtifact[Source: Program](_CatalogOwner):
         bits: list[int] | tuple[int, ...],
         *,
         limits: ExecutionLimits | None = None,
-        catalog: esolangs.Catalog | None = None,
+        catalog: esolangs.registry.Catalog | None = None,
     ) -> BooleanEvaluation:
         """Run a Boolean row in its owning catalog or an explicit override."""
         from esolangs.operations.evaluation import evaluate_artifact
@@ -365,7 +365,7 @@ class TemplateArtifact(_CatalogOwner):
         bits: list[int] | tuple[int, ...],
         *,
         limits: ExecutionLimits | None = None,
-        catalog: esolangs.Catalog | None = None,
+        catalog: esolangs.registry.Catalog | None = None,
     ) -> BooleanEvaluation:
         """Run a Boolean row in its owning catalog or an explicit override."""
         from esolangs.operations.evaluation import evaluate_artifact
@@ -377,7 +377,7 @@ class TemplateArtifact(_CatalogOwner):
     def fill(self, bits: list[int] | tuple[int, ...]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs.
 
-        Needs no catalog, unlike :func:`esolangs.instantiate`, which also
+        Needs no catalog, unlike :func:`esolangs.Language.instantiate`, which also
         checks the language and table and re-wraps.
         """
         inputs = len(self.bindings.setters)
@@ -395,7 +395,9 @@ class TemplateArtifact(_CatalogOwner):
 type Artifact = ProgramArtifact[Program] | TemplateArtifact
 
 
-def bind_catalog[T: _CatalogOwner](artifact: T, catalog: esolangs.Catalog) -> T:
+def bind_catalog[T: _CatalogOwner](
+    artifact: T, catalog: esolangs.registry.Catalog
+) -> T:
     """Attach the live catalog to a freshly constructed artifact."""
     object.__setattr__(artifact, "_catalog", catalog)
     return artifact

@@ -225,11 +225,11 @@ def retired_source_adapters(monkeypatch):
 @pytest.fixture
 def native_png(tmp_path: Path):
     """Encode a raster record through the native persistence boundary."""
-    import esolangs
+    from esolangs import serialization
 
     def encode(program):
         path = tmp_path / "source.png"
-        esolangs.to_file(program.language, program, path)
+        serialization.to_file(program.language, program, path)
         return path.read_bytes()
 
     return encode

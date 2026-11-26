@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import run
+from esolangs import run, serialization
 
 
 class TestNameResolutionIsTrulyCaseInsensitive:
@@ -86,7 +86,7 @@ def test_the_override_name_specifically(name: str) -> None:
     for settings in (None, api.settings()):
         tagged = replace(artifact, language=" cv(n)(c) ", settings=settings)
         assert tagged.evaluate([1]) == api.prepare(tagged).evaluate([1]) == expected
-        restored = esolangs.from_json("cv_n_c", api.to_json(tagged))
+        restored = serialization.from_json("cv_n_c", api.to_json(tagged))
         assert restored.language == api.name
         assert restored.evaluate([1]) == expected
     for slug in ("cvnc", "cv_n_c"):

@@ -7,9 +7,10 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, cast
 
-from esolangs import Catalog, ExecutionLimits, Language
+from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import ArgumentError, ExecutionTimeoutError
 from esolangs.operations.execution import _execute_invocation
+from esolangs.registry import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._source import ProgramSource
@@ -203,8 +204,8 @@ def assert_cycle_proof_replays(
     with guarded_worker(expected=2):
         for source, answer in ((halting, "0"), (cycling, "1")):
             artifact = scoped.from_source(source)
-            observed = scoped.evaluate(artifact, bits, limits=local)
-            worker = scoped.evaluate(artifact, bits, limits=isolated)
+            observed = artifact.evaluate(bits, limits=local, catalog=scoped.catalog)
+            worker = artifact.evaluate(bits, limits=isolated, catalog=scoped.catalog)
             assert worker == observed
             assert worker.answer == answer
             assert worker.observation.output == output

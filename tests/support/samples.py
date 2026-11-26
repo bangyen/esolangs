@@ -238,7 +238,7 @@ def _generated(name: str) -> tuple[Program, str]:
 
     program = esolangs.generate(name, "01")
     if esolangs.describe(name).parameterized:
-        return esolangs.instantiate(name, program, [1]).source, ""
+        return esolangs.Language(name).instantiate(program, [1]).source, ""
     return program.source, esolangs.encode_inputs(name, [1])
 
 

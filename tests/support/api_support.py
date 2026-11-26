@@ -7,6 +7,7 @@ from pathlib import Path
 
 import esolangs
 import esolangs.debugger as debugger_api
+import esolangs.registry
 from esolangs.artifacts import BoundRow
 from esolangs.planning import Ready, Unsupported
 
@@ -19,7 +20,7 @@ PUBLIC_MEMBERS = {
     BoundRow: {"program", "stdin"},
     Ready: {"artifact", "build"},
     Unsupported: {"cap", "reason"},
-    esolangs.Catalog: {
+    esolangs.registry.Catalog: {
         "languages",
         "resolve",
         "bind",
@@ -83,7 +84,6 @@ PUBLIC_MEMBERS = {
         "describe",
         "to_json",
         "encode_inputs",
-        "evaluate",
         "generate",
         "plan_generation",
         "instantiate",
@@ -118,7 +118,7 @@ PUBLIC_MEMBERS = {
     esolangs.TextLimits: set(),
     esolangs.LanguageInfo: set(esolangs.LanguageInfo.__slots__),
     # Fields without defaults are not class attributes.
-    esolangs.LanguageDeclaration: {
+    esolangs.registry.LanguageDeclaration: {
         "aliases",
         "backend",
         "has_backend",

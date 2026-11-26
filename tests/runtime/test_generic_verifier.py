@@ -47,7 +47,7 @@ def _verify(name: str, table: str) -> str:
     for row in range(len(table)):
         bits = row_bits(row, inputs)
         if facts.parameterized:
-            source, stdin = esolangs.instantiate(name, program, bits), ""
+            source, stdin = esolangs.Language(name).instantiate(program, bits), ""
         else:
             source, stdin = program, esolangs.encode_inputs(name, bits)
         if facts.answer_mode == "termination":

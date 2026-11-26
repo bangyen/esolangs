@@ -14,8 +14,9 @@ from typing import Any
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.debugger import make_debugger
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.runtime._artifact_source import check_program
 from tests.support.cli_support import _failure
 from tests.support.evaluation import _evaluate
@@ -28,7 +29,7 @@ _RASTERS = languages(source_kind="raster", boolean_generator=True)
 def _native_bytes(program, tmp_path: Path) -> bytes:
     if isinstance(program.source, esolangs.Raster):
         path = tmp_path / "source.png"
-        esolangs.to_file(program.language, program, path)
+        serialization.to_file(program.language, program, path)
         restored = esolangs.Language(program.language).from_file(path)
         assert (restored.language, restored.settings, restored.scale) == (
             program.language,
@@ -454,7 +455,7 @@ def test_two_byte_native_terminator_counts_toward_raw_budget(tmp_path: Path) -> 
     path = tmp_path / "source"
     path.write_bytes(b"original")
     with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
-        esolangs.to_file(REFERENCE, compressed, path, normalize=True)
+        serialization.to_file(REFERENCE, compressed, path, normalize=True)
     assert path.read_bytes() == b"original"
 
 
@@ -472,9 +473,9 @@ def test_explicit_paths_are_validated_on_import_and_export() -> None:
     spellings = ("", b"bytes", 1, TypeError("bad path"))
     for path in ("", *map(BadPath, spellings)):
         with pytest.raises(esolangs.ArgumentError, match="path"):
-            esolangs.from_file(REFERENCE, path)
+            serialization.from_file(REFERENCE, path)
         with pytest.raises(esolangs.ArgumentError, match="path"):
-            esolangs.to_file(REFERENCE, "+.", path)
+            serialization.to_file(REFERENCE, "+.", path)
         with pytest.raises(esolangs.ProgramError, match="path") as caught:
             compressed.to_file(path)
         assert isinstance(caught.value.__cause__, esolangs.ArgumentError)
@@ -724,7 +725,7 @@ def test_export_anchors_relative_destination_before_callbacks(
             os.chdir(other)
 
     runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
     settings = scoped.settings(mode="move")
     relocate = True
     for program, path in (
@@ -947,7 +948,7 @@ def test_source_declaration_and_export_validate_the_language_kind(
             esolangs.from_source(name, source)
         for supplied in (source, esolangs.ProgramArtifact(source, name)):
             with pytest.raises(esolangs.ProgramError):
-                esolangs.to_file(name, supplied, path)
+                serialization.to_file(name, supplied, path)
             assert not path.exists()
 
 
@@ -1069,9 +1070,9 @@ def test_plain_export_respects_the_raw_text_budget(tmp_path: Path) -> None:
     path = tmp_path / "source"
     path.write_bytes(b"original")
     with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
-        esolangs.to_file(REFERENCE, compressed, path)
+        serialization.to_file(REFERENCE, compressed, path)
     assert path.read_bytes() == b"original"
-    esolangs.to_file(REFERENCE, compressed, path, gzip=True)
+    serialization.to_file(REFERENCE, compressed, path, gzip=True)
     assert path.read_bytes() == compressed.to_gzip()
 
 
@@ -1079,11 +1080,11 @@ def test_native_file_terminator_counts_toward_raw_export_budget(tmp_path: Path) 
     limits = esolangs.TextLimits(plain_chars=2, generation_chars=3, gzip_bytes=100)
     compressed = esolangs.CompressedText.from_chunks(("+.",), limits=limits)
     path = tmp_path / "source"
-    esolangs.to_file(REFERENCE, compressed, path)
+    serialization.to_file(REFERENCE, compressed, path)
     with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
-        esolangs.to_file(REFERENCE, compressed, path, normalize=True)
+        serialization.to_file(REFERENCE, compressed, path, normalize=True)
     assert path.read_bytes() == b"+."
-    esolangs.to_file(REFERENCE, compressed, path, gzip=True, normalize=True)
+    serialization.to_file(REFERENCE, compressed, path, gzip=True, normalize=True)
     assert gzip.decompress(path.read_bytes()) == b"+.\n"
 
 

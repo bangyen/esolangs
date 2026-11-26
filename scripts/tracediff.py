@@ -340,7 +340,7 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
                         # Kept as generated: a raster or compressed program
                         # stringified is no longer that program.
                         if parameterized:
-                            code = esolangs.instantiate(name, program, bits)
+                            code = bound.instantiate(program, bits)
                             programs.append((code, ""))
                         else:
                             stdin = esolangs.encode_inputs(
@@ -431,8 +431,9 @@ def speeds(
 def _worker(name: str, request: Path, mode: str) -> None:
     """Execute one shared corpus using only this process's interpreter tree."""
     rows, views, repetitions = json.loads(request.read_text())
+    language = esolangs.Language(name)
     programs = [
-        (esolangs.from_json(name, source) if artifact else source, stdin)
+        (language.from_json(source) if artifact else source, stdin)
         for artifact, source, stdin in rows
     ]
     runtime = LANGUAGES[name].runtime
@@ -508,10 +509,11 @@ def main(argv: list[str] | None = None) -> int:
     checkout = importlib.import_module("scripts.gendiff").checkout_source
 
     programs = corpus(name, args.random)
+    language = esolangs.Language(name)
     rows = [
         (False, code, stdin)
         if isinstance(code, str)
-        else (True, esolangs.to_json(name, code), stdin)
+        else (True, language.to_json(code), stdin)
         for code, stdin in programs
     ]
     with tempfile.TemporaryDirectory() as directory:

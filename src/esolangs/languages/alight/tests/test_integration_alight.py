@@ -8,7 +8,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
-from esolangs.registry import _table
+from esolangs.registry import Catalog, _table
 from tests.support.cli_support import call_both
 from tests.support.dialect_support import Unreadable, foreign_settings
 from tests.support.evaluation import _evaluate
@@ -94,7 +94,7 @@ def test_cli_generate_and_run_share_settings(
         original_dialect(**options)
 
     runtime = replace(original.runtime, dialect=validate)
-    scope = esolangs.Catalog([replace(original, runtime=runtime)])
+    scope = Catalog([replace(original, runtime=runtime)])
     monkeypatch.setattr(_table, "CATALOG", scope)
     for options in ([], ["--max-steps", "100"]):
         checks.clear()

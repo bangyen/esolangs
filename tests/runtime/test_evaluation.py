@@ -11,6 +11,8 @@ import pytest
 
 import esolangs
 import tests.support.evaluation as evaluator
+from esolangs import serialization
+from esolangs.registry import Catalog
 from esolangs.runtime.io import ScriptedIO
 from tests.support.evaluation import _evaluate, _iter_evaluate, _row_answerer
 from tests.support.generator_support import probe_table
@@ -37,13 +39,13 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
     path = tmp_path / "source"
     if gzip and esolangs.describe(name).source_kind == "raster":
         with pytest.raises(esolangs.ProgramError, match="rasters use PNG"):
-            esolangs.to_file(name, program, path, gzip=True)
+            serialization.to_file(name, program, path, gzip=True)
         assert not path.exists()
         return
     inputs = len(table).bit_length() - 1
     if isinstance(program, esolangs.TemplateArtifact):
-        path.write_text(esolangs.to_json(name, program))
-        restored = esolangs.from_json(name, path.read_text())
+        path.write_text(serialization.to_json(name, program))
+        restored = serialization.from_json(name, path.read_text())
         assert _evaluate(name, restored, inputs=inputs) == table
         answer = _row_answerer(
             name,
@@ -56,15 +58,18 @@ def test_evaluate_files(name: str, tmp_path: Path, *, gzip: bool) -> None:
         )
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
-            esolangs.to_file(
-                name, esolangs.instantiate(name, restored, bits), path, gzip=gzip
+            serialization.to_file(
+                name,
+                esolangs.Language(name).instantiate(restored, bits),
+                path,
+                gzip=gzip,
             )
             loaded = esolangs.Language(name).from_file(
                 path, settings=program.settings, normalize=True
             )
             assert answer(loaded, "", 30) == expected
         return
-    esolangs.to_file(name, program, path, gzip=gzip)
+    serialization.to_file(name, program, path, gzip=gzip)
     assert _evaluate(name, path, inputs=inputs) == table
 
 
@@ -103,7 +108,7 @@ def test_answer_rejection_keeps_successful_execution_evidence() -> None:
     result = api.run(program, stdin=api.encode_inputs([1])).unwrap()
     assert result.output == "2"
     with pytest.raises(esolangs.ProgramError, match="no answer") as caught:
-        api.evaluate(program, [1])
+        program.evaluate([1])
     assert caught.value.observation == result
     assert caught.value.partial_output == result.output
 
@@ -137,7 +142,7 @@ def test_invalid_answer_contracts_stop_before_execution(
     api = esolangs.Language(REFERENCE)
     declaration = api.catalog.languages[api.name]
     contract = replace(declaration.contract, **changes)
-    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    scoped = Catalog([replace(declaration, contract=contract)]).bind(api.name)
     artifact = scoped.from_source(",.")
     prepared = scoped.prepare(artifact)
     assert scoped.encode_inputs([0]) == "0"
@@ -150,7 +155,7 @@ def test_invalid_answer_contracts_stop_before_execution(
     monkeypatch.setattr(_execution, "invoke", unexpected_execution)
     monkeypatch.setattr(_isolated, "_invoke_worker", unexpected_execution)
     for evaluate in (
-        partial(scoped.evaluate, artifact, [0]),
+        partial(artifact.evaluate, [0]),
         partial(prepared.evaluate, [0]),
     ):
         for limits in (esolangs.ExecutionLimits(max_steps=4), None):
@@ -189,9 +194,9 @@ def test_answer_contract_decodes_single_characters_or_explicit_matches(
         answer_values=values,
         answer_pattern=pattern,
     )
-    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    scoped = Catalog([replace(declaration, contract=contract)]).bind(api.name)
     artifact = scoped.from_source(source)
-    result = scoped.evaluate(artifact, [1])
+    result = artifact.evaluate([1])
     assert result.answer == scoped.read_answer(output) == "1"
     assert result.observation.output == output
     assert result.observation.input_reads == reads
@@ -202,7 +207,7 @@ def _scoped_contract(**changes) -> esolangs.Language:
     api = esolangs.Language(REFERENCE)
     declaration = api.catalog.languages[api.name]
     contract = replace(declaration.contract, **changes)
-    return esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    return Catalog([replace(declaration, contract=contract)]).bind(api.name)
 
 
 @pytest.mark.parametrize(
@@ -236,7 +241,7 @@ def test_input_contract_validation_does_not_affect_answer_decoding(
     monkeypatch.setattr(evaluation, "_execute_outcome", unexpected_execution)
     artifact = scoped.from_source(",.")
     with pytest.raises(esolangs.ProgramError, match=message) as caught:
-        scoped.evaluate(artifact, [0, 1])
+        artifact.evaluate([0, 1])
     assert caught.value.observation is None
 
 
@@ -251,7 +256,7 @@ def test_stream_alphabet_can_have_distinct_variable_width_values(shape: str) -> 
     artifact = scoped.from_source(",.,.,.")
     for bits, output, answer in (([0, 1], "xxy", "1"), ([1, 0], "xyx", "0")):
         assert scoped.encode_inputs(bits) == output
-        result = scoped.evaluate(artifact, bits)
+        result = artifact.evaluate(bits)
         assert result.answer == answer
         assert result.observation.output == output
         assert result.observation.input_reads == 3
@@ -286,11 +291,11 @@ def test_reversed_termination_contract_uses_its_declared_bit_order() -> None:
         answer_values=("diverges", "halts"),
         answer_pattern="(",
     )
-    scoped = esolangs.Catalog([replace(declaration, contract=contract)]).bind(api.name)
+    scoped = Catalog([replace(declaration, contract=contract)]).bind(api.name)
     limits = esolangs.ExecutionLimits(max_steps=5)
     for program, expected in (("[.]", "1"), ("+[]", "0")):
         artifact = scoped.from_source(program)
-        assert scoped.evaluate(artifact, [0], limits=limits).answer == expected
+        assert artifact.evaluate([0], limits=limits).answer == expected
         assert scoped.prepare(artifact).evaluate([0], limits=limits).answer == expected
 
 
@@ -307,9 +312,9 @@ def _termination_language(*, random: bool = False) -> esolangs.Language:
         if random
         else declaration.runtime
     )
-    return esolangs.Catalog(
-        [replace(declaration, contract=contract, runtime=runtime)]
-    ).bind(api.name)
+    return Catalog([replace(declaration, contract=contract, runtime=runtime)]).bind(
+        api.name
+    )
 
 
 @pytest.mark.medium
@@ -319,19 +324,21 @@ def _termination_language(*, random: bool = False) -> esolangs.Language:
 def test_termination_observes_completed_commands_and_loading_errors(deadline) -> None:
     api = _termination_language()
     limits = esolangs.ExecutionLimits(max_steps=2, **deadline)
-    result = api.evaluate(api.from_source(",."), [0], limits=limits)
+    result = api.from_source(",.").evaluate([0], limits=limits)
     completed = esolangs.ExecutionResult("0", 1, 1, 0, steps=2)
     assert result.answer == "0"
     assert result.termination.commands == 2
     assert result.observation == completed
     with pytest.raises(esolangs.ExecutionCapError) as stopped:
-        api.evaluate(api.from_source(",.,"), [0], limits=limits)
+        api.from_source(",.,").evaluate([0], limits=limits)
     assert stopped.value.observation == completed
     with pytest.raises(esolangs.InputExhaustedError) as fault:
-        api.evaluate(api.from_source(",.,"), [0], limits=replace(limits, max_steps=3))
+        api.from_source(",.,").evaluate(
+            [0], limits=replace(limits, max_steps=3), catalog=api.catalog
+        )
     assert fault.value.observation == replace(completed, input_past_end=1)
     with pytest.raises(esolangs.ProgramError) as rejected:
-        api.evaluate(api.from_source("["), [0], limits=limits)
+        api.from_source("[").evaluate([0], limits=limits)
     assert rejected.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
 
 
@@ -369,7 +376,9 @@ def test_active_random_runtime_needs_branch_evidence(monkeypatch) -> None:
     with pytest.raises(
         esolangs.InterpreterLimitError, match="requires branch enumeration"
     ) as caught:
-        api.evaluate(artifact, [0], limits=esolangs.ExecutionLimits(max_steps=3))
+        artifact.evaluate(
+            [0], limits=esolangs.ExecutionLimits(max_steps=3), catalog=api.catalog
+        )
     assert caught.value.observation == esolangs.ExecutionResult("", 0, 0, 0)
 
 
@@ -392,15 +401,18 @@ def test_evaluation_requires_unfilled_template_for_embedded_inputs() -> None:
         raise refusal
 
     runtime = replace(declaration.runtime, dialect=reject, dialect_schema=schema)
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
     tagged = replace(template, settings=esolangs.DialectSettings(schema, mode=0))
-    for operation in (scoped.instantiate, scoped.evaluate):
+    for operation in (
+        partial(scoped.instantiate, tagged),
+        partial(tagged.evaluate, catalog=scoped.catalog),
+    ):
         for row, message in (([2], "each be 0 or 1"), ([0, 1], "1 input")):
             with pytest.raises(esolangs.ArgumentError, match=message):
-                operation(tagged, row)
+                operation(row)
             assert calls == []
         with pytest.raises(esolangs.ArgumentError) as caught:
-            operation(tagged, [1])
+            operation([1])
         assert caught.value is refusal
         assert calls == [{"mode": 0}]
         calls.clear()

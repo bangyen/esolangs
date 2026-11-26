@@ -83,7 +83,7 @@ def test_tables_and_reference() -> None:
         table = "".join(rng.choice("01") for _ in range(2**n))
         template = esolangs.generate("REFRACTRAN", table)
         for row, bits in enumerate(product((0, 1), repeat=n)):
-            program = esolangs.instantiate("REFRACTRAN", template, bits)
+            program = esolangs.Language("REFRACTRAN").instantiate(template, bits)
             initial, *fractions = program.source.split()
             value = 1
             for term in initial.split("*"):
@@ -104,7 +104,7 @@ def _check_constants() -> None:
                 template = esolangs.generate("REFRACTRAN", bit * (1 << n), **options)
                 assert template.source.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    source = esolangs.instantiate("REFRACTRAN", template, bits)
+                    source = esolangs.Language("REFRACTRAN").instantiate(template, bits)
                     io = ScriptedIO("7")
                     machine = _Machine(source.source, io)
                     assert machine.state.value == (1 if bit == "1" else 2) * 3 ** sum(
@@ -128,7 +128,7 @@ def _check_pruned_children_and_polarity() -> None:
             template = esolangs.generate("REFRACTRAN", table, **options)
             assert template.source.count("$") == n
             for row, bits in enumerate(product((0, 1), repeat=n)):
-                source = esolangs.instantiate("REFRACTRAN", template, bits)
+                source = esolangs.Language("REFRACTRAN").instantiate(template, bits)
                 io = ScriptedIO("Q")
                 machine = _Machine(source.source, io)
                 initial = machine.state.value
@@ -148,8 +148,8 @@ def _check_pruned_children_and_polarity() -> None:
                     <= 8 * len(source.source) + len(source.source).bit_length() + 16
                 )
     # A complemented root still needs the output rail: odd 1 is not true rail 3.
-    source = esolangs.instantiate(
-        "REFRACTRAN", esolangs.generate("REFRACTRAN", "10"), [1]
+    source = esolangs.Language("REFRACTRAN").instantiate(
+        esolangs.generate("REFRACTRAN", "10"), [1]
     )
     invalid = source.source.replace("2*", "1*", 1)
     io = ScriptedIO()

@@ -28,7 +28,7 @@ def test_every_row_results_in_its_answer() -> None:
         workspace = resource_bounds("Stisp")["workspace"].formula
         for row in range(len(table)):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-            program = esolangs.instantiate("Stisp", template, bits)
+            program = esolangs.Language("Stisp").instantiate(template, bits)
             got = run("Stisp", program, timeout=5).output
             assert esolangs.read_answer("Stisp", got) == table[row], (table, row)
             io = ScriptedIO("7")

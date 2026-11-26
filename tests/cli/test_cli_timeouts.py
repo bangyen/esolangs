@@ -11,7 +11,7 @@ from threading import Event
 import pytest
 
 import esolangs
-from esolangs import cli
+from esolangs import cli, serialization
 from esolangs.cli.help import help_text
 from tests.support.cli_support import _LOOPS, _program, _refused, call_both, call_main
 from tests.support.generator_support import evaluate_generated
@@ -220,7 +220,7 @@ class TestTimeoutValuesAreCheckedOnce:
     ) -> None:
         """Between the floor and the ceiling, nothing changes."""
         path = tmp_path / "p.txt"
-        esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
+        serialization.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         out = call_main(
             ["run", "--execution-timeout", "100000", REFERENCE, str(path)],
             capsys,

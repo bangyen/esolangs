@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import serialization
 from esolangs.debugger import STOP_REASONS
 from tests.support.pick import first, languages
 from tests.support.reference import REFERENCE
@@ -172,7 +173,9 @@ class TestOneOperationOneSpelling:
             for name in module.__all__
             if inspect.isfunction(getattr(module, name))
         }
-        functions.update(evaluate=esolangs.evaluate, instantiate=esolangs.instantiate)
+        from esolangs.operations.instantiation import instantiate
+
+        functions["instantiate"] = instantiate
         del functions["list_languages"]
         methods = {
             name
@@ -193,15 +196,15 @@ class TestOneOperationOneSpelling:
     def test_the_bound_and_unbound_spellings_agree(self, tmp_path: Path) -> None:
         bound = esolangs.Language(REFERENCE)
         path = tmp_path / "program"
-        esolangs.to_file(REFERENCE, "+.", path)
-        assert esolangs.from_file(REFERENCE, path) == bound.from_file(path)
+        serialization.to_file(REFERENCE, "+.", path)
+        assert serialization.from_file(REFERENCE, path) == bound.from_file(path)
         assert esolangs.from_source(REFERENCE, "+.") == bound.from_source("+.")
         assert esolangs.run(REFERENCE, "+.") == bound.run("+.")
         assert (
             esolangs.prepare(REFERENCE, "+.").run().unwrap() == bound.run("+.").unwrap()
         )
         artifact = esolangs.generate(REFERENCE, "0110")
-        assert esolangs.evaluate(REFERENCE, artifact, [0, 1]).answer == "1"
+        assert artifact.evaluate([0, 1]).answer == "1"
         assert bound.make_vm("+.").ip == bound.prepare("+.").make_vm().ip
         for debugger in (
             bound.make_debugger("+."),
@@ -222,7 +225,7 @@ class TestOneOperationOneSpelling:
         assert bound.from_file(tmp_path / "bare.png").settings is None
         assert bound.from_file(tmp_path / "kept.png").settings == bound.settings()
         with pytest.raises(esolangs.ArgumentError, match="belong to"):
-            esolangs.to_file(
+            serialization.to_file(
                 REFERENCE, "+.", tmp_path / "refused", settings=bound.settings()
             )
 

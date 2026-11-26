@@ -111,9 +111,7 @@ def test_a_balanced_program_folds_between_instructions() -> None:
     artifact = esolangs.generate("moar cheese :3", table, balance=True)
     assert "\n" in str(artifact.source)
     rows = [
-        esolangs.evaluate(
-            "moar cheese :3", artifact, [r >> 3 & 1, r >> 2 & 1, r >> 1 & 1, r & 1]
-        ).answer
+        artifact.evaluate([r >> 3 & 1, r >> 2 & 1, r >> 1 & 1, r & 1]).answer
         for r in range(16)
     ]
     assert "".join(rows) == table

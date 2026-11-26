@@ -11,7 +11,7 @@ import pytest
 import esolangs
 from esolangs import DialectSettings
 from esolangs import settings as settings_api
-from esolangs.registry import CATALOG, LANGUAGES
+from esolangs.registry import CATALOG, LANGUAGES, Catalog
 from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
 from esolangs.runtime._artifact_source import read_png_artifact
@@ -283,7 +283,7 @@ def test_custom_dialect_with_large_integer_choices() -> None:
     runtime = replace(
         original.runtime, dialect=lambda **choices: choices, dialect_schema=schema
     )
-    catalog = esolangs.Catalog([replace(original, runtime=runtime)])
+    catalog = Catalog([replace(original, runtime=runtime)])
     bound = catalog.bind(REFERENCE)
     settings = bound.settings(mode=value)
     assert eval(repr(settings), {"Language": catalog.bind}) == settings
@@ -309,7 +309,7 @@ def test_dialect_settings_from_another_schema_name_the_catalog() -> None:
     runtime = replace(
         original.runtime, dialect=lambda **choices: choices, dialect_schema=schema
     )
-    alternate = esolangs.Catalog([replace(original, runtime=runtime)]).bind(REFERENCE)
+    alternate = Catalog([replace(original, runtime=runtime)]).bind(REFERENCE)
     settings = alternate.settings(mode=2)
     with pytest.raises(
         esolangs.ArgumentError, match="different schema from this catalog"
@@ -461,7 +461,7 @@ def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
     generated = scope.generate("01")
     assert generated.settings.options() == {"rotation": "forward"}
     for bit in (0, 1):
-        assert scope.evaluate(generated, (bit,)).answer == str(bit)
+        assert generated.evaluate((bit,), catalog=scope.catalog).answer == str(bit)
 
     restored = scope.from_json(scope.to_json(generated))
     conflicting = scope.settings(rotation="backward")
@@ -484,7 +484,7 @@ def test_preparation_plan_owns_native_defaults_and_fresh_machine_state() -> None
     name = one_where(lambda info: "rotation" in info.dialect_settings)[0]
     declaration = LANGUAGES[name]
     runtime = replace(declaration.runtime, completion_entrypoint=None)
-    scope = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
+    scope = Catalog([replace(declaration, runtime=runtime)]).bind(name)
     settings = scope.settings(rotation="forward")
     prepared = scope.prepare("+,", settings=settings)
     for _ in range(2):
@@ -544,7 +544,7 @@ def test_custom_runtime_defaults_follow_declared_runner_keywords(monkeypatch) ->
             dialect=lambda **choices: choices,
             dialect_schema=schema,
         )
-        scope = esolangs.Catalog([replace(declaration, runtime=custom)]).bind(REFERENCE)
+        scope = Catalog([replace(declaration, runtime=custom)]).bind(REFERENCE)
         for settings, output in (
             (None, default),
             (scope.settings(), default),
@@ -654,7 +654,7 @@ def test_balanced_generation_retains_partial_dialect_settings() -> None:
     assert artifact == language.generate("0110", balance=True, settings=full)
     assert artifact.settings == full
     for row, expected in enumerate("0110"):
-        assert language.evaluate(artifact, [row >> 1, row & 1]).answer == expected
+        assert artifact.evaluate([row >> 1, row & 1]).answer == expected
 
 
 def test_every_reported_default_and_choice_is_accepted(monkeypatch) -> None:

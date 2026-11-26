@@ -33,7 +33,9 @@ def _request(name, bit):
     lang = LANGUAGES[name]
     template = esolangs.generate(name, "01")
     source = (
-        esolangs.instantiate(name, template, [bit]) if lang.parameterized else template
+        esolangs.Language(name).instantiate(template, [bit])
+        if lang.parameterized
+        else template
     )
     stdin = "" if lang.parameterized else esolangs.encode_inputs(name, [bit])
     return source, stdin
@@ -96,7 +98,7 @@ def test_termination_proofs_round_trip_every_halt_and_cycle():
             for row, answer in enumerate(table):
                 bits = [int(bit) for bit in f"{row:0{inputs}b}"]
                 source = (
-                    esolangs.instantiate(name, artifact, bits)
+                    esolangs.Language(name).instantiate(artifact, bits)
                     if lang.parameterized
                     else artifact
                 )

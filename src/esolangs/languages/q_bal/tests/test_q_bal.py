@@ -182,8 +182,8 @@ def test_integers_ignore_pythons_decimal_limit() -> None:
 
         table = "0" * (2**14 - 1) + "1"
         artifact = language.generate(table)
-        assert language.evaluate(artifact, [0] * 14).answer == "0"
-        assert language.evaluate(artifact, [1] * 14).answer == "1"
+        assert artifact.evaluate([0] * 14).answer == "0"
+        assert artifact.evaluate([1] * 14).answer == "1"
     finally:
         sys.set_int_max_str_digits(previous)
 

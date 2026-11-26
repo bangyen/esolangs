@@ -34,7 +34,7 @@ def _check_row(name: str, program: esolangs.Artifact, table: str, row: int) -> N
     n = len(table).bit_length() - 1
     bits = row_bits(row, n)
     if facts.parameterized:
-        source, stdin = esolangs.instantiate(name, program, bits), ""
+        source, stdin = esolangs.Language(name).instantiate(program, bits), ""
     else:
         source, stdin = program, esolangs.encode_inputs(name, bits, truth_table=table)
     machine = make_vm(name, source, stdin=stdin)

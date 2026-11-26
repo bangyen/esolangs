@@ -7,7 +7,7 @@ from tests.support.witness_tables import XOR
 
 def test_the_width_applies_once_the_bits_are_in() -> None:
     template = esolangs.generate("Home Row", XOR)
-    filled = esolangs.instantiate("Home Row", template, [0, 1], width=10)
+    filled = esolangs.Language("Home Row").instantiate(template, [0, 1], width=10)
     assert max(len(line) for line in filled.source.splitlines()) <= 10
 
 
@@ -16,7 +16,7 @@ def test_a_wrapped_instantiation_still_computes_the_table() -> None:
     got = "".join(
         run(
             "Home Row",
-            esolangs.instantiate("Home Row", template, [a, b], width=10),
+            esolangs.Language("Home Row").instantiate(template, [a, b], width=10),
             limits=esolangs.ExecutionLimits(execution_timeout=30),
         )
         .unwrap()

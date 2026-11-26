@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs import serialization
 from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.debugger import make_vm
 from esolangs.generation.anf import anf_coefficients
@@ -100,7 +101,7 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
     assert len(template.source) <= 641
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in format(row, "06b")]
-        program = esolangs.instantiate("Smallfuck", template, bits)
+        program = esolangs.Language("Smallfuck").instantiate(template, bits)
         assert (
             execute(
                 "Smallfuck", program, limits=esolangs.ExecutionLimits(max_steps=10_000)
@@ -120,7 +121,9 @@ def test_fresh_setters_lower_the_public_floor() -> None:
             assert max(map(len, template.source.splitlines())) == 1
             for row, expected in enumerate(table):
                 bits = [int(bit) for bit in format(row, f"0{inputs}b")]
-                source = esolangs.instantiate("Smallfuck", template, bits, width=1)
+                source = esolangs.Language("Smallfuck").instantiate(
+                    template, bits, width=1
+                )
                 assert execute("Smallfuck", source).unwrap().output == expected
 
 
@@ -129,18 +132,20 @@ def test_narrow_smallfuck_saved_provenance(*, restored: bool) -> None:
     table = "0110"
     template = esolangs.generate("Smallfuck", table, width=1)
     source = (
-        esolangs.from_json("Smallfuck", esolangs.to_json("Smallfuck", template))
+        serialization.from_json(
+            "Smallfuck", serialization.to_json("Smallfuck", template)
+        )
         if restored
         else template
     )
     for row, expected in enumerate(table):
-        program = esolangs.instantiate(
-            "Smallfuck", source, [row >> 1, row & 1], width=1, truth_table=table
+        program = esolangs.Language("Smallfuck").instantiate(
+            source, [row >> 1, row & 1], width=1, truth_table=table
         )
         assert max(map(len, program.source.splitlines())) == 1
         assert execute("Smallfuck", program).unwrap().output == expected
     with pytest.raises(ValueError, match="does not compute that table"):
-        esolangs.instantiate("Smallfuck", source, [0, 1], truth_table="1001")
+        esolangs.Language("Smallfuck").instantiate(source, [0, 1], truth_table="1001")
 
 
 def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
@@ -155,7 +160,7 @@ def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
             assert (
                 execute(
                     "Smallfuck",
-                    esolangs.instantiate("Smallfuck", template, bits),
+                    esolangs.Language("Smallfuck").instantiate(template, bits),
                 )
                 .unwrap()
                 .output
@@ -403,7 +408,7 @@ def _check_constants() -> None:
             for options in ({}, {"width": 1}, {"balance": True}):
                 template = esolangs.generate("Smallfuck", bit * (1 << n), **options)
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("Smallfuck", template, bits)
+                    program = esolangs.Language("Smallfuck").instantiate(template, bits)
                     assert "[" not in program.source
                     assert "]" not in program.source
                     io = ScriptedIO("7")

@@ -35,7 +35,7 @@ class TestEvalBoolean:
 
     def instantiate(self, tpl: esolangs.TemplateArtifact, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        return esolangs.instantiate("Eval", tpl, bits).source
+        return esolangs.Language("Eval").instantiate(tpl, bits).source
 
     def test_ignored_inputs_shrink_the_lookup(self) -> None:
         """A constant table pushes one result; its staged inputs never drain."""
@@ -222,7 +222,7 @@ def _check_constants() -> None:
         assert template.source.count("$") == n
         assert eval_setters(template.source, n) == (("0", "`"),) * n
         for bits in ([0] * n, [1] * n):
-            program = esolangs.instantiate("Eval", template, bits)
+            program = esolangs.Language("Eval").instantiate(template, bits)
             io = ScriptedIO("7")
             run(program.source, io)
             assert io.getvalue() == bit

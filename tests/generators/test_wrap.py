@@ -21,7 +21,7 @@ from esolangs.generation.wrap import (
     wrap_space_delimited,
     wrap_tokens,
 )
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry import LANGUAGES, Catalog, canonical_id
 from esolangs.registry._backend import BooleanBackend
 from tests.support.divergence import diverges, terminates
 from tests.support.execution import run_observed
@@ -238,9 +238,11 @@ def _grown(name: str, table: str, width: int | None) -> esolangs.Program:
     if _example(name).fill is None:
         return esolangs.generate(name, table, width=width).source
     arity = len(table).bit_length() - 1
-    return esolangs.instantiate(
-        name, esolangs.generate(name, table), [0] * arity, width=width
-    ).source
+    return (
+        esolangs.Language(name)
+        .instantiate(esolangs.generate(name, table), [0] * arity, width=width)
+        .source
+    )
 
 
 _RUN_TIMEOUT = 2.0
@@ -389,7 +391,7 @@ def test_unwrappable_languages_have_no_wrapper() -> None:
 
 @pytest.mark.parametrize("structural", [False, True])
 def test_multiline_reflow_follows_registry_metadata(structural) -> None:
-    from esolangs import Catalog
+    from esolangs.registry import Catalog
 
     def wrapper(program: str, _width: int) -> str:
         return program.replace("\n", " ")
@@ -459,7 +461,7 @@ def _check_text_balancer_accepts_compressed_source(tmp_path: Path) -> None:
 
     def scoped(balancer):
         local = replace(backend, entrypoint=lambda _: source, balance=balancer)
-        return esolangs.Catalog([replace(declaration, backend=local)]).bind(stock.name)
+        return Catalog([replace(declaration, backend=local)]).bind(stock.name)
 
     packed = scoped(backend.balance)
     wrapped = packed.generate(TABLE, balance=True)
@@ -473,8 +475,7 @@ def _check_text_balancer_accepts_compressed_source(tmp_path: Path) -> None:
     assert path.read_bytes() == restored.source.to_gzip()
     for result in (restored, packed.from_file(path)):
         assert (
-            "".join(packed.evaluate(result, [i >> 1, i & 1]).answer for i in range(4))
-            == TABLE
+            "".join(result.evaluate([i >> 1, i & 1]).answer for i in range(4)) == TABLE
         )
 
     same = scoped(lambda request: request.text_source()).generate(TABLE, balance=True)
@@ -551,7 +552,7 @@ def test_wrap_chars_breaks_anywhere(tmp_path: Path) -> None:
 
     def scoped(source):
         declared = replace(backend, entrypoint=lambda _: source)
-        return esolangs.Catalog([replace(original, backend=declared)]).bind(REFERENCE)
+        return Catalog([replace(original, backend=declared)]).bind(REFERENCE)
 
     # Exact fit, an uneven balance, and an exact fold across gzip/UTF-8 blocks.
     long = ",." + "é" * 65534
@@ -589,8 +590,8 @@ def test_wrap_chars_breaks_anywhere(tmp_path: Path) -> None:
         path = tmp_path / "reflow.txt.gz"
         packed.to_file(restored, path, gzip=True)
         assert path.read_bytes() == record.source.to_gzip()
-        for api, source in ((plain, original_record), (packed, packed.from_file(path))):
-            assert "".join(api.evaluate(source, [bit]).answer for bit in (0, 1)) == "01"
+        for source in (original_record, packed.from_file(path)):
+            assert "".join(source.evaluate([bit]).answer for bit in (0, 1)) == "01"
 
 
 def test_wrappers_refuse_input_they_do_not_recognize() -> None:

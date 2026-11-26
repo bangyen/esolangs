@@ -12,6 +12,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import serialization
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -57,7 +58,9 @@ class TestParameterizedTemplates:
 
     def test_a_reader_has_nothing_to_instantiate(self) -> None:
         with pytest.raises(TemplateError, match="reads its inputs"):
-            esolangs.instantiate(REFERENCE, esolangs.generate(REFERENCE, XOR), [0])
+            esolangs.Language(REFERENCE).instantiate(
+                esolangs.generate(REFERENCE, XOR), [0]
+            )
 
 
 class TestErrorsAreCatchable:
@@ -453,7 +456,9 @@ class TestThreadExecution:
     def test_the_debugger_route_bounds_a_diverging_program(self) -> None:
         """The one that matters: a program that never halts, on a thread."""
         name = languages(answer_mode="termination", parameterized=True)[0]
-        program = esolangs.instantiate(name, esolangs.generate(name, "0110"), [0, 1])
+        program = esolangs.Language(name).instantiate(
+            esolangs.generate(name, "0110"), [0, 1]
+        )
 
         def work() -> object:
             return debugger_api.make_debugger(name, program, stdin="").run(
@@ -553,7 +558,7 @@ class TestTheArgumentBoundaryRefusesCleanly:
     def test_to_json_refuses_what_from_json_would(self) -> None:
         """``run`` accepts the surrogate; the dumped document did not load."""
         with pytest.raises(ProgramError, match="UTF-8"):
-            esolangs.to_json(REFERENCE, "\ud800")
+            serialization.to_json(REFERENCE, "\ud800")
 
     @pytest.mark.parametrize("data", [None, 5, "png"])
     def test_png_data_of_the_wrong_type_says_so(self, data: object) -> None:

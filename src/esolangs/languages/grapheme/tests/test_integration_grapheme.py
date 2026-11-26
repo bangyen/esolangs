@@ -8,6 +8,7 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
 from esolangs.debugger import make_debugger
+from esolangs.registry import Catalog
 from esolangs.registry._functions import FunctionRef
 from tests.support.cli_support import call_both, call_main
 from tests.support.evaluation import _evaluate
@@ -76,7 +77,7 @@ def test_isolated_execution_accepts_a_copied_dialect_reference() -> None:
     assert isinstance(dialect, FunctionRef)
     runtime = replace(declaration.runtime, dialect=replace(dialect))
     assert runtime.dialect is not dialect
-    scope = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    scope = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
     settings = scope.settings(integer_conversion="after_each_letter")
     assert scope.run("FAFY", settings=settings, isolated=True).unwrap().output == "10"
 

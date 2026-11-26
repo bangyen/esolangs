@@ -7,7 +7,7 @@ from os import PathLike
 
 import esolangs
 from esolangs._dialect import Scalar
-from esolangs.artifacts import Artifact, BooleanEvaluation, ProgramArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact
 from esolangs.debugger import Debugger, make_debugger, make_vm
 from esolangs.limits import ExecutionLimits
 from esolangs.operations.prepared import PreparedProgram
@@ -83,9 +83,11 @@ class Language:
     ) -> ProgramArtifact[Program]:
         """Read lossless source with retained metadata.
 
-        Arguments and errors: :func:`esolangs.from_file`.
+        Arguments and errors: :func:`serialization.from_file`.
         """
-        return esolangs.from_file(
+        from esolangs.serialization import from_file
+
+        return from_file(
             self.name,
             path,
             settings=self.dialect if settings is None else settings,
@@ -96,9 +98,11 @@ class Language:
     def from_json(self, document: str) -> Artifact:
         """Restore portable JSON as this language's program or template artifact.
 
-        Arguments and errors: :func:`esolangs.from_json`.
+        Arguments and errors: :func:`serialization.from_json`.
         """
-        return esolangs.from_json(self.name, document, catalog=self.catalog)
+        from esolangs.serialization import from_json
+
+        return from_json(self.name, document, catalog=self.catalog)
 
     def to_file(
         self,
@@ -111,9 +115,11 @@ class Language:
     ) -> None:
         """Write a program as a native source file.
 
-        Arguments and errors: :func:`esolangs.to_file`.
+        Arguments and errors: :func:`serialization.to_file`.
         """
-        esolangs.to_file(
+        from esolangs.serialization import to_file
+
+        to_file(
             self.name,
             program,
             path,
@@ -128,9 +134,11 @@ class Language:
     ) -> str:
         """Return portable JSON retaining source and dialect choices.
 
-        Arguments and errors: :func:`esolangs.to_json`.
+        Arguments and errors: :func:`serialization.to_json`.
         """
-        return esolangs.to_json(
+        from esolangs.serialization import to_json
+
+        return to_json(
             self.name,
             program,
             settings=self.dialect if settings is None else settings,
@@ -170,7 +178,9 @@ class Language:
         Planning performs generation once, including layout and compression.
         Invalid requests still raise their usual errors.
         """
-        return esolangs.plan_generation(
+        from esolangs.planning import plan_generation
+
+        return plan_generation(
             self.name,
             truth_table,
             width=width,
@@ -203,21 +213,6 @@ class Language:
             catalog=self.catalog,
         )
 
-    def evaluate(
-        self,
-        artifact: Artifact,
-        bits: list[int] | tuple[int, ...],
-        *,
-        limits: ExecutionLimits | None = None,
-    ) -> BooleanEvaluation:
-        """Run one Boolean row and return its answer and execution evidence.
-
-        Arguments and errors: :func:`esolangs.evaluate`.
-        """
-        return esolangs.evaluate(
-            self.name, artifact, bits, limits=limits, catalog=self.catalog
-        )
-
     def instantiate(
         self,
         template: Artifact,
@@ -229,9 +224,11 @@ class Language:
     ) -> ProgramArtifact[str]:
         """Fill a parameterized template with ``bits``.
 
-        Arguments and errors: :func:`esolangs.instantiate`.
+        Pass truth_table to verify the template against its generated layout.
         """
-        return esolangs.instantiate(
+        from esolangs.operations.instantiation import instantiate
+
+        return instantiate(
             self.name,
             template,
             bits,

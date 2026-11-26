@@ -14,9 +14,10 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.cli import _emit, _generate, main
 from esolangs.cli.io import _StdoutEncodingError
-from esolangs.registry import LANGUAGES, _table
+from esolangs.registry import LANGUAGES, Catalog, _table
 from esolangs.registry._backend import BooleanBackend
 from tests.support.cli_support import (
     _failure,
@@ -60,7 +61,7 @@ class TestInProcess:
         api = esolangs.Language(_RASTER)
         restored = api.from_file(path)
         assert restored.input_arity == 2
-        assert api.evaluate(restored, [1, 0]).answer == "1"
+        assert restored.evaluate([1, 0]).answer == "1"
         image = esolangs.Raster.from_png(out)
         stdin = esolangs.encode_inputs(_RASTER, [1, 0])
         assert (
@@ -117,7 +118,7 @@ class TestInProcess:
             path.read_bytes(),
             b"",
         )
-        assert api.evaluate(api.from_file(path), [1]).answer == "1"
+        assert api.from_file(path).evaluate([1]).answer == "1"
 
     def test_raster_scale_hint_names_the_working_cli_flag(
         self, tmp_path, capsys
@@ -126,7 +127,7 @@ class TestInProcess:
         program = esolangs.generate(language, "01")
         assert isinstance(program.source, esolangs.Raster)
         path = tmp_path / "program.png"
-        esolangs.to_file(language, program, path)
+        serialization.to_file(language, program, path)
         invalid_scale = len(program.source.rows) + 1
         _, error = _failure(
             ["run", "--scale", str(invalid_scale), language, str(path)], capsys
@@ -283,7 +284,7 @@ class TestInProcess:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         program = tmp_path / "prog.txt"
-        esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "1101"), program)
+        serialization.to_file(REFERENCE, esolangs.generate(REFERENCE, "1101"), program)
         stdin = esolangs.encode_inputs(REFERENCE, [1, 0])
         out = call_main(["run", REFERENCE, str(program)], capsys, stdin=stdin)
         assert esolangs.read_answer(REFERENCE, out) == "0"
@@ -421,7 +422,7 @@ class TestOutputAndAbridging:
         declaration = LANGUAGES[REFERENCE]
         source = ",."
         backend = BooleanBackend(entrypoint=lambda _request: source)
-        scope = esolangs.Catalog([replace(declaration, backend=backend)])
+        scope = Catalog([replace(declaration, backend=backend)])
         monkeypatch.setattr(_table, "CATALOG", scope)
         for flags in ([], ["--gzip"]):
             args = ["esolangs", "generate", *flags, REFERENCE, "01"]
@@ -487,7 +488,7 @@ class TestOutputAndAbridging:
         _generate(repaired[2:])
         path = tmp_path / "program.png"
         path.write_bytes(capsysbinary.readouterr().out)
-        assert esolangs.from_file(_RASTER, path).scale == 2
+        assert serialization.from_file(_RASTER, path).scale == 2
         encoded = run_cli("encode-inputs", _RASTER, "1")
         assert encoded.returncode == 0, encoded.stderr
         execution = run_cli("run", _RASTER, str(path), stdin=encoded.stdout)
@@ -561,7 +562,7 @@ class TestOutputAndAbridging:
         label = "clear\x1b[2J\nlabel"
         shown = r"clear\x1b[2J\nlabel"
         raster = LANGUAGES[_RASTER]
-        scope = esolangs.Catalog([replace(raster, name=label)])
+        scope = Catalog([replace(raster, name=label)])
         with (
             patch.object(_table, "CATALOG", scope),
             patch.object(sys.stdout, "isatty", lambda: True),
@@ -571,7 +572,7 @@ class TestOutputAndAbridging:
                 f"{shown} generates a PNG; redirect stdout to a file\n",
             )
         bound = scope.bind(raster.id)
-        assert bound.evaluate(bound.generate("01"), [1]).answer == "1"
+        assert bound.generate("01").evaluate([1]).answer == "1"
 
         text = LANGUAGES[
             first(
@@ -582,7 +583,7 @@ class TestOutputAndAbridging:
                 width_effect="none",
             )
         ]
-        scope = esolangs.Catalog([replace(text, name=label)])
+        scope = Catalog([replace(text, name=label)])
         with patch.object(_table, "CATALOG", scope):
             source, error = call_both(["generate", "--width=3", text.id, "01"], capsys)
         assert error == (
@@ -608,7 +609,7 @@ def _check_dialect_repair(language, capsysbinary, monkeypatch) -> None:
         observed.append(choices)
 
     runtime = replace(declaration.runtime, dialect_schema=schema, dialect=validate)
-    scope = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    scope = Catalog([replace(declaration, runtime=runtime)])
     monkeypatch.setattr(_table, "CATALOG", scope)
 
     class Diagnostic(StringIO):

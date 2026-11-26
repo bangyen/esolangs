@@ -9,6 +9,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs import serialization
 from tests.support.evaluation import _evaluate
 from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated, probe_table
@@ -66,12 +67,12 @@ class TestATemplateKnowsWhoseItIs:
         """A mismatched setter silently answered 0."""
         template = esolangs.generate(TEMPLATED, "0110")
         with pytest.raises(esolangs.TemplateError, match="belongs to"):
-            esolangs.instantiate(OTHER_TEMPLATED, template, [0, 1])
+            esolangs.Language(OTHER_TEMPLATED).instantiate(template, [0, 1])
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         """A case variant is the same language, not a mismatch."""
         template = esolangs.generate(TEMPLATED.lower(), "0110")
-        assert esolangs.instantiate(TEMPLATED.upper(), template, [0, 1])
+        assert esolangs.Language(TEMPLATED.upper()).instantiate(template, [0, 1])
 
 
 class TestATemplateCarriesItsSetters:
@@ -180,15 +181,19 @@ class TestATemplateCarriesItsSetters:
     def test_portable_templates_retain_their_setters(self) -> None:
         for name in languages(parameterized=True):
             template = esolangs.generate(name, "0011")
-            restored = esolangs.from_json(name, esolangs.to_json(name, template))
-            assert esolangs.instantiate(name, restored, [1, 0]) == (
-                esolangs.instantiate(name, template, [1, 0])
+            restored = serialization.from_json(
+                name, serialization.to_json(name, template)
+            )
+            assert esolangs.Language(name).instantiate(restored, [1, 0]) == (
+                esolangs.Language(name).instantiate(template, [1, 0])
             ), name
             assert _evaluate(name, restored, inputs=2) == "0011"
             with pytest.raises(esolangs.TemplateError, match="TemplateArtifact"):
-                esolangs.instantiate(name, restored.source, [1, 0])
+                esolangs.Language(name).instantiate(restored.source, [1, 0])
             with pytest.raises(esolangs.TemplateError, match="is not the template"):
-                esolangs.instantiate(name, restored, [1, 0], truth_table="0001")
+                esolangs.Language(name).instantiate(
+                    restored, [1, 0], truth_table="0001"
+                )
 
     def test_the_setters_survive_a_width_and_a_pickle(self) -> None:
         import pickle
@@ -213,7 +218,7 @@ class TestAProgramKnowsWhoseItIs:
 
     def test_a_filled_template_carries_its_language(self) -> None:
         template = esolangs.generate(TEMPLATED, "0110")
-        program = esolangs.instantiate(TEMPLATED, template, [0, 1])
+        program = esolangs.Language(TEMPLATED).instantiate(template, [0, 1])
         assert getattr(program, "language", None) == TEMPLATED
         with pytest.raises(esolangs.ProgramError, match=f"generated for {TEMPLATED}"):
             esolangs.run(REFERENCE, program).unwrap()
@@ -345,7 +350,7 @@ class TestInstantiateCanCheckProvenance:
             source, TEMPLATED, bindings, spans=((len("hello "), len(source)),)
         )
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
-            esolangs.instantiate(TEMPLATED, handwritten, [1], truth_table="01")
+            esolangs.Language(TEMPLATED).instantiate(handwritten, [1], truth_table="01")
         forged = esolangs.TemplateArtifact(
             original.source,
             TEMPLATED,
@@ -356,7 +361,7 @@ class TestInstantiateCanCheckProvenance:
             spans=original.spans,
         )
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
-            esolangs.instantiate(TEMPLATED, forged, [1], truth_table="01")
+            esolangs.Language(TEMPLATED).instantiate(forged, [1], truth_table="01")
 
 
 class TestSnapshotSaysItIsOpaque:

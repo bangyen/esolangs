@@ -248,7 +248,8 @@ def test_debugger_and_workspace_repr_keep_deep_shared_terms_readable() -> None:
 def test_worker_retains_shared_terms_in_a_reachable_cycle() -> None:
     from dataclasses import replace
 
-    from esolangs import Catalog, ExecutionLimits, Language
+    from esolangs import ExecutionLimits, Language
+    from esolangs.registry import Catalog
     from esolangs.runtime._result_wire import encode_decision
     from esolangs.runtime._worker_json import worker_dumps
 
@@ -265,11 +266,13 @@ def test_worker_retains_shared_terms_in_a_reachable_cycle() -> None:
         # argument (S I I applied to itself) repeats.
         source = "`" + "```s``s`ksii" * depth + "i```sii``sii"
         artifact = scoped.from_source(source)
-        local = scoped.evaluate(artifact, [0], limits=caps)
+        local = artifact.evaluate([0], limits=caps)
         assert local.answer == "1"
         assert local.termination.commands == 1039
         sizes.append(len(worker_dumps(encode_decision(local.termination))))
-        worker = scoped.evaluate(artifact, [0], limits=replace(caps, total_timeout=5))
+        worker = artifact.evaluate(
+            [0], limits=replace(caps, total_timeout=5), catalog=scoped.catalog
+        )
         assert worker == local
         continuation = worker.termination.cycle.state[1]
         value = continuation.frames()[0].value

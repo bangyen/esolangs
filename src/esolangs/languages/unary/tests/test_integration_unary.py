@@ -9,7 +9,7 @@ from time import monotonic
 import pytest
 
 import esolangs
-from esolangs import run
+from esolangs import run, serialization
 from esolangs.runtime._files import StreamReadTimeoutError, stream_read_deadline
 from esolangs.runtime._source import _native_compressed_source
 from tests.support.cli_support import call_main
@@ -36,7 +36,7 @@ def test_compressed_and_plain_sources_share_execution(tmp_path, monkeypatch) -> 
     assert len(program.source) == 27_452_351
     assert len(program.source.to_gzip()) == 26_712
     path = tmp_path / "and.txt.gz"
-    esolangs.to_file("Unary", program, path)
+    serialization.to_file("Unary", program, path)
     for source in (program, program.source.to_gzip(), path, str(program.source)):
         assert (
             run(
@@ -49,7 +49,7 @@ def test_compressed_and_plain_sources_share_execution(tmp_path, monkeypatch) -> 
             .output
             == ""
         )
-    restored = esolangs.from_json("Unary", esolangs.to_json("Unary", program))
+    restored = serialization.from_json("Unary", serialization.to_json("Unary", program))
     assert isinstance(restored, esolangs.ProgramArtifact)
     assert isinstance(restored.source, esolangs.CompressedText)
     assert restored == program
@@ -86,9 +86,7 @@ def _check_normalized_gzip_storage(path) -> None:
         checked = api.from_json(api.to_json(restored))
         assert checked == restored
         assert (
-            "".join(
-                api.evaluate(checked, [bit], limits=limits).answer for bit in (0, 1)
-            )
+            "".join(checked.evaluate([bit], limits=limits).answer for bit in (0, 1))
             == "01"
         )
 

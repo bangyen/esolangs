@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs import serialization
 from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
@@ -63,7 +64,7 @@ class TestParameterizedBitdeque:
             bindings,
             spans=tuple(runs(tpl, bindings.char, bindings.setters)),
         )
-        return esolangs.instantiate("Bitdeque", template, bits).source
+        return esolangs.Language("Bitdeque").instantiate(template, bits).source
 
     def test_template_is_input_independent(self) -> None:
         """The template has input runs, not hardcoded bits."""
@@ -114,7 +115,7 @@ def test_bitdeque_short_load_witness_tables(width: int) -> None:
             template = esolangs.generate("Bitdeque", table, width=width)
             for row, expected in enumerate(table):
                 bits = list(map(int, format(row, f"0{n}b")))
-                program = esolangs.instantiate("Bitdeque", template, bits)
+                program = esolangs.Language("Bitdeque").instantiate(template, bits)
                 assert execute("Bitdeque", program).unwrap().output == expected
 
 
@@ -123,7 +124,9 @@ def test_bitdeque_short_load_floor_and_rendered_total() -> None:
     template = esolangs.generate("Bitdeque", "0110", width=1)
     assert max(map(len, template.source.splitlines())) == 7
     for row in range(4):
-        program = esolangs.instantiate("Bitdeque", template, [row // 2, row % 2])
+        program = esolangs.Language("Bitdeque").instantiate(
+            template, [row // 2, row % 2]
+        )
         assert max(map(len, program.source.splitlines())) == 7
     assert (
         sum(
@@ -150,13 +153,13 @@ def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
     for n in range(4, 7):
         table = "".join(str(row.bit_count() % 2) for row in range(2**n))
         template = esolangs.generate("Bitdeque", table, width=width)
-        template = esolangs.from_json(
-            "Bitdeque", esolangs.to_json("Bitdeque", template)
+        template = serialization.from_json(
+            "Bitdeque", serialization.to_json("Bitdeque", template)
         )
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             bits = list(map(int, format(row, f"0{n}b")))
-            program = esolangs.instantiate(
-                "Bitdeque", template, bits, truth_table=table
+            program = esolangs.Language("Bitdeque").instantiate(
+                template, bits, truth_table=table
             )
             assert execute("Bitdeque", program).unwrap().output == table[row]
 
@@ -175,7 +178,7 @@ def test_bitdeque_short_load_rejects_wrong_table_provenance() -> None:
 
     template = esolangs.generate("Bitdeque", "0110", width=9)
     with pytest.raises(esolangs.TemplateError, match="not the template"):
-        esolangs.instantiate("Bitdeque", template, [0, 1], truth_table="0001")
+        esolangs.Language("Bitdeque").instantiate(template, [0, 1], truth_table="0001")
 
 
 def test_bitdeque_filled_template_is_one_width() -> None:
@@ -212,7 +215,9 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                 rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
                 for row in rows:
                     inputs = list(map(int, format(row, f"0{n}b")))
-                    program = esolangs.instantiate("Bitdeque", template, inputs)
+                    program = esolangs.Language("Bitdeque").instantiate(
+                        template, inputs
+                    )
                     assert len(program.source) == len(template.source)
                     io = ScriptedIO()
                     machine = _Machine(program.source, io)

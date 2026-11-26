@@ -71,7 +71,7 @@ def assert_saved_rows(
     for row in rows:
         bits = row_bits(row, n)
         result = (
-            language.evaluate(restored, bits, limits=limits)
+            restored.evaluate(bits, limits=limits)
             if prepared is None
             else prepared.evaluate(bits, limits=limits)
         )
@@ -263,7 +263,9 @@ def assert_shared_program(
         expected = table[row]
         bits = [int(bit) for bit in format(row, f"0{n}b")]
         source = (
-            esolangs.instantiate(language, program, bits) if parameterized else program
+            esolangs.Language(language).instantiate(program, bits)
+            if parameterized
+            else program
         )
         stdin = (
             ""

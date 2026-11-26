@@ -9,6 +9,7 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import run
+from esolangs.registry import Catalog
 from esolangs.runtime._lifecycle import POST_HALT_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import (
@@ -254,7 +255,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
         return initialize
 
     monkeypatch.setattr(interpreter, "custom_prepare", prepare, raising=False)
-    scoped = esolangs.Catalog(
+    scoped = Catalog(
         [
             replace(
                 record,
@@ -469,9 +470,9 @@ def test_bounded_runs_keep_the_native_first_repeat_boundary(worker):
     )
     assert api.run(artifact, limits=limits).unwrap() == expected
     assert prepared.run(limits=limits).unwrap() == expected
-    assert api.evaluate(artifact, [0], limits=limits) == esolangs.BooleanEvaluation(
-        "0", expected
-    )
+    assert artifact.evaluate(
+        [0], limits=limits, catalog=api.catalog
+    ) == esolangs.BooleanEvaluation("0", expected)
 
     earlier = prepared.run(limits=replace(limits, max_steps=steps - 1))
     assert earlier.bound == "max_steps"

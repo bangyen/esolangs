@@ -11,11 +11,11 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import ProgramArtifact
+from esolangs import ProgramArtifact, serialization
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_tokens
 from esolangs.generation.wrap import TokenWrapper, wrap_chars
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.registry._backend import TemplateSpec
 from tests.support.dialect_support import CASES
 from tests.support.evaluation import _evaluate
@@ -28,7 +28,9 @@ from tests.support.reference import REFERENCE
 def test_restored_isolated_execution(language) -> None:
     choices = dict(CASES)[language]
     source = esolangs.generate(language, "01", settings=choices)
-    restored = esolangs.from_json(language, esolangs.to_json(language, source))
+    restored = serialization.from_json(
+        language, serialization.to_json(language, source)
+    )
     assert restored.settings == source.settings == choices
     assert _evaluate(language, restored, inputs=1, isolated=True) == "01"
 
@@ -36,27 +38,27 @@ def test_restored_isolated_execution(language) -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("choices", [None, esolangs.Language("brainfuck").settings()])
 def test_default_settings_distinction(choices) -> None:
-    document = esolangs.to_json(
+    document = serialization.to_json(
         REFERENCE, ProgramArtifact("+.", REFERENCE, settings=choices)
     )
-    restored = esolangs.from_json(REFERENCE, document)
+    restored = serialization.from_json(REFERENCE, document)
     assert restored.settings == choices
     assert esolangs.run("Brainfuck", restored).unwrap().output == "\x01"
     empty = ProgramArtifact(
         esolangs.CompressedText.from_chunks(("",)), REFERENCE, settings=choices
     )
-    document = esolangs.to_json(REFERENCE, empty)
-    restored = esolangs.from_json(REFERENCE, document)
+    document = serialization.to_json(REFERENCE, empty)
+    restored = serialization.from_json(REFERENCE, document)
     assert restored == empty
     assert esolangs.run(REFERENCE, restored).unwrap().output == ""
     missing_limits = json.loads(document)
     del missing_limits["limits"]
     with pytest.raises(esolangs.ProgramError, match="missing fields"):
-        esolangs.from_json(REFERENCE, json.dumps(missing_limits))
+        serialization.from_json(REFERENCE, json.dumps(missing_limits))
     damaged = json.loads(document)
     damaged["source"] = ""
     with pytest.raises(esolangs.ProgramError, match="no gzip member"):
-        esolangs.from_json(REFERENCE, json.dumps(damaged))
+        serialization.from_json(REFERENCE, json.dumps(damaged))
 
 
 @pytest.mark.parametrize(
@@ -64,10 +66,10 @@ def test_default_settings_distinction(choices) -> None:
 )
 def test_invalid_json(document) -> None:
     with pytest.raises(esolangs.ProgramError):
-        esolangs.from_json("Brainfuck", document)
+        serialization.from_json("Brainfuck", document)
     for duplicated in ('{"format":1,"format":1}', '{"settings":{"key":1,"key":2}}'):
         with pytest.raises(esolangs.ProgramError, match="duplicate field"):
-            esolangs.from_json("Brainfuck", duplicated)
+            serialization.from_json("Brainfuck", duplicated)
 
 
 def test_portable_document_uses_the_backing_text() -> None:
@@ -87,18 +89,18 @@ def test_portable_document_uses_the_backing_text() -> None:
 
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
 def test_portable_record_refuses_nonstandard_json_constants(constant: str) -> None:
-    document = json.loads(esolangs.to_json(REFERENCE, "+."))
+    document = json.loads(serialization.to_json(REFERENCE, "+."))
     document["settings"] = float(constant)
     with pytest.raises(
         esolangs.ProgramError, match=f"invalid JSON constant {constant}"
     ):
-        esolangs.from_json(REFERENCE, json.dumps(document))
+        serialization.from_json(REFERENCE, json.dumps(document))
 
 
 def test_portable_gzip_rejects_raster_language_before_expansion(monkeypatch) -> None:
     source = esolangs.CompressedText.from_chunks(("+.",))
-    document = json.loads(esolangs.to_json(REFERENCE, source))
-    assert esolangs.from_json(REFERENCE, json.dumps(document)).source == source
+    document = json.loads(serialization.to_json(REFERENCE, source))
+    assert serialization.from_json(REFERENCE, json.dumps(document)).source == source
     name = one(source_kind="raster")[0]
     document["language"] = name
 
@@ -107,7 +109,7 @@ def test_portable_gzip_rejects_raster_language_before_expansion(monkeypatch) -> 
 
     monkeypatch.setattr(esolangs.CompressedText, "chunks", unexpected_expansion)
     with pytest.raises(esolangs.ProgramError, match="requires raster source"):
-        esolangs.from_json(name, json.dumps(document))
+        serialization.from_json(name, json.dumps(document))
 
 
 @pytest.mark.parametrize(
@@ -126,10 +128,10 @@ def test_portable_gzip_rejects_raster_language_before_expansion(monkeypatch) -> 
     ],
 )
 def test_invalid_fields(field, value) -> None:
-    document = json.loads(esolangs.to_json("Brainfuck", "+."))
+    document = json.loads(serialization.to_json("Brainfuck", "+."))
     document[field] = value
     with pytest.raises(esolangs.ProgramError):
-        esolangs.from_json("Brainfuck", json.dumps(document))
+        serialization.from_json("Brainfuck", json.dumps(document))
 
 
 def test_document_argument_and_invalid_settings() -> None:
@@ -142,9 +144,9 @@ def test_document_argument_and_invalid_settings() -> None:
             return self.reported
 
     with pytest.raises(esolangs.ArgumentError, match="JSON string"):
-        esolangs.from_json("Brainfuck", b"{}")
+        serialization.from_json("Brainfuck", b"{}")
     with pytest.raises(esolangs.ArgumentError):
-        esolangs.to_json("Brainfuck", "+.", settings={})
+        serialization.to_json("Brainfuck", "+.", settings={})
     api = esolangs.Language(REFERENCE)
     with pytest.raises(esolangs.ArgumentError, match="JSON string"):
         api.from_json(ReportedType(str))
@@ -176,21 +178,21 @@ def test_document_argument_and_invalid_settings() -> None:
     source = esolangs.generate(
         language, "01", settings=esolangs.Language(language).settings()
     )
-    document = json.loads(esolangs.to_json(language, source))
+    document = json.loads(serialization.to_json(language, source))
     document["settings"] = None
     with pytest.raises(esolangs.ProgramError, match="conflicting PNG"):
-        esolangs.from_json(language, json.dumps(document))
+        serialization.from_json(language, json.dumps(document))
 
 
 def test_template_kind_requires_parameterized_language() -> None:
-    document = json.loads(esolangs.to_json("Brainfuck", "+."))
+    document = json.loads(serialization.to_json("Brainfuck", "+."))
     document.update(kind="template", char="$", setters=[], spans=[])
     with pytest.raises(esolangs.ProgramError, match="does not support input templates"):
-        esolangs.from_json("Brainfuck", json.dumps(document))
+        serialization.from_json("Brainfuck", json.dumps(document))
     bindings = esolangs.TemplateBindings(char="@", setters=(("+", "-"),))
     explicit = esolangs.TemplateArtifact("@", REFERENCE, bindings, spans=((0, 1),))
     with pytest.raises(esolangs.ProgramError, match="does not support input templates"):
-        esolangs.to_json(REFERENCE, explicit)
+        serialization.to_json(REFERENCE, explicit)
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
@@ -252,7 +254,7 @@ def test_ordered_template_setters_round_trip(language: str, tmp_path: Path) -> N
         assert customized.evaluate([bit]).answer == str(bit)
         assert api.instantiate(customized, [bit]).source == expected
         for candidate in (template, converted, customized, restored, legacy):
-            assert api.evaluate(candidate, [bit]).answer == str(bit)
+            assert candidate.evaluate([bit]).answer == str(bit)
             filled = api.instantiate(candidate, [bit], truth_table="01")
             assert filled.source == expected
             api.to_file(filled, path)
@@ -294,11 +296,7 @@ def test_portable_template_setters_follow_stored_order(
     assert restored == control
     for row, answer in enumerate("1000"):
         bits = [row >> 1, row & 1]
-        assert (
-            api.evaluate(restored, bits).answer
-            == api.evaluate(control, bits).answer
-            == answer
-        )
+        assert restored.evaluate(bits).answer == control.evaluate(bits).answer == answer
 
 
 @pytest.mark.parametrize("language", one(parameterized=True))
@@ -306,15 +304,15 @@ def test_template_owner_cannot_be_reassigned_by_an_alias(language: str) -> None:
     owner = esolangs.Language(language)
     declaration = owner.catalog.languages[language]
     renamed = replace(declaration, name="Scoped Template", id="", aliases=(language,))
-    api = esolangs.Catalog([renamed]).bind(language)
+    api = Catalog([renamed]).bind(language)
     original = owner.generate("01", settings=owner.settings())
     native = api.generate("01", settings=api.settings())
     assert isinstance(original, esolangs.TemplateArtifact)
     assert isinstance(native, esolangs.TemplateArtifact)
     assert api.name == renamed.name
     assert api.instantiate(native, [1]) == native.fill([1])
-    assert api.evaluate(native, [1]).answer == "1"
-    assert owner.evaluate(original, [1]).answer == "1"
+    assert native.evaluate([1]).answer == "1"
+    assert original.evaluate([1], catalog=owner.catalog).answer == "1"
     with pytest.raises(esolangs.TemplateError, match="template belongs to"):
         api.instantiate(original, [1])
     with pytest.raises(esolangs.ProgramError, match="generated for"):
@@ -327,7 +325,7 @@ def test_template_owner_cannot_be_reassigned_by_an_alias(language: str) -> None:
 def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> None:
     declaration = esolangs.Language(language).catalog.languages[language]
     alias = "Private Alias"
-    api = esolangs.Catalog([replace(declaration, aliases=(alias,))]).bind(alias)
+    api = Catalog([replace(declaration, aliases=(alias,))]).bind(alias)
     template = api.generate("01", settings=api.settings())
     assert isinstance(template, esolangs.TemplateArtifact)
     legacy = api.to_json(template)
@@ -344,16 +342,16 @@ def test_explicit_template_marker_round_trips_in_its_catalog(language: str) -> N
         ),
     )
     document = api.to_json(explicit)
-    restored = esolangs.from_json(alias, document, catalog=api.catalog)
+    restored = serialization.from_json(alias, document, catalog=api.catalog)
     assert restored == explicit
-    assert esolangs.to_json(alias, restored, catalog=api.catalog) == document
+    assert serialization.to_json(alias, restored, catalog=api.catalog) == document
     saved = json.loads(document)
     saved["language"] = f" {api.name.swapcase()} "
     restored = api.from_json(json.dumps(saved))
     assert restored == explicit
     assert api.to_json(restored) == document
     for bit in (0, 1):
-        assert api.evaluate(restored, [bit]).answer == str(bit)
+        assert restored.evaluate([bit]).answer == str(bit)
     for wrong_owner in (alias, None, 1):
         saved["language"] = wrong_owner
         with pytest.raises(esolangs.ProgramError, match="program language must be"):
@@ -417,9 +415,7 @@ def test_explicit_zero_input_template_can_be_filled_after_reload(language: str) 
             == filled.source
         )
         assert restored.fill(bits) == api.instantiate(restored, bits) == filled
-        assert (
-            restored.evaluate(bits).answer == api.evaluate(restored, bits).answer == "0"
-        )
+        assert restored.evaluate(bits).answer == "0"
     with pytest.raises(esolangs.ArgumentError, match="0 inputs"):
         api.instantiate(restored, [0])
     with pytest.raises(esolangs.ArgumentError, match="must not be empty"):
@@ -462,7 +458,7 @@ def test_portable_storage_preserves_compression_for_text_languages(
     assert api.from_file(path) == api.from_source(raw.decode("utf-8"))
 
     owner = replace(LANGUAGES[REFERENCE], name=REFERENCE.upper())
-    scoped = esolangs.Catalog([owner]).bind(owner.name)
+    scoped = Catalog([owner]).bind(owner.name)
     for source in (raw.decode("utf-8"), compressed):
         original = scoped.from_source(source, settings=scoped.settings())
         saved = scoped.to_json(original)
@@ -485,7 +481,7 @@ def test_portable_generation_preserves_backend_laid_out_compression(
         return compressed.wrapped(request.width)
 
     backend = replace(original.backend, entrypoint=emit, layout_width=True, wrap=None)
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("01", width=2)
     restored = api.from_json(api.to_json(record))
     expected = compressed.wrapped(2)
@@ -497,7 +493,7 @@ def test_portable_generation_preserves_backend_laid_out_compression(
     api.to_file(restored, path, gzip=True)
     assert path.read_bytes() == expected.to_gzip()
     for bit in (0, 1):
-        assert api.evaluate(restored, [bit]).answer == str(bit)
+        assert restored.evaluate([bit]).answer == str(bit)
 
 
 def test_portable_generation_honors_a_compressed_balancer() -> None:
@@ -524,7 +520,7 @@ def test_portable_generation_honors_a_compressed_balancer() -> None:
     backend = replace(
         original.backend, entrypoint=lambda _: compressed, balance=balance
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("01", balance=True)
     restored = api.from_json(api.to_json(record))
     assert restored == record
@@ -536,7 +532,7 @@ def test_portable_generation_honors_a_compressed_balancer() -> None:
     with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
         str(restored.source)
     for bit in (0, 1):
-        assert api.evaluate(restored, [bit]).answer == str(bit)
+        assert restored.evaluate([bit]).answer == str(bit)
 
 
 def test_unchanged_compressed_balance_reuses_limited_source(monkeypatch) -> None:
@@ -546,7 +542,7 @@ def test_unchanged_compressed_balance_reuses_limited_source(monkeypatch) -> None
     backend = replace(
         original.backend, entrypoint=lambda _: source, balance=lambda req: req.source
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
 
     def unexpected_decode(_self):
         pytest.fail("an unchanged gzip source was revalidated")
@@ -556,7 +552,7 @@ def test_unchanged_compressed_balance_reuses_limited_source(monkeypatch) -> None
         balanced = api.generate("01", balance=True)
     assert balanced.source is source
     for bit in (0, 1):
-        assert api.evaluate(balanced, [bit]).answer == str(bit)
+        assert balanced.evaluate([bit]).answer == str(bit)
 
 
 @pytest.mark.parametrize("balance", [False, True])
@@ -588,12 +584,12 @@ def test_compressed_reflow_uses_declared_text_hooks(*, balance: bool) -> None:
             original,
             backend=replace(backend, entrypoint=lambda _, source=source: source),
         )
-        api = esolangs.Catalog([local]).bind(REFERENCE)
+        api = Catalog([local]).bind(REFERENCE)
         record = api.generate("01", width=None if balance else 1, balance=balance)
         restored = api.from_json(api.to_json(record))
         assert restored == record
         for bit in (0, 1):
-            assert api.evaluate(restored, [bit]).answer == str(bit)
+            assert restored.evaluate([bit]).answer == str(bit)
         sources.append(restored.source)
     plain, packed, alternate = sources
     assert alternate == packed
@@ -625,7 +621,7 @@ def test_compressed_reflow_respects_the_multiline_policy(*, may_reflow: bool) ->
         wrap=reflow,
         wrap_multiline=may_reflow,
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     for options in ({"width": 1}, {"balance": True}):
         record = api.generate("01", **options)
         if not may_reflow:
@@ -635,7 +631,7 @@ def test_compressed_reflow_respects_the_multiline_policy(*, may_reflow: bool) ->
         assert "".join(restored.source.chunks()) == (",." if may_reflow else raw)
         assert restored.source.limits == limits
         for bit in (0, 1):
-            assert api.evaluate(restored, [bit]).answer == str(bit)
+            assert restored.evaluate([bit]).answer == str(bit)
 
 
 @pytest.mark.parametrize("balance", [False, True])
@@ -658,7 +654,7 @@ def test_compressed_reflow_enforces_original_generation_limits(
         wrap=lambda _text, _width: expanded,
         balance=(lambda _: returned) if balance else None,
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     match = "work cap" if cap == "work" else "file cap"
     with pytest.raises(esolangs.GeneratorCapError, match=match):
         api.generate("01", width=None if balance else 1, balance=balance)
@@ -683,14 +679,14 @@ def test_portable_compression_leaves_newline_tokens_unchanged(language: str) -> 
         return esolangs.CompressedText.from_chunks((source,))
 
     declared = replace(original, backend=replace(backend, entrypoint=emit))
-    api = esolangs.Catalog([declared]).bind(language)
+    api = Catalog([declared]).bind(language)
     expected = api.generate("01")
     assert isinstance(expected.source, esolangs.CompressedText)
     for options in ({"width": 1}, {"balance": True}):
         restored = api.from_json(api.to_json(api.generate("01", **options)))
         assert restored == expected
         for bit in (0, 1):
-            assert api.evaluate(restored, [bit]).answer == str(bit)
+            assert restored.evaluate([bit]).answer == str(bit)
 
 
 def _identity_layout(width: int | None = None, *, char: str = "$") -> TemplateLayout:
@@ -714,14 +710,14 @@ def test_template_balancer_preserves_the_last_zero_width_slot() -> None:
         template=TemplateSpec(pair=("", "")),
         balance=balance,
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("00", balance=True)
     assert record == api.generate("00")
     restored = api.from_json(api.to_json(record))
     assert restored == record
     assert restored.spans == ((49, 49),)
     for bit in (0, 1):
-        assert api.evaluate(restored, [bit]).answer == "0"
+        assert restored.evaluate([bit]).answer == "0"
 
 
 def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
@@ -749,7 +745,7 @@ def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
         template=TemplateSpec(setters=setters),
         balance=lambda _: balanced,
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("00", balance=True)
     restored = api.from_json(api.to_json(record))
     assert isinstance(restored, esolangs.TemplateArtifact)
@@ -770,7 +766,7 @@ def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
     with pytest.raises(esolangs.ProgramError, match="requires a slot-aware wrapper"):
         api.generate("00", width=1)
     for bit in (0, 1):
-        assert api.evaluate(restored, [bit]).answer == "0"
+        assert restored.evaluate([bit]).answer == "0"
         requests.clear()
         extracted.clear()
         filled = api.instantiate(restored, [bit], truth_table="00")
@@ -799,7 +795,7 @@ def test_checked_portable_instantiation_refuses_unbalanced_mismatch() -> None:
         balance=None,
     )
     declaration = replace(original, backend=backend)
-    api = esolangs.Catalog([declaration]).bind(REFERENCE)
+    api = Catalog([declaration]).bind(REFERENCE)
     record = api.generate("01")
     restored = api.from_json(api.to_json(record))
     assert isinstance(restored, esolangs.TemplateArtifact)
@@ -825,7 +821,7 @@ def test_checked_portable_instantiation_refuses_unbalanced_mismatch() -> None:
         raise fault
 
     declared = replace(declaration, backend=replace(backend, balance=fail))
-    configured = esolangs.Catalog([declared]).bind(REFERENCE)
+    configured = Catalog([declared]).bind(REFERENCE)
     with pytest.raises(esolangs.ProgramError) as refused:
         configured.instantiate(
             replace(edited, generation_balance=None), [1], truth_table="01"
@@ -857,7 +853,7 @@ def _check_width_provider_reuse() -> None:
             layout_width=layout_width,
             wrap=None if layout_width else wrap_chars,
         )
-        api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+        api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
         requests.clear()
         extracted.clear()
         generated = api.generate("01", width=8)
@@ -907,7 +903,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         wrap=None,
         balance=lambda _: _identity_layout(9),
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("01", width=8)
     restored = api.from_json(api.to_json(record))
     assert isinstance(restored, esolangs.TemplateArtifact)
@@ -950,7 +946,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
             raise retired_width
         return _identity_layout(request.width)
 
-    replacement = esolangs.Catalog(
+    replacement = Catalog(
         [replace(original, backend=replace(backend, entrypoint=replacement_emit))]
     ).bind(REFERENCE)
     migrated = replacement.from_json(api.to_json(restored))
@@ -973,7 +969,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
     declaration = replace(
         original, backend=replace(backend, entrypoint=restricted_emit)
     )
-    scoped = esolangs.Catalog([declaration]).bind(REFERENCE)
+    scoped = Catalog([declaration]).bind(REFERENCE)
     saved = scoped.generate("01", width=8)
     portable = scoped.from_json(scoped.to_json(saved))
     assert isinstance(portable, esolangs.TemplateArtifact)
@@ -1003,7 +999,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         declaration, backend=replace(declaration.backend, same_layout=matcher)
     )
     with pytest.raises(esolangs.GeneratorCapError) as caught:
-        esolangs.Catalog([custom]).bind(REFERENCE).instantiate(
+        Catalog([custom]).bind(REFERENCE).instantiate(
             replace(changed, generation_balance=None), [0], truth_table="01"
         )
     assert caught.value is cap
@@ -1015,7 +1011,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
             raise default_cap
         return restricted_emit(request)
 
-    explicit = esolangs.Catalog(
+    explicit = Catalog(
         [replace(original, backend=replace(backend, entrypoint=explicit_only))]
     ).bind(REFERENCE)
     saved = explicit.generate("01", width=8)
@@ -1051,7 +1047,7 @@ def test_token_layout_keeps_the_custom_marker_in_portable_templates(layout) -> N
         template=TemplateSpec(pair=("x", "+"), char=marker),
         wrap=TokenWrapper(r"[+.]"),
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("01", **layout)
     restored = api.from_json(api.to_json(record))
     assert isinstance(restored, esolangs.TemplateArtifact)
@@ -1167,13 +1163,13 @@ def test_large_record_integers_stay_json_numbers() -> None:
     )
     compressed = esolangs.CompressedText.from_chunks(("+.",), limits=budgets)
     original = ProgramArtifact(compressed, REFERENCE, input_arity=huge)
-    document = esolangs.to_json(REFERENCE, original)
+    document = serialization.to_json(REFERENCE, original)
     wire = json.loads(document, parse_int=str)
     assert wire["input_arity"] == "1" + "0" * 5000
     assert wire["limits"] == dict.fromkeys(
         ("plain_chars", "generation_chars", "gzip_bytes"), wire["input_arity"]
     )
-    assert esolangs.from_json(REFERENCE, document) == original
+    assert serialization.from_json(REFERENCE, document) == original
 
 
 def test_source_records_freeze_the_underlying_text(tmp_path: Path) -> None:

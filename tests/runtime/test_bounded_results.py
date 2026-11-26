@@ -6,7 +6,7 @@ from itertools import product
 import pytest
 
 import esolangs
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._vm_adapter import _capture_result
 from esolangs.vm import complete_vm, make_vm
@@ -223,7 +223,7 @@ def test_a_failed_halt_cannot_be_completed_by_a_peer(monkeypatch):
         interpreter_module(api.name), "failed_halt", prepare, raising=False
     )
     runtime = replace(declaration.runtime, machine_preparation="failed_halt")
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
     first = scoped.make_debugger("+.")
     first.step()
     with pytest.raises(esolangs.HaltError) as caught:
@@ -316,7 +316,7 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
     )
     declaration = api.catalog.languages[api.name]
     runtime = replace(declaration.runtime, machine_preparation="halt_inspection")
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
     limits = esolangs.ExecutionLimits(max_steps=2)
     expected = esolangs.ExecutionResult("A", 1, 1, 0, steps=1)
     for mode in ("typed", "bare"):
@@ -499,9 +499,9 @@ def _check_observer_failure_evidence(api, monkeypatch):
         answer_mode="termination",
         answer_values=("halts", "diverges"),
     )
-    scoped = esolangs.Catalog(
-        [replace(declaration, runtime=runtime, contract=contract)]
-    ).bind(api.name)
+    scoped = Catalog([replace(declaration, runtime=runtime, contract=contract)]).bind(
+        api.name
+    )
     artifact = scoped.from_source("+.")
     limits = esolangs.ExecutionLimits(max_steps=2)
     expected = esolangs.ExecutionResult("1", 1, 1, 0, steps=1)
@@ -510,7 +510,7 @@ def _check_observer_failure_evidence(api, monkeypatch):
         lambda: run_until_halt_or_cycle(
             scoped.make_debugger(artifact, stdin="1"), limit=2
         ),
-        lambda: scoped.evaluate(artifact, [1], limits=limits),
+        lambda: artifact.evaluate([1], limits=limits, catalog=scoped.catalog),
     ):
         with pytest.raises(esolangs.HaltError, match="snapshot read") as caught:
             invoke()
@@ -641,7 +641,7 @@ def test_post_halt_completion_stays_pending_until_dump():
         and lang.contract.answer_mode != "termination"
         and esolangs.describe(name).dumps_on_the_post_halt_step
     )
-    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    source = esolangs.Language(name).instantiate(esolangs.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
     # Stop at halt before the completion step.
     while not debugger.halted:
@@ -998,7 +998,7 @@ def test_failed_dump_remains_unfinished_and_can_be_retried(monkeypatch, drive):
         dumps_on_the_post_halt_step=True,
         steppable_to_answer=True,
     )[0]
-    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    source = esolangs.Language(name).instantiate(esolangs.generate(name, "01"), [1])
     debugger = make_debugger(name, source)
     assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "max_steps"
     while not debugger.halted:

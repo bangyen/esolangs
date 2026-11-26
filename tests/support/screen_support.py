@@ -90,7 +90,9 @@ def execute(
     for row in rows:
         bits = [int(bit) for bit in format(row, f"0{n}b")]
         if facts.parameterized:
-            source = esolangs.instantiate(name, program, bits, settings=settings)
+            source = esolangs.Language(name).instantiate(
+                program, bits, settings=settings
+            )
             stdin = ""
         else:
             assert isinstance(program, esolangs.ProgramArtifact)

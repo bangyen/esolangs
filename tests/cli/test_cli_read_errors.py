@@ -18,6 +18,7 @@ from types import SimpleNamespace
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.cli import io as cli_io
 from esolangs.cli import main
 from esolangs.cli.io import (
@@ -25,7 +26,7 @@ from esolangs.cli.io import (
     _read_stdin,
     _write_output,
 )
-from esolangs.registry import _table
+from esolangs.registry import Catalog, _table
 from tests.support.reference import REFERENCE
 
 
@@ -1011,7 +1012,7 @@ def test_cli_completes_short_raw_adapter_writes(
     data = bytes(raw.data)
     if gzip_export:
         expected = tmp_path / "expected.gz"
-        esolangs.to_file(
+        serialization.to_file(
             REFERENCE,
             esolangs.generate(REFERENCE, "01"),
             expected,
@@ -1040,7 +1041,7 @@ def test_cli_completes_short_raw_adapter_writes(
             declaration = replace(
                 original, backend=replace(backend, entrypoint=close_stdout)
             )
-            scope = esolangs.Catalog([declaration])
+            scope = Catalog([declaration])
             with monkeypatch.context() as patch:
                 patch.setattr(_table, "CATALOG", scope)
                 patch.setattr(sys, "stdout", stdout)

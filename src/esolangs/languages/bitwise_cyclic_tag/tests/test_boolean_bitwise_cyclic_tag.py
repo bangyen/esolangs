@@ -116,7 +116,9 @@ def _check_constants() -> None:
                 )
                 assert template.source.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("Bitwise Cyclic Tag", template, bits)
+                    program = esolangs.Language("Bitwise Cyclic Tag").instantiate(
+                        template, bits
+                    )
                     io = ScriptedIO("7")
                     machine = _Machine(program.source, io)
                     assert machine.data == [str(b) for b in bits] + [bit]

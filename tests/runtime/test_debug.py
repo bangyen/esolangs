@@ -573,7 +573,7 @@ def _runnable(name: str, table: str = "0110") -> tuple[esolangs.ProgramArtifact,
     """Return a filled program and the stdin to drive it with."""
     program = esolangs.generate(name, table)
     if esolangs.describe(name).parameterized:
-        return esolangs.instantiate(name, program, [0, 0]), ""
+        return esolangs.Language(name).instantiate(program, [0, 0]), ""
     return program, esolangs.encode_inputs(name, [0, 0])
 
 

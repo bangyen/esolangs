@@ -10,6 +10,7 @@ from dataclasses import fields
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import CertificationSpec
 from esolangs.registry._certification import load as load_certification
@@ -88,12 +89,12 @@ def test_clearing_certification_preserves_generated_source(language, monkeypatch
         and node.module is not None
         and node.module.endswith(".proof_formulas")
     }
-    before = esolangs.to_json(language, esolangs.generate(language, "01"))
+    before = serialization.to_json(language, esolangs.generate(language, "01"))
     path = f"esolangs.languages.{original.id}.certification"
     load_certification(original)
     if path in sys.modules:
         monkeypatch.setattr(sys.modules[path], "CERTIFICATION", CertificationSpec())
-    after = esolangs.to_json(language, esolangs.generate(language, "01"))
+    after = serialization.to_json(language, esolangs.generate(language, "01"))
     assert after == before
 
 
@@ -123,6 +124,7 @@ class Barrier(importlib.abc.MetaPathFinder):
 barrier = Barrier()
 sys.meta_path.insert(0, barrier)
 import esolangs
+from esolangs import serialization
 from unittest.mock import patch
 from esolangs.registry import LANGUAGES
 from dataclasses import replace
@@ -141,10 +143,10 @@ for name in esolangs.list_languages():
         termination = language.contract.answer_mode == 'termination'
         table, bit = ('00', 0) if termination else ('01', 1)
         artifact = esolangs.generate(name, table)
-        restored = esolangs.from_json(name, esolangs.to_json(name, artifact))
+        restored = serialization.from_json(name, serialization.to_json(name, artifact))
         assert restored == artifact, name
         if language.parameterized:
-            program = esolangs.instantiate(name, restored, [bit])
+            program = esolangs.Language(name).instantiate(restored, [bit])
             stdin = ''
         else:
             program = restored

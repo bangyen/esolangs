@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs import run
+from esolangs import run, serialization
 from tests.support.evaluation import _evaluate
 
 
@@ -33,7 +33,7 @@ class TestEveryDumpSaysWhereTheAnswerIs:
         template = esolangs.generate("Bitdeque", "0110")
         for combo in range(4):
             bits = [(combo >> (1 - i)) & 1 for i in range(2)]
-            program = esolangs.instantiate("Bitdeque", template, bits)
+            program = esolangs.Language("Bitdeque").instantiate(template, bits)
             dump = (
                 run(
                     "Bitdeque",
@@ -53,12 +53,12 @@ def test_text_pickle_retains_settings(template) -> None:
     settings = esolangs.Language("Bitdeque").settings()
     source = esolangs.generate("Bitdeque", "0110", settings=settings)
     if not template:
-        source = esolangs.instantiate("Bitdeque", source, [1, 0])
+        source = esolangs.Language("Bitdeque").instantiate(source, [1, 0])
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings == settings
     assert type(restored) is type(source)
     if template:
-        restored = esolangs.instantiate("Bitdeque", restored, [1, 0])
+        restored = esolangs.Language("Bitdeque").instantiate(restored, [1, 0])
     assert run("Bitdeque", restored).unwrap().output == "1"
 
 
@@ -69,7 +69,9 @@ def test_settings_through_explicit_template_and_override() -> None:
     explicit = esolangs.TemplateArtifact(
         template.source, template.language, template.bindings, spans=template.spans
     )
-    filled = esolangs.instantiate("Bitdeque", explicit, [1, 0], settings=settings)
+    filled = esolangs.Language("Bitdeque").instantiate(
+        explicit, [1, 0], settings=settings
+    )
     assert filled.settings is settings
     assert run("Bitdeque", filled).unwrap().output == "1"
 
@@ -86,8 +88,8 @@ def test_settings_through_explicit_template_and_override() -> None:
         .output
         == "1"
     )
-    filled = esolangs.instantiate(
-        "Bitdeque", template, [1, 0], settings=esolangs.Language("Bitdeque").settings()
+    filled = esolangs.Language("Bitdeque").instantiate(
+        template, [1, 0], settings=esolangs.Language("Bitdeque").settings()
     )
     assert filled.settings == settings
     assert run("Bitdeque", filled).unwrap().output == "1"
@@ -100,13 +102,15 @@ def test_balanced_bitdeque_setters(restored) -> None:
     program = esolangs.generate("Bitdeque", table, balance=True, settings=settings)
     for row, expected in enumerate(table):
         source = (
-            esolangs.from_json("Bitdeque", esolangs.to_json("Bitdeque", program))
+            serialization.from_json(
+                "Bitdeque", serialization.to_json("Bitdeque", program)
+            )
             if restored
             else program
         )
         bits = tuple(map(int, format(row, "03b")))
-        filled = esolangs.instantiate(
-            "Bitdeque", source, bits, truth_table=table, settings=settings
+        filled = esolangs.Language("Bitdeque").instantiate(
+            source, bits, truth_table=table, settings=settings
         )
         assert run("Bitdeque", filled, settings=settings).unwrap().output == expected
 
@@ -116,11 +120,12 @@ def test_filled_template_becomes_portable_text() -> None:
     source = esolangs.generate(
         "Bitdeque", "0110", settings=esolangs.Language("Bitdeque").settings()
     )
-    filled = esolangs.instantiate("Bitdeque", source, [1, 0])
-    document = esolangs.to_json("Bitdeque", filled)
+    filled = esolangs.Language("Bitdeque").instantiate(source, [1, 0])
+    document = serialization.to_json("Bitdeque", filled)
     assert json.loads(document)["kind"] == "text"
     assert (
-        run("Bitdeque", esolangs.from_json("Bitdeque", document)).unwrap().output == "1"
+        run("Bitdeque", serialization.from_json("Bitdeque", document)).unwrap().output
+        == "1"
     )
 
 
@@ -129,9 +134,9 @@ def test_foreign_language_is_rejected() -> None:
         "Bitdeque", "0110", settings=esolangs.Language("Bitdeque").settings()
     )
     with pytest.raises(esolangs.ProgramError):
-        esolangs.to_json("Brainfuck", source)
+        serialization.to_json("Brainfuck", source)
     with pytest.raises(esolangs.ProgramError, match="program language"):
-        esolangs.from_json("Brainfuck", esolangs.to_json("Bitdeque", source))
+        serialization.from_json("Brainfuck", serialization.to_json("Bitdeque", source))
 
 
 @pytest.mark.parametrize(
@@ -147,11 +152,11 @@ def test_foreign_language_is_rejected() -> None:
 )
 def test_invalid_template_fields(field, value) -> None:
     document = json.loads(
-        esolangs.to_json("Bitdeque", esolangs.generate("Bitdeque", "0110"))
+        serialization.to_json("Bitdeque", esolangs.generate("Bitdeque", "0110"))
     )
     document[field] = value
     with pytest.raises(esolangs.ProgramError):
-        esolangs.from_json("Bitdeque", json.dumps(document))
+        serialization.from_json("Bitdeque", json.dumps(document))
 
 
 @pytest.mark.medium

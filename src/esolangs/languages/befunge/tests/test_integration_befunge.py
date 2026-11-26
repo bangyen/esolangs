@@ -14,7 +14,7 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.debugger import make_debugger
-from esolangs.registry import LANGUAGES, _table
+from esolangs.registry import LANGUAGES, Catalog, _table
 from tests.proofs._ledger import load
 from tests.support.cli_support import _failure, call_both, run_cli
 from tests.support.execution import assert_branch_proof_replays
@@ -31,7 +31,7 @@ def test_generator_and_runtime_hints_reach_cli(capsys, tmp_path, monkeypatch) ->
     name = "--Scoped Befunge"
     identifier = "scoped_befunge"
     declaration = replace(LANGUAGES["Befunge"], name=name, id=identifier)
-    catalog = esolangs.Catalog([declaration])
+    catalog = Catalog([declaration])
     api = catalog.bind(name)
     monkeypatch.setattr(_table, "CATALOG", catalog)
     path = tmp_path / "source.bf"
@@ -64,7 +64,7 @@ def test_generator_and_runtime_hints_reach_cli(capsys, tmp_path, monkeypatch) ->
         declaration = replace(
             LANGUAGES["Befunge"], name=name, id=identifier, aliases=()
         )
-        catalog = esolangs.Catalog([declaration])
+        catalog = Catalog([declaration])
         api = catalog.bind(name)
         outcome = api.run(path)
         assert outcome.error is not None
@@ -293,7 +293,7 @@ def test_cli_large_decimal_seed_matches_python(tmp_path: Path) -> None:
             assert f"reproducible_seed={shown}," in repr(runtime)
             assert repr(runtime) in repr(declaration)
 
-            scoped = esolangs.Catalog([declaration]).bind(declaration.name)
+            scoped = Catalog([declaration]).bind(declaration.name)
             for _ in range(2):
                 debugger = scoped.make_debugger(_RANDOM_BRANCH)
                 assert debugger.run(limits=limits) == "halted"

@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs import serialization
 from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.debugger import make_vm
 from esolangs.generation.helpers import permute_truth_table
@@ -49,12 +50,13 @@ class TestParameterizedBack:
             bindings,
             spans=tuple(runs(tpl, bindings.char, bindings.setters)),
         )
-        return esolangs.instantiate("Back", template, bits).source
+        return esolangs.Language("Back").instantiate(template, bits).source
 
     @pytest.mark.medium
     def test_constant_embedding_keeps_its_resource_bounds(self) -> None:
         from checks.certification.resource_evidence import resource_bounds
-        from esolangs import generate, instantiate, read_answer
+        from esolangs import generate, read_answer
+        from esolangs.operations.instantiation import instantiate
 
         bounds = resource_bounds("Back")
         execution = bounds["execution"].formula
@@ -174,7 +176,7 @@ class TestParameterizedBack:
             restored = language.from_json(language.to_json(artifact))
             for row in (0, 1, len(table) // 2, len(table) - 1):
                 bits = row_bits(row, n)
-                result = language.evaluate(restored, bits)
+                result = restored.evaluate(bits)
                 assert result.answer == table[row]
                 assert result.observation.input_reads == 0
                 for source in candidates:
@@ -212,7 +214,7 @@ class TestParameterizedBack:
             rows = range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1)
             for row in rows:
                 bits = list(map(int, format(row, f"0{n}b")))
-                program = esolangs.instantiate("Back", template, bits)
+                program = esolangs.Language("Back").instantiate(template, bits)
                 assert len(program.source) == len(template.source)
                 io = ScriptedIO()
                 machine = _Machine(program.source.splitlines(), io)
@@ -327,7 +329,9 @@ def test_descending_loader_preserves_inputs_and_answers(width: int) -> None:
         sizes = set()
         for row, expected in enumerate(table):
             bits = list(map(int, f"{row:0{n}b}"))
-            program = esolangs.instantiate("Back", template, bits, truth_table=table)
+            program = esolangs.Language("Back").instantiate(
+                template, bits, truth_table=table
+            )
             sizes.add(len(program.source))
             assert runner.run_back(program.source, n) == expected
         assert len(sizes) == 1
@@ -368,7 +372,9 @@ def test_vertical_leaf_finish_preserves_every_small_table() -> None:
             template = esolangs.generate("back", table, width=1)
             for row, expected in enumerate(table):
                 bits = [(row >> shift) & 1 for shift in range(n - 1, -1, -1)]
-                code = esolangs.instantiate("back", template, bits, truth_table=table)
+                code = esolangs.Language("back").instantiate(
+                    template, bits, truth_table=table
+                )
                 assert runner.run_back(code.source, n) == expected
     assert (
         max(map(len, esolangs.generate("back", "0110", width=1).source.splitlines()))
@@ -393,18 +399,20 @@ def test_parity_accumulator_keeps_public_slots_and_provenance(
     assert generated.bindings.setters == (("-", "+"),) * n
     for template in (
         generated,
-        esolangs.from_json("Back", esolangs.to_json("Back", generated)),
+        serialization.from_json("Back", serialization.to_json("Back", generated)),
     ):
         for row, expected in enumerate(table):
             bits = list(map(int, f"{row:0{n}b}"))
-            program = esolangs.instantiate("Back", template, bits, truth_table=table)
+            program = esolangs.Language("Back").instantiate(
+                template, bits, truth_table=table
+            )
             assert runner.run_back(program.source, n) == expected
             assert len(program.source) == len(generated.source)
             if width == 1:
                 assert max(map(len, program.source.splitlines())) == 1
         with pytest.raises(esolangs.TemplateError):
-            esolangs.instantiate(
-                "Back", template, [0] * n, truth_table="0" * len(table)
+            esolangs.Language("Back").instantiate(
+                template, [0] * n, truth_table="0" * len(table)
             )
     assert (
         max(map(len, esolangs.generate("Back", table, width=1).source.splitlines()))
@@ -576,7 +584,9 @@ def _check_held_input_and_dump() -> None:
         for options in ({}, {"width": 1}, {"balance": True}):
             template = esolangs.generate("Back", table, **options)
             for row in (0, (1 << n) // 3, (1 << n) - 1):
-                source = esolangs.instantiate("Back", template, row_bits(row, n))
+                source = esolangs.Language("Back").instantiate(
+                    template, row_bits(row, n)
+                )
                 io = ScriptedIO("Q")
                 machine = _Machine(source.source.splitlines(), io)
                 count_steps(machine, 4999)
@@ -587,7 +597,7 @@ def _check_held_input_and_dump() -> None:
                 assert io.input_char() == ord("Q")
     # Non-answer cells are storage/scratch; only cell n is the answer contract.
     template = esolangs.generate("Back", "0001")
-    source = esolangs.instantiate("Back", template, [1, 0])
+    source = esolangs.Language("Back").instantiate(template, [1, 0])
     assert execute("Back", source).unwrap().output == "0 0 0"
 
 
@@ -609,7 +619,7 @@ def _check_exact_preload_bounds() -> None:
         assert grid_area(template.source) == scaling(n, template.source)
         table = execution_witness(n)
         template = esolangs.generate("Back", table)
-        source = esolangs.instantiate("Back", template, [1] * n)
+        source = esolangs.Language("Back").instantiate(template, [1] * n)
         machine = make_vm("Back", source)
         assert run_to_answer(machine) == execution(n, template.source)
         machine.step()

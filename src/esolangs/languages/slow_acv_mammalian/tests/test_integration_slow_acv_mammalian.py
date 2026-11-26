@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import run
-from esolangs.registry import _table
+from esolangs import run, serialization
+from esolangs.registry import Catalog, _table
 from tests.support.cli_support import _failure, call_both, run_cli
 
 
@@ -61,7 +61,7 @@ def test_partial_overrides_merge_and_validate(
         runtime.dialect(**choices)
 
     scoped = replace(declaration, runtime=replace(runtime, dialect=validate))
-    scope = esolangs.Catalog([scoped]).bind(language.name)
+    scope = Catalog([scoped]).bind(language.name)
     partial = scope.settings(cell_modulus=255)
     assert partial.options() == {"cell_modulus": 255}
     row = "SEED ACCEPT DIGEST PRONOUNCE"
@@ -84,7 +84,7 @@ def test_partial_overrides_merge_and_validate(
     )
     full = scope.settings(cell_modulus=255, io_modulus=256)
     artifact = scope.generate("01", settings=full)
-    assert scope.evaluate(artifact, [1]).answer == "1"
+    assert artifact.evaluate([1]).answer == "1"
 
     path = tmp_path / "program.txt"
     path.write_text(row)
@@ -128,7 +128,7 @@ def test_partial_overrides_merge_and_validate(
         language.name, schema.choices, schema.defaults | {"cell_modulus": 255}
     )
     default_runtime = replace(scoped.runtime, dialect_schema=bad_defaults)
-    default_scope = esolangs.Catalog([replace(scoped, runtime=default_runtime)]).bind(
+    default_scope = Catalog([replace(scoped, runtime=default_runtime)]).bind(
         language.name
     )
     stored = default_scope.from_json(
@@ -164,10 +164,10 @@ def test_partial_overrides_merge_and_validate(
 
 
 def test_large_integer_setting_is_rejected() -> None:
-    document = json.loads(esolangs.to_json("SLOW ACV MAMMALIAN", "SEED"))
+    document = json.loads(serialization.to_json("SLOW ACV MAMMALIAN", "SEED"))
     document["settings"] = {"cell_modulus": {"integer": hex(1 << 20_000)}}
     with pytest.raises(esolangs.ProgramError):
-        esolangs.from_json("SLOW ACV MAMMALIAN", json.dumps(document))
+        serialization.from_json("SLOW ACV MAMMALIAN", json.dumps(document))
 
 
 @pytest.mark.medium

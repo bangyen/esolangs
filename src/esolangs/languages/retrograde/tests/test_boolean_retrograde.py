@@ -61,7 +61,7 @@ def check_boolean_tables() -> None:
         table = "".join(rng.choice("01") for _ in range(1 << n))
         template = esolangs.generate("Retrograde", table)
         for row, bits in enumerate(product((0, 1), repeat=n)):
-            source = esolangs.instantiate("Retrograde", template, bits)
+            source = esolangs.Language("Retrograde").instantiate(template, bits)
             pointer, direction, tape = _reference(source.source)
             assert (pointer, direction) == (n, 1)
             assert tuple(int(i in tape) for i in range(n)) == bits
@@ -69,8 +69,8 @@ def check_boolean_tables() -> None:
             assert (
                 execute("Retrograde", source).unwrap().output == expected == table[row]
             )
-    source = esolangs.instantiate(
-        "Retrograde", esolangs.generate("Retrograde", "01"), (0,)
+    source = esolangs.Language("Retrograde").instantiate(
+        esolangs.generate("Retrograde", "01"), (0,)
     )
     at = source.source.index("/")
     broken = source.source[:at] + "\\" + source.source[at + 1 :]
@@ -89,7 +89,7 @@ def _check_constants() -> None:
     for n, bit, _options, template in constant_artifacts("Retrograde", range(1, 13)):
         assert template.source.count("$") == n
         for bits in ([0] * n, [1] * n):
-            source = esolangs.instantiate("Retrograde", template, bits)
+            source = esolangs.Language("Retrograde").instantiate(template, bits)
             pointer, direction, tape = _reference(source.source.replace("\n", ""))
             assert (pointer, direction) == (n, 1)
             assert [int(i in tape) for i in range(n)] == bits

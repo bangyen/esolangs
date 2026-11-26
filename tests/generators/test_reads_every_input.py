@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
-from esolangs import vm
+from esolangs import serialization, vm
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from esolangs.runtime.io import ScriptedIO
@@ -154,13 +154,13 @@ def _matches_earlier_build(name, table, path, program):
     earlier = _audit_paths(name)
     if not (prior := earlier[: earlier.index(path)]):
         return False
-    artifact = esolangs.to_json(name, program)
+    artifact = serialization.to_json(name, program)
     for options in prior:
         try:
             other = esolangs.generate(name, table, **options)
         except esolangs.GeneratorCapError:
             continue
-        if esolangs.to_json(name, other) == artifact:
+        if serialization.to_json(name, other) == artifact:
             return True
     return False
 

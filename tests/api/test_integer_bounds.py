@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
+import esolangs.registry
 from esolangs.registry import LANGUAGES
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
@@ -124,11 +125,15 @@ def test_validation_uses_backing_types_without_reading_class_properties() -> Non
         ("bits", lambda: esolangs.encode_inputs(REFERENCE, Disguise(list))),
         (
             "catalog",
-            lambda: esolangs.Language(REFERENCE, catalog=Disguise(esolangs.Catalog)),
+            lambda: esolangs.Language(
+                REFERENCE, catalog=Disguise(esolangs.registry.Catalog)
+            ),
         ),
         (
             "catalog entries",
-            lambda: esolangs.Catalog([Disguise(esolangs.LanguageDeclaration)]),
+            lambda: esolangs.registry.Catalog(
+                [Disguise(esolangs.registry.LanguageDeclaration)]
+            ),
         ),
         ("limits", lambda: language.run("+.", limits=disguised_limits).unwrap()),
         ("limits", lambda: artifact.evaluate([1], limits=disguised_limits)),
@@ -189,7 +194,7 @@ def test_large_catalog_metadata_and_backend_request_repr() -> None:
         original.backend, entrypoint=emit, layout_width=True, max_inputs=huge
     )
     declaration = replace(original, runtime=runtime, backend=backend)
-    bound = esolangs.Catalog([declaration]).bind(REFERENCE)
+    bound = esolangs.registry.Catalog([declaration]).bind(REFERENCE)
     try:
         sys.set_int_max_str_digits(sys.int_info.str_digits_check_threshold)
         info = bound.describe()

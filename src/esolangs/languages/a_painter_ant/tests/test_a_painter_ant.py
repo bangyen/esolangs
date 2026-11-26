@@ -100,7 +100,9 @@ class TestPaintingAndLoop:
                 template = esolangs.generate("A Painter Ant", table)
                 for row in range(len(table)):
                     bits = [int(bit) for bit in f"{row:0{inputs}b}"]
-                    source = esolangs.instantiate("A Painter Ant", template, bits)
+                    source = esolangs.Language("A Painter Ant").instantiate(
+                        template, bits
+                    )
                     native = run_observed("A Painter Ant", source, timeout=5)
                     cycle = native.completion.cycle
                     _check(

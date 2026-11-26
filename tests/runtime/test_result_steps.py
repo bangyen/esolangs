@@ -54,7 +54,7 @@ def test_final_dump_is_outside_the_command_budget(isolated):
         dumps_on_the_post_halt_step=True,
         steppable_to_answer=True,
     )[0]
-    source = esolangs.instantiate(name, esolangs.generate(name, "01"), [1])
+    source = esolangs.Language(name).instantiate(esolangs.generate(name, "01"), [1])
     vm = make_vm(name, source)
     steps = 0
     while not vm.halted:

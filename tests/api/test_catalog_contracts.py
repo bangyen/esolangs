@@ -9,6 +9,7 @@ from unicodedata import normalize
 import pytest
 
 import esolangs
+import esolangs.registry
 from esolangs.registry import (
     LANGUAGES,
     example_stems,
@@ -36,14 +37,14 @@ class _PretendsToBe:
 
 def test_catalog_aliases_use_the_same_normalization_as_lookup() -> None:
     original = LANGUAGES[REFERENCE]
-    scoped = esolangs.Catalog([replace(original, aliases=("  scoped-bf  ",))])
+    scoped = esolangs.registry.Catalog([replace(original, aliases=("  scoped-bf  ",))])
     assert scoped.resolve("SCOPED-BF") == REFERENCE
     other = replace(original, name="other", id="other", aliases=("scoped-bf",))
     with pytest.raises(esolangs.ArgumentError, match="one owner"):
         scoped.with_language(other)
     for alias in (None, " ", _PretendsToBe(str)):
         with pytest.raises(esolangs.ArgumentError, match="nonblank strings"):
-            esolangs.Catalog([replace(original, aliases=(alias,))])
+            esolangs.registry.Catalog([replace(original, aliases=(alias,))])
 
 
 def test_only_alias_changes_keep_examples_and_proof_bounds() -> None:
@@ -53,10 +54,10 @@ def test_only_alias_changes_keep_examples_and_proof_bounds() -> None:
     assert expected.generator_scaling
     alias = "Scoped Reference"
     aliased = replace(original, aliases=(alias,))
-    scoped = esolangs.Catalog([aliased]).bind(alias)
+    scoped = esolangs.registry.Catalog([aliased]).bind(alias)
     assert scoped.describe() == expected
 
-    no_backend = esolangs.Catalog([replace(aliased, backend=None)]).bind(alias)
+    no_backend = esolangs.registry.Catalog([replace(aliased, backend=None)]).bind(alias)
     facts = no_backend.describe()
     assert facts.examples == ()
     assert facts.generator_scaling is None
@@ -74,7 +75,9 @@ def test_custom_emitter_does_not_inherit_shipped_evidence() -> None:
 
     original = LANGUAGES[REFERENCE]
     backend = replace(original.backend, entrypoint=Emitter())
-    scoped = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    scoped = esolangs.registry.Catalog([replace(original, backend=backend)]).bind(
+        REFERENCE
+    )
     facts = scoped.describe()
     assert facts.examples == ()
     assert facts.generator_scaling is None
@@ -86,7 +89,7 @@ def test_catalog_identifiers_cannot_be_shadowed_by_aliases() -> None:
     original = LANGUAGES[REFERENCE]
     owner = replace(original, name="Private owner", id="private_owner")
     other = replace(original, name="Another", id="another", aliases=("PRIVATE_OWNER",))
-    scoped = esolangs.Catalog([owner])
+    scoped = esolangs.registry.Catalog([owner])
     assert scoped.resolve("private_owner") == owner.name
     with pytest.raises(esolangs.ArgumentError, match="one owner"):
         scoped.with_language(other)
@@ -111,15 +114,15 @@ def test_catalog_freezes_declaration_spellings_before_indexing() -> None:
         aliases=WrappedAliases((WrappedText("PRIVATE-ALIAS"),)),
     )
     for scoped in (
-        esolangs.Catalog([record]),
-        esolangs.Catalog([]).with_language(record),
+        esolangs.registry.Catalog([record]),
+        esolangs.registry.Catalog([]).with_language(record),
     ):
         assert scoped.resolve("private_interpreter") == "Private interpreter"
         assert scoped.bind("private-alias").run("+.").unwrap().output == "\x01"
 
 
 def test_machine_traits_return_an_independent_snapshot() -> None:
-    catalog = esolangs.Catalog([LANGUAGES[REFERENCE]])
+    catalog = esolangs.registry.Catalog([LANGUAGES[REFERENCE]])
     api = catalog.bind(REFERENCE)
     vm = api.make_vm("+")
     snapshot = machine_traits(api.name, catalog=catalog)
@@ -132,7 +135,7 @@ def test_metadata_validates_inputs_without_hashing_them() -> None:
     class WrappedName(str):
         __hash__ = None
 
-    class UnhashableCatalog(esolangs.Catalog):
+    class UnhashableCatalog(esolangs.registry.Catalog):
         __hash__ = None
 
     catalog = UnhashableCatalog([LANGUAGES[REFERENCE]])
@@ -191,10 +194,10 @@ def test_bad_declaration_fields_raise_public_errors() -> None:
         ):
             replace(declaration, contract=bad)
 
-    catalog = esolangs.Catalog([])
-    for bad in (object(), _PretendsToBe(esolangs.LanguageDeclaration)):
+    catalog = esolangs.registry.Catalog([])
+    for bad in (object(), _PretendsToBe(esolangs.registry.LanguageDeclaration)):
         with pytest.raises(esolangs.ArgumentError, match="LanguageDeclaration records"):
-            esolangs.Catalog([bad])
+            esolangs.registry.Catalog([bad])
         with pytest.raises(esolangs.ArgumentError, match="LanguageDeclaration records"):
             catalog.with_language(bad)
 
@@ -207,12 +210,15 @@ def test_catalog_rejects_names_that_cannot_form_a_utf8_url(identifier: str) -> N
 
 def test_unicode_catalog_name_round_trips_and_forms_a_wiki_url() -> None:
     record = replace(LANGUAGES[REFERENCE], name="Private \N{SNAKE}", id="")
-    api = esolangs.Catalog([record]).bind(record.id)
+    api = esolangs.registry.Catalog([record]).bind(record.id)
     assert api.describe().wiki_url.endswith("/Private_%F0%9F%90%8D")
     program = api.generate("01")
     restored = api.from_json(api.to_json(program))
     assert restored == program
-    assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+    assert [restored.evaluate([bit], catalog=api.catalog).answer for bit in (0, 1)] == [
+        "0",
+        "1",
+    ]
 
     original = LANGUAGES[REFERENCE]
     alias = "Maître"
@@ -224,7 +230,7 @@ def test_unicode_catalog_name_round_trips_and_forms_a_wiki_url() -> None:
         declaration = replace(
             original, name=name, id="private_script", aliases=(alias,)
         )
-        catalog = esolangs.Catalog([declaration])
+        catalog = esolangs.registry.Catalog([declaration])
         assert catalog.resolve(name) == name
         scoped = catalog.bind(alternate.upper())
         assert catalog.resolve(renamed_alias) == scoped.name == name
@@ -240,7 +246,12 @@ def test_unicode_catalog_name_round_trips_and_forms_a_wiki_url() -> None:
         document["language"] = alternate
         restored = scoped.from_json(json.dumps(document))
         assert restored == stable
-        assert "".join(scoped.evaluate(restored, [b]).answer for b in (0, 1)) == "01"
+        assert (
+            "".join(
+                restored.evaluate([b], catalog=scoped.catalog).answer for b in (0, 1)
+            )
+            == "01"
+        )
         if " " in name:
             lexical = alternate.replace(" ", "-")
             assert (
@@ -295,7 +306,7 @@ def test_boolean_text_arguments_use_string_storage() -> None:
         program = bound.generate(table, balance=balance)
         assert program == api.generate("01", balance=balance)
         for bit in (0, 1):
-            assert bound.evaluate(program, [bit]).answer == str(bit)
+            assert program.evaluate([bit], catalog=bound.catalog).answer == str(bit)
 
 
 @pytest.mark.parametrize("sequence_type", [list, tuple])
@@ -310,14 +321,14 @@ def test_boolean_rows_use_the_sequence_contents(sequence_type: type) -> None:
     api = esolangs.Language(REFERENCE)
     row = WrappedRow([0])
     assert api.encode_inputs(row) == "0"
-    assert api.evaluate(api.generate("01"), row).answer == "0"
+    assert api.generate("01").evaluate(row, catalog=api.catalog).answer == "0"
     with pytest.raises(esolangs.ArgumentError, match="must not be empty"):
         api.encode_inputs(WrappedRow())
 
 
 def test_boolean_adapters_use_stdin_contract_without_a_generator() -> None:
     original = LANGUAGES[REFERENCE]
-    api = esolangs.Catalog([replace(original, backend=None)]).bind(REFERENCE)
+    api = esolangs.registry.Catalog([replace(original, backend=None)]).bind(REFERENCE)
     facts = api.describe()
     assert not facts.boolean_generator
     assert facts.reads_input
@@ -326,7 +337,7 @@ def test_boolean_adapters_use_stdin_contract_without_a_generator() -> None:
         api.generate("01")
     program = api.from_source(",.")
     assert api.encode_inputs([1]) == "1"
-    assert api.evaluate(program, [1]).answer == "1"
+    assert program.evaluate([1], catalog=api.catalog).answer == "1"
 
 
 def test_read_answer_uses_the_first_group_of_the_last_match() -> None:
@@ -345,12 +356,14 @@ def test_read_answer_uses_the_first_group_of_the_last_match() -> None:
         answer_values=symbols,
         answer_pattern=r"([01])([ab])",
     )
-    scoped = esolangs.Catalog([replace(original, contract=contract)])
+    scoped = esolangs.registry.Catalog([replace(original, contract=contract)])
     assert scoped.bind(REFERENCE).read_answer("0a, 1b") == "1"
     assert scoped.bind(REFERENCE).encode_inputs([1]) == "1"
     for bad in (_PretendsToBe(tuple), (_PretendsToBe(str), "1")):
         contract = replace(original.contract, alphabet=bad, answer_values=bad)
-        bound = esolangs.Catalog([replace(original, contract=contract)]).bind(REFERENCE)
+        bound = esolangs.registry.Catalog([replace(original, contract=contract)]).bind(
+            REFERENCE
+        )
         with pytest.raises(esolangs.ProgramError, match="invalid answer encoding"):
             bound.read_answer("1")
         with pytest.raises(esolangs.ProgramError, match="invalid input encoding"):
@@ -379,7 +392,7 @@ def test_compiled_answer_pattern_keeps_its_semantics_in_json(
 
     original = LANGUAGES[REFERENCE]
     contract = replace(original.contract, answer_pattern=pattern, answer_values=values)
-    catalog = esolangs.Catalog([replace(original, contract=contract)])
+    catalog = esolangs.registry.Catalog([replace(original, contract=contract)])
     bound = catalog.bind(REFERENCE)
     rendered = bound.describe().answer_pattern
     assert isinstance(rendered, str)
@@ -400,7 +413,7 @@ def test_compiled_answer_pattern_keeps_its_semantics_in_json(
 def test_row_number_encodes_a_large_positive_input() -> None:
     original = LANGUAGES[REFERENCE]
     contract = replace(original.contract, input_shape="row_number")
-    scope = esolangs.Catalog([replace(original, contract=contract)])
+    scope = esolangs.registry.Catalog([replace(original, contract=contract)])
     stdin = scope.bind(REFERENCE).encode_inputs([1] * 15000)
     assert parse_integer(stdin.strip()) == 1 << 15000
     for declaration in LANGUAGES.values():
@@ -420,7 +433,9 @@ def _check_stream_encoding_respects_the_declared_input_parser(original) -> None:
 
     def scoped(symbols):
         contract = replace(original.contract, alphabet=symbols)
-        return esolangs.Catalog([replace(original, contract=contract)]).bind(name)
+        return esolangs.registry.Catalog([replace(original, contract=contract)]).bind(
+            name
+        )
 
     cases = [(("0", " 0"), "ambiguous")]
     if original.contract.input_sets:
@@ -430,19 +445,21 @@ def _check_stream_encoding_respects_the_declared_input_parser(original) -> None:
         with pytest.raises(esolangs.ProgramError, match=message):
             invalid.encode_inputs([1])
         with pytest.raises(esolangs.ProgramError, match=message):
-            invalid.evaluate(artifact, [1])
+            artifact.evaluate([1], catalog=invalid.catalog)
 
     padded = scoped((" 0", "\t1"))
     for bit, encoded in enumerate((" 0", "\t1")):
         assert padded.encode_inputs([bit]) == encoded
-        assert padded.evaluate(artifact, [bit]).answer == str(bit)
+        assert artifact.evaluate([bit], catalog=padded.catalog).answer == str(bit)
 
 
 def test_read_answer_reports_a_malformed_catalog_pattern() -> None:
     original = LANGUAGES[REFERENCE]
     for pattern in ("wat(", _PretendsToBe(str), _PretendsToBe(re.Pattern)):
         contract = replace(original.contract, answer_pattern=pattern)
-        bound = esolangs.Catalog([replace(original, contract=contract)]).bind(REFERENCE)
+        bound = esolangs.registry.Catalog([replace(original, contract=contract)]).bind(
+            REFERENCE
+        )
         with pytest.raises(esolangs.ProgramError, match="invalid answer pattern"):
             bound.read_answer("1")
         if type(pattern) is not str:
@@ -458,7 +475,7 @@ def test_scoped_description_uses_the_declared_runtime() -> None:
         id="scoped_runtime",
         runtime=replace(original.runtime, category="custom"),
     )
-    scoped = esolangs.Catalog([local]).bind(local.name)
+    scoped = esolangs.registry.Catalog([local]).bind(local.name)
     assert scoped.describe().state_model == "other"
     assert scoped.describe().spec == esolangs.describe(REFERENCE).spec
     assert scoped.run("+.").unwrap().output == "\x01"
@@ -468,7 +485,7 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
     owner = esolangs.Language(first(source_kind="raster"))
     original = owner.catalog.languages[owner.name]
     local = replace(original, name="Private scope", id="private_scope")
-    scoped = esolangs.Catalog([local]).bind(local.name)
+    scoped = esolangs.registry.Catalog([local]).bind(local.name)
     program = scoped.generate("01", scale=2)
     path = tmp_path / "scoped.png"
     scoped.to_file(program, path)
@@ -480,7 +497,6 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
         lambda: owner.prepare(program),
         lambda: owner.make_vm(program),
         lambda: owner.make_debugger(program),
-        lambda: owner.evaluate(program, [1]),
         lambda: owner.to_file(program, tmp_path / "copy.png"),
         lambda: owner.to_json(program),
         lambda: owner.run(path).unwrap(),
@@ -499,7 +515,7 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
         ("++" + owner.name, "distinct_language"),
     ):
         distinct = replace(original, name=foreign_name, id=identifier, aliases=())
-        foreign = esolangs.Catalog([distinct]).bind(foreign_name)
+        foreign = esolangs.registry.Catalog([distinct]).bind(foreign_name)
         for operation in (
             lambda foreign=foreign, ordinary=ordinary: foreign.prepare(ordinary),
             lambda foreign=foreign, ordinary=ordinary: foreign.from_json(
@@ -515,13 +531,13 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
         ("Private!+", "Private+!"),
     ):
         claimed = replace(original, name=requested, id="distinct_language", aliases=())
-        foreign = esolangs.Catalog([claimed]).bind(requested)
+        foreign = esolangs.registry.Catalog([claimed]).bind(requested)
         retained = esolangs.ProgramArtifact(ordinary.source, stored)
         with pytest.raises(esolangs.ProgramError):
             foreign.prepare(retained)
 
     local = replace(original, name=owner.name.swapcase())
-    scoped = esolangs.Catalog([local]).bind(local.name)
+    scoped = esolangs.registry.Catalog([local]).bind(local.name)
     program = scoped.generate("01", scale=2)
     scoped.to_file(program, path)
     document = scoped.to_json(program)
@@ -535,15 +551,20 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
     for bit in (0, 1):
         assert (
             prepared.evaluate([bit]).answer
-            == owner.evaluate(restored, [bit]).answer
+            == restored.evaluate([bit], catalog=owner.catalog).answer
             == str(bit)
         )
 
     name = "Private\x1b[2J\nscope"
     local = replace(original, name=name, id="private_scope")
-    scoped = esolangs.Catalog([local]).bind(name)
+    scoped = esolangs.registry.Catalog([local]).bind(name)
     program = scoped.generate("01", scale=2)
-    assert scoped.evaluate(scoped.from_json(scoped.to_json(program)), [1]).answer == "1"
+    assert (
+        scoped.from_json(scoped.to_json(program))
+        .evaluate([1], catalog=scoped.catalog)
+        .answer
+        == "1"
+    )
 
     foreign = owner.generate("01", scale=2)
     label = r"Private\x1b[2J\nscope"
@@ -560,11 +581,11 @@ def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     owner = esolangs.Language(first(parameterized=True))
     original = owner.catalog.languages[owner.name]
     local = replace(original, name="Private\x1b[2J\ntemplate", id="private_template")
-    scoped = esolangs.Catalog([local]).bind(local.name)
+    scoped = esolangs.registry.Catalog([local]).bind(local.name)
     template = scoped.generate("01")
     assert scoped.instantiate(template, [1]) == template.fill([1])
     result = template.evaluate([1], catalog=scoped.catalog)
-    assert result == scoped.evaluate(template, [1])
+    assert result == template.evaluate([1])
     assert result.answer == "1"
     with pytest.raises(esolangs.TemplateError, match="belongs to"):
         owner.instantiate(template, [1])
@@ -573,7 +594,9 @@ def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     restored = scoped.from_json(document)
     assert restored == template
     assert restored.evaluate([1]).answer == "1"
-    receiver = esolangs.Catalog([replace(local, backend=None)]).bind(local.name)
+    receiver = esolangs.registry.Catalog([replace(local, backend=None)]).bind(
+        local.name
+    )
     expected = r"Private\x1b[2J\ntemplate does not support input templates"
     for transfer, prefix in (
         (lambda: receiver.from_json(document), "invalid portable program: "),
@@ -587,14 +610,16 @@ def test_template_with_an_unregistered_owner_raises_template_error() -> None:
 def test_program_artifact_evaluation_can_select_a_scoped_contract() -> None:
     original = LANGUAGES[REFERENCE]
     swapped = replace(original.contract, answer_values=("1", "0"))
-    scoped = esolangs.Catalog([replace(original, contract=swapped)]).bind(REFERENCE)
+    scoped = esolangs.registry.Catalog([replace(original, contract=swapped)]).bind(
+        REFERENCE
+    )
     program = scoped.generate("01")
     assert (
         program.evaluate([1], catalog=esolangs.Language(REFERENCE).catalog).answer
         == "1"
     )
     result = program.evaluate([1])
-    assert result == scoped.evaluate(program, [1])
+    assert result == program.evaluate([1], catalog=scoped.catalog)
     assert result.answer == "0"
 
 

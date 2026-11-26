@@ -47,7 +47,7 @@ def _assert_catalog_snapshot_round_trips(result, interpreter_only_samples):
             artifact = esolangs.generate(name, "01")
             cases = [
                 (
-                    esolangs.instantiate(name, artifact, [row])
+                    esolangs.Language(name).instantiate(artifact, [row])
                     if spec.parameterized
                     else artifact,
                     "" if spec.parameterized else esolangs.encode_inputs(name, [row]),
@@ -209,7 +209,7 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
     )
     program = esolangs.generate(name, "01")
     if isinstance(program, esolangs.TemplateArtifact):
-        program = esolangs.instantiate(name, program, [1])
+        program = esolangs.Language(name).instantiate(program, [1])
     machine = make_vm(name, program)
     assert not machine.halted
     machine.step()
@@ -565,7 +565,9 @@ def test_seeded_worker_result_matches_native(language):
     template = esolangs.generate(language, "01")
     parameterized = LANGUAGES[language].parameterized
     source = (
-        esolangs.instantiate(language, template, [1]) if parameterized else template
+        esolangs.Language(language).instantiate(template, [1])
+        if parameterized
+        else template
     )
     stdin = "" if parameterized else esolangs.encode_inputs(language, [1])
     native = run_observed(language, source, stdin=stdin, seed=7)

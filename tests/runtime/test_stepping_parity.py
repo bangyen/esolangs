@@ -50,7 +50,7 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
     inputs = len(table).bit_length() - 1
     bits = [int(bit) for bit in f"{row:0{inputs}b}"]
     if LANGUAGES[name].parameterized:
-        program = esolangs.instantiate(name, artifact, bits)
+        program = esolangs.Language(name).instantiate(artifact, bits)
         stdin = ""
     else:
         program = artifact

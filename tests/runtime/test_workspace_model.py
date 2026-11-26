@@ -307,7 +307,7 @@ def test_declared_models_keep_immutable_accounting_without_cycle_keys(
     table = str(1 - int(expected)) + expected
     artifact = esolangs.generate(name, table)
     if isinstance(artifact, esolangs.TemplateArtifact):
-        artifact = esolangs.instantiate(name, artifact, [1])
+        artifact = esolangs.Language(name).instantiate(artifact, [1])
         stdin = ""
     else:
         stdin = str(esolangs.encode_inputs(name, [1], truth_table=table))

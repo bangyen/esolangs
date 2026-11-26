@@ -9,6 +9,7 @@ import pytest
 import esolangs
 from esolangs import vm
 from esolangs.languages.brainfuck.interpreter import _Machine, prepare_machine
+from esolangs.registry import Catalog
 from esolangs.results import Completion, CompletionReport
 from tests.support.reference import REFERENCE
 
@@ -84,20 +85,20 @@ def test_missing_runtime_hooks_are_public_program_errors() -> None:
     )
     assert type(runtime.interpreter) is str
     assert all(type(getattr(runtime, key)) is str for key in hooks)
-    wrapped = esolangs.Catalog([replace(record, runtime=runtime)]).bind(api.name)
+    wrapped = Catalog([replace(record, runtime=runtime)]).bind(api.name)
     assert wrapped.run("+.").unwrap().output == "\x01"
     debugger = wrapped.make_debugger("+.")
     assert debugger.run(limits=esolangs.ExecutionLimits(max_steps=2)) == "halted"
     assert debugger.output == "\x01"
 
     no_prepare = replace(record.runtime, machine_preparation="absent_preparation")
-    scoped = esolangs.Catalog([replace(record, runtime=no_prepare)]).bind(api.name)
+    scoped = Catalog([replace(record, runtime=no_prepare)]).bind(api.name)
     assert scoped.run("+.").unwrap().output == "\x01"
     for operation in (scoped.prepare, scoped.make_vm, scoped.make_debugger):
         with pytest.raises(esolangs.ProgramError, match="absent_preparation"):
             operation("+.")
     no_completion = replace(record.runtime, completion_entrypoint="absent_completion")
-    scoped = esolangs.Catalog([replace(record, runtime=no_completion)]).bind(api.name)
+    scoped = Catalog([replace(record, runtime=no_completion)]).bind(api.name)
     assert isinstance(scoped.run("+.").error, esolangs.ProgramError)
     with pytest.raises(esolangs.ProgramError, match="absent_completion"):
         scoped.run("+.").unwrap()
@@ -153,14 +154,14 @@ def test_native_prepared_runs_apply_the_declared_hooks(monkeypatch, hook) -> Non
         interpreter, "alternate_hook", alternate if native else prepare, raising=False
     )
     runtime = replace(declaration.runtime, **{hook: "alternate_hook"})
-    catalog = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    catalog = Catalog([replace(declaration, runtime=runtime)])
     scoped = catalog.bind(api.name)
     artifact = scoped.from_source(",.")
     prepared = scoped.prepare(artifact)
     result = prepared.run(stdin="A").unwrap()
     assert result == scoped.run(artifact, stdin="A").unwrap()
     assert result.output == ("custom: A" if native else "A")
-    assert prepared.evaluate([1]) == scoped.evaluate(artifact, [1])
+    assert prepared.evaluate([1]) == artifact.evaluate([1], catalog=scoped.catalog)
     assert (
         prepared.run(stdin="A", limits=esolangs.ExecutionLimits(max_steps=2))
         .unwrap()
@@ -192,7 +193,7 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     monkeypatch.setattr(interpreter, "custom_initialize", prepare, raising=False)
     declaration = api.catalog.languages[api.name]
     runtime = replace(runtime, machine_preparation="custom_initialize")
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
     source = "+."
     prepared = scoped.prepare(source)
     expected = esolangs.ExecutionResult("A", 1, 1, 0)
@@ -289,7 +290,7 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
         answer_mode="termination",
         answer_values=("halts", "diverges"),
     )
-    termination = esolangs.Catalog(
+    termination = Catalog(
         [replace(declaration, runtime=runtime, contract=contract)]
     ).bind(api.name)
     artifact = termination.from_source(source)
@@ -301,7 +302,7 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     ):
         machine = SimpleNamespace(halted=False, step=lambda: None, **fields)
         with pytest.raises(esolangs.InterpreterLimitError, match=diagnostic) as caught:
-            termination.evaluate(artifact, [1], limits=active)
+            artifact.evaluate([1], limits=active, catalog=termination.catalog)
         assert caught.value.observation == esolangs.ExecutionResult(
             "1", 1, 1, 0, steps=0
         )
@@ -319,7 +320,7 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     debug = prepared.make_debugger(stdin="A")
     assert debug.snapshot() == debug.vm.snapshot() == (0,)
     assert vm.run_until_halt_or_cycle(debug, limit=1) is False
-    evaluation = termination.evaluate(artifact, [1], limits=active)
+    evaluation = artifact.evaluate([1], limits=active, catalog=termination.catalog)
     assert evaluation.termination.halts is False
     assert evaluation.termination.cycle.state == (0,)
     assert evaluation.observation == esolangs.ExecutionResult("1", 1, 1, 0, steps=1)
@@ -346,8 +347,10 @@ def test_preparation_requires_a_callable_factory(monkeypatch) -> None:
     with pytest.raises(
         esolangs.InterpreterLimitError, match="hashable state"
     ) as caught:
-        termination.evaluate(
-            artifact, [1], limits=esolangs.ExecutionLimits(max_steps=3)
+        artifact.evaluate(
+            [1],
+            limits=esolangs.ExecutionLimits(max_steps=3),
+            catalog=termination.catalog,
         )
     assert caught.value.observation == esolangs.ExecutionResult("1", 1, 1, 0, steps=2)
 
@@ -399,9 +402,7 @@ def _check_invalid_halted(scoped, prepared, source, limits, expected, machine):
             declaration.runtime.capabilities, completion=Completion.POST_HALT
         ),
     )
-    dumping = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(
-        scoped.name
-    )
+    dumping = Catalog([replace(declaration, runtime=runtime)]).bind(scoped.name)
 
     for invalid in ("still active", 0, refuse_step):
         machine.halted = invalid
@@ -483,7 +484,7 @@ def test_runtime_hooks_keep_nested_errors_and_record_their_own_output(
         io.print_str("outer:" + chr(io.input_char()))
         try:
             if completed:
-                api.evaluate(api.from_source(",+."), [1])
+                api.from_source(",+.").evaluate([1], catalog=api.catalog)
             else:
                 api.run(
                     ",.,", stdin="A", limits=esolangs.ExecutionLimits(max_steps=3)
@@ -512,7 +513,7 @@ def test_runtime_hooks_keep_nested_errors_and_record_their_own_output(
         completion_entrypoint="nested_native",
         machine_preparation="nested_prepare",
     )
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
     limits = None if phase == "native" else esolangs.ExecutionLimits(max_steps=4)
     result = scoped.run("+.", stdin="B", limits=limits)
     assert result.status == ("rejected" if completed else "input_exhausted")
@@ -559,11 +560,13 @@ def test_runtime_hooks_keep_nested_errors_and_record_their_own_output(
             answer_mode="termination",
             answer_values=("halts", "diverges"),
         )
-        termination = esolangs.Catalog(
+        termination = Catalog(
             [replace(declaration, runtime=runtime, contract=contract)]
         ).bind(api.name)
         with pytest.raises(error_type) as caught:
-            termination.evaluate(termination.from_source("+."), [0], limits=limits)
+            termination.from_source("+.").evaluate(
+                [0], limits=limits, catalog=termination.catalog
+            )
         check_original(caught.value)
 
 
@@ -573,14 +576,14 @@ def test_worker_runtime_guard_uses_the_shipped_catalog(monkeypatch) -> None:
 
     api = esolangs.Language(REFERENCE)
     declaration = api.catalog.languages[api.name]
-    scoped = esolangs.Catalog([declaration]).bind(api.name)
+    scoped = Catalog([declaration]).bind(api.name)
     assert (
         scoped.run(",.", stdin="A", isolated=True).unwrap()
         == scoped.run(",.", stdin="A").unwrap()
     )
 
     changed = replace(declaration.runtime, completion_entrypoint="alternate_hook")
-    custom = esolangs.Catalog([replace(declaration, runtime=changed)])
+    custom = Catalog([replace(declaration, runtime=changed)])
 
     def launch(*_args, **_kwargs):
         pytest.fail("a changed runtime reached the worker")
@@ -619,7 +622,7 @@ def test_worker_rejects_scoped_runtime_before_dialect_hook() -> None:
         api.name, {"mode": ("default",)}, {"mode": "default"}
     )
     runtime = replace(declaration.runtime, dialect=Validator(), dialect_schema=schema)
-    scope = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
+    scope = Catalog([replace(declaration, runtime=runtime)]).bind(api.name)
     # An empty override uses the scoped hook's default without adding a runner keyword.
     settings = scope.settings()
     prepared = scope.prepare(",.", settings=settings)
@@ -657,7 +660,7 @@ def test_worker_rejects_unmatched_hook_name_without_custom_equality() -> None:
     changed = replace(
         declaration.runtime, completion_entrypoint=OtherHook("extra_hook")
     )
-    scope = esolangs.Catalog([replace(declaration, runtime=changed)]).bind(api.name)
+    scope = Catalog([replace(declaration, runtime=changed)]).bind(api.name)
     outcome = scope.run(",.", stdin="A", isolated=True)
     assert isinstance(outcome.error, esolangs.ArgumentError)
     assert "runtime declared in the installed catalog" in str(outcome.error)

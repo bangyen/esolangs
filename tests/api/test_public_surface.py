@@ -12,7 +12,8 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 import esolangs.planning as planning
-import esolangs.serialization as serialization
+from esolangs import serialization
+from esolangs.registry import Catalog
 from tests.support.api_support import PUBLIC_MEMBERS, SIGNATURES
 from tests.support.paths import ROOT
 from tests.support.pick import first
@@ -68,6 +69,20 @@ class TestPackageSurface:
             "read_answer",
             "run",
         ]
+
+        for retired in (
+            "Catalog",
+            "LanguageDeclaration",
+            "evaluate",
+            "from_file",
+            "from_json",
+            "instantiate",
+            "plan_generation",
+            "to_file",
+            "to_json",
+        ):
+            assert not hasattr(esolangs, retired)
+        assert not hasattr(esolangs.Language, "evaluate")
 
     def test_the_signatures_are_pinned(self) -> None:
         """Freezing for 1.0: every public name, signature, member and describe key.
@@ -223,9 +238,11 @@ class TestPackageSurface:
 class TestTheSignaturesAgreeWithThemselves:
     def test_bits_is_annotated_the_same_in_both_places(self) -> None:
         """``encode_inputs`` promised more than it accepts."""
+        from typing import get_type_hints
+
         annotations = {
-            fn.__name__: inspect.signature(fn).parameters["bits"].annotation
-            for fn in (esolangs.encode_inputs, esolangs.instantiate)
+            fn.__name__: get_type_hints(fn)["bits"]
+            for fn in (esolangs.encode_inputs, esolangs.Language.instantiate)
         }
         assert len(set(annotations.values())) == 1, annotations
 
@@ -233,8 +250,7 @@ class TestTheSignaturesAgreeWithThemselves:
         "call",
         [
             lambda bits: esolangs.encode_inputs(REFERENCE, bits),
-            lambda bits: esolangs.instantiate(
-                TEMPLATE_LANGUAGE,
+            lambda bits: esolangs.Language(TEMPLATE_LANGUAGE).instantiate(
                 esolangs.generate(TEMPLATE_LANGUAGE, "0110"),
                 bits,
             ),
@@ -255,7 +271,9 @@ class TestWidthIsCheckedWhereverItIsTaken:
     def test_instantiate_refuses_what_generate_refuses(self, width: object) -> None:
         template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
         with pytest.raises(esolangs.ArgumentError, match="width"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, template, [1, 0], width=width)
+            esolangs.Language(TEMPLATE_LANGUAGE).instantiate(
+                template, [1, 0], width=width
+            )
 
     @pytest.mark.parametrize("width", [0, "8", 2.5])
     def test_generate_still_refuses_them(self, width: object) -> None:
@@ -282,7 +300,7 @@ class TestWidthIsCheckedWhereverItIsTaken:
             templated.instantiate(template, [1], width=Width(0))
         program = api.generate("01", width=Width(2))
         assert program == api.generate("01", width=2)
-        assert api.evaluate(program, [1]).answer == "1"
+        assert program.evaluate([1]).answer == "1"
         assert templated.instantiate(template, [1], width=Width(2)) == (
             templated.instantiate(template, [1], width=2)
         )
@@ -315,11 +333,11 @@ class TestBitsAreBits:
             esolangs.encode_inputs(REFERENCE, bits)
         template = esolangs.generate(TEMPLATE_LANGUAGE, "0110")
         with pytest.raises(esolangs.ArgumentError, match="bits"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, template, bits)
+            esolangs.Language(TEMPLATE_LANGUAGE).instantiate(template, bits)
 
     def test_a_non_string_template_is_refused(self) -> None:
         with pytest.raises(esolangs.TemplateError, match="template must be"):
-            esolangs.instantiate(TEMPLATE_LANGUAGE, None, [1, 0])
+            esolangs.Language(TEMPLATE_LANGUAGE).instantiate(None, [1, 0])
 
 
 class TestProgramObjectsRefuseMisuse:
@@ -331,7 +349,7 @@ class TestProgramObjectsRefuseMisuse:
         assert isinstance(template, esolangs.TemplateArtifact)
         for fill in (
             lambda: template.fill([0]),
-            lambda: esolangs.instantiate(TEMPLATE_LANGUAGE, template, [0]),
+            lambda: esolangs.Language(TEMPLATE_LANGUAGE).instantiate(template, [0]),
         ):
             with pytest.raises(esolangs.ArgumentError, match="2 inputs, but 1 bit"):
                 fill()
@@ -368,12 +386,12 @@ class TestProgramObjectsRefuseMisuse:
             (tmp_path, esolangs.ProgramError, "is a directory$"),
         ):
             with pytest.raises(error, match=words):
-                esolangs.to_file(REFERENCE, "+", target)  # type: ignore[arg-type]
+                serialization.to_file(REFERENCE, "+", target)  # type: ignore[arg-type]
         # A path is the usual mistake.
         with pytest.raises(esolangs.ProgramError, match=r"not a path.*from_file"):
-            esolangs.from_json(REFERENCE, "x.bf")
+            serialization.from_json(REFERENCE, "x.bf")
         with pytest.raises(esolangs.ProgramError) as caught:
-            esolangs.from_json(REFERENCE, "{}")
+            serialization.from_json(REFERENCE, "{}")
         assert "from_file" not in str(caught.value)
 
     def test_an_alias_tag_is_stored_canonically(self) -> None:
@@ -389,7 +407,7 @@ class TestProgramObjectsRefuseMisuse:
         import typing
 
         for cls in (
-            esolangs.Catalog,
+            Catalog,
             esolangs.Language,
             esolangs.Raster,
             esolangs.CompressedText,
@@ -487,9 +505,9 @@ class TestProgramObjectsRefuseMisuse:
         assert all(type(cell) is int for cell in vm.memory), name
 
     def test_a_portable_surrogate_is_refused_like_a_file(self) -> None:
-        document = esolangs.to_json(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
+        document = serialization.to_json(REFERENCE, "+.").replace('"+."', '"+.\\ud800"')
         with pytest.raises(esolangs.ProgramError, match="surrogates"):
-            esolangs.from_json(REFERENCE, document)
+            serialization.from_json(REFERENCE, document)
 
     def test_a_debugger_needs_a_vm(self) -> None:
         vm = debugger_api.make_vm(REFERENCE, "+")
@@ -507,13 +525,13 @@ class TestProgramObjectsRefuseMisuse:
         import json
 
         document = json.loads(
-            esolangs.to_json(
+            serialization.to_json(
                 TEMPLATE_LANGUAGE, esolangs.generate(TEMPLATE_LANGUAGE, "0110")
             )
         )
         document["setters"] = [["\ud800", "\udfff"]] * len(document["setters"])
         with pytest.raises(esolangs.ProgramError):
-            esolangs.from_json(TEMPLATE_LANGUAGE, json.dumps(document))
+            serialization.from_json(TEMPLATE_LANGUAGE, json.dumps(document))
 
     def test_break_at_takes_a_negative_position(self) -> None:
         """AddSubJump and Subleq halt at -8 and -1; break_at refused them."""

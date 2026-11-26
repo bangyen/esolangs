@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.arrowqueue.generator import _folded, _folds, arrowqueue
 from tests.support.divergence import diverges
@@ -29,7 +30,7 @@ def test_arrowqueue_width_preserves_every_row(table: str, width: int | None) -> 
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         bits = row_bits(row, inputs)
-        source = esolangs.instantiate("ArrowQueue", template, bits)
+        source = esolangs.Language("ArrowQueue").instantiate(template, bits)
         assert diverges("ArrowQueue", source, "") is (expected == "1")
 
 
@@ -38,17 +39,21 @@ def test_arrowqueue_four_columns_preserve_public_provenance(*, restored: bool) -
     table = "0110"
     template = esolangs.generate("ArrowQueue", table, width=1)
     source = (
-        esolangs.from_json("ArrowQueue", esolangs.to_json("ArrowQueue", template))
+        serialization.from_json(
+            "ArrowQueue", serialization.to_json("ArrowQueue", template)
+        )
         if restored
         else template
     )
     for row, expected in enumerate(table):
         bits = [row >> 1, row & 1]
-        program = esolangs.instantiate("ArrowQueue", source, bits, truth_table=table)
+        program = esolangs.Language("ArrowQueue").instantiate(
+            source, bits, truth_table=table
+        )
         assert max(map(len, program.source.splitlines())) == 4
         assert diverges("ArrowQueue", program, "") is (expected == "1")
     with pytest.raises(ValueError, match="does not compute that table"):
-        esolangs.instantiate("ArrowQueue", source, [0, 1], truth_table="1001")
+        esolangs.Language("ArrowQueue").instantiate(source, [0, 1], truth_table="1001")
 
 
 def test_width_six_builds_the_wide_cascade() -> None:
@@ -62,7 +67,9 @@ def test_width_six_builds_the_wide_cascade() -> None:
 def test_a_narrow_template_fills_against_its_table(width: int) -> None:
     """Width 5 shifts the setter column and was refused as a foreign template."""
     template = esolangs.generate("ArrowQueue", "0110", width=width)
-    program = esolangs.instantiate("ArrowQueue", template, [0, 1], truth_table="0110")
+    program = esolangs.Language("ArrowQueue").instantiate(
+        template, [0, 1], truth_table="0110"
+    )
     assert diverges("ArrowQueue", program, "") is True
 
 

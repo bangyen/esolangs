@@ -15,7 +15,7 @@ import pytest
 
 import esolangs
 from esolangs.languages.brainfuck.interpreter import prepare_machine
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._prepared import prepare_program
 from esolangs.runtime.io import ScriptedIO
@@ -70,8 +70,6 @@ def test_prepared_constructor_accepts_owner_spelling_and_refuses_invalid_types()
     false_program = ClaimedArtifact(esolangs.ProgramArtifact)
     with pytest.raises(esolangs.ProgramError, match="requires a program artifact"):
         esolangs.PreparedProgram(false_program, api.catalog)
-    with pytest.raises(esolangs.ProgramError, match="requires a program or template"):
-        api.evaluate(false_program, [1])
     with pytest.raises(esolangs.TemplateError):
         api.instantiate(ClaimedArtifact(esolangs.TemplateArtifact), [1])
 
@@ -89,7 +87,7 @@ def test_prepared_constructor_refuses_foreign_ownership(
         id=owner.name if use_id else "",
         aliases=() if use_id else (owner.name,),
     )
-    api = esolangs.Catalog([renamed]).bind(owner.name)
+    api = Catalog([renamed]).bind(owner.name)
     assert api.name == renamed.name
     assert api.run(api.from_source("+.")).unwrap().output == "\x01"
     settings = owner.settings() if retain_settings else None
@@ -116,15 +114,13 @@ def test_stored_owner_slug_is_independent_of_lookup() -> None:
     ):
         owner = replace(declaration, name="Scoped Runtime", id=owner_id)
         decoy = replace(declaration, name="Alias Runtime", id=decoy_id, aliases=aliases)
-        catalog = esolangs.Catalog([owner, decoy])
+        catalog = Catalog([owner, decoy])
         assert catalog.bind("scoped-runtime").name == decoy.name
-        api = catalog.bind(owner.name)
         artifact = esolangs.ProgramArtifact(",.", " scoped-runtime ")
         direct = esolangs.PreparedProgram(artifact, catalog)
         assert direct.language == owner.name
         assert direct.run(stdin="1").unwrap().output == "1"
         assert artifact.evaluate([1], catalog=catalog).answer == "1"
-        assert api.evaluate(artifact, [1]).answer == "1"
     _check_ambiguous_owner_slug_requires_a_display_name()
 
 
@@ -132,7 +128,7 @@ def _check_ambiguous_owner_slug_requires_a_display_name() -> None:
     declaration = esolangs.Language(REFERENCE).catalog.languages[REFERENCE]
     left = replace(declaration, name="Scoped Runtime", id="scoped_runtime")
     right = replace(declaration, name="Scoped-Runtime", id="runtime_right")
-    catalog = esolangs.Catalog([left, right])
+    catalog = Catalog([left, right])
     ambiguous = esolangs.ProgramArtifact("+.", "scoped—runtime")
     assert catalog.resolve(ambiguous.language) == left.name
     for owner in (left, right):
@@ -144,7 +140,7 @@ def _check_ambiguous_owner_slug_requires_a_display_name() -> None:
             api.run(ambiguous).unwrap()
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         ambiguous.evaluate([1], catalog=catalog)
-    without_matching_id = esolangs.Catalog([replace(left, id="runtime_left"), right])
+    without_matching_id = Catalog([replace(left, id="runtime_left"), right])
     with pytest.raises(esolangs.UnknownLanguageError):
         without_matching_id.resolve(ambiguous.language)
 
@@ -275,8 +271,6 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
     assert prepared.run(stdin="A").unwrap().output == "B"
 
     language = esolangs.Language(REFERENCE)
-    with pytest.raises(esolangs.ProgramError, match="program or template artifact"):
-        language.evaluate(",.", [0])
     generated = language.prepare(esolangs.generate(REFERENCE, "0110"))
     with pytest.raises(
         esolangs.ArgumentError, match="has 2 inputs, but 1 bit was given"
@@ -309,7 +303,7 @@ def _check_prepared_failures_retain_partial_observations():
 
 def _check_preparation_resets_seeded_randomness_for_each_invocation():
     declaration = LANGUAGES[REFERENCE]
-    catalog = esolangs.Catalog(
+    catalog = Catalog(
         [replace(declaration, runtime=replace(declaration.runtime, random=True))]
     )
     module = ModuleType("prepared_random_control")
@@ -382,7 +376,7 @@ def _check_prepared_source_options_and_lines_are_reused():
         dialect=validate,
         dialect_schema=schema,
     )
-    catalog = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    catalog = Catalog([replace(declaration, runtime=runtime)])
     module = ModuleType("prepared_source_control")
 
     def execute(lines, io, increment):
@@ -422,7 +416,7 @@ def _check_prepared_dialect_validates_distinct_options_once() -> None:
             raise repeated
 
     runtime = replace(declaration.runtime, dialect=validate)
-    api = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
+    api = Catalog([replace(declaration, runtime=runtime)]).bind(name)
     settings = api.settings(rotation="forward")
     document = api.to_json(",,", settings=settings)
     restored = api.from_json(document)
@@ -474,7 +468,7 @@ def _check_prepared_dialect_validates_distinct_options_once() -> None:
             raise refusal
 
     configured = replace(runtime, dialect=distinguish, dialect_schema=extended)
-    scoped = esolangs.Catalog([replace(declaration, runtime=configured)]).bind(name)
+    scoped = Catalog([replace(declaration, runtime=configured)]).bind(name)
     partial = scoped.settings(rotation="forward")
     checked.clear()
     source = StringIO(",,")
@@ -504,7 +498,7 @@ def _check_relative_source_precedes_dialect_callbacks(tmp_path, monkeypatch):
             monkeypatch.chdir(other)
 
     runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
-    api = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    api = Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
     settings = api.settings()
     armed = True
 
@@ -597,7 +591,7 @@ def test_prepared_stdin_acquisition_respects_preparation_deadline(
     runtime = replace(
         declaration.runtime, reproducible_seed=declaration.runtime.reproducible_seed + 1
     )
-    api = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    api = Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
     prepared = api.prepare(",.")
     started, release = Event(), Event()
     threads, bindings, reads = [], [], []

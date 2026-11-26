@@ -316,6 +316,7 @@ def _check_lossless_containers(tmp_path):
     import json
 
     import esolangs
+    from esolangs import serialization
 
     api = esolangs.Language("Whitespace")
     source = (push(65) + OUT_CHAR + END).replace("\n", "\r\n")
@@ -368,10 +369,10 @@ def _check_lossless_containers(tmp_path):
     assert api.run(restored).unwrap().output == "A"
     assert api.run(path).unwrap().output == "A"
     # Raw text names no language; normalize appended "\n", which is code here.
-    esolangs.to_file("Whitespace", source, path, normalize=True)
+    serialization.to_file("Whitespace", source, path, normalize=True)
     assert path.read_bytes() == source.encode()
     with pytest.raises(esolangs.ProgramError, match="Whitespace"):
-        esolangs.to_file("Brainfuck", artifact, path)
+        serialization.to_file("Brainfuck", artifact, path)
 
 
 def test_numeric_reads_consume_one_complete_line() -> None:

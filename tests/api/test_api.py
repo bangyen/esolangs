@@ -9,7 +9,7 @@ import esolangs.operations.execution as _execution_operations
 import esolangs.runtime._execution as _execution_runtime
 from esolangs import debugger
 from esolangs.exceptions import EsolangError, UnknownLanguageError
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.runtime._artifact_source import check_program
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._context import ExecutionContext
@@ -58,7 +58,7 @@ def test_seed_hint_tracks_registered_random_languages() -> None:
             ),
         ),
     }
-    catalog = esolangs.Catalog(registered.values())
+    catalog = Catalog(registered.values())
     with pytest.raises(
         esolangs.ArgumentError, match="the languages that draw are Draws"
     ):
@@ -66,7 +66,7 @@ def test_seed_hint_tracks_registered_random_languages() -> None:
             REFERENCE, "", ExecutionContext(seed=1), catalog=catalog
         )
     del registered["Draws"]
-    catalog = esolangs.Catalog(registered.values())
+    catalog = Catalog(registered.values())
     with pytest.raises(esolangs.ArgumentError, match="no registered language draws"):
         _execution.prepare_call(
             REFERENCE, "", ExecutionContext(seed=1), catalog=catalog

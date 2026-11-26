@@ -18,8 +18,9 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
+from esolangs import serialization
 from esolangs.raster import Raster, _png_chunks, _png_validation, lazy_raster, png
-from esolangs.registry import CATALOG, LANGUAGES, SourceKind
+from esolangs.registry import CATALOG, LANGUAGES, Catalog, SourceKind
 from esolangs.runtime._artifact_source import check_program
 from tests.support.dialect_support import integer_setting
 from tests.support.evaluation import _evaluate
@@ -104,8 +105,8 @@ def test_a_raster_hashes_by_pixels() -> None:
 def test_a_raster_language_has_no_template_to_instantiate() -> None:
     """Runnable raster records have no template bindings."""
     with pytest.raises(esolangs.TemplateError):
-        esolangs.instantiate(
-            RASTER_LANGUAGES[0], esolangs.generate(RASTER_LANGUAGES[0], "01"), [0]
+        esolangs.Language(RASTER_LANGUAGES[0]).instantiate(
+            esolangs.generate(RASTER_LANGUAGES[0], "01"), [0]
         )
 
 
@@ -171,7 +172,7 @@ def test_raster_png_refuses_released_input_buffers(tmp_path: Path, monkeypatch) 
 
     for record in (api.from_file(path), api.from_json(api.to_json(path))):
         assert record == artifact
-        assert "".join(api.evaluate(record, [bit]).answer for bit in (0, 1)) == "01"
+        assert "".join(record.evaluate([bit]).answer for bit in (0, 1)) == "01"
 
     error = esolangs.ProgramError("buffer provider refused")
 
@@ -415,7 +416,7 @@ def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> No
     program = esolangs.generate(language, "01")
     assert isinstance(program.source, Raster)
     path = tmp_path / f"{language.lower()}.png"
-    esolangs.to_file(language, program, path)
+    serialization.to_file(language, program, path)
     assert esolangs.run(language, path, stdin="0\n").unwrap().output == "0"
 
 
@@ -458,10 +459,10 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
             assert "re-export" in caught.value.__notes__[0]
         path.write_bytes(malformed)
         with pytest.raises(esolangs.ProgramError, match=message) as caught:
-            esolangs.from_file(language, path)
+            serialization.from_file(language, path)
         assert "re-export" in caught.value.__notes__[0]
     path.write_bytes(encoded)
-    assert esolangs.from_file(language, path).source == raster
+    assert serialization.from_file(language, path).source == raster
 
 
 def test_raster_detaches_mutable_pixels() -> None:
@@ -618,9 +619,9 @@ def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
     assert restored.source._payload is None
     assert _evaluate(language, restored, inputs=2) == "0110"
     assert _evaluate(language, restored, inputs=2, isolated=True) == "0110"
-    assert esolangs.evaluate(language, restored, [0, 1]).answer == "1"
+    assert restored.evaluate([0, 1]).answer == "1"
     with pytest.raises(esolangs.ArgumentError, match="has 2 inputs"):
-        esolangs.evaluate(language, restored, [0, 1, 0])
+        restored.evaluate([0, 1, 0])
 
 
 def test_plain_png_has_no_source_metadata() -> None:
@@ -804,7 +805,7 @@ def test_portable_raster_saves_settings_beyond_native_metadata_budget(
     choice = "x" * 17000
     schema = esolangs.DialectSchema(language, {"note": ("", choice)}, {"note": ""})
     runtime = replace(original.runtime, dialect=lambda **_: {}, dialect_schema=schema)
-    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(language)
+    api = Catalog([replace(original, runtime=runtime)]).bind(language)
     generated = esolangs.generate(language, "0110", scale=2)
     artifact = replace(generated, settings=api.settings(note=choice))
     packed = api.to_json(artifact)
@@ -820,7 +821,7 @@ def test_portable_raster_saves_settings_beyond_native_metadata_budget(
 
     monkeypatch.setattr(module, runtime.completion_entrypoint, scoped_run)
     for bits, answer in (([0, 1], "1"), ([1, 1], "0")):
-        assert api.evaluate(restored, bits).answer == answer
+        assert restored.evaluate(bits).answer == answer
     no_scale = replace(artifact, scale=None)
     assert api.from_json(api.to_json(no_scale)) == no_scale
 
@@ -846,7 +847,7 @@ def test_portable_raster_applies_claims_not_set_in_png(tmp_path: Path) -> None:
         for bit in (0, 1):
             assert (
                 prepared.evaluate([bit]).answer
-                == api.evaluate(restored, [bit]).answer
+                == restored.evaluate([bit]).answer
                 == str(bit)
             )
         tagged = png.attach_source_metadata(previous, api.name, record.settings, 2)
@@ -873,9 +874,9 @@ def test_portable_scale_validates_its_type_and_embedded_agreement() -> None:
         ):
             api.from_json(json.dumps({**document, "scale": scale}))
 
-    text = json.loads(esolangs.to_json(REFERENCE, "+."))
+    text = json.loads(serialization.to_json(REFERENCE, "+."))
     with pytest.raises(esolangs.ProgramError, match="unexpected or missing fields"):
-        esolangs.from_json(REFERENCE, json.dumps({**text, "scale": 2}))
+        serialization.from_json(REFERENCE, json.dumps({**text, "scale": 2}))
 
 
 def test_portable_png_accepts_embedded_arity_when_claims_agree(
@@ -904,7 +905,7 @@ def test_portable_png_accepts_embedded_arity_when_claims_agree(
     path = tmp_path / "source.png"
     path.write_bytes(filled)
     assert api.from_file(path) == original
-    assert [api.evaluate(api.from_file(path), [bit]).answer for bit in (0, 1)] == [
+    assert [api.from_file(path).evaluate([bit]).answer for bit in (0, 1)] == [
         "0",
         "1",
     ]
@@ -927,12 +928,12 @@ def test_png_owner_cannot_be_reassigned_by_a_catalog_alias(tmp_path: Path) -> No
     owner = esolangs.Language(RASTER_LANGUAGES[0])
     declaration = owner.catalog.languages[owner.name]
     renamed = replace(declaration, name="Scoped Drawing", id="", aliases=(owner.name,))
-    api = esolangs.Catalog([renamed]).bind(owner.name)
+    api = Catalog([renamed]).bind(owner.name)
     artifact = owner.generate("01", settings=owner.settings(), scale=2)
     path = tmp_path / "source.png"
     owner.to_file(artifact, path)
     assert owner.from_file(path) == artifact
-    assert owner.evaluate(owner.from_file(path), [1]).answer == "1"
+    assert owner.from_file(path).evaluate([1]).answer == "1"
     assert api.name == renamed.name
     assert api.from_source(artifact.source).language == api.name
 
@@ -960,8 +961,8 @@ def test_scoped_png_writers_resolve_source_aliases_without_settings(
     scoped = replace(
         declaration, name="Scoped Drawing", id="", aliases=(alias, REFERENCE)
     )
-    api = esolangs.Catalog([scoped]).bind(alias)
-    text_catalog = esolangs.Catalog([replace(LANGUAGES[REFERENCE], aliases=(alias,))])
+    api = Catalog([scoped]).bind(alias)
+    text_catalog = Catalog([replace(LANGUAGES[REFERENCE], aliases=(alias,))])
     program = api.generate("01")
     assert isinstance(program, esolangs.ProgramArtifact)
     assert isinstance(program.source, Raster)
@@ -999,7 +1000,7 @@ def test_scoped_png_writers_resolve_source_aliases_without_settings(
         path.write_bytes(tagged)
         restored = api.from_file(path)
         assert restored == program
-        assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+        assert [restored.evaluate([bit]).answer for bit in (0, 1)] == ["0", "1"]
         document["source"] = base64.b64encode(tagged).decode("ascii")
         assert api.from_json(json.dumps(document)) == program
 
@@ -1177,6 +1178,6 @@ def test_explicit_scale_overrides_png_metadata(
         portable = scoped.from_json(scoped.to_json(generated))
         assert generated == native == portable
         for record in (generated, native, portable):
-            assert "".join(scoped.evaluate(record, [b]).answer for b in (0, 1)) == "01"
+            assert "".join(record.evaluate([b]).answer for b in (0, 1)) == "01"
     with pytest.raises(esolangs.ArgumentError, match="does not support raster scaling"):
         scoped.generate("01", scale=2)

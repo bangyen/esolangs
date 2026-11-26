@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.artifacts import (
     ProgramArtifact,
     TemplateArtifact,
@@ -18,7 +19,7 @@ from esolangs.artifacts import (
 )
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_tokens
 from esolangs.generation.wrap import TokenWrapper, wrap_chars
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry import LANGUAGES, Catalog, canonical_id
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
 from esolangs.runtime._publish import _ANCHORED_STAGING
 from tests.support.evaluation import _evaluate
@@ -115,9 +116,9 @@ def test_artifact_persistence_executes_the_same_table(
     with monkeypatch.context() as patch:
         patch.setattr(portable, "source_adapter", refuse_adapter, raising=False)
         patch.setattr(esolangs.Raster, "tagged", refuse_adapter, raising=False)
-        document = esolangs.to_json(language, source)
-        restored = esolangs.from_json(language, document)
-        assert esolangs.to_json(language, restored) == document
+        document = serialization.to_json(language, source)
+        restored = serialization.from_json(language, document)
+        assert serialization.to_json(language, restored) == document
         assert type(source) is type(restored)
         assert source.settings == restored.settings == choices
         assert source.language == restored.language == language
@@ -152,18 +153,18 @@ def test_artifact_persistence_executes_the_same_table(
     path = tmp_path / ("program" + LANGUAGES[language].source_suffix)
     if isinstance(source, TemplateArtifact):
         document = tmp_path / "template.json"
-        document.write_text(esolangs.to_json(language, source))
-        restored = esolangs.from_json(language, document.read_text())
+        document.write_text(serialization.to_json(language, source))
+        restored = serialization.from_json(language, document.read_text())
         assert _evaluate(language, restored, inputs=inputs) == table
         for row, expected in enumerate(table):
             bits = [row >> shift & 1 for shift in reversed(range(inputs))]
-            esolangs.to_file(
-                language, esolangs.instantiate(language, restored, bits), path
+            serialization.to_file(
+                language, esolangs.Language(language).instantiate(restored, bits), path
             )
             result = esolangs.run(language, path, settings=source.settings).unwrap()
             assert esolangs.read_answer(language, result.output) == expected
         return
-    esolangs.to_file(language, source, path)
+    serialization.to_file(language, source, path)
     assert _evaluate(language, path, inputs=inputs) == table
 
 
@@ -286,9 +287,7 @@ def test_template_bindings_require_ordered_pairs() -> None:
     backend = BooleanBackend(
         emit, template=TemplateSpec(setters=setters), wrap=wrap_chars
     )
-    scoped = esolangs.Catalog([replace(declaration, backend=backend)]).bind(
-        declaration.name
-    )
+    scoped = Catalog([replace(declaration, backend=backend)]).bind(declaration.name)
     plain = scoped.generate("01")
     wrapped = scoped.generate("01", width=1)
     assert plain.source == "$x"
@@ -299,7 +298,7 @@ def test_template_bindings_require_ordered_pairs() -> None:
     def invalid_layout(_request):
         return TemplateLayout(source, ((Offset(-1), Offset(1)),))
 
-    invalid = esolangs.Catalog(
+    invalid = Catalog(
         [replace(declaration, backend=replace(backend, entrypoint=invalid_layout))]
     ).bind(declaration.name)
     with pytest.raises(
@@ -336,7 +335,9 @@ def test_generated_and_restored_bindings_need_no_recovery(
     language, monkeypatch
 ) -> None:
     source = esolangs.generate(language, "0110")
-    restored = esolangs.from_json(language, esolangs.to_json(language, source))
+    restored = serialization.from_json(
+        language, serialization.to_json(language, source)
+    )
 
     def refuse_recovery(*_args):
         raise AssertionError("lost explicit input bindings")
@@ -346,8 +347,8 @@ def test_generated_and_restored_bindings_need_no_recovery(
         with pytest.raises(esolangs.TemplateError):
             esolangs.run(language, template).unwrap()
         with pytest.raises(esolangs.TemplateError):
-            esolangs.instantiate(REFERENCE, template, [0, 1])
-        filled = esolangs.instantiate(language, template, [0, 1])
+            esolangs.Language(REFERENCE).instantiate(template, [0, 1])
+        filled = esolangs.Language(language).instantiate(template, [0, 1])
         with pytest.raises(esolangs.ProgramError):
             esolangs.run(REFERENCE, filled).unwrap()
 
@@ -386,7 +387,7 @@ def _check_wrapped_template_width() -> None:
         wrap=TokenWrapper(r"\+{11}|[\s\S]"),
         balance=lambda _: layout(9),
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     record = api.generate("01", width=3)
     assert isinstance(record, TemplateArtifact)
     restored = api.from_json(api.to_json(record))
@@ -447,7 +448,9 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
     choices = esolangs.Language(language).settings()
     artifact = esolangs.generate(language, "0110", settings=choices)
     assert isinstance(artifact, TemplateArtifact)
-    restored = esolangs.from_json(language, esolangs.to_json(language, artifact))
+    restored = serialization.from_json(
+        language, serialization.to_json(language, artifact)
+    )
 
     def refuse_rescan(*_args):
         raise AssertionError("rescanned a validated template")
@@ -556,7 +559,7 @@ def test_retained_settings_accept_lexical_owner_spelling(language: str) -> None:
     slug = canonical_id(language)
     alias, foreign_symbols = "Scoped Artifact Selector", f"{slug}++"
     scoped = replace(declaration, aliases=(alias, foreign_symbols))
-    api = esolangs.Catalog([scoped]).bind(alias)
+    api = Catalog([scoped]).bind(alias)
     generated = api.generate("01")
     settings = api.settings()
 
@@ -573,7 +576,7 @@ def test_retained_settings_accept_lexical_owner_spelling(language: str) -> None:
         restored = api.from_json(api.to_json(retained))
         assert restored == api.from_json(api.to_json(untagged, settings=settings))
         assert restored == retained
-        assert [api.evaluate(restored, [bit]).answer for bit in (0, 1)] == ["0", "1"]
+        assert [restored.evaluate([bit]).answer for bit in (0, 1)] == ["0", "1"]
 
     for foreign in scoped.aliases:
         assert api.catalog.resolve(foreign) == api.name
@@ -585,7 +588,7 @@ def test_saved_owner_must_keep_its_punctuation() -> None:
     declaration = esolangs.Language(REFERENCE).catalog.languages[REFERENCE]
     for name in ("Scoped (Runtime)", "Scoped Runtime!"):
         owner = replace(declaration, name=name, id="")
-        catalog = esolangs.Catalog([owner])
+        catalog = Catalog([owner])
         slug = "scoped_runtime"
         assert catalog.resolve(slug) == name
         api = catalog.bind(name)
@@ -736,7 +739,7 @@ def _check_materialized_export_after_parent_rename(
                 raise refusal
 
     runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(REFERENCE)
     settings = scoped.settings(mode="move")
     compressed = esolangs.CompressedText.from_chunks(("+.",))
     parent.mkdir()
@@ -779,7 +782,7 @@ def test_recorded_balance_replays_once_and_checks_slot_positions():
         layout_balance=True,
         template=TemplateSpec(pair=("", "")),
     )
-    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    api = Catalog([replace(original, backend=backend)]).bind(REFERENCE)
     document = api.to_json(api.generate("00", balance=True))
     restored = api.from_json(document)
     assert restored.generation_balance is True

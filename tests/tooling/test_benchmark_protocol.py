@@ -149,7 +149,7 @@ def _check_store_sampling(monkeypatch) -> None:
     for name in cohort:
         program = esolangs.generate(name, "01")
         source = (
-            esolangs.instantiate(name, program, (0,))
+            esolangs.Language(name).instantiate(program, (0,))
             if isinstance(program, esolangs.TemplateArtifact)
             else program
         )

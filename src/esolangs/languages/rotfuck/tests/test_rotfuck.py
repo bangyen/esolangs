@@ -12,7 +12,7 @@ from esolangs.exceptions import HaltError
 from esolangs.generation.template import InputSlot, layout_tokens
 from esolangs.languages.rotfuck.dialect import validate_rotation
 from esolangs.languages.rotfuck.interpreter import _advance, _Machine, run
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.registry._backend import TemplateSpec
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters import runner
@@ -64,7 +64,7 @@ def _check_portable_template_settings() -> None:
         template=TemplateSpec(pair=("x", "y")),
         wrap=None,
     )
-    api = esolangs.Catalog([replace(original, backend=backend, runtime=runtime)]).bind(
+    api = Catalog([replace(original, backend=backend, runtime=runtime)]).bind(
         original.name
     )
     selected = api.settings(rotation="backward")
@@ -104,7 +104,7 @@ def _check_cli_generation_settings(capsys, monkeypatch) -> None:
         calls.append(choices)
         return original.runtime.dialect(**choices)
 
-    scope = esolangs.Catalog(
+    scope = Catalog(
         [replace(original, runtime=replace(original.runtime, dialect=validate))]
     )
     api = scope.bind(original.name)
@@ -155,7 +155,7 @@ class TestRotation:
         )
         generated = api.generate("01", settings=alternate)
         assert generated == api.generate("01", settings=backward)
-        assert "".join(api.evaluate(generated, [b]).answer for b in (0, 1)) == "01"
+        assert "".join(generated.evaluate([b]).answer for b in (0, 1)) == "01"
         _check_portable_template_settings()
         forward = api.from_source(",,", settings=api.settings(rotation="forward"))
         restored = pickle.loads(pickle.dumps(forward))

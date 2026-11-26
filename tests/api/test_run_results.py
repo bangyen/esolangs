@@ -86,7 +86,7 @@ def test_result_retains_a_caught_eof(route):
 def test_post_halt_result_includes_the_final_dump(name):
     template = esolangs.generate(name, "01")
     source = (
-        esolangs.instantiate(name, template, [1])
+        esolangs.Language(name).instantiate(template, [1])
         if LANGUAGES[name].parameterized
         else template
     )
@@ -150,7 +150,7 @@ def test_periodic_result_retains_cycle_evidence_in_a_worker():
                 for row, expected in enumerate(table):
                     bits = [int(bit) for bit in f"{row:0{inputs}b}"]
                     source = (
-                        esolangs.instantiate(name, artifact, bits)
+                        esolangs.Language(name).instantiate(artifact, bits)
                         if LANGUAGES[name].parameterized
                         else artifact
                     )

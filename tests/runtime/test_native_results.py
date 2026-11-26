@@ -42,7 +42,7 @@ def test_native_driver_reports_completion(language):
         bits = [int(char) for char in f"{row:0{n}b}"]
         template = esolangs.generate(language, table)
         source = (
-            esolangs.instantiate(language, template, bits)
+            esolangs.Language(language).instantiate(template, bits)
             if lang.parameterized
             else template
         )

@@ -66,14 +66,11 @@ row = program.evaluate([0, 1], limits=esolangs.ExecutionLimits(max_steps=10_000)
 assert row.answer == "1"
 ```
 
-| Call | Does |
+| Task | Call |
 |---|---|
-| `generate` | Returns a program artifact or input template for a truth table. |
-| `encode_inputs` | Builds the stdin for one input row; each language reads input its own way. |
-| `run` | Returns an execution outcome. Use `.unwrap()` for the result or original exception. A `str` is source; pass a `Path` to run a file. |
-| `read_answer` | Pulls the `0`/`1` answer out of the output. |
-| `describe` | Says how a language takes input and where its answer lands. |
-| `program.bind(bits)` | Returns the runnable artifact and stdin for a row, including languages that embed inputs in source. |
+| Compute a Boolean answer | `program.evaluate(bits).answer` |
+| Get runnable source and stdin for a row | `row = program.bind(bits)`, then `row.program` and `row.stdin` |
+| Execute supplied source | `esolangs.run(language, source, stdin=stdin).unwrap()` |
 
 Bound a run with `limits=esolangs.ExecutionLimits(...)`:
 

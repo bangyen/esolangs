@@ -13,7 +13,7 @@ import esolangs.runtime._execution as _execution_runtime
 from esolangs.exceptions import ArgumentError, ProgramError
 from esolangs.raster import Raster, _png_chunks, png
 from esolangs.raster.scale import detect_scale, normalize
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.runtime._artifact_source import read_png_artifact
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
@@ -156,7 +156,7 @@ def test_scale_subclass_cannot_change_geometric_or_metadata_semantics(
     )
     native = read_png_artifact(api.name, data)
     assert native == base
-    assert api.evaluate(native, [1]).answer == "1"
+    assert native.evaluate([1]).answer == "1"
 
 
 @pytest.mark.parametrize("name", RASTER)
@@ -224,7 +224,7 @@ def test_native_png_checks_explicit_settings_before_pillow(
         validations.append(choices)
 
     runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
-    api = esolangs.Catalog([replace(original, runtime=runtime)]).bind(name)
+    api = Catalog([replace(original, runtime=runtime)]).bind(name)
     generated = esolangs.generate(name, "01", scale=2)
     source = replace(generated, settings=api.settings(level=0))
     path = tmp_path / "source.png"
@@ -367,7 +367,7 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     decoy = replace(
         declaration, name="Alias Drawing", id="", aliases=("scoped-drawing",)
     )
-    catalog = esolangs.Catalog([owner, decoy])
+    catalog = Catalog([owner, decoy])
     assert catalog.bind("scoped-drawing").name == decoy.name
     api = catalog.bind(owner.name)
     raster = Raster((((1, 2, 3),),))
@@ -396,7 +396,7 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
             api.from_file(path)
 
     owner = replace(declaration, name="Café drawing!", id="")
-    api = esolangs.Catalog([owner]).bind(owner.name)
+    api = Catalog([owner]).bind(owner.name)
     settings = api.settings()
     record = api.generate("01", settings=settings, scale=2)
     api.to_file(record, path)
@@ -422,11 +422,11 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     rematerialized = api.from_json(json.dumps(portable))
     assert native_record == rematerialized == record
     for saved in (native_record, rematerialized):
-        assert "".join(api.evaluate(saved, [bit]).answer for bit in (0, 1)) == "01"
+        assert "".join(saved.evaluate([bit]).answer for bit in (0, 1)) == "01"
 
     owner = replace(declaration, name="Color\x1b[2J\nMachine", id="")
     decoy = replace(declaration, name="Other\x1b[2J\nMachine", id="")
-    api = esolangs.Catalog([owner, decoy]).bind(owner.name)
+    api = Catalog([owner, decoy]).bind(owner.name)
     label = r"Color\x1b[2J\nMachine"
     settings = api.settings()
     record = api.generate("01", settings=settings, scale=2)
@@ -435,7 +435,7 @@ def test_png_retains_settings_for_a_lexical_owner(tmp_path: Path) -> None:
     native = path.read_bytes()
     for restored in (api.from_file(path), api.from_json(api.to_json(record))):
         assert restored == record
-        assert "".join(api.evaluate(restored, [bit]).answer for bit in (0, 1)) == "01"
+        assert "".join(restored.evaluate([bit]).answer for bit in (0, 1)) == "01"
     malformed = png.write_metadata(
         raw, png.read_metadata(native) | {"settings": {"mode": "enabled"}}
     )
@@ -504,7 +504,7 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
         return choices
 
     runtime = replace(declaration.runtime, dialect=validate, dialect_schema=schema)
-    scoped = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
+    scoped = Catalog([replace(declaration, runtime=runtime)]).bind(name)
     settings = scoped.settings()
     artifact = replace(installed.generate("01", scale=2), settings=settings)
     raw = artifact.source.to_png()
@@ -561,7 +561,7 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
     path.write_bytes(tagged)
     restored = scoped.from_file(path)
     assert restored == artifact
-    assert "".join(scoped.evaluate(restored, [bit]).answer for bit in (0, 1)) == "01"
+    assert "".join(restored.evaluate([bit]).answer for bit in (0, 1)) == "01"
 
     scoped.to_file(artifact, path)
     portable = scoped.to_json(artifact)

@@ -7,11 +7,13 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
+from esolangs import serialization
 from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.generation.helpers import _validate_truth_table, constant_span_test
 from esolangs.languages.underload import interpreter
 from esolangs.languages.underload.generator import PAIR, underload, underload_setters
 from esolangs.languages.underload.interpreter import run
+from esolangs.registry import Catalog
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
 from tests.generators.sample_tables import five_input_sample
@@ -109,8 +111,8 @@ def test_short_selectors_keep_public_provenance_and_uniform_width(monkeypatch) -
     for width in (1, 2, 3, 4, 5, 13, 40, 80):
         table = "0110"
         template = esolangs.generate("Underload", table, width=width)
-        template = esolangs.from_json(
-            "Underload", esolangs.to_json("Underload", template)
+        template = serialization.from_json(
+            "Underload", serialization.to_json("Underload", template)
         )
         setters = underload_setters(template.source, 2)
         assert setters == template.bindings.setters
@@ -121,14 +123,16 @@ def test_short_selectors_keep_public_provenance_and_uniform_width(monkeypatch) -
         if width < 5:
             assert setters == (("!", "*"),) * 2
         for row, expected in enumerate(table):
-            filled = esolangs.instantiate(
-                "Underload", template, [row // 2, row % 2], truth_table=table
+            filled = esolangs.Language("Underload").instantiate(
+                template, [row // 2, row % 2], truth_table=table
             )
             assert execute("Underload", filled).unwrap().output == expected
             if width < 5:
                 assert max(map(len, filled.source.splitlines())) <= max(3, width)
         with pytest.raises(esolangs.TemplateError, match="not the template"):
-            esolangs.instantiate("Underload", template, [0, 1], truth_table="0001")
+            esolangs.Language("Underload").instantiate(
+                template, [0, 1], truth_table="0001"
+            )
 
         from esolangs.languages.underload.generator import _same_layout
 
@@ -161,7 +165,7 @@ def _check_scoped_portable_bindings(monkeypatch) -> None:
         dialect_schema=schema,
         completion_entrypoint="scoped_execute",
     )
-    catalog = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    catalog = Catalog([replace(declaration, runtime=runtime)])
     scope = catalog.bind(language.name)
     template = scope.generate("01")
     assert isinstance(template, esolangs.TemplateArtifact)
@@ -189,9 +193,7 @@ def _check_scoped_portable_bindings(monkeypatch) -> None:
         language.name, schema.choices, {"left": 2, "right": 1}
     )
     bad_runtime = replace(runtime, dialect_schema=defaults)
-    scope = esolangs.Catalog([replace(declaration, runtime=bad_runtime)]).bind(
-        language.name
-    )
+    scope = Catalog([replace(declaration, runtime=bad_runtime)]).bind(language.name)
     no_choices = replace(template, settings=None)
     for table in (None, "01"):
         with pytest.raises(esolangs.ArgumentError, match="left=2 requires right=2"):
@@ -215,8 +217,7 @@ def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
     source = template.source.replace("(0)", "(0\n)")
     spans = tuple(runs(source, template.bindings.char, template.bindings.setters))
     with pytest.raises(esolangs.TemplateError, match="not the template"):
-        esolangs.instantiate(
-            "Underload",
+        esolangs.Language("Underload").instantiate(
             replace(template, source=source, spans=spans),
             [0, 1],
             truth_table="0000",

@@ -8,6 +8,7 @@ import pytest
 
 import esolangs
 from esolangs._bindings import runs
+from esolangs.registry import Catalog
 from esolangs.runtime._lifecycle import HALTED_REPORT, Completion
 from esolangs.runtime.io import ScriptedIO
 from tests.support.cli_support import _program, call_both, call_main
@@ -67,8 +68,8 @@ def test_a_painter_ant_is_the_one_that_cannot_be_stepped() -> None:
 def test_run_read_answer_prints_the_bit_for_a_dump(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    program = esolangs.instantiate(
-        "A Painter Ant", esolangs.generate("A Painter Ant", "0110"), [0, 1]
+    program = esolangs.Language("A Painter Ant").instantiate(
+        esolangs.generate("A Painter Ant", "0110"), [0, 1]
     )
     out = call_main(
         ["run", "A Painter Ant", _program(tmp_path, program.source)], capsys
@@ -166,7 +167,7 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
         return initialize
 
     monkeypatch.setattr(interpreter, "custom_prepare", prepare, raising=False)
-    scoped = esolangs.Catalog(
+    scoped = Catalog(
         [
             replace(
                 record,

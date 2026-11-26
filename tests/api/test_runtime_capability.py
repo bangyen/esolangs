@@ -161,6 +161,7 @@ from pathlib import Path
 import subprocess
 
 import esolangs
+from esolangs.registry import Catalog
 from esolangs.languages.deadfish.descriptor import LANGUAGE
 from esolangs.raster import Raster
 from esolangs.runtime._isolated import termination_result_isolated
@@ -186,13 +187,13 @@ cli = subprocess.run(
 assert cli.stdout == '1\n' and cli.stderr == ''
 
 for steps in (None, 20):
-    scoped = esolangs.Catalog([LANGUAGE]).bind(LANGUAGE.name)
+    scoped = Catalog([LANGUAGE]).bind(LANGUAGE.name)
     limits = esolangs.ExecutionLimits(max_steps=steps)
     assert scoped.run('$io', isolated=True, limits=limits).unwrap().output == '1\n'
 
 contract = replace(LANGUAGE.contract, note='local')
 record = replace(LANGUAGE, backend=None, contract=contract)
-catalog = esolangs.Catalog([record])
+catalog = Catalog([record])
 assert _termination_result(record.name, '$io', '', catalog=catalog) == (
     termination_result_isolated(record.name, '$io', '', 5, catalog=catalog)
 )
@@ -226,7 +227,7 @@ class Unread:
 
 for backend in (None, BackendTrap()):
     record = replace(LANGUAGE, backend=backend)
-    api = esolangs.Catalog([record]).bind(record.name)
+    api = Catalog([record]).bind(record.name)
     assert api.prepare('$io').run().unwrap().output == '1\n'
     for options in ({}, {'limits': esolangs.ExecutionLimits(max_steps=20)}):
         assert api.run('$io', **options).unwrap().output == '1\n'

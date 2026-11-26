@@ -6,7 +6,7 @@ from random import Random
 
 import pytest
 
-from esolangs import Catalog, ExecutionLimits, ExecutionResult, Language
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.debugger import Debugger
 from esolangs.exceptions import (
     ArgumentError,
@@ -17,6 +17,7 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.languages.brainfuck.interpreter import _Machine as Brainfuck
+from esolangs.registry import Catalog
 from esolangs.results import Completion
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime.io import ScriptedIO
@@ -683,7 +684,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
     detectors = (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle)
     for detector in detectors:
         assert detector(api.make_debugger(artifact, stdin="1"), limit=2)
-    result = api.evaluate(artifact, [1], limits=limits)
+    result = artifact.evaluate([1], limits=limits, catalog=api.catalog)
     assert result.termination.branches.terminal == (1,)
     assert result.observation == ExecutionResult("1!", 1, 1, 0)
     diagnostic = "branching_halted must return a bool"
@@ -701,7 +702,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
                 assert not debugger.halted
                 assert debugger.observation == ExecutionResult("1", 1, 1, 0, steps=0)
             with pytest.raises(InterpreterLimitError, match=diagnostic) as caught:
-                api.evaluate(artifact, [1], limits=limits)
+                artifact.evaluate([1], limits=limits, catalog=api.catalog)
             assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
     _check_branch_successor_containers(api, artifact, limits, Machine, monkeypatch)
     _check_branch_root_faults(api, artifact, Machine, monkeypatch)
@@ -731,7 +732,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
                         detector(debug, limit=2)
                 assert debug.observation == ExecutionResult("1", 1, 1, 0, steps=0)
             with pytest.raises(InterpreterLimitError, match="hashable state") as caught:
-                api.evaluate(artifact, [1], limits=limits)
+                artifact.evaluate([1], limits=limits, catalog=api.catalog)
             output = "1!" if field == "replay" else "1"
             assert caught.value.observation == ExecutionResult(output, 1, 1, 0)
             assert caught.value.partial_output == output
@@ -745,7 +746,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
         with pytest.raises(
             InterpreterLimitError, match="branching_successors must be callable"
         ) as caught:
-            api.evaluate(artifact, [1], limits=limits)
+            artifact.evaluate([1], limits=limits, catalog=api.catalog)
         assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
         assert caught.value.partial_output == "1"
 
@@ -762,7 +763,7 @@ def _check_malformed_branch_states(monkeypatch) -> None:
                 run_until_halt_or_all_branches_cycle(debug, limit=2)
             assert caught.value is original
             with pytest.raises(TypeError, match="branching callback refused") as caught:
-                api.evaluate(artifact, [1], limits=limits)
+                artifact.evaluate([1], limits=limits, catalog=api.catalog)
             assert caught.value is original
 
 
@@ -810,7 +811,7 @@ def _check_branch_replay_halt_boundary(api, module, monkeypatch):
         limits = ExecutionLimits(max_steps=3)
         expected = ExecutionResult("1A", 1, 1, 0)
         for evaluate in (
-            lambda: scoped.evaluate(artifact, [1], limits=limits),
+            lambda: artifact.evaluate([1], limits=limits, catalog=scoped.catalog),
             lambda: prepared.evaluate([1], limits=limits),
         ):
             terminal = 1
@@ -928,7 +929,7 @@ def _check_owned_branch_hook_failures(api, artifact, machine, monkeypatch):
     completed = replace(initial, output="1!")
     detectors = (run_until_halt_or_cycle, run_until_halt_or_all_branches_cycle)
     evaluations = (
-        lambda: api.evaluate(artifact, [1], limits=limits),
+        lambda: artifact.evaluate([1], limits=limits, catalog=api.catalog),
         lambda: plan.evaluate([1], limits=limits),
     )
     original = ValueError("scoped branch hook failed")
@@ -1037,14 +1038,14 @@ def _check_branch_successor_containers(api, artifact, limits, machine, monkeypat
             with pytest.raises(TypeError, match=diagnostic):
                 prove()
             with pytest.raises(InterpreterLimitError, match=diagnostic) as caught:
-                api.evaluate(artifact, [1], limits=limits)
+                artifact.evaluate([1], limits=limits, catalog=api.catalog)
             assert caught.value.observation == ExecutionResult("1", 1, 1, 0)
             assert caught.value.partial_output == "1"
 
     with monkeypatch.context() as hooks:
         hooks.setattr(machine, "branching_successors", lambda *_args: [(1,)])
         assert prove()
-        result = api.evaluate(artifact, [1], limits=limits)
+        result = artifact.evaluate([1], limits=limits, catalog=api.catalog)
         assert result.termination.branches.terminal == (1,)
         assert result.observation == ExecutionResult("1!", 1, 1, 0)
         hooks.setattr(machine, "branching_successors", lambda *_args: None)
@@ -1053,5 +1054,5 @@ def _check_branch_successor_containers(api, artifact, limits, machine, monkeypat
         with pytest.raises(
             InterpreterLimitError, match="cannot be safely forked"
         ) as caught:
-            api.evaluate(artifact, [1], limits=limits)
+            artifact.evaluate([1], limits=limits, catalog=api.catalog)
         assert caught.value.observation == ExecutionResult("1", 1, 1, 0)

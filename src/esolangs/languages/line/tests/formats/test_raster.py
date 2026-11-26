@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import run
+from esolangs import run, serialization
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.render import render
 from esolangs.languages.line.interpreter import run as run_line
@@ -74,7 +74,7 @@ def test_public_run_loads_line_png(tmp_path: Path) -> None:
     assert isinstance(program, esolangs.ProgramArtifact)
     assert isinstance(program.source, Raster)
     path = tmp_path / "line.png"
-    esolangs.to_file("Line", program, path)
+    serialization.to_file("Line", program, path)
     assert run("Line", path, stdin="0\n").unwrap().output == "0"
 
 

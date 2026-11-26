@@ -30,9 +30,11 @@ def test_intercal_layout_candidates_keep_exact_provenance(width: int) -> None:
     for inputs in range(1, 4):
         for table in witnesses(inputs):
             template = esolangs.generate("INTERCAL", table, width=width)
-            esolangs.instantiate("INTERCAL", template, [0] * inputs, truth_table=table)
+            esolangs.Language("INTERCAL").instantiate(
+                template, [0] * inputs, truth_table=table
+            )
             wrong = table.translate(str.maketrans("01", "10"))
             with pytest.raises(esolangs.TemplateError, match="is not the template"):
-                esolangs.instantiate(
-                    "INTERCAL", template, [0] * inputs, truth_table=wrong
+                esolangs.Language("INTERCAL").instantiate(
+                    template, [0] * inputs, truth_table=wrong
                 )

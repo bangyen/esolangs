@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs import Raster, run
+from esolangs import Raster, run, serialization
 from esolangs.cli import main
 from esolangs.languages.line.interpreter.extract import detect_scale, normalize_scale
 from esolangs.languages.line.interpreter.mask import Mask
@@ -59,14 +59,14 @@ def test_raw_png_round_trip_executes(scale, tmp_path) -> None:
     settings = esolangs.Language("Line").settings()
     source = esolangs.generate("Line", "01", scale=scale, settings=settings)
     path = tmp_path / "program.png"
-    esolangs.to_file("Line", source, path)
+    serialization.to_file("Line", source, path)
     raw = esolangs.Language("Line").from_file(path)
     assert raw.settings == settings
     assert raw.scale == scale
     assert Raster.from_png(path.read_bytes()).rows == raw.source.rows
     assert not hasattr(raw.source, "settings")
-    restored = esolangs.from_json(
-        "Line", esolangs.to_json("Line", raw, settings=settings)
+    restored = serialization.from_json(
+        "Line", serialization.to_json("Line", raw, settings=settings)
     )
     assert isinstance(restored, esolangs.ProgramArtifact)
     assert restored.source.rows == source.source.rows
@@ -75,10 +75,12 @@ def test_raw_png_round_trip_executes(scale, tmp_path) -> None:
 
 @pytest.mark.parametrize("value", ["!", "abcd", "é"])
 def test_invalid_png(value) -> None:
-    document = json.loads(esolangs.to_json("Line", esolangs.generate("Line", "01")))
+    document = json.loads(
+        serialization.to_json("Line", esolangs.generate("Line", "01"))
+    )
     document["source"] = value
     with pytest.raises(esolangs.ProgramError):
-        esolangs.from_json("Line", json.dumps(document))
+        serialization.from_json("Line", json.dumps(document))
 
 
 class TestTheSmallInconsistencies:
@@ -117,10 +119,12 @@ class TestTheSmallInconsistencies:
 
 
 def test_source_kind_cannot_change_language_contract() -> None:
-    document = json.loads(esolangs.to_json("Line", esolangs.generate("Line", "01")))
+    document = json.loads(
+        serialization.to_json("Line", esolangs.generate("Line", "01"))
+    )
     document["language"] = REFERENCE
     with pytest.raises(esolangs.ProgramError):
-        esolangs.from_json("Brainfuck", json.dumps(document))
+        serialization.from_json("Brainfuck", json.dumps(document))
 
 
 @pytest.mark.medium
@@ -193,13 +197,13 @@ def test_explicit_scale_validates_lazy_line_pixels(tmp_path: Path) -> None:
 
     path = tmp_path / "line.png"
     command = [sys.executable, "-m", INTERPRETERS["Line"], str(path)]
-    esolangs.to_file("Line", image, path)
+    serialization.to_file("Line", image, path)
     result = subprocess.run(
         command, input=b"1\n", capture_output=True, check=True, timeout=5
     )
     assert (result.stdout, result.stderr) == (b"Input: 0", b"")
 
-    esolangs.to_file("Line", replace(image, scale=3), path)
+    serialization.to_file("Line", replace(image, scale=3), path)
     rejected = subprocess.run(
         command, input=b"1\n", capture_output=True, check=False, timeout=5
     )

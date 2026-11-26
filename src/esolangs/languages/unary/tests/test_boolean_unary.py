@@ -144,7 +144,7 @@ def test_bound_generation_plan_reports_table_specific_support():
         assert plan.build() is supported
     assert isinstance(supported, ProgramArtifact)
     for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
-        assert language.evaluate(supported, bits).answer == "0"
+        assert supported.evaluate(bits).answer == "0"
     refused = language.plan_generation("0110")
     assert isinstance(refused, Unsupported)
     assert "generation-work cap" in refused.reason

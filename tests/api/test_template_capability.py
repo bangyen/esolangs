@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.registry import CATALOG, LANGUAGES
 from esolangs.registry._backend import TemplateSpec
 from esolangs.registry._language import Example
@@ -32,12 +33,12 @@ def test_template_declaration_refuses_ambiguous_or_invalid_bindings(kwargs, mess
 @pytest.mark.parametrize("language", languages(parameterized=True))
 def test_changing_an_example_cannot_change_generated_bindings(language):
     original = LANGUAGES[language]
-    before = esolangs.to_json(language, esolangs.generate(language, "0110"))
+    before = serialization.to_json(language, esolangs.generate(language, "0110"))
     catalog = CATALOG.with_language(
         replace(original, example=Example(table="01", bits=(1,), expected="other"))
     )
     assert catalog.languages[language].parameterized
-    after = esolangs.to_json(
+    after = serialization.to_json(
         language, esolangs.generate(language, "0110", catalog=catalog), catalog=catalog
     )
     assert before == after
@@ -52,13 +53,14 @@ def test_execution_and_portable_bindings_do_not_import_examples(language):
 import importlib
 import sys
 import esolangs
+from esolangs import serialization
 from esolangs.registry import CATALOG, LANGUAGES
 sys.modules['esolangs.generation.examples'] = None
 language = {language!r}
 source = esolangs.generate(language, '0110', balance=True)
-source = esolangs.from_json(language, esolangs.to_json(language, source))
+source = serialization.from_json(language, serialization.to_json(language, source))
 if LANGUAGES[language].parameterized:
-    source = esolangs.instantiate(language, source, [0, 1])
+    source = esolangs.Language(language).instantiate(source, [0, 1])
     stdin = ''
 else:
     stdin = esolangs.encode_inputs(language, [0, 1])

@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.registry import LANGUAGES
 from esolangs.registry._certification import load as load_certification
 from tests.support.evaluation import _evaluate
@@ -36,7 +37,9 @@ def test_generated_program_obeys_its_table(language: str) -> None:
         random.seed(0)
         second = esolangs.generate(language, table)
         assert first == second
-        program = esolangs.from_json(language, esolangs.to_json(language, first))
+        program = serialization.from_json(
+            language, serialization.to_json(language, first)
+        )
         inputs = len(table).bit_length() - 1
         assert _evaluate(language, program, inputs=inputs) == table, (
             "answers",
@@ -47,7 +50,9 @@ def test_generated_program_obeys_its_table(language: str) -> None:
 
 @pytest.mark.parametrize("language", languages(parameterized=True))
 def test_round_trip_rejects_swapped_inputs(language: str, monkeypatch) -> None:
-    instantiate = esolangs.instantiate
+    from esolangs.operations import instantiation
+
+    instantiate = instantiation.instantiate
     changed = []
 
     def swapped(name, template, bits, **options):
@@ -55,7 +60,7 @@ def test_round_trip_rejects_swapped_inputs(language: str, monkeypatch) -> None:
         changed.append(swapped_bits != list(bits))
         return instantiate(name, template, swapped_bits, **options)
 
-    monkeypatch.setattr(esolangs, "instantiate", swapped)
+    monkeypatch.setattr(instantiation, "instantiate", swapped)
     with pytest.raises(AssertionError, match="answers"):
         test_generated_program_obeys_its_table(language)
     assert any(changed), "the control never permuted distinct input bits"
@@ -88,7 +93,9 @@ def test_saved_program_executes_in_a_fresh_process(language, tmp_path) -> None:
     source = esolangs.generate(language, table)
     path = tmp_path / "program"
     if esolangs.describe(language).parameterized:
-        source = esolangs.from_json(language, esolangs.to_json(language, source))
+        source = serialization.from_json(
+            language, serialization.to_json(language, source)
+        )
         assert (
             _evaluate(
                 language, source, inputs=len(table).bit_length() - 1, isolated=True
@@ -96,7 +103,7 @@ def test_saved_program_executes_in_a_fresh_process(language, tmp_path) -> None:
             == table
         )
         return
-    esolangs.to_file(language, source, path)
+    serialization.to_file(language, source, path)
     assert (
         _evaluate(language, path, inputs=len(table).bit_length() - 1, isolated=True)
         == table

@@ -16,8 +16,11 @@ from tempfile import TemporaryDirectory
 import pytest
 
 import esolangs
+import esolangs.planning
 import esolangs.raster.png as png
 from esolangs import exceptions as x
+from esolangs import serialization
+from esolangs.registry import Catalog
 from esolangs.registry._describe import interpreter_module
 from tests.interpreters.spec_sections import section
 from tests.support.reference import REFERENCE
@@ -34,19 +37,17 @@ _MISSING = Path("/nonexistent/program.b")
 
 def _functions() -> dict[str, Callable[..., object]]:
     """Return every function ``esolangs.__all__`` exports."""
+    from esolangs import planning, serialization
+    from esolangs.operations.instantiation import instantiate
+
     return {
-        name: obj
-        for name in (
-            *esolangs.__all__,
-            "from_file",
-            "from_json",
-            "to_file",
-            "to_json",
-            "evaluate",
-            "instantiate",
-            "plan_generation",
-        )
-        if inspect.isfunction(obj := getattr(esolangs, name))
+        **{
+            name: getattr(module, name)
+            for module in (esolangs, planning, serialization)
+            for name in module.__all__
+            if inspect.isfunction(getattr(module, name))
+        },
+        "instantiate": instantiate,
     }
 
 
@@ -58,7 +59,7 @@ def _invalid_generated_source(operation: str = "generate") -> None:
     api = esolangs.Language(R)
     declaration = api.catalog.languages[R]
     amended = replace(declaration, backend=BooleanBackend(lambda _request: None))
-    scoped = esolangs.Catalog([amended]).bind(R)
+    scoped = Catalog([amended]).bind(R)
     with pytest.raises(x.TruthTableError):
         scoped.generate("1")
     getattr(scoped, operation)("01")
@@ -70,7 +71,7 @@ def _invalid_input_encoding() -> str:
     api = esolangs.Language(R)
     declaration = api.catalog.languages[R]
     contract = replace(declaration.contract, alphabet=("", ""))
-    scoped = esolangs.Catalog([replace(declaration, contract=contract)])
+    scoped = Catalog([replace(declaration, contract=contract)])
     return esolangs.encode_inputs(R, [1], catalog=scoped)
 
 
@@ -142,8 +143,8 @@ def _run_png_without_pillow() -> object:
     return _without_pillow(lambda: esolangs.run(_first("raster"), data).unwrap().output)
 
 
-def _load_png_without_pillow(load=esolangs.from_json) -> object:
-    document = esolangs.to_json(_first("raster"), _raster_png())
+def _load_png_without_pillow(load=serialization.from_json) -> object:
+    document = serialization.to_json(_first("raster"), _raster_png())
     return _without_pillow(lambda: load(_first("raster"), document))
 
 
@@ -153,7 +154,7 @@ def _no_docstrings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _portable(settings: dict[str, object]) -> str:
-    document = json.loads(esolangs.to_json(REFERENCE, "+."))
+    document = json.loads(serialization.to_json(REFERENCE, "+."))
     document["settings"] = settings
     return json.dumps(document)
 
@@ -162,12 +163,12 @@ def _png_file_without_pillow() -> object:
     with TemporaryDirectory() as folder:
         path = Path(folder) / "program.png"
         path.write_bytes(_raster_png())
-        return _without_pillow(lambda: esolangs.from_file(_first("raster"), path))
+        return _without_pillow(lambda: serialization.from_file(_first("raster"), path))
 
 
 def _save_missing_source() -> None:
     with TemporaryDirectory() as folder:
-        esolangs.to_file(R, _MISSING, Path(folder) / "program.b")
+        serialization.to_file(R, _MISSING, Path(folder) / "program.b")
 
 
 def _foreign_settings() -> esolangs.DialectSettings:
@@ -207,55 +208,22 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "from_file",
         x.UnknownLanguageError,
-        lambda: esolangs.from_file("Nolang", _MISSING),
+        lambda: serialization.from_file("Nolang", _MISSING),
         None,
     ),
     (
         "from_file",
         x.ArgumentError,
-        lambda: esolangs.from_file(R, 1),  # type: ignore[arg-type]
+        lambda: serialization.from_file(R, 1),  # type: ignore[arg-type]
         None,
     ),
     (
         "from_file",
         x.ProgramNotFoundError,
-        lambda: esolangs.from_file(R, _MISSING),
+        lambda: serialization.from_file(R, _MISSING),
         None,
     ),
     ("from_file", x.MissingDependencyError, _png_file_without_pillow, None),
-    (
-        "evaluate",
-        x.UnknownLanguageError,
-        lambda: esolangs.evaluate("Nolang", esolangs.generate(R, "01"), [0]),
-        None,
-    ),
-    (
-        "evaluate",
-        x.ProgramError,
-        lambda: esolangs.evaluate(R, ",.", [0]),  # type: ignore[arg-type]
-        None,
-    ),
-    (
-        "evaluate",
-        x.ArgumentError,
-        lambda: esolangs.evaluate(R, esolangs.generate(R, "0110"), [0]),
-        None,
-    ),
-    (
-        "evaluate",
-        x.TemplateError,
-        lambda: esolangs.evaluate(
-            R,
-            esolangs.TemplateArtifact(
-                "$",
-                R,
-                esolangs.TemplateBindings(setters=((".", "."),)),
-                spans=((0, 1),),
-            ),
-            [0],
-        ),
-        None,
-    ),
     ("prepare", x.UnknownLanguageError, lambda: esolangs.prepare("Nolang", ""), None),
     (
         "prepare",
@@ -273,13 +241,13 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "to_file",
         x.UnknownLanguageError,
-        lambda: esolangs.to_file("No Such Language", "", "."),
+        lambda: serialization.to_file("No Such Language", "", "."),
         None,
     ),
     (
         "to_file",
         x.TemplateError,
-        lambda: esolangs.to_file(
+        lambda: serialization.to_file(
             _first("parameterized"),
             esolangs.generate(_first("parameterized"), "0110"),
             _MISSING,
@@ -290,19 +258,19 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "to_file",
         x.ArgumentError,
-        lambda: esolangs.to_file("Brainfuck", "", ".", gzip=1),
+        lambda: serialization.to_file("Brainfuck", "", ".", gzip=1),
         None,
     ),
     (
         "to_file",
         x.ProgramError,
-        lambda: esolangs.to_file("Brainfuck", "+.", _MISSING),
+        lambda: serialization.to_file("Brainfuck", "+.", _MISSING),
         None,
     ),
     (
         "to_file",
         x.GeneratorCapError,
-        lambda: esolangs.to_file(
+        lambda: serialization.to_file(
             R,
             esolangs.CompressedText.repeated(
                 "+",
@@ -321,7 +289,7 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         "to_file",
         x.MissingDependencyError,
         lambda: _without_pillow(
-            lambda: esolangs.to_file(
+            lambda: serialization.to_file(
                 _first("raster"), esolangs.generate(_first("raster"), "01"), _MISSING
             )
         ),
@@ -355,19 +323,19 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "plan_generation",
         x.UnknownLanguageError,
-        lambda: esolangs.plan_generation("Nolang", "01"),
+        lambda: esolangs.planning.plan_generation("Nolang", "01"),
         None,
     ),
     (
         "plan_generation",
         x.ArgumentError,
-        lambda: esolangs.plan_generation(R, "01", scale=2),
+        lambda: esolangs.planning.plan_generation(R, "01", scale=2),
         None,
     ),
     (
         "plan_generation",
         x.TruthTableError,
-        lambda: esolangs.plan_generation(R, "012"),
+        lambda: esolangs.planning.plan_generation(R, "012"),
         None,
     ),
     (
@@ -381,25 +349,29 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "instantiate",
         x.UnknownLanguageError,
-        lambda: esolangs.instantiate("Nolang", "x", [1]),
+        lambda: esolangs.Language("Nolang").instantiate("x", [1]),
         None,
     ),
     (
         "instantiate",
         x.TemplateError,
-        lambda: esolangs.instantiate(R, esolangs.generate(R, "01"), [1]),
+        lambda: esolangs.Language(R).instantiate(esolangs.generate(R, "01"), [1]),
         None,
     ),
     (
         "instantiate",
         x.ArgumentError,
-        lambda: esolangs.instantiate(_first("parameterized"), _template(), [1]),
+        lambda: esolangs.Language(_first("parameterized")).instantiate(
+            _template(), [1]
+        ),
         None,
     ),
     (
         "instantiate",
         x.ArgumentError,
-        lambda: esolangs.instantiate(_first("parameterized"), _template(), [1, 2]),
+        lambda: esolangs.Language(_first("parameterized")).instantiate(
+            _template(), [1, 2]
+        ),
         None,
     ),
     (
@@ -528,13 +500,13 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "to_json",
         x.UnknownLanguageError,
-        lambda: esolangs.to_json("Nolang", ""),
+        lambda: serialization.to_json("Nolang", ""),
         None,
     ),
     (
         "to_json",
         x.ArgumentError,
-        lambda: esolangs.to_json(
+        lambda: serialization.to_json(
             R, "+.", settings=esolangs.Language("brainfuck").settings(nonsense_key=1)
         ),
         None,
@@ -542,14 +514,14 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "to_json",
         x.ProgramNotFoundError,
-        lambda: esolangs.to_json(R, _MISSING),  # type: ignore[arg-type]
+        lambda: serialization.to_json(R, _MISSING),  # type: ignore[arg-type]
         None,
     ),
     (
         "to_json",
         x.MissingDependencyError,
         lambda: _without_pillow(
-            lambda: esolangs.to_json(
+            lambda: serialization.to_json(
                 _first("raster"), esolangs.generate(_first("raster"), "01")
             )
         ),
@@ -558,25 +530,25 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
     (
         "from_json",
         x.UnknownLanguageError,
-        lambda: esolangs.from_json("Nolang", "{}"),
+        lambda: serialization.from_json("Nolang", "{}"),
         None,
     ),
     (
         "from_json",
         x.ArgumentError,
-        lambda: esolangs.from_json(R, b"{}"),  # type: ignore[arg-type]
+        lambda: serialization.from_json(R, b"{}"),  # type: ignore[arg-type]
         None,
     ),
     (
         "from_json",
         x.ProgramError,
-        lambda: esolangs.from_json(R, "{}"),
+        lambda: serialization.from_json(R, "{}"),
         None,
     ),
     (
         "from_json",
         x.ProgramError,
-        lambda: esolangs.from_json(R, _portable({"nonsense_key": 1})),
+        lambda: serialization.from_json(R, _portable({"nonsense_key": 1})),
         None,
     ),
     ("from_json", x.MissingDependencyError, _load_png_without_pillow, None),

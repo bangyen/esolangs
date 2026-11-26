@@ -13,10 +13,10 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import cli
+from esolangs import cli, serialization
 from esolangs._dialect import DialectSchema
 from esolangs.cli.help import COMMANDS, USAGE, help_text
-from esolangs.registry import LANGUAGES, _table, wiki_url
+from esolangs.registry import LANGUAGES, Catalog, _table, wiki_url
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec, VerbatimSourcePolicy
@@ -67,14 +67,14 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
     }
 
     def examples() -> tuple[str, str]:
-        return help_module._capability_examples(esolangs.Catalog(languages.values()))
+        return help_module._capability_examples(Catalog(languages.values()))
 
     template, dialect = examples()
     assert shlex.split(template)[-2:] == ["Template Choice", "0110"]
     commands = dialect.replace("\\\n", "").splitlines()  # Shell-joined.
     assert shlex.split(commands[1])[3] == "mode=é with spaces"
     _, ascii_dialect = help_module._capability_examples(
-        esolangs.Catalog(languages.values()), encoding="ascii"
+        Catalog(languages.values()), encoding="ascii"
     )
     assert ascii_dialect == commands[0]
     assert json.loads(shlex.split(ascii_dialect)[3]) == {"mode": "é with spaces"}
@@ -85,7 +85,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
         declaration.name, {"mode": ("plain", nul_value)}, {"mode": "plain"}
     )
     runtime = replace(declaration.runtime, dialect_schema=schema)
-    nul_scope = esolangs.Catalog([replace(declaration, runtime=runtime)])
+    nul_scope = Catalog([replace(declaration, runtime=runtime)])
     _, nul_example = help_module._capability_examples(nul_scope)
     assert "\0" not in nul_example
     assert len(nul_example.splitlines()) == 1
@@ -94,15 +94,13 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
     unreachable = replace(
         languages["Template Choice"], name="Raw\0Template", id="raw\0template"
     )
-    assert help_module._capability_examples(esolangs.Catalog([unreachable])) == ("", "")
+    assert help_module._capability_examples(Catalog([unreachable])) == ("", "")
 
     name = "A {_DIALECT_EXAMPLES} Compiler"
     original = LANGUAGES[
         first(parameterized=True, source_kind="text", answer_mode="output")
     ]
-    scoped = esolangs.Catalog(
-        [replace(original, name=name, id="scoped_template"), declaration]
-    )
+    scoped = Catalog([replace(original, name=name, id="scoped_template"), declaration])
     with monkeypatch.context() as active:
         active.setattr(_table, "CATALOG", scoped)
         for invocation in (["generate", "--help"], ["help", "generate"]):
@@ -134,9 +132,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
         backend=DeferredBackend(unavailable),
     )
     with monkeypatch.context() as active:
-        active.setattr(
-            _table, "CATALOG", esolangs.Catalog([*languages.values(), broken])
-        )
+        active.setattr(_table, "CATALOG", Catalog([*languages.values(), broken]))
         for invocation in (["generate", "--help"], ["help", "generate"]):
             with pytest.raises(SystemExit) as exited:
                 call_main(invocation, capsys)
@@ -150,7 +146,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
         for flags in ([], ["--json"]):
             assert _failure(["list", "--details", *flags], capsys) == expected
 
-        active.setattr(_table, "CATALOG", esolangs.Catalog([broken]))
+        active.setattr(_table, "CATALOG", Catalog([broken]))
         for invocation in (["generate", "--help"], ["help", "generate"]):
             assert _failure(invocation, capsys) == expected
         output, diagnostic = _failure(["generate", broken.name], capsys)
@@ -189,7 +185,7 @@ def test_catalog_displays_and_help_keep_large_integer_settings(
     try:
         large = 1 << (threshold * 4)
         original = LANGUAGES[REFERENCE]
-        scope = esolangs.Catalog(
+        scope = Catalog(
             [
                 replace(
                     original,
@@ -269,7 +265,7 @@ def test_set_accepts_null_as_a_declared_string_choice(
             REFERENCE, {"mode": ("plain", "null")}, {"mode": "plain"}
         ),
     )
-    scope = esolangs.Catalog(
+    scope = Catalog(
         [replace(original, runtime=runtime, backend=BooleanBackend(entrypoint=build))]
     )
     monkeypatch.setattr(_table, "CATALOG", scope)
@@ -278,7 +274,7 @@ def test_set_accepts_null_as_a_declared_string_choice(
     json_source = call_main([*command, "--settings", '{"mode":"null"}'], capsys)
     assert set_source == json_source == native
     path = tmp_path / "program"
-    esolangs.to_file(REFERENCE, set_source, path, normalize=True, catalog=scope)
+    serialization.to_file(REFERENCE, set_source, path, normalize=True, catalog=scope)
     assert path.read_bytes() == set_source.encode()
     assert observed == ["null", "null"]
     _, error = _failure([*command, "--settings", '{"mode":null}'], capsys)
@@ -533,7 +529,7 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
                     dialect_schema=schema,
                 ),
             )
-        scope = esolangs.Catalog([local])
+        scope = Catalog([local])
         bound = scope.bind(name)
         spelling = aliases[0] if aliases else id_
         with monkeypatch.context() as active:
@@ -665,7 +661,7 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
                 assert shlex.split(split.split("pass it as ", 1)[1]) == operand
 
     name = "Raw\0Scoped name"
-    scope = esolangs.Catalog([replace(original, name=name, id="raw\0id", aliases=())])
+    scope = Catalog([replace(original, name=name, id="raw\0id", aliases=())])
     monkeypatch.setattr(_table, "CATALOG", scope)
     text = call_main(["describe", name], capsys)
     assert "\0" not in text

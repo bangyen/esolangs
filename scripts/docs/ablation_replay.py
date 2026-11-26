@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import esolangs
+from esolangs import serialization
 from esolangs.artifacts import Artifact
 from esolangs.generation.grid import grid_area
 from esolangs.raster import Raster
@@ -254,7 +255,7 @@ def _baseline(
     code = (
         "import esolangs,json,sys; r=json.load(sys.stdin); "
         "p=esolangs.generate(r['language'],r['table'],balance=r['balanced']); "
-        "print(esolangs.to_json(r['language'],p))"
+        "print(esolangs.Language(r['language']).to_json(p))"
     )
     import os
 
@@ -268,7 +269,7 @@ def _baseline(
         check=True,
         timeout=_remaining(deadline),
     )
-    return esolangs.from_json(language, generated.stdout)
+    return serialization.from_json(language, generated.stdout)
 
 
 def _source_size(artifact: Artifact, unit: str) -> int:
@@ -297,7 +298,7 @@ def _observe(
     if lang.parameterized:
         if not isinstance(program, esolangs.TemplateArtifact):
             raise AuditError("input bindings require a TemplateArtifact")
-        program, stdin = esolangs.instantiate(language, program, bits), ""
+        program, stdin = esolangs.Language(language).instantiate(program, bits), ""
     else:
         stdin = esolangs.encode_inputs(language, bits, truth_table=table)
     bound = min(5.0, _remaining(deadline))

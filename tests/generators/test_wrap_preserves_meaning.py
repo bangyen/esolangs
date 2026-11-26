@@ -37,7 +37,7 @@ def _evaluate(name: str, table: str, width: int | None) -> str:
         bits = row_bits(row, inputs)
         if parameterized:
             source, stdin = (
-                esolangs.instantiate(name, program, bits, width=width),
+                esolangs.Language(name).instantiate(program, bits, width=width),
                 "",
             )
         else:

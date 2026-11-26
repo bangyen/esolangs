@@ -30,13 +30,13 @@ def _check_scoped_catalogs():
 
     import esolangs
     import esolangs.operations.execution as execution
-    from esolangs.registry import CATALOG
+    from esolangs.registry import CATALOG, Catalog
     from esolangs.runtime._definition import VerbatimSourcePolicy
     from esolangs.runtime.io import ScriptedIO
     from tests.support.execution import run_observed
 
     records = list(LANGUAGES.values())
-    snapshot = esolangs.Catalog(records)
+    snapshot = Catalog(records)
     records.clear()
     assert len(snapshot.languages) == len(LANGUAGES) > 100
     for index in (
@@ -51,9 +51,9 @@ def _check_scoped_catalogs():
             index["unregistered"] = None
     original = LANGUAGES["brainfuck"]
     with pytest.raises(esolangs.ArgumentError, match="unique"):
-        esolangs.Catalog([original, original])
+        Catalog([original, original])
     with pytest.raises(esolangs.ArgumentError, match="identifiers"):
-        esolangs.Catalog([original, replace(original, name="second owner")])
+        Catalog([original, replace(original, name="second owner")])
     scoped = snapshot.with_language(
         replace(
             original,

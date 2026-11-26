@@ -39,9 +39,11 @@ def test_debug_and_proof_repr_preserve_large_crement_values() -> None:
         TemplateBindings(setters=(("", ""),)),
         spans=((0, 0),),
     )
-    local = api.evaluate(template, [0], limits=ExecutionLimits(max_steps=2))
-    worker = api.evaluate(
-        template, [0], limits=ExecutionLimits(max_steps=2, total_timeout=5)
+    local = template.evaluate(
+        [0], limits=ExecutionLimits(max_steps=2), catalog=api.catalog
+    )
+    worker = template.evaluate(
+        [0], limits=ExecutionLimits(max_steps=2, total_timeout=5), catalog=api.catalog
     )
     assert local == worker
     assert local.termination.commands == 1

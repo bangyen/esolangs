@@ -16,7 +16,7 @@ from esolangs.generation.wrap import balance_score
 from esolangs.languages.slashes import generator as boolean
 from esolangs.languages.slashes import interpreter
 from esolangs.languages.slashes.tests.template_shape import _is_unfilled_template
-from esolangs.registry import _table
+from esolangs.registry import Catalog, _table
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._definition import CompressedSourcePolicy
 from esolangs.runtime._vm_adapter import _capture_workspace
@@ -61,7 +61,7 @@ def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> N
         esolangs.run("///", template).unwrap()
     for row in (0, (1 << inputs) - 1):
         bits = [int(c) for c in format(row, f"0{inputs}b")]
-        program = esolangs.instantiate("///", template, bits)
+        program = esolangs.Language("///").instantiate(template, bits)
         assert not _is_unfilled_template(program.source)
         vm = make_vm("///", program)
         state = WrittenState(_capture_workspace(vm))
@@ -133,7 +133,7 @@ def _check_cli_fill_dialect(capsysbinary, monkeypatch) -> None:
 
     schema = esolangs.DialectSchema(name, {"mode": ("fast", "slow")}, {"mode": "fast"})
     runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
-    scope = esolangs.Catalog([replace(original, runtime=runtime)])
+    scope = Catalog([replace(original, runtime=runtime)])
     api = scope.bind(name)
     monkeypatch.setattr(_table, "CATALOG", scope)
     monkeypatch.setattr(interpreter, "_execute", run)
@@ -218,7 +218,7 @@ def test_cli_preserves_literal_source(tmp_path, capsysbinary, monkeypatch) -> No
     for policy in (original.runtime.source_policy, CompressedSourcePolicy()):
         runtime = replace(original.runtime, source_policy=policy)
         entry = replace(original, backend=backend, runtime=runtime)
-        scope = esolangs.Catalog([entry])
+        scope = Catalog([entry])
         monkeypatch.setattr(_table, "CATALOG", scope)
         api = scope.bind(name)
         cases = [
@@ -308,8 +308,8 @@ def _check_run_macros() -> None:
             template = esolangs.generate("///", table, balance=balanced)
             assert balanced or _is_unfilled_template(template.source)
             for row in range(1 << n):
-                program = esolangs.instantiate(
-                    "///", template, [int(c) for c in f"{row:0{n}b}"]
+                program = esolangs.Language("///").instantiate(
+                    template, [int(c) for c in f"{row:0{n}b}"]
                 )
                 io = ScriptedIO("Q")
                 machine = _Machine(program.source, io)
@@ -334,7 +334,7 @@ def _check_constants() -> None:
             for options in ({}, {"width": 1}, {"balance": True}):
                 template = esolangs.generate("///", bit * (1 << n), **options)
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("///", template, bits)
+                    program = esolangs.Language("///").instantiate(template, bits)
                     io = ScriptedIO("7")
                     machine = _Machine(program.source, io)
                     pattern = "".join("ab"[b] for b in bits)

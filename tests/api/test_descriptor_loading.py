@@ -12,7 +12,7 @@ import esolangs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import wrap_chars
-from esolangs.registry import LANGUAGES, _functions
+from esolangs.registry import LANGUAGES, Catalog, _functions
 from esolangs.registry._backend import TemplateSpec
 from esolangs.registry._certification import load as load_certification
 from esolangs.registry._functions import FunctionRef
@@ -113,9 +113,7 @@ def test_scoped_generator_hooks_raise_program_errors(
 ) -> None:
     record = LANGUAGES[REFERENCE]
     backend = dataclasses.replace(record.backend, **{field: reference})
-    bound = esolangs.Catalog([dataclasses.replace(record, backend=backend)]).bind(
-        REFERENCE
-    )
+    bound = Catalog([dataclasses.replace(record, backend=backend)]).bind(REFERENCE)
     with pytest.raises(esolangs.ProgramError, match=message):
         bound.generate("01", **options)
 
@@ -144,9 +142,7 @@ def test_generation_hooks_share_typed_value_errors(hook, table, options, declare
         raise fault
 
     backend = dataclasses.replace(original.backend, max_inputs=1, **{hook: refuse})
-    bound = esolangs.Catalog([dataclasses.replace(original, backend=backend)]).bind(
-        REFERENCE
-    )
+    bound = Catalog([dataclasses.replace(original, backend=backend)]).bind(REFERENCE)
     error = esolangs.TemplateError if declared else esolangs.ArgumentError
     with pytest.raises(error, match="backend refused request") as caught:
         bound.generate(table, **options)
@@ -158,9 +154,7 @@ def test_plain_reflow_keeps_the_declared_source_kind() -> None:
     backend = dataclasses.replace(
         original.backend, wrap=lambda *_args: esolangs.Raster((((0, 0, 0),),))
     )
-    bound = esolangs.Catalog([dataclasses.replace(original, backend=backend)]).bind(
-        REFERENCE
-    )
+    bound = Catalog([dataclasses.replace(original, backend=backend)]).bind(REFERENCE)
     for options in ({"width": 1}, {"balance": True}):
         with pytest.raises(esolangs.ProgramError, match="wrapper did not return text"):
             bound.generate("01", **options)
@@ -185,7 +179,7 @@ def test_template_hooks_validate_bindings_and_rows() -> None:
         template=TemplateSpec(setters=lambda *_args: (("+", "-"),)),
     )
     declaration = dataclasses.replace(original, backend=backend)
-    bound = esolangs.Catalog([declaration]).bind(REFERENCE)
+    bound = Catalog([declaration]).bind(REFERENCE)
     with pytest.raises(esolangs.ProgramError, match="bind all 2 inputs"):
         bound.generate("0110")
     template = bound.generate("01")
@@ -199,9 +193,7 @@ def test_template_hooks_validate_bindings_and_rows() -> None:
         bound.instantiate(different, [0], truth_table="01")
 
     broken = dataclasses.replace(backend, template=TemplateSpec(setters=refuse))
-    bound = esolangs.Catalog([dataclasses.replace(declaration, backend=broken)]).bind(
-        REFERENCE
-    )
+    bound = Catalog([dataclasses.replace(declaration, backend=broken)]).bind(REFERENCE)
     with pytest.raises(esolangs.ArgumentError, match="template hook refused request"):
         bound.generate("01")
     _check_template_hooks_require_real_layouts(declaration, backend, emit)
@@ -215,16 +207,16 @@ def _check_template_hooks_require_real_layouts(declaration, backend, emit) -> No
 
     for hook, options in (("entrypoint", {}), ("balance", {"balance": True})):
         valid = dataclasses.replace(backend, **{hook: emit})
-        bound = esolangs.Catalog(
-            [dataclasses.replace(declaration, backend=valid)]
-        ).bind(REFERENCE)
+        bound = Catalog([dataclasses.replace(declaration, backend=valid)]).bind(
+            REFERENCE
+        )
         template = bound.generate("01", **options)
         assert bound.run(bound.instantiate(template, [0])).unwrap().output == "\x01"
 
         invalid = dataclasses.replace(backend, **{hook: lambda _: ClaimedLayout()})
-        bound = esolangs.Catalog(
-            [dataclasses.replace(declaration, backend=invalid)]
-        ).bind(REFERENCE)
+        bound = Catalog([dataclasses.replace(declaration, backend=invalid)]).bind(
+            REFERENCE
+        )
         with pytest.raises(esolangs.ProgramError, match="did not return slots"):
             bound.generate("01", **options)
 
@@ -235,9 +227,9 @@ def _check_template_hooks_require_real_layouts(declaration, backend, emit) -> No
         invalid = dataclasses.replace(
             backend, wrap=wrap_chars, entrypoint=lambda _, layout=layout: layout
         )
-        bound = esolangs.Catalog(
-            [dataclasses.replace(declaration, backend=invalid)]
-        ).bind(REFERENCE)
+        bound = Catalog([dataclasses.replace(declaration, backend=invalid)]).bind(
+            REFERENCE
+        )
         for width in (None, 1):
             with pytest.raises(esolangs.TemplateError, match=diagnostic):
                 bound.generate("01", width=width)
@@ -251,9 +243,7 @@ def test_scoped_dialect_keeps_declared_hook_errors() -> None:
         dialect=FunctionRef("esolangs", "_missing", ("mode",)),
         dialect_schema=schema,
     )
-    bound = esolangs.Catalog([dataclasses.replace(record, runtime=runtime)]).bind(
-        REFERENCE
-    )
+    bound = Catalog([dataclasses.replace(record, runtime=runtime)]).bind(REFERENCE)
     with pytest.raises(esolangs.ProgramError, match=r"esolangs\._missing"):
         bound.settings(mode=1)
 

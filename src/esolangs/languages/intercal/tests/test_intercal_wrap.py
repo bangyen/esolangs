@@ -5,7 +5,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs import run
+from esolangs import run, serialization
 from esolangs.generation.grid import grid_width
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import balance_score
@@ -30,13 +30,15 @@ def test_intercal_wrapped_template_keeps_public_provenance(
     table = "0110"
     template = esolangs.generate("INTERCAL", table, width=width)
     if restored:
-        template = esolangs.from_json(
-            "INTERCAL", esolangs.to_json("INTERCAL", template)
+        template = serialization.from_json(
+            "INTERCAL", serialization.to_json("INTERCAL", template)
         )
     shapes = set()
     for row, expected in enumerate(table):
         bits = list(map(int, format(row, "02b")))
-        program = esolangs.instantiate("INTERCAL", template, bits, truth_table=table)
+        program = esolangs.Language("INTERCAL").instantiate(
+            template, bits, truth_table=table
+        )
         shapes.add(tuple(map(len, program.source.splitlines())))
         assert (
             esolangs.read_answer("INTERCAL", run("INTERCAL", program).unwrap().output)
@@ -44,7 +46,7 @@ def test_intercal_wrapped_template_keeps_public_provenance(
         )
     assert len(shapes) == 1
     with pytest.raises(esolangs.TemplateError, match="is not the template"):
-        esolangs.instantiate("INTERCAL", template, [0, 1], truth_table="1001")
+        esolangs.Language("INTERCAL").instantiate(template, [0, 1], truth_table="1001")
 
 
 def _fit_width_oracle(default: str) -> int:
@@ -83,8 +85,8 @@ def test_balance_stays_within_five_percent_of_every_fit_width(seed: int) -> None
         )
         for row, expected in enumerate(table):
             bits = list(map(int, format(row, f"0{inputs}b")))
-            program = esolangs.instantiate(
-                "INTERCAL", balanced, bits, truth_table=table
+            program = esolangs.Language("INTERCAL").instantiate(
+                balanced, bits, truth_table=table
             )
             answer = run("INTERCAL", program).unwrap().output
             assert esolangs.read_answer("INTERCAL", answer) == expected

@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.registry import LANGUAGES, _table
+from esolangs.registry import LANGUAGES, Catalog, _table
 from tests.support.cli_support import _failure, _program, call_both
 from tests.support.pick import languages, one_where
 from tests.support.reference import REFERENCE
@@ -37,7 +37,7 @@ def _python_cli(
 
 
 def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> None:
-    scope = esolangs.Catalog([])
+    scope = Catalog([])
     monkeypatch.setattr(_table, "CATALOG", scope)
     assert esolangs.list_languages(catalog=scope) == []
     assert call_both(["list"], capsys) == ("", "")
@@ -51,7 +51,7 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
     original = LANGUAGES[REFERENCE]
     name = "Scoped catalog"
     renamed = replace(original, name=name, id="scoped_catalog")
-    scoped = esolangs.Catalog([renamed, replace(original, backend=None)])
+    scoped = Catalog([renamed, replace(original, backend=None)])
     monkeypatch.setattr(_table, "CATALOG", scoped)
     assert call_both(
         ["list", "--generator", "--source-kind", "text", "--grep", "."], capsys
@@ -81,7 +81,7 @@ def test_active_catalog_lists_in_every_format(monkeypatch, capsys, tmp_path) -> 
     terminal_name = "clear\x1b[2Jscreen"
     restrictions = "first line\nsecond line\x1b[2J"
     escaped_restrictions = repr(restrictions)[1:-1]
-    scope = esolangs.Catalog(
+    scope = Catalog(
         [
             replace(original, name=lf_name, id="scoped_lf", aliases=()),
             replace(

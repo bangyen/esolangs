@@ -149,7 +149,7 @@ class TruthTableError(EsolangError, ValueError):
 class TemplateError(EsolangError, ValueError):
     """A parameterized generator's template was used as a program.
 
-    Fill the runs with :func:`esolangs.instantiate`.
+    Fill the runs with :func:`esolangs.Language.instantiate`.
     """
 
 

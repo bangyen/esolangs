@@ -46,7 +46,7 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
         bindings,
         spans=tuple(runs(template, bindings.char, bindings.setters)),
     )
-    return esolangs.instantiate("A Painter Ant", artifact, bits).source
+    return esolangs.Language("A Painter Ant").instantiate(artifact, bits).source
 
 
 _MOVE = {"n": (0, -1), "e": (1, 0), "s": (0, 1), "w": (-1, 0)}
@@ -207,7 +207,9 @@ def _check_constants() -> None:
                 template = esolangs.generate("A Painter Ant", bit * (1 << n), **options)
                 assert template.source.count("$") == n
                 for bits in ([0] * n, [1] * n):
-                    program = esolangs.instantiate("A Painter Ant", template, bits)
+                    program = esolangs.Language("A Painter Ant").instantiate(
+                        template, bits
+                    )
                     io = ScriptedIO("7")
                     machine = _Machine(program.source, io)
                     for _ in machine.prog:
@@ -237,7 +239,9 @@ def _check_near_unanimity() -> None:
                 assert template.source.count("$") == n
                 for row in range(1 << n):
                     bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
-                    source = esolangs.instantiate("A Painter Ant", template, bits)
+                    source = esolangs.Language("A Painter Ant").instantiate(
+                        template, bits
+                    )
                     io = ScriptedIO("Q")
                     machine = _Machine(source.source, io)
                     written = (

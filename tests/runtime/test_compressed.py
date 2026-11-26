@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.compressed import CompressedText
 from esolangs.runtime import _files, _publish
 from esolangs.runtime._files import explicit_path
@@ -101,7 +102,7 @@ def test_compressed_writers_publish_only_after_success(
             patch.setattr(os, "replace", refuse_replace)
             for save in (
                 program.to_file,
-                lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
+                lambda path: serialization.to_file(REFERENCE, program, path, gzip=True),
             ):
                 with pytest.raises(
                     esolangs.ProgramError, match=r"source\.gz.*replacement refused"
@@ -123,7 +124,7 @@ def test_compressed_writers_replace_links_without_changing_the_referent(
     destination = tmp_path / "link.gz"
     for save in (
         program.to_file,
-        lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
+        lambda path: serialization.to_file(REFERENCE, program, path, gzip=True),
     ):
         try:
             destination.symlink_to(original)
@@ -149,7 +150,7 @@ def test_native_writers_preserve_regular_destination_permissions(
     try:
         for save in (
             program.to_file,
-            lambda path: esolangs.to_file(REFERENCE, program, path, gzip=True),
+            lambda path: serialization.to_file(REFERENCE, program, path, gzip=True),
         ):
             destination.hardlink_to(original)
             save(destination)

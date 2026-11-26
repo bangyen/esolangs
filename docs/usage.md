@@ -621,6 +621,11 @@ commands share the API implementation, a capability lands in the API first,
 and the CLI gains a flag only for a shell workflow. Stepping and programmatic
 saving stay in Python; `list` supports the documented catalog filters.
 
+Evaluate rows with `artifact.evaluate(bits)`. Import file and JSON helpers from
+`esolangs.serialization`, generation planning from `esolangs.planning`, and
+catalog types from `esolangs.registry`. Use `Language(name).instantiate(...)`
+for checked template binding.
+
 In 3.0, replace `execute(...)` with `run(...)` and a raising `run(...)` with
 `run(...).unwrap()`. Use `language.plan_generation(table)` for a
 `Ready` decision with `.build()` or an `Unsupported` decision with `.reason`

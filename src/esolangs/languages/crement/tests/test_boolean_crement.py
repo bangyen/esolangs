@@ -19,7 +19,7 @@ from esolangs.languages.crement.generator import (
     crement_setters,
 )
 from esolangs.languages.crement.interpreter import _Machine
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, Catalog
 from esolangs.vm import run_until_halt_or_cycle
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
@@ -68,7 +68,7 @@ def instantiate_crement(template: str, bits: list[int]) -> str:
         bindings,
         spans=tuple(runs(template, bindings.char, bindings.setters)),
     )
-    return esolangs.instantiate("Crement", artifact, bits).source
+    return esolangs.Language("Crement").instantiate(artifact, bits).source
 
 
 def _result(program: str) -> str:
@@ -158,7 +158,7 @@ class TestCrementTree:
         for n, bit, _options, template in constant_artifacts("Crement", range(1, 13)):
             for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
                 bits = list(map(int, f"{row:0{n}b}"))
-                program = esolangs.instantiate("Crement", template, bits)
+                program = esolangs.Language("Crement").instantiate(template, bits)
                 assert len(program.source.split()) == 3 * (n + 1)
                 assert program.source.split()[3:] == [
                     v for b in bits for v in ("+J", "0", str(b))
@@ -270,7 +270,9 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
     template = esolangs.generate("Crement", table, balance=True)
     for row, expected in enumerate(table):
         bits = [int(c) for c in format(row, "04b")]
-        source = esolangs.instantiate("Crement", template, bits, truth_table=table)
+        source = esolangs.Language("Crement").instantiate(
+            template, bits, truth_table=table
+        )
         assert diverges("Crement", source, "") is (expected == "1")
 
     declaration = LANGUAGES["Crement"]
@@ -282,7 +284,7 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
             raise cap
         return backend.generate(request)
 
-    catalog = esolangs.Catalog(
+    catalog = Catalog(
         [replace(declaration, backend=replace(backend, entrypoint=generate))]
     )
     api = catalog.bind("Crement")
@@ -292,7 +294,7 @@ def test_balanced_packed_template_instantiates_for_its_table() -> None:
     for bits in product((0, 1), repeat=2):
         source = api.instantiate(restored, bits, truth_table=table)
         assert source == balanced.fill(bits)
-        assert api.evaluate(restored, bits).answer == table[2 * bits[0] + bits[1]]
+        assert restored.evaluate(bits).answer == table[2 * bits[0] + bits[1]]
 
     altered = replace(restored, source=restored.source + "\n+J @ 1")
     with pytest.raises(esolangs.TemplateError, match="not the template"):

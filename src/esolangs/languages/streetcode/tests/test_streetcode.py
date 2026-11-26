@@ -34,7 +34,8 @@ from tests.support.raises import assert_rejected_with_hint
 def _check_cycle_transport(code: list[str]) -> None:
     from dataclasses import replace
 
-    from esolangs import Catalog, ExecutionLimits, Language
+    from esolangs import ExecutionLimits, Language
+    from esolangs.registry import Catalog
     from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
     from tests.support.certification_barrier import guarded_worker
 
@@ -54,11 +55,11 @@ def _check_cycle_transport(code: list[str]) -> None:
     halt = api.from_source("C;")
     local = ExecutionLimits(max_steps=100)
     isolated = replace(local, total_timeout=5)
-    cycle = api.evaluate(source, [1], limits=local)
-    endpoint = api.evaluate(halt, [1], limits=local)
+    cycle = source.evaluate([1], limits=local)
+    endpoint = halt.evaluate([1], limits=local)
     with guarded_worker(expected=2):
-        worker = api.evaluate(source, [1], limits=isolated)
-        assert api.evaluate(halt, [1], limits=isolated) == endpoint
+        worker = source.evaluate([1], limits=isolated)
+        assert halt.evaluate([1], limits=isolated) == endpoint
     assert endpoint.answer == "0"
     assert endpoint.observation.output == ""
     assert worker == cycle

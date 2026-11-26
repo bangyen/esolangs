@@ -26,7 +26,7 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
         bindings,
         spans=tuple(runs(template, bindings.char, bindings.setters)),
     )
-    return esolangs.instantiate("ArrowQueue", artifact, bits).source
+    return esolangs.Language("ArrowQueue").instantiate(artifact, bits).source
 
 
 class TestParameterizedArrowQueue:
@@ -163,10 +163,10 @@ def test_constant_balance_and_setters_off_path(bit: str) -> None:
             assert ring.call_count == (2 if witness.arity == 3 else 0)
             restored = language.from_json(language.to_json(artifact))
             for row in range(1 << witness.arity):
-                result = language.evaluate(
-                    restored,
+                result = restored.evaluate(
                     row_bits(row, witness.arity),
                     limits=esolangs.ExecutionLimits(max_steps=200),
+                    catalog=language.catalog,
                 )
                 assert result.answer == "1"
                 assert result.observation.input_reads == 0
@@ -249,7 +249,9 @@ def _check_constants() -> None:
                     assert max(map(len, rows)) <= max(4, options["width"])
                 for bits in ([0] * n, [1] * n):
                     io = ScriptedIO("7")
-                    program = esolangs.instantiate("ArrowQueue", template, bits)
+                    program = esolangs.Language("ArrowQueue").instantiate(
+                        template, bits
+                    )
                     machine = _Machine(program.source.splitlines(), io)
                     seen = set()
                     for _ in range(32):

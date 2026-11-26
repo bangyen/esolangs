@@ -214,7 +214,7 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
                 assert len(template.source) == 129
         for row in range(1 << n) if n <= 3 else (0, 1, (1 << n) - 1):
             inputs = list(map(int, format(row, f"0{n}b")))
-            program = esolangs.instantiate("INTERCAL", template, inputs)
+            program = esolangs.Language("INTERCAL").instantiate(template, inputs)
             assert len(program.source) == len(template.source)
             stream = ScriptedIO()
             machine = _Machine(program.source, stream)

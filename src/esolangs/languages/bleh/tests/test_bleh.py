@@ -7,10 +7,11 @@ from itertools import product
 
 import pytest
 
-from esolangs import Catalog, ExecutionLimits, ExecutionResult, Language
+from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.languages.bleh._syntax import _Lazy
 from esolangs.languages.bleh.interpreter import _Machine, run
+from esolangs.registry import Catalog
 from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal
@@ -265,9 +266,13 @@ def _check_recursive_snapshot_formatting(language: Language) -> None:
     operand = "{" * 499 + '"A"' + "}" * 499
     source = f"loop: x = loop(x); main := loop({operand});"
     artifact = scoped.from_source(source)
-    local = scoped.evaluate(artifact, [1], limits=ExecutionLimits(max_steps=12))
-    worker = scoped.evaluate(
-        artifact, [1], limits=ExecutionLimits(max_steps=12, total_timeout=3)
+    local = artifact.evaluate(
+        [1], limits=ExecutionLimits(max_steps=12), catalog=scoped.catalog
+    )
+    worker = artifact.evaluate(
+        [1],
+        limits=ExecutionLimits(max_steps=12, total_timeout=3),
+        catalog=scoped.catalog,
     )
     assert local == worker
     assert local.answer == "1"
@@ -287,9 +292,13 @@ def _check_recursive_snapshot_formatting(language: Language) -> None:
 
     source = f"{forwards} f{depth}: x, _ = loop(x); loop: x = loop(x); main := f0(1);"
     artifact = scoped.from_source(source)
-    local = scoped.evaluate(artifact, [1], limits=ExecutionLimits(max_steps=64))
-    worker = scoped.evaluate(
-        artifact, [1], limits=ExecutionLimits(max_steps=64, total_timeout=3)
+    local = artifact.evaluate(
+        [1], limits=ExecutionLimits(max_steps=64), catalog=scoped.catalog
+    )
+    worker = artifact.evaluate(
+        [1],
+        limits=ExecutionLimits(max_steps=64, total_timeout=3),
+        catalog=scoped.catalog,
     )
     assert local == worker
     assert local.answer == "1"

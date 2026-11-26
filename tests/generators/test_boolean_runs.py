@@ -22,7 +22,7 @@ def test_the_template_is_every_programs_length(language: str, table: str) -> Non
     assert all(len(zero) == len(one) for zero, one in template.bindings.setters)
     for row in range(2**n):
         bits = row_bits(row, n)
-        program = esolangs.instantiate(language, template, bits)
+        program = esolangs.Language(language).instantiate(template, bits)
         assert len(program.source) == len(template.source), (
             "fill width",
             language,
@@ -34,7 +34,9 @@ def test_the_template_is_every_programs_length(language: str, table: str) -> Non
 @pytest.mark.parametrize("language", _PARAMETERIZED)
 @pytest.mark.parametrize("table", ["00", "0000"])
 def test_length_check_rejects_unequal_fills(language: str, table: str, monkeypatch):
-    instantiate = esolangs.instantiate
+    from esolangs.operations import instantiation
+
+    instantiate = instantiation.instantiate
     changed = []
 
     def unequal(name, template, bits, **options):
@@ -46,7 +48,7 @@ def test_length_check_rejects_unequal_fills(language: str, table: str, monkeypat
             settings=program.settings,
         )
 
-    monkeypatch.setattr(esolangs, "instantiate", unequal)
+    monkeypatch.setattr(instantiation, "instantiate", unequal)
     with pytest.raises(AssertionError, match="fill width"):
         test_the_template_is_every_programs_length(language, table)
     assert any(changed), "the control never changed a fill's width"
@@ -55,4 +57,6 @@ def test_length_check_rejects_unequal_fills(language: str, table: str, monkeypat
 def test_a_language_that_reads_its_inputs_has_no_runs() -> None:
     """A stdin reader has no input bindings to instantiate."""
     with pytest.raises(TemplateError, match="reads its inputs"):
-        esolangs.instantiate(REFERENCE, esolangs.generate(REFERENCE, "01"), [0])
+        esolangs.Language(REFERENCE).instantiate(
+            esolangs.generate(REFERENCE, "01"), [0]
+        )

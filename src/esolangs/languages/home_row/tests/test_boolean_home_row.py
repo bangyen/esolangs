@@ -27,7 +27,7 @@ def test_constant_setters_leave_scratch_zero(n: int, bit: str) -> None:
             bits = [int(value) for value in f"{row:0{n}b}"]
             io = ScriptedIO("")
             machine = _Machine(
-                esolangs.instantiate("Home Row", program, bits).source, io
+                esolangs.Language("Home Row").instantiate(program, bits).source, io
             )
             for _ in range(1000):
                 if machine.halted:
@@ -58,7 +58,7 @@ class TestParameterizedHomeRow:
             bindings,
             spans=tuple(runs(tpl, bindings.char, bindings.setters)),
         )
-        return esolangs.instantiate("Home Row", template, bits).source
+        return esolangs.Language("Home Row").instantiate(template, bits).source
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
         """The setter is two characters whichever bit it carries."""
@@ -140,7 +140,8 @@ def _check_constants() -> None:
                 for bits in ([0] * n, [1] * n):
                     io = ScriptedIO("7")
                     machine = _Machine(
-                        esolangs.instantiate("Home Row", program, bits).source, io
+                        esolangs.Language("Home Row").instantiate(program, bits).source,
+                        io,
                     )
                     visited = set()
                     steps = 0

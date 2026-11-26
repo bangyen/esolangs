@@ -245,7 +245,7 @@ def _iter_evaluate(
         if declaration.backend is not None and not parameterized
         else None
     )
-    instantiator = esolangs.instantiate
+    instantiator = esolangs.Language(name).instantiate
     if settings is not None:
         instantiator = partial(instantiator, settings=settings)
     prepared: PreparedProgram | None = None
@@ -255,7 +255,7 @@ def _iter_evaluate(
         def prepare_row(bits: list[int] = bits) -> tuple[Program | Artifact, str]:
             if parameterized:
                 assert isinstance(program, TemplateArtifact)
-                return instantiator(name, program, bits), ""
+                return instantiator(program, bits), ""
             # A language with no generator reads no stdin at all.
             return program, (encode(bits) if encode is not None else "")
 

@@ -18,6 +18,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.cli import io as cli_io
 from esolangs.cli import main
 from esolangs.cli.io import (
@@ -507,7 +508,7 @@ class TestReadingTheProgramFileIsBounded:
     def test_an_ordinary_program_still_reads(self, tmp_path: Path) -> None:
         """The guard is worth nothing if it costs the normal path."""
         path = tmp_path / "p.txt"
-        esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
+        serialization.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         result = run_cli("run", REFERENCE, str(path), stdin="10")
         expected = esolangs.run(REFERENCE, path, stdin="10").unwrap().output
         assert (result.returncode, result.stdout, result.stderr) == (0, expected, "")
@@ -1124,7 +1125,7 @@ class TestProgramFilesLoad:
         _emit(source, plain=False, gzip=gzip_output)
         path = tmp_path / "source"
         path.write_bytes(capsysbinary.readouterr().out)
-        assert esolangs.from_file(REFERENCE, path, normalize=True).source == "+.\n"
+        assert serialization.from_file(REFERENCE, path, normalize=True).source == "+.\n"
         if gzip_output:
             assert gzip.decompress(path.read_bytes()) == b"+.\r\r\n"
 

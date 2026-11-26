@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.exceptions import TemplateError
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import assert_proved_resource_cap, probe_table
@@ -32,14 +33,14 @@ def test_width_one_layouts_compute_the_table(language: str, n: int) -> None:
 @pytest.mark.parametrize("layout", [{"width": 1}, {"balance": True}])
 def test_template_layouts_keep_their_bindings(name: str, layout: dict) -> None:
     template = esolangs.generate(name, "0110", **layout)
-    restored = esolangs.from_json(name, esolangs.to_json(name, template))
+    restored = serialization.from_json(name, serialization.to_json(name, template))
     for row in range(4):
         bits = [int(char) for char in format(row, "02b")]
-        code = esolangs.instantiate(name, template, bits, truth_table="0110")
-        loaded = esolangs.instantiate(name, restored, bits, truth_table="0110")
+        code = esolangs.Language(name).instantiate(template, bits, truth_table="0110")
+        loaded = esolangs.Language(name).instantiate(restored, bits, truth_table="0110")
         assert code == loaded
         with pytest.raises(TemplateError, match="template"):
-            esolangs.instantiate(name, restored, bits, truth_table="0001")
+            esolangs.Language(name).instantiate(restored, bits, truth_table="0001")
 
 
 @pytest.mark.parametrize("name", languages(parameterized=True))
@@ -62,7 +63,7 @@ def test_relabeling_slots_preserves_layout_provenance(name: str) -> None:
         assert api.instantiate(restored, bits, truth_table="0110") == template.fill(
             bits
         )
-        assert api.evaluate(restored, bits).answer == answer
+        assert restored.evaluate(bits).answer == answer
     with pytest.raises(TemplateError, match="is not the template"):
         api.instantiate(restored, [0, 1], truth_table="0001")
 
@@ -74,8 +75,8 @@ def test_templates_with_overlong_tokens_validate(
 ) -> None:
     template = esolangs.generate(name, table, width=width)
     bits = [0] * (len(table).bit_length() - 1)
-    assert esolangs.instantiate(
-        name, template, bits, truth_table=table
+    assert esolangs.Language(name).instantiate(
+        template, bits, truth_table=table
     ) == template.fill(bits)
 
 
@@ -94,4 +95,4 @@ def test_template_validation_checks_where_newlines_are_inserted() -> None:
         spans=tuple((start + 1, end + 1) for start, end in template.spans),
     )
     with pytest.raises(TemplateError, match="template"):
-        esolangs.instantiate(name, changed, [0, 1], truth_table="0110")
+        esolangs.Language(name).instantiate(changed, [0, 1], truth_table="0110")

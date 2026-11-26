@@ -6,9 +6,10 @@ from dataclasses import replace
 
 import pytest
 
-from esolangs import Catalog, ExecutionLimits, Language
+from esolangs import ExecutionLimits, Language
 from esolangs.languages.boolfuck.generator import boolfuck
 from esolangs.languages.boolfuck.interpreter import _Machine, run
+from esolangs.registry import Catalog
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.semantic_oracles import STDINS, agrees
 from tests.interpreters.semantic_oracles import boolfuck as oracle
@@ -107,10 +108,14 @@ def _check_exact_cycle_preserves_bit_tape_state() -> None:
     )
     api = Catalog([replace(declaration, contract=contract)]).bind(stock.name)
     source = api.from_source("+;;;;;;;;[]")
-    local = api.evaluate(source, [1], limits=ExecutionLimits(max_steps=20))
+    local = source.evaluate(
+        [1], limits=ExecutionLimits(max_steps=20), catalog=api.catalog
+    )
     with guarded_worker():
-        worker = api.evaluate(
-            source, [1], limits=ExecutionLimits(max_steps=20, total_timeout=3)
+        worker = source.evaluate(
+            [1],
+            limits=ExecutionLimits(max_steps=20, total_timeout=3),
+            catalog=api.catalog,
         )
     assert local == worker
     assert worker.answer == "0"

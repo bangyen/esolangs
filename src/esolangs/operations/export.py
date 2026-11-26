@@ -111,7 +111,7 @@ def to_file(
     An existing file is replaced after encoding and writing succeed.
     ``settings`` can add choices to an artifact's retained settings.
     PNG metadata records the result and any input arity.
-    Use :func:`esolangs.to_json` to retain text artifacts' settings
+    Use :func:`esolangs.serialization.to_json` to retain text artifacts' settings
     and input arity or to preserve templates with their setters.
 
     Raises:

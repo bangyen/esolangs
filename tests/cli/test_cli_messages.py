@@ -14,11 +14,12 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs.cli import main
 from esolangs.cli.help import help_text
 from esolangs.cli.hints import _timeout_text
 from esolangs.cli.io import _StdoutEncodingError, _write_output
-from esolangs.registry import LANGUAGES, _table
+from esolangs.registry import LANGUAGES, Catalog, _table
 from esolangs.runtime.source_hints import error_text
 from tests.support.cli_support import (
     _failure,
@@ -112,7 +113,7 @@ class TestRoundSixQol:
     ) -> None:
         """The pipeline the help now recommends, at an odd arity."""
         path = tmp_path / "tg.txt"
-        esolangs.to_file(stream, esolangs.generate(stream, "10010110"), path)
+        serialization.to_file(stream, esolangs.generate(stream, "10010110"), path)
         got = ""
         for row in range(8):
             stdin = call_main(["encode-inputs", stream, f"{row:03b}"], capsys)
@@ -149,7 +150,7 @@ class TestRoundSixQol:
 
         alias = "clear\x1b[2J\nlabel"
         declaration = replace(LANGUAGES[REFERENCE], aliases=(alias,))
-        scope = esolangs.Catalog([declaration])
+        scope = Catalog([declaration])
         silent = tmp_path / "silent.txt"
         silent.write_text("+")
         with (
@@ -168,7 +169,7 @@ class TestRoundSixQol:
         renamed = replace(declaration, name=alias, aliases=())
         random = next(lang for lang in LANGUAGES.values() if lang.runtime.random)
         random_name = "draw\x1b[2J\nrandom"
-        scope = esolangs.Catalog([renamed, replace(random, name=random_name)])
+        scope = Catalog([renamed, replace(random, name=random_name)])
         with patch.object(_table, "CATALOG", scope):
             output, diagnostic = _failure(
                 ["run", "--seed", "1", REFERENCE, str(silent)], capsys
@@ -393,7 +394,7 @@ def test_read_answer_checks_the_catalog_before_stdin(
     original = LANGUAGES[REFERENCE]
     contract = replace(original.contract, **changes)
     name = "-Scoped answer"
-    scope = esolangs.Catalog(
+    scope = Catalog(
         [replace(original, name=name, id="scoped_answer", contract=contract)]
     )
     monkeypatch.setattr(_table, "CATALOG", scope)
@@ -419,7 +420,7 @@ def test_read_answer_checks_the_catalog_before_stdin(
 
         unsafe = "clear\x1b[2J\nlabel"
         renamed = replace(scope.languages[name], name=unsafe)
-        renamed_scope = esolangs.Catalog([renamed])
+        renamed_scope = Catalog([renamed])
         monkeypatch.setattr(_table, "CATALOG", renamed_scope)
         help_page = help_text("read-answer", catalog=renamed_scope)
         assert r"The languages that answer by terminating are clear\x1b[2J\nlabel." in (
@@ -452,7 +453,7 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
     contract = replace(
         original.contract, answer_pattern="^$", answer_values=AnswerValues(("", "1"))
     )
-    scope = esolangs.Catalog([replace(original, contract=contract)])
+    scope = Catalog([replace(original, contract=contract)])
     monkeypatch.setattr(_table, "CATALOG", scope)
     output = scope.bind(REFERENCE).run("").unwrap().output
     assert output == ""
@@ -466,7 +467,7 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
     label = r"clear\x1b[2J\nreader"
     contract = replace(original.contract, note="first line\nsecond line")
     declaration = replace(original, name=name, contract=contract)
-    scope = esolangs.Catalog([declaration])
+    scope = Catalog([declaration])
     monkeypatch.setattr(_table, "CATALOG", scope)
     api = scope.bind(REFERENCE)
     output = api.run("+.").unwrap().output
@@ -488,13 +489,13 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
     assert diagnostic.startswith(f"{label} reads its inputs")
 
     invalid = replace(declaration, contract=replace(contract, answer_pattern="("))
-    monkeypatch.setattr(_table, "CATALOG", esolangs.Catalog([invalid]))
+    monkeypatch.setattr(_table, "CATALOG", Catalog([invalid]))
     for command in ("describe", "read-answer"):
         _, diagnostic = _failure([command, REFERENCE], capsys)
         assert diagnostic.startswith(f"{label} has an invalid answer pattern")
 
     invalid = replace(declaration, contract=replace(contract, alphabet=("0", "0")))
-    monkeypatch.setattr(_table, "CATALOG", esolangs.Catalog([invalid]))
+    monkeypatch.setattr(_table, "CATALOG", Catalog([invalid]))
     for arguments in (["encode-inputs", REFERENCE, "1"], ["describe", REFERENCE]):
         _, diagnostic = _failure(arguments, capsys)
         assert diagnostic.startswith(f"{label} has an invalid input encoding")
@@ -510,7 +511,7 @@ def test_run_checks_saved_metadata_before_stdin(
         original.runtime, dialect=lambda mode=1: mode, dialect_schema=schema
     )
     declaration = replace(original, runtime=runtime)
-    scope = esolangs.Catalog([declaration])
+    scope = Catalog([declaration])
     bound = scope.bind(language)
     source = esolangs.ProgramArtifact(
         esolangs.Raster((((0, 0, 0),),)),
@@ -534,7 +535,7 @@ def test_run_checks_saved_metadata_before_stdin(
 
     capabilities = replace(runtime.capabilities, supports_scale=False)
     no_scale = replace(declaration, runtime=replace(runtime, capabilities=capabilities))
-    monkeypatch.setattr(_table, "CATALOG", esolangs.Catalog([no_scale]))
+    monkeypatch.setattr(_table, "CATALOG", Catalog([no_scale]))
     out, error = _failure(["run", language, str(path)], capsys)
     assert not out
     assert "scale is only supported" in error
@@ -558,7 +559,7 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     schema = esolangs.DialectSchema(name, {"mode": (1,)}, {"mode": 1})
     runtime = replace(original.runtime, dialect=validate, dialect_schema=schema)
     declaration = replace(original, name=name, id="scoped_runtime", runtime=runtime)
-    scope = esolangs.Catalog([original, declaration])
+    scope = Catalog([original, declaration])
     monkeypatch.setattr(_table, "CATALOG", scope)
     path = tmp_path / "source"
     path.write_text(",.")
@@ -692,7 +693,7 @@ def _check_run_validates_runtime_before_reading(path, capsys) -> None:
             "not_an_installed_runtime",
         ),
     ):
-        catalog = esolangs.Catalog([replace(original, runtime=runtime)])
+        catalog = Catalog([replace(original, runtime=runtime)])
         api = catalog.bind(original.name)
         expected = api.run(path, stdin=BrokenInput("Q"), limits=budget)
         assert isinstance(expected.error, esolangs.ProgramError)
@@ -708,7 +709,7 @@ def _check_run_validates_runtime_before_reading(path, capsys) -> None:
         assert capsys.readouterr() == ("", error_text(expected.error) + "\n")
 
     runtime = replace(original.runtime, completion_entrypoint="absent_completion")
-    catalog = esolangs.Catalog([replace(original, runtime=runtime)])
+    catalog = Catalog([replace(original, runtime=runtime)])
     with (
         patch.object(_table, "CATALOG", catalog),
         patch(
@@ -727,7 +728,7 @@ def _check_described_input_samples(monkeypatch, capsys, tmp_path) -> None:
         ("row_index", (), ",.", "2"),
     ):
         contract = replace(declaration.contract, input_shape=shape, alphabet=alphabet)
-        catalog = esolangs.Catalog([replace(declaration, contract=contract)])
+        catalog = Catalog([replace(declaration, contract=contract)])
         bound = catalog.bind(name)
         monkeypatch.setattr(_table, "CATALOG", catalog)
         description, notices = call_both(["describe", name], capsys)
@@ -861,7 +862,7 @@ def test_generate_swap_suggestion_quotes_metacharacters(
     name: str, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     declaration = replace(LANGUAGES[REFERENCE], name=name, id="scoped_source")
-    scope = esolangs.Catalog([declaration])
+    scope = Catalog([declaration])
     monkeypatch.setattr(_table, "CATALOG", scope)
     _, error = _failure(["generate", "--", "01", name], capsys)
     command = error.split("first: ", 1)[1]

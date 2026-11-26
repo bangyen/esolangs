@@ -435,14 +435,8 @@ def _execute(
     if facts is None:
         facts = esolangs.describe(language)
     bits = _bits(row, len(table).bit_length() - 1)
-    source: esolangs.ProgramArtifact[esolangs.Program]
-    if isinstance(program, esolangs.TemplateArtifact):
-        source, stdin = esolangs.instantiate(language, program, bits), ""
-    else:
-        source, stdin = (
-            program,
-            esolangs.encode_inputs(language, bits, truth_table=table),
-        )
+    invocation = program.bind(bits)
+    source, stdin = invocation.program, invocation.stdin
     supported = facts.steppable_to_answer
     if track_store and facts.answer_mode == "termination":
         raise ValueError("store tracking requires a halting-answer language")

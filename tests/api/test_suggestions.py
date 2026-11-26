@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs.cli.hints import _did_you_mean
-from esolangs.registry import CATALOG, SUGGESTION_CUTOFF, canonical_id
+from esolangs.registry import CATALOG, SUGGESTION_CUTOFF, Catalog, canonical_id
 from tests.support.reference import REFERENCE
 
 _BY_ID = CATALOG._by_id
@@ -66,7 +66,7 @@ class TestASuggestionIsWorthLessThanSilence:
     def test_a_name_head_is_suggested_never_resolved(self) -> None:
         """A distinctive prefix is suggested without becoming an alias."""
         longest = max(esolangs.list_languages(), key=len)
-        catalog = esolangs.Catalog([CATALOG.languages[longest]])
+        catalog = Catalog([CATALOG.languages[longest]])
         key = canonical_id(longest).replace("_", "")
         for head in (key[:3], key[: len(key) // 3]):
             with pytest.raises(esolangs.UnknownLanguageError) as caught:

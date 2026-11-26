@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
+from esolangs import serialization
 from esolangs._cycles import _FramedMachine
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
@@ -95,7 +96,7 @@ def test_regeneration_yields_public_balanced_programs() -> None:
     import esolangs
     from scripts.docs.examples import boolean_programs
 
-    generate, instantiate = esolangs.generate, esolangs.instantiate
+    generate = esolangs.generate
 
     programs = dict(boolean_programs())
     assert all(
@@ -106,8 +107,8 @@ def test_regeneration_yields_public_balanced_programs() -> None:
         language = canonical_id(stem.replace("-", " "))
         expected = generate(language, example.table, balance=True, scale=example.scale)
         if example.fill is not None:
-            expected = instantiate(language, expected, example.bits)
-        assert esolangs.to_json(language, programs[stem]) == esolangs.to_json(
+            expected = esolangs.Language(language).instantiate(expected, example.bits)
+        assert serialization.to_json(language, programs[stem]) == serialization.to_json(
             language, expected
         ), stem
         assert getattr(programs[stem], "language", None) == getattr(
