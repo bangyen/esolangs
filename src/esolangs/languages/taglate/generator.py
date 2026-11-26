@@ -185,7 +185,7 @@ def taglate(truth_table: str, width: int | None = None) -> str:
     return wrap_program(program, "taglate", width)
 
 
-def balance_taglate(_table: str, default: str) -> str:
+def balance_taglate(default: str) -> str:
     """Compare literal and bootstrapped folds of one queue construction."""
     seed, _, commands = default.partition("\n")
     candidates = [default]
@@ -213,4 +213,4 @@ def taglate_request(request: GenerationRequest) -> Program:
 
 def taglate_balance_request(request: BalanceRequest) -> Program:
     """Lay out source through the declared balance request interface."""
-    return balance_taglate(request.table, request.text_source())
+    return balance_taglate(request.text_source())

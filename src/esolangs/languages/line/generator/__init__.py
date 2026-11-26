@@ -22,7 +22,7 @@ Size:
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import lru_cache, partial
 from typing import NamedTuple, cast
 
@@ -124,17 +124,28 @@ def _inline_boolean(truth_table: str) -> Node:
 
 def projected_boolean(truth_table: str, *, reverse: bool = False) -> Node | None:
     """Store only essential inputs, overwriting the next kept slot for ignores."""
+    return next(_projected_booleans(truth_table, (reverse,)), None)
+
+
+def _projected_booleans(
+    truth_table: str, orientations: tuple[bool, ...]
+) -> Iterator[Node]:
+    """Project the table once before constructing the requested orientations."""
     n = _validate_truth_table(truth_table)
     kept = essential_inputs(truth_table, n)
     if len(kept) == n:
-        return None
+        return
     if not kept:
-        return chain(*("i" * n + ">" + "+" * int(truth_table[0]) + "o"))
+        commands = "i" * n + ">" + "+" * int(truth_table[0]) + "o"
+        for _ in orientations:
+            yield chain(*commands)
+        return
     reduced = read_at(truth_table, kept, n)
     # The skip scope keys on the original table's arity, not the reduced one.
-    return _project_loader(
-        n, kept, line_boolean(reduced, reverse=reverse, skip=n <= _SMALL_MAX)
-    )
+    for reverse in orientations:
+        yield _project_loader(
+            n, kept, line_boolean(reduced, reverse=reverse, skip=n <= _SMALL_MAX)
+        )
 
 
 def _project_loader(n: int, kept: list[int], node: Node) -> Node:
@@ -293,11 +304,7 @@ def _best_choice(
 def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
     """Most balanced compact tree over the previous and projected trees."""
     previous = [line_boolean(truth_table, reverse=reverse) for reverse in (False, True)]
-    nodes = previous + [
-        projected
-        for reverse in (False, True)
-        if (projected := projected_boolean(truth_table, reverse=reverse)) is not None
-    ]
+    nodes = [*previous, *_projected_booleans(truth_table, (False, True))]
     preceding = _best_choice(nodes, tight=False, small=small, unit=unit)
     tight = _best_choice(nodes, small=small, unit=unit)
     chosen = _ceilinged_choice(preceding, tight)

@@ -60,7 +60,11 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RandomRuntimePlan, RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    pending_output_cursor,
+)
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 from esolangs.runtime.randomness import Randomness, draw
@@ -257,11 +261,7 @@ class _Machine:
             instruction=self.ind,
             stack=self.stk,
             variables=frozenset(self.var.items()),
-            input_cursor=(
-                cursor
-                if accepted is None
-                else WorkspaceVariant("pending_output", (cursor, accepted))
-            ),
+            input_cursor=pending_output_cursor(cursor, accepted),
             stopped=self._halted,
             input_reads=self._input_reads,
             draws=self._draws,

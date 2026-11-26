@@ -29,7 +29,11 @@ from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._source import native_text_source
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    pending_output_cursor,
+)
 from esolangs.runtime._validate import require_split_source
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput, _input_exhausted
 from esolangs.runtime.source_hints import syntax_error
@@ -224,11 +228,7 @@ class _Machine:
             accumulator=self.state[3],
             output_bits=self.state[4],
             input_bits=self.state[5],
-            input_cursor=(
-                cursor
-                if accepted is None
-                else WorkspaceVariant("pending_output", (cursor, accepted))
-            ),
+            input_cursor=pending_output_cursor(cursor, accepted),
         )
 
     def snapshot(self) -> tuple[object, ...]:

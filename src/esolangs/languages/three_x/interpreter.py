@@ -38,7 +38,11 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    pending_output_cursor,
+)
 from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
@@ -210,11 +214,7 @@ class _Machine:
             operands=self.state[1],
             loop_returns=self.state[2],
             variables=frozenset(self.state[3]),
-            input_cursor=(
-                cursor
-                if accepted is None
-                else WorkspaceVariant("pending_output", (cursor, accepted))
-            ),
+            input_cursor=pending_output_cursor(cursor, accepted),
         )
 
     def snapshot(self) -> tuple[object, ...]:

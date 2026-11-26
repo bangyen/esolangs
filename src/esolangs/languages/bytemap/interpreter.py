@@ -64,7 +64,12 @@ from esolangs.runtime._input_retry import RejectedInput
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
-from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._state import (
+    WorkspaceModel,
+    WorkspaceSnapshot,
+    WorkspaceVariant,
+    pending_output_cursor,
+)
 from esolangs.runtime._validate import require_text_source
 from esolangs.runtime.io import IO, _BufferedOutput
 from esolangs.runtime.memory import trunc_div, trunc_mod
@@ -293,11 +298,7 @@ class _Machine:
             stopped=self.state[2],
             writes=tuple(sorted(self.writes.items())),
             pending=self._pending_input(),
-            input_cursor=(
-                cursor
-                if accepted is None
-                else WorkspaceVariant("pending_output", (cursor, accepted))
-            ),
+            input_cursor=pending_output_cursor(cursor, accepted),
         )
 
     def _pending_input(self) -> tuple[int, ...] | WorkspaceVariant:

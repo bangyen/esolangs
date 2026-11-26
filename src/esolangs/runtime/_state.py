@@ -167,3 +167,14 @@ def pending_input_cursor(
         if pending is None
         else WorkspaceVariant("pending_input", (progress, pending))
     )
+
+
+def pending_output_cursor[T: Hashable](
+    cursor: T, accepted: int | None
+) -> T | WorkspaceVariant:
+    """Include a failed write's accepted prefix, even when it is empty."""
+    return (
+        cursor
+        if accepted is None
+        else WorkspaceVariant("pending_output", (cursor, accepted))
+    )
