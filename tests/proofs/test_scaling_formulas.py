@@ -13,7 +13,7 @@ bounds were false while nothing measured them: one 14T where parity reaches
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import grid_area
+from esolangs.generation.grid import grid_area
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from tests.proofs._formula import exact_at, ledger_formulas

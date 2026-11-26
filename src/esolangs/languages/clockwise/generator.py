@@ -26,13 +26,8 @@ from functools import cached_property
 from math import ceil
 from typing import NamedTuple
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    essential_inputs,
-    grid_area,
-    grid_width,
-    read_at,
-)
+from esolangs.generation.grid import grid_area, grid_width
+from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT

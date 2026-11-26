@@ -10,7 +10,7 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
-from esolangs.operations.source import _check_program
+from esolangs.runtime._artifact_source import check_program
 from tests.support.execution import run_guard as _run
 from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated, verify_generated
@@ -156,7 +156,7 @@ class TestABadStdinIsAnArgumentFault:
         "call",
         [
             lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]).output,
-            lambda: _check_program(REFERENCE, ",.", ["0"]),
+            lambda: check_program(REFERENCE, ",.", ["0"]),
             lambda: debugger_api.make_vm(REFERENCE, ",.", stdin=["0"]),
             lambda: debugger_api.make_debugger(REFERENCE, ",.", stdin=["0"]),
         ],

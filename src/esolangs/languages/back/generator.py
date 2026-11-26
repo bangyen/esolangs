@@ -42,10 +42,9 @@ from itertools import pairwise
 
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.algebraic import parity_bias
+from esolangs.generation.grid import grid_rank, grid_width
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    grid_rank,
-    grid_width,
     input_weights,
     move_text,
     subtree_ids,

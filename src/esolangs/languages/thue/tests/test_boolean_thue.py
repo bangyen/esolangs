@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import grid_width
+from esolangs.generation.grid import grid_width
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.thue import generator as boolean

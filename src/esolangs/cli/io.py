@@ -47,8 +47,8 @@ from esolangs.exceptions import (
     ExecutionBudgetError,
     ProgramError,
 )
-from esolangs.operations.source import _check_program
 from esolangs.registry import Catalog, get_catalog
+from esolangs.runtime._artifact_source import check_program as _check_program
 from esolangs.runtime._files import (
     _BLOCK,
     StreamReadTimeoutError,

@@ -26,11 +26,11 @@ from functools import cached_property
 from string import ascii_uppercase
 
 from esolangs.generation import decision
+from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
-    grid_width,
     in_input_order,
     read_at,
     short_name,

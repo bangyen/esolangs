@@ -14,7 +14,7 @@ from time import monotonic
 from typing import Protocol, cast
 
 import esolangs
-import esolangs.operations.source as _source_operations
+import esolangs.runtime._artifact_source as _artifact_source
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
     ArgumentError,
@@ -27,11 +27,12 @@ from esolangs.operations.boolean_io import (
     encode_inputs,
     read_answer,
 )
+from esolangs.operations.prepared import PreparedProgram
 from esolangs.registry import LANGUAGES, resolve
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._isolated import check_limits
-from esolangs.runtime._prepared import PreparedProgram, prepare_program
+from esolangs.runtime._prepared import prepare_program
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource, check_scale_for
 from esolangs.runtime._validate import (
@@ -211,7 +212,7 @@ def _iter_evaluate(
     )
     deadline = None if total_timeout is None else started + total_timeout
     program = _prepare(
-        lambda: _source_operations.read_artifact(name, program),
+        lambda: _artifact_source.read_artifact(name, program),
         deadline,
         isolated=isolated,
     )
@@ -260,6 +261,7 @@ def _iter_evaluate(
                 prepared = _prepare(
                     partial(
                         prepare_program,
+                        PreparedProgram,
                         name,
                         source,
                         settings=settings,
@@ -413,7 +415,7 @@ def _row_answerer(
 
             proof = termination_result_isolated(
                 name,
-                _source_operations._check_program(name, source, stdin).source,
+                _artifact_source.check_program(name, source, stdin).source,
                 stdin,
                 cast("float", bound),
                 settings=settings,

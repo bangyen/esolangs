@@ -10,12 +10,12 @@ from esolangs._dialect import Scalar
 from esolangs.artifacts import Artifact, BooleanEvaluation, ProgramArtifact
 from esolangs.debugger import Debugger, make_debugger, make_vm
 from esolangs.limits import ExecutionLimits
+from esolangs.operations.prepared import PreparedProgram
 from esolangs.outcomes import ExecutionOutcome
 from esolangs.registry import Catalog, get_catalog
 from esolangs.registry._info import LanguageInfo
 from esolangs.results import ExecutionResult
 from esolangs.runtime._input import InputSource
-from esolangs.runtime._prepared import PreparedProgram
 from esolangs.runtime._program import Program
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._vm_protocol import VM

@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import grid_area
+from esolangs.generation.grid import grid_area
 from esolangs.registry import LANGUAGES
 from scripts.docs import ablation_replay, ablations
 from tests.support.reference import REFERENCE

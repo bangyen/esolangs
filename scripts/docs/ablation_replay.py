@@ -18,7 +18,7 @@ from typing import Any
 
 import esolangs
 from esolangs.artifacts import Artifact
-from esolangs.generation.helpers import grid_area
+from esolangs.generation.grid import grid_area
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult

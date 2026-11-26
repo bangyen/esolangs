@@ -33,11 +33,11 @@ from collections import Counter
 from math import isqrt
 from string import ascii_letters
 
+from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _residual_ids,
     _validate_truth_table,
     essential_inputs,
-    grid_width,
     read_at,
     subtree_ids,
 )

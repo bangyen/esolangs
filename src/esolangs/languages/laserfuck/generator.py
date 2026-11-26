@@ -30,13 +30,11 @@ from functools import cache, cached_property
 from itertools import zip_longest
 from typing import NamedTuple
 
+from esolangs.generation.grid import grid_area, grid_width, narrowest_grid
 from esolangs.generation.helpers import (
     _validate_truth_table,
-    grid_area,
-    grid_width,
     input_weights,
     move_text,
-    narrowest_grid,
     subtree_ids,
 )
 from esolangs.generation.lookup import constant_output

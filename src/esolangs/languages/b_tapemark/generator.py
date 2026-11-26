@@ -29,11 +29,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from math import isqrt
 
+from esolangs.generation.grid import grid_rank, grid_width
 from esolangs.generation.helpers import (
     WeightedLookup,
     _validate_truth_table,
-    grid_rank,
-    grid_width,
     input_weights,
 )
 from esolangs.generation.lookup import constant_output

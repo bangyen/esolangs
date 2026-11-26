@@ -6,18 +6,16 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import cache, partial
 from types import FunctionType, ModuleType
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from esolangs._dialect import Scalar
-from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
+from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
-from esolangs.debugger import Debugger
-from esolangs.exceptions import InterpreterLimitError, ProgramError
-from esolangs.limits import ExecutionLimits
+from esolangs.exceptions import InterpreterLimitError
 from esolangs.outcomes import ExecutionOutcome
-from esolangs.registry._catalog import Catalog, get_catalog, resolve_origin
-from esolangs.results import ExecutionResult
+from esolangs.registry._catalog import Catalog, get_catalog
 from esolangs.runtime._acquire import PendingInput
+from esolangs.runtime._artifact_source import check_program
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._execution import (
     execute_prepared,
@@ -44,7 +42,6 @@ from esolangs.runtime._source import (
     source_for,
 )
 from esolangs.runtime._validate import _has_backing_type
-from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO, _scripted_io
 from esolangs.settings import DialectSettings, effective_settings
 
@@ -120,15 +117,8 @@ def _artifact_input_frame(
 
 
 @dataclass(frozen=True, slots=True)
-class PreparedProgram:
-    """Loaded source and bound runtime; every invocation owns its IO and RNG.
-
-    Source decoding and language resolution happen once. Runtime plans retain
-    language-owned parsed data and bind fresh randomness for each invocation;
-    other hooks may defer parsing.
-    Native runners retain their own compiled representations and caches.
-    The public artifact retains compressed source and its export limits.
-    """
+class _PreparedRuntime:
+    """Bind checked source to its native runner and step machine."""
 
     artifact: ProgramArtifact[Program]
     catalog: Catalog = field(repr=False)
@@ -147,29 +137,10 @@ class PreparedProgram:
         default=None, init=False, repr=False, compare=False
     )
 
-    def __post_init__(self) -> None:
-        """Validate source and retain its machine preparation."""
-        from esolangs.operations.source import _check_program
-
-        if not _has_backing_type(self.artifact, ProgramArtifact):
-            raise ProgramError("a prepared program requires a program artifact")
-        catalog = get_catalog(self.catalog)
-        origin = self.artifact.language
-        name = resolve_origin(origin, catalog=catalog)
-        artifact = _check_program(
-            name or origin,
-            self.artifact,
-            catalog=catalog,
-            preserve_compression=True,
-        )
-        check_scale_for(artifact.language, artifact.scale, catalog=catalog)
-        self._bind_artifact(artifact, catalog)
-        self._bind_machine()
-
     @classmethod
     def _from_checked(
         cls, artifact: ProgramArtifact[Program], catalog: Catalog
-    ) -> PreparedProgram:
+    ) -> Self:
         """Bind a source whose runtime options were checked before acquisition."""
         prepared = object.__new__(cls)
         object.__setattr__(prepared, "_plan", None)
@@ -317,77 +288,6 @@ class PreparedProgram:
             catalog=self.catalog,
         )
 
-    def execute(
-        self,
-        *,
-        stdin: InputSource = "",
-        limits: ExecutionLimits | None = None,
-        seed: int | None = None,
-        isolated: bool = False,
-    ) -> ExecutionOutcome:
-        """Return a fresh invocation's outcome; preparation already happened."""
-        from esolangs.operations.execution import _execute_outcome
-
-        return _execute_outcome(
-            self.language,
-            self._runnable_artifact,
-            stdin=stdin,
-            limits=limits,
-            seed=seed,
-            isolated=isolated,
-            catalog=self.catalog,
-            prepared=self,
-        )
-
-    def evaluate(
-        self,
-        bits: list[int] | tuple[int, ...],
-        *,
-        limits: ExecutionLimits | None = None,
-    ) -> BooleanEvaluation:
-        """Evaluate a generated stdin row against the retained preparation."""
-        from esolangs.operations.evaluation import evaluate_artifact
-
-        return evaluate_artifact(
-            self._runnable_artifact,
-            bits,
-            limits=limits,
-            catalog=self.catalog,
-            prepared=self,
-        )
-
-    def run(
-        self,
-        *,
-        stdin: InputSource = "",
-        limits: ExecutionLimits | None = None,
-        seed: int | None = None,
-        isolated: bool = False,
-    ) -> ExecutionResult:
-        """Run fresh state; arguments and errors follow :func:`esolangs.run`."""
-        return self.execute(
-            stdin=stdin, limits=limits, seed=seed, isolated=isolated
-        ).unwrap()
-
-    def make_debugger(
-        self, *, stdin: InputSource = "", seed: int | None = None
-    ) -> Debugger:
-        """Wrap a fresh step machine in a debugger; errors follow make_vm."""
-        return Debugger(self.make_vm(stdin=stdin, seed=seed))
-
-    def make_vm(self, *, stdin: InputSource = "", seed: int | None = None) -> VM:
-        """Create an independent step machine; errors follow debugger.make_vm."""
-        from esolangs.vm import _make_vm
-
-        return _make_vm(
-            self.language,
-            self._runnable_artifact,
-            stdin=stdin,
-            seed=seed,
-            catalog=self.catalog,
-            prepared=self,
-        )
-
 
 def _check_source_options(
     name: str,
@@ -409,7 +309,8 @@ def _check_source_options(
     return settings, scale
 
 
-def prepare_program(
+def prepare_program[T: _PreparedRuntime](
+    prepared_type: type[T],
     language: str,
     program: ProgramSource,
     *,
@@ -418,7 +319,7 @@ def prepare_program(
     catalog: Catalog | None = None,
     module_loader: Callable[..., ModuleType] = interpreter_module,
     bind_machine: bool = False,
-) -> PreparedProgram:
+) -> T:
     """Load source once, resolving provenance and explicit execution choices."""
     program = anchor_program_source(program)
     catalog = get_catalog(catalog)
@@ -427,6 +328,7 @@ def prepare_program(
         name, program, settings, scale, catalog=catalog
     )
     return _prepare_checked_program(
+        prepared_type,
         name,
         program,
         settings=settings,
@@ -437,7 +339,8 @@ def prepare_program(
     )
 
 
-def _prepare_checked_program(
+def _prepare_checked_program[T: _PreparedRuntime](
+    prepared_type: type[T],
     name: str,
     program: ProgramSource,
     *,
@@ -447,13 +350,11 @@ def _prepare_checked_program(
     module_loader: Callable[..., ModuleType] = interpreter_module,
     bind_machine: bool = False,
     _loaded: ProgramArtifact[Program] | None = None,
-) -> PreparedProgram:
+) -> T:
     """Load source after preflight, applying any further file metadata."""
-    from esolangs.operations.source import _check_program
-
     artifact = _loaded
     if artifact is None:
-        artifact = _check_program(
+        artifact = check_program(
             name,
             program,
             settings=settings,
@@ -464,7 +365,7 @@ def _prepare_checked_program(
     settings = artifact.settings
     scale = effective_scale(name, artifact, scale, catalog=catalog)
     check_scale_for(name, scale, catalog=catalog)
-    prepared = PreparedProgram._from_checked(  # noqa: SLF001
+    prepared = prepared_type._from_checked(  # noqa: SLF001
         ProgramArtifact(
             artifact.source,
             name,

@@ -21,8 +21,8 @@ from esolangs.exceptions import (
     TruthTableError,
     UnknownLanguageError,
 )
-from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._artifact_source import check_program
 from tests.support.execution import run_observed
 from tests.support.generator_support import CHECK, evaluate_generated
 from tests.support.pick import first, languages
@@ -352,7 +352,7 @@ class TestSourceAndPathsAreExplicit:
     def test_every_entry_point_agrees(self) -> None:
         source = "nope.txt"
         assert esolangs.run(REFERENCE, source).output == "\x00"
-        assert _check_program(REFERENCE, source).source == source
+        assert check_program(REFERENCE, source).source == source
         from esolangs.vm import complete_vm
 
         assert complete_vm(debugger_api.make_vm(REFERENCE, source)) == "\x00"
@@ -375,7 +375,7 @@ class TestSourceAndPathsAreExplicit:
     def test_file_bytes_are_source_without_spelling_rules(self, tmp_path) -> None:
         path = tmp_path / "source.txt"
         path.write_bytes(b"nope.txt\r\n")
-        assert _check_program(REFERENCE, path).source == "nope.txt\r\n"
+        assert check_program(REFERENCE, path).source == "nope.txt\r\n"
 
     def test_a_pathlib_path_is_read_in_both_directions(
         self, tmp_path: pathlib.Path
@@ -519,7 +519,7 @@ class TestSourceSpellingDoesNotSelectAContainer:
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
         """Adjacent commands ``~~`` were refused, and Befunge's ``/``."""
-        assert _check_program(REFERENCE, program).source == program
+        assert check_program(REFERENCE, program).source == program
 
 
 class TestTheArgumentBoundaryRefusesCleanly:
@@ -555,8 +555,8 @@ class TestTheArgumentBoundaryRefusesCleanly:
 
     def test_png_settings_are_validated_as_a_document_is(self, monkeypatch) -> None:
         """``{"integer": 5}`` said "int() can't convert non-string"."""
-        from esolangs.operations.source import read_png_artifact
         from esolangs.raster import png
+        from esolangs.runtime._artifact_source import read_png_artifact
 
         language = first(source_kind="raster")
         bad = {

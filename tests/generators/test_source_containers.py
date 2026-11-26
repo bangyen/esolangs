@@ -15,8 +15,8 @@ import pytest
 
 import esolangs
 from esolangs.debugger import make_debugger
-from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._artifact_source import check_program
 from tests.support.cli_support import _failure
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one_where
@@ -111,7 +111,7 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
             return self.value
 
     program, stdin = Stream(b",.,."), Stream("\n\x00")
-    assert _check_program(REFERENCE, program, stdin).source == ",.,."
+    assert check_program(REFERENCE, program, stdin).source == ",.,."
     assert stdin.reads == 0
     assert esolangs.run(REFERENCE, ",.,.", stdin=stdin).output == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
@@ -358,7 +358,7 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     assert api.from_file(path, normalize=True).source == "+,\n."
     api.to_file(api.from_file(path), path)
     assert path.read_bytes() == b"+,\r\n.\r\n"
-    assert _check_program(REFERENCE, path).source == "+,\r\n.\r\n"
+    assert check_program(REFERENCE, path).source == "+,\r\n.\r\n"
     assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
 
     for raw, changes in ((b"+,\n.", False), (path.read_bytes(), True)):

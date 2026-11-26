@@ -61,7 +61,7 @@ from esolangs.runtime._source import ProgramSource
 
 _LAZY = {
     "Catalog": "esolangs.registry._catalog",
-    "PreparedProgram": "esolangs.runtime._prepared",
+    "PreparedProgram": "esolangs.operations.prepared",
     "Language": "esolangs._language",
     "run": "esolangs.operations.execution",
     "execute": "esolangs.operations.execution",
@@ -93,6 +93,7 @@ if TYPE_CHECKING:
     from esolangs.operations.execution import run as run
     from esolangs.operations.generation import generate as generate
     from esolangs.operations.generation import instantiate as instantiate
+    from esolangs.operations.prepared import PreparedProgram as PreparedProgram
     from esolangs.operations.source import from_file as from_file
     from esolangs.operations.source import from_source as from_source
     from esolangs.portable import from_json as from_json
@@ -105,7 +106,6 @@ if TYPE_CHECKING:
     from esolangs.registry._language import (
         LanguageDeclaration as LanguageDeclaration,
     )
-    from esolangs.runtime._prepared import PreparedProgram as PreparedProgram
 else:
 
     def __getattr__(name: str) -> object:

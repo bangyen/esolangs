@@ -304,7 +304,11 @@ def _check_preparation_resets_seeded_randomness_for_each_invocation():
 
     setattr(module, declaration.runtime.completion_entrypoint, execute)
     prepared = prepare_program(
-        REFERENCE, "", catalog=catalog, module_loader=lambda *_a, **_k: module
+        esolangs.PreparedProgram,
+        REFERENCE,
+        "",
+        catalog=catalog,
+        module_loader=lambda *_a, **_k: module,
     )
     assert prepared.run(seed=7) == prepared.run(seed=7)
     prepared.run(seed=8)
@@ -372,6 +376,7 @@ def _check_prepared_source_options_and_lines_are_reused():
     settings = api.settings(increment=2)
     validated.clear()
     prepared = prepare_program(
+        esolangs.PreparedProgram,
         REFERENCE,
         "first\r\nlast\r\n",
         settings=settings,

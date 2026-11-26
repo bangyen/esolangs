@@ -28,13 +28,11 @@ from dataclasses import dataclass
 from enum import Enum
 from itertools import chain, pairwise
 
+from esolangs.generation.grid import grid_area, grid_width, narrowest_grid
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     essential_inputs,
-    grid_area,
-    grid_width,
-    narrowest_grid,
     read_at,
     subtree_ids,
 )

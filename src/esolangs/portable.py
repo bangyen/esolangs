@@ -169,7 +169,7 @@ def to_file(
         raise
     except OSError as error:
         raise ProgramError(f"cannot save program: {error}") from error
-    from esolangs.operations.source import read_artifact
+    from esolangs.runtime._artifact_source import read_artifact
 
     # The language decides the file terminator and PNG metadata; without it,
     # normalize appended "\n" even where a trailing newline is code.
@@ -246,7 +246,7 @@ def to_json(
 
     program = anchor_program_source(program)
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import read_artifact
+    from esolangs.runtime._artifact_source import read_artifact
 
     name = catalog.resolve(language)
     artifact = read_artifact(
@@ -364,7 +364,10 @@ def _load_png(
     catalog: Catalog,
 ) -> ProgramArtifact[Raster]:
     """Restore a ``png`` document's raster."""
-    from esolangs.operations.source import positive_metadata_field, read_png_metadata
+    from esolangs.runtime._artifact_source import (
+        positive_metadata_field,
+        read_png_metadata,
+    )
 
     arity = positive_metadata_field(value, "input_arity")
     scale = positive_metadata_field(value, "scale")
@@ -445,8 +448,8 @@ def _load_template(
     catalog: Catalog | None = None,
 ) -> TemplateArtifact:
     """Restore a ``template`` document's template and setters."""
-    from esolangs.operations.source import positive_metadata_field
     from esolangs.registry._catalog import get_catalog
+    from esolangs.runtime._artifact_source import positive_metadata_field
 
     catalog = get_catalog(catalog)
     if not isinstance(value["char"], str) or len(value["char"]) != 1:
@@ -515,7 +518,7 @@ def from_json(
     from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(catalog)
-    from esolangs.operations.source import positive_metadata_field
+    from esolangs.runtime._artifact_source import positive_metadata_field
 
     name = catalog.resolve(language)
     if not _has_backing_type(document, str):

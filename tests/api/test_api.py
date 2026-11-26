@@ -9,8 +9,8 @@ import esolangs.operations.execution as _execution_operations
 import esolangs.runtime._execution as _execution_runtime
 from esolangs import debugger
 from esolangs.exceptions import EsolangError, UnknownLanguageError
-from esolangs.operations.source import _check_program
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._artifact_source import check_program
 from esolangs.runtime._capabilities import MachineCapabilities
 from esolangs.runtime._context import ExecutionContext
 from esolangs.runtime._definition import RuntimeSpec
@@ -299,10 +299,10 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
 
 
 def test_runnable_guard_refuses_non_source_values() -> None:
-    from esolangs.operations.source import _check_program
+    from esolangs.runtime._artifact_source import check_program
 
     with pytest.raises(esolangs.ProgramError, match="got int"):
-        _check_program(REFERENCE, 7)
+        check_program(REFERENCE, 7)
 
 
 def test_default_answer_contract_reads_the_final_bit() -> None:
@@ -322,7 +322,7 @@ def test_bound_language_runs_a_boolean_workflow() -> None:
     assert language.describe().name == language.name
     program = language.generate("0110", balance=True)
     stdin = language.encode_inputs([0, 1], truth_table="0110")
-    assert _check_program(language.name, program, stdin).source == program.source
+    assert check_program(language.name, program, stdin).source == program.source
     assert language.read_answer(language.run(program, stdin=stdin).output) == "1"
     assert _evaluate(language.name, program, inputs=2) == "0110"
 

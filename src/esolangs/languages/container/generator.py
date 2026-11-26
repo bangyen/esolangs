@@ -24,10 +24,10 @@ from math import isqrt
 from string import ascii_letters
 from typing import NamedTuple
 
+from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    grid_width,
     input_weights,
     short_name,
     subtree_ids,

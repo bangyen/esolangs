@@ -7,7 +7,7 @@ from bisect import bisect_left
 
 import pytest
 
-from esolangs.generation.helpers import grid_area
+from esolangs.generation.grid import grid_area
 from esolangs.languages.circuit_diagram.generator import (
     _circuit_diagram_model,
     _linear_shared_layout,

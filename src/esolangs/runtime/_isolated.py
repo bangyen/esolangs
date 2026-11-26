@@ -385,8 +385,8 @@ def _invoke_worker(
     _loaded: ProgramArtifact[Program] | None = None,
 ) -> _WorkerResponse:
     """Acquire source and enforce phase budgets for execution or proof."""
-    from esolangs.operations.source import _check_program
     from esolangs.registry._catalog import get_catalog
+    from esolangs.runtime._artifact_source import check_program
     from esolangs.runtime._prepared import _artifact_input_frame, _check_source_options
     from esolangs.runtime._source import anchor_program_source
 
@@ -441,7 +441,7 @@ def _invoke_worker(
                 return None
             artifact = _loaded
             if artifact is None:
-                artifact = _check_program(
+                artifact = check_program(
                     name,
                     program,
                     settings=settings,
@@ -1132,7 +1132,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
         )
         prepared = None
         if request["report_prepared"]:
-            from esolangs.runtime._prepared import prepare_program
+            from esolangs.runtime._prepared import _PreparedRuntime, prepare_program
 
             name = request["language"]
             with interpreter_errors(
@@ -1141,6 +1141,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 input_acquired=True,
             ):
                 prepared = prepare_program(
+                    _PreparedRuntime,
                     name,
                     program,
                     settings=settings,

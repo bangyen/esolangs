@@ -8,7 +8,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import essential_inputs, grid_area
+from esolangs.generation.grid import grid_area
+from esolangs.generation.helpers import essential_inputs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.b_tapemark import generator as tools
 from esolangs.languages.b_tapemark.generator import (

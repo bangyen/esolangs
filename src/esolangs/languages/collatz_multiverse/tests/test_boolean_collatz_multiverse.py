@@ -7,7 +7,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import _validate_truth_table, grid_width
+from esolangs.generation.grid import grid_width
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.collatz_multiverse import generator as boolean
 from esolangs.languages.collatz_multiverse.generator import (

@@ -5,7 +5,8 @@ from functools import cache, partial
 from math import isqrt
 
 from esolangs.generation.algebraic import AffineForm, affine_form, parity_bias
-from esolangs.generation.helpers import _validate_truth_table, grid_width
+from esolangs.generation.grid import grid_width
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score

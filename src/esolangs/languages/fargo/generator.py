@@ -42,11 +42,8 @@ from math import isqrt
 from string import ascii_lowercase
 
 from esolangs.generation import anf
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    grid_width,
-    short_name,
-)
+from esolangs.generation.grid import grid_width
+from esolangs.generation.helpers import _validate_truth_table, short_name
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program

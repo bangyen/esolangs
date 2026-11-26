@@ -5,6 +5,7 @@ from collections.abc import Callable
 from esolangs.artifacts import ProgramArtifact
 from esolangs.exceptions import ArgumentError
 from esolangs.limits import ExecutionLimits
+from esolangs.operations.prepared import PreparedProgram
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
@@ -18,9 +19,9 @@ from esolangs.runtime._input import InputSource, check_input
 from esolangs.runtime._isolated import check_limits
 from esolangs.runtime._isolated import execute_isolated as _execute_isolated
 from esolangs.runtime._prepared import (
-    PreparedProgram,
     _check_source_options,
     _prepare_checked_program,
+    _PreparedRuntime,
     _runtime_reads_stdin,
     prepare_program,
 )
@@ -162,7 +163,7 @@ def _execute_invocation(
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
-    prepared: PreparedProgram | None = None,
+    prepared: _PreparedRuntime | None = None,
     execution_timeout: float | None = None,
     preparation_timeout: float | None = None,
     _loaded: ProgramArtifact[Program] | None = None,
@@ -216,6 +217,7 @@ def _execute_invocation(
     )
     if prepared is None and (max_steps is None or _loaded is not None):
         prepared = _prepare_checked_program(
+            _PreparedRuntime,
             name,
             program,
             settings=settings,
@@ -279,7 +281,7 @@ def _execute_outcome(
     settings: DialectSettings | None = None,
     scale: int | None = None,
     catalog: Catalog | None = None,
-    prepared: PreparedProgram | None = None,
+    prepared: _PreparedRuntime | None = None,
     _loaded: ProgramArtifact[Program] | None = None,
 ) -> ExecutionOutcome:
     """Apply explicit phase budgets and retain one outcome across all routes."""
@@ -365,6 +367,7 @@ def prepare(
         TemplateError: ``program`` is an unfilled template.
     """
     return prepare_program(
+        PreparedProgram,
         language,
         program,
         settings=settings,

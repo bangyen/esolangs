@@ -7,7 +7,7 @@ from itertools import pairwise
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import grid_width
+from esolangs.generation.grid import grid_width
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.container import generator as boolean
 from esolangs.languages.container.generator import (

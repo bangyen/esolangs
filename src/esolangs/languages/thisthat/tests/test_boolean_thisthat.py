@@ -463,7 +463,7 @@ def test_shared_unequal_bus_banks_execute_all_rows() -> None:
 @pytest.mark.medium
 def test_balance_matches_the_old_one_column_narrowing_search() -> None:
     """The named widths score as well as walking ``width - 1`` three times."""
-    from esolangs.generation.helpers import grid_width
+    from esolangs.generation.grid import grid_width
     from esolangs.languages.thisthat.generator import _balance, _narrow_tree
 
     def searched(table: str, default: str) -> str:
@@ -526,7 +526,7 @@ def test_balance_races_the_flat_tree(n: int, side: int) -> None:
 
 def test_coalescing_preserves_the_single_pointer_schedule() -> None:
     """Ordinary diagrams cannot race when transit legs contract."""
-    from esolangs.generation.helpers import grid_area
+    from esolangs.generation.grid import grid_area
     from esolangs.languages.thisthat.generator import _coalesce
 
     for table in witnesses(3):

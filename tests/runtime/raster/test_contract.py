@@ -18,9 +18,9 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
-from esolangs.operations.source import _check_program
 from esolangs.raster import Raster, lazy_raster, png
 from esolangs.registry import CATALOG, LANGUAGES, SourceKind
+from esolangs.runtime._artifact_source import check_program
 from tests.support.dialect_support import integer_setting
 from tests.support.evaluation import _evaluate
 from tests.support.reference import REFERENCE
@@ -429,7 +429,7 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
     path = tmp_path / f"bad-{language.lower()}.png"
     path.write_bytes(truncated)
     with pytest.raises(esolangs.ProgramError):
-        _check_program(language, path)
+        check_program(language, path)
 
     raster = Raster((((7, 31, 53),),))
     encoded = raster.to_png()
@@ -607,7 +607,7 @@ def test_an_oversized_upscale_is_refused_before_rendering() -> None:
 def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
     settings = esolangs.Language(language).settings()
     source = esolangs.generate(language, "0110", scale=scale, settings=settings)
-    restored = _check_program(language, native_png(source))
+    restored = check_program(language, native_png(source))
     assert restored.source.rows == source.source.rows
     assert restored.language == language
     assert restored.settings == settings
@@ -622,7 +622,7 @@ def test_png_metadata_round_trip_executes(language, scale, native_png) -> None:
 
 
 def test_plain_png_has_no_source_metadata() -> None:
-    from esolangs.operations.source import read_png_metadata
+    from esolangs.runtime._artifact_source import read_png_metadata
     from esolangs.runtime._files import StreamReadTimeoutError, stream_read_deadline
 
     source = Raster((((1, 2, 3),),))
@@ -882,7 +882,7 @@ def test_portable_png_accepts_embedded_arity_when_claims_agree(
     document = json.loads(api.to_json(original))
     legacy = base64.b64decode(document["source"])
     assert "input_arity" not in png.read_metadata(legacy)
-    assert _check_program(api.name, legacy).input_arity is None
+    assert check_program(api.name, legacy).input_arity is None
 
     native = native_png(original)
     assert png.read_metadata(native)["input_arity"] == 1
@@ -1046,14 +1046,14 @@ def test_portable_png_checks_record_metadata_before_pillow(monkeypatch) -> None:
 
 def test_scaling_composes_retained_factors(native_png) -> None:
     source = esolangs.generate(RASTER_LANGUAGES[0], "01", scale=2)
-    decoded = _check_program(source.language, native_png(source))
+    decoded = check_program(source.language, native_png(source))
     enlarged = esolangs.ProgramArtifact(
         decoded.source.upscaled(3),
         decoded.language,
         settings=decoded.settings,
         scale=decoded.scale * 3,
     )
-    assert _check_program(source.language, native_png(enlarged)).scale == 6
+    assert check_program(source.language, native_png(enlarged)).scale == 6
 
 
 def test_png_settings_retain_integer_choices(tmp_path: Path) -> None:

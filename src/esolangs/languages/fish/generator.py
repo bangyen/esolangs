@@ -33,10 +33,10 @@ from functools import cache
 from math import isqrt
 
 from esolangs.generation.algebraic import parity_bias
+from esolangs.generation.grid import grid_rank
 from esolangs.generation.helpers import (
     WeightedLookup,
     _validate_truth_table,
-    grid_rank,
     input_weights,
     symmetric_lookup,
 )

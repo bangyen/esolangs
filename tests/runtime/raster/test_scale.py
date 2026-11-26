@@ -11,10 +11,10 @@ import pytest
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.exceptions import ArgumentError, ProgramError
-from esolangs.operations.source import read_png_artifact
 from esolangs.raster import Raster, png
 from esolangs.raster.scale import detect_scale, normalize
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._artifact_source import read_png_artifact
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages
 from tests.support.reference import REFERENCE

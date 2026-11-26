@@ -26,7 +26,7 @@ from contextlib import AbstractContextManager
 from dataclasses import replace
 from inspect import getattr_static
 from types import FunctionType, MethodType, ModuleType
-from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 import esolangs._cycles as _cycles
 from esolangs._cycles import _check_driver, _check_driver_fields, _drive_until_halt
@@ -74,6 +74,12 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._input import CheckedInput, InputSource, check_input
 from esolangs.runtime._lifecycle import Completion, CompletionReport
+from esolangs.runtime._prepared import (
+    _check_source_options,
+    _prepare_checked_program,
+    _PreparedRuntime,
+    _runtime_reads_stdin,
+)
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._traits import trait, traits
@@ -82,10 +88,6 @@ from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime._vm_views import machine_views
 from esolangs.runtime.io import ScriptedIO, _scripted_io
 from esolangs.settings import DialectSettings
-
-if TYPE_CHECKING:
-    # A runtime import would close the cycle PreparedProgram.make_debugger opens.
-    from esolangs.runtime._prepared import PreparedProgram
 
 
 def complete_vm(vm: VM, max_steps: int | None = 100_000) -> str:
@@ -220,7 +222,7 @@ class _DelegatingVM:
     def __init__(
         self,
         language: str,
-        program: PreparedProgram,
+        program: _PreparedRuntime,
         stdin: CheckedInput = "",
         *,
         seed: int | None = None,
@@ -671,11 +673,10 @@ def _make_vm(
     scale: int | None = None,
     catalog: Catalog | None = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
-    prepared: PreparedProgram | None = None,
+    prepared: _PreparedRuntime | None = None,
 ) -> VM:
     """Prepare a scoped VM with an invocation-owned input/output factory."""
     from esolangs.registry._catalog import get_catalog
-    from esolangs.runtime._prepared import _check_source_options, _runtime_reads_stdin
     from esolangs.runtime._source import anchor_program_source
 
     program = anchor_program_source(program)
@@ -712,14 +713,13 @@ def _make_checked_vm(
     scale: int | None,
     catalog: Catalog,
     io_factory: Callable[[InputSource], ScriptedIO],
-    prepared: PreparedProgram | None,
+    prepared: _PreparedRuntime | None,
     reproducible: bool = True,
 ) -> VM:
     """Load a step machine after validating invocation choices and input shape."""
     if prepared is None:
-        from esolangs.runtime._prepared import _prepare_checked_program
-
         prepared = _prepare_checked_program(
+            _PreparedRuntime,
             name,
             program,
             settings=settings,

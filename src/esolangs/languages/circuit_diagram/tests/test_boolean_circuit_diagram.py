@@ -808,7 +808,7 @@ def test_balance_matches_the_every_width_sweep() -> None:
     The retired balance visited the widths where a decision flips; this
     visits every width (``_drawn_at`` per width).
     """
-    from esolangs.generation.helpers import grid_width
+    from esolangs.generation.grid import grid_width
     from esolangs.languages.circuit_diagram.generator.balance import _drawn_at
 
     _check_layout_admission()

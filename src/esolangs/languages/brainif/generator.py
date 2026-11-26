@@ -23,12 +23,12 @@ from itertools import count, pairwise
 from typing import NamedTuple
 
 from esolangs.generation.decision import decision_layers, fold_subtables
+from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
-    grid_width,
     input_weights,
     read_at,
 )

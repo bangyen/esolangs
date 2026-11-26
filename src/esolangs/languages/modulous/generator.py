@@ -21,10 +21,10 @@ import re
 from collections.abc import Sequence
 from math import isqrt
 
+from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    grid_width,
     input_weights,
     symmetric_lookup,
 )

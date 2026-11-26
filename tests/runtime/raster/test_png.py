@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.operations.source import read_png_artifact
 from esolangs.raster import png
+from esolangs.runtime._artifact_source import read_png_artifact
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
 

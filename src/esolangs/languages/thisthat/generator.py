@@ -24,13 +24,10 @@ from math import isqrt
 from typing import Literal, NamedTuple
 
 from esolangs.generation.decision import DecisionLayers, decision_layers
+from esolangs.generation.grid import grid_area, grid_rank, grid_width, narrowest_grid
 from esolangs.generation.helpers import (
     _validate_truth_table,
     essential_inputs,
-    grid_area,
-    grid_rank,
-    grid_width,
-    narrowest_grid,
     read_at,
     subtree_ids,
 )

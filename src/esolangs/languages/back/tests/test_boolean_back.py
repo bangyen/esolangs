@@ -153,7 +153,7 @@ class TestParameterizedBack:
 
     def test_area_is_linear_where_the_comb_is_not(self) -> None:
         """Rudin-Shapiro shares nothing: the comb is 3n + 5 wide, the fold is not."""
-        from esolangs.generation.helpers import grid_area
+        from esolangs.generation.grid import grid_area
         from esolangs.languages.back import generator as generators
 
         language = esolangs.Language("Back")
@@ -592,7 +592,7 @@ def _check_held_input_and_dump() -> None:
 
 
 def _check_exact_preload_bounds() -> None:
-    from esolangs.generation.helpers import grid_area
+    from esolangs.generation.grid import grid_area
     from esolangs.languages.back.tests.formulas import (
         execution_witness,
         witness,

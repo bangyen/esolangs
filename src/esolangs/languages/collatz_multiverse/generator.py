@@ -28,11 +28,11 @@ from collections.abc import Iterable
 from functools import cached_property
 
 from esolangs.generation.algebraic import affine_form
+from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     essential_inputs,
-    grid_width,
     read_at,
 )
 from esolangs.generation.lookup import constant_output, exceptional_row, packed_cells

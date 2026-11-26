@@ -30,10 +30,10 @@ Decisions:
 
 import string
 
+from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     WeightedLookup,
     _validate_truth_table,
-    grid_width,
     input_weights,
     short_name,
     subtree_ids,

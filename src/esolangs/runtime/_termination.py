@@ -26,7 +26,7 @@ from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
 from esolangs.runtime._drive import _check_snapshot_hash
 from esolangs.runtime._input import InputSource
-from esolangs.runtime._prepared import PreparedProgram
+from esolangs.runtime._prepared import _PreparedRuntime
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import (
     BranchProof,
@@ -95,7 +95,7 @@ def _termination_result(
     settings: DialectSettings | None = None,
     catalog: "Catalog | None" = None,
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
-    prepared: PreparedProgram | None = None,
+    prepared: _PreparedRuntime | None = None,
 ) -> TerminationResult:
     """Retain live IO and proof evidence without taking a post-halt dump step."""
     from esolangs.registry._catalog import get_catalog

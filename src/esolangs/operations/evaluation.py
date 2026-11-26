@@ -19,7 +19,7 @@ from esolangs.operations.boolean_io import (
 )
 from esolangs.operations.execution import _execute_outcome, _execution_route
 from esolangs.registry._catalog import Catalog
-from esolangs.runtime._prepared import PreparedProgram
+from esolangs.runtime._prepared import _PreparedRuntime
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import _has_backing_type, check_bit_count, check_bits
 
@@ -30,7 +30,7 @@ def evaluate_artifact(
     *,
     limits: ExecutionLimits | None = None,
     catalog: Catalog | None = None,
-    prepared: PreparedProgram | None = None,
+    prepared: _PreparedRuntime | None = None,
 ) -> BooleanEvaluation:
     """Bind or encode one row, then decode the answer using its contract."""
     from esolangs.registry._catalog import get_catalog, resolve_origin
@@ -41,7 +41,7 @@ def evaluate_artifact(
     origin = artifact.language
     name = resolve_origin(origin, catalog=catalog)
     if name is None:
-        from esolangs.operations.source import check_origin
+        from esolangs.runtime._artifact_source import check_origin
 
         name = catalog.resolve(origin)
         check_origin(name, origin, catalog=catalog)
@@ -157,7 +157,7 @@ def evaluate(
         or _has_backing_type(artifact, TemplateArtifact)
     ):
         raise ProgramError("evaluation requires a program or template artifact")
-    from esolangs.operations.source import check_origin
+    from esolangs.runtime._artifact_source import check_origin
 
     check_origin(name, artifact.language, catalog=catalog)
     return evaluate_artifact(artifact, bits, limits=limits, catalog=catalog)

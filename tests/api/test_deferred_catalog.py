@@ -15,7 +15,7 @@ import sys
 from dataclasses import replace
 
 import esolangs
-from esolangs.operations.source import read_artifact
+from esolangs.runtime._artifact_source import read_artifact
 import pytest
 from esolangs import registry
 from esolangs.registry._backend import Generator

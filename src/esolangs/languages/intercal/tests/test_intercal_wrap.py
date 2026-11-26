@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs import run
-from esolangs.generation.helpers import grid_width
+from esolangs.generation.grid import grid_width
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.intercal.generator import (

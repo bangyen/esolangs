@@ -11,10 +11,10 @@ import pytest
 import esolangs
 from esolangs import DialectSettings
 from esolangs import settings as settings_api
-from esolangs.operations.source import read_png_artifact
 from esolangs.registry import CATALOG, LANGUAGES
 from esolangs.registry._functions import FunctionRef
 from esolangs.runtime import _execution
+from esolangs.runtime._artifact_source import read_png_artifact
 from esolangs.vm import complete_vm, make_vm
 from tests.support.cli_support import _failure, call_both
 from tests.support.dialect_support import (
