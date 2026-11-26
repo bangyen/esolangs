@@ -138,6 +138,13 @@ evidence, not optimization tasks.
     reduced the gap to 68 positions (67 primary and one spill). Four tables
     printed one digit and halted on every input, with 25, 34, 24 and 28
     wrong answers. Every mismatch fell within those 68 positions.
+    Two positions counted as covered relied on an encoding at address 39,391
+    that lost the return address for some neighboring guard values.
+    Fixing that encoding and changing the output lookup left 61 uncovered
+    positions. Switching two lookup entries together encoded row 103,438,
+    leaving 60 primary positions and no spills. Four tables printed one
+    digit and halted on all 131,072 inputs. Their 24, 24, 29 and 32 wrong
+    answers all fell within those 60 positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
