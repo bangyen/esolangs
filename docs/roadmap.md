@@ -41,10 +41,10 @@ evidence, not optimization tasks.
     the paused loop.
     Sweep results in `a7b3f7abd:docs/roadmap.md`.
   - *Native decoder:* scratch builds ran from reset on all 131,072 inputs
-    of four tables. Two random tables reached 129,403 and 128,895 correct
+    of four tables. Two random tables reached 129,482 and 129,018 correct
     answers. On the first, both reads and the output slot matched on every
     row. All 130,614 legal reads printed the stored bit and halted. Of the
-    1,669 misses, 204 read an invalid packed byte and 1,465 read the wrong
+    1,590 misses, 204 read an invalid packed byte and 1,386 read the wrong
     stored bit. Moving the terminal return one cell earlier freed 42 words
     to store three bits each. All eight values at each word ran natively.
     After swapping the highest address trit, 103 groups reread their
@@ -55,13 +55,14 @@ evidence, not optimization tasks.
     distinct bit positions. A separate layout moved 448 primary words by
     reassigning 3,008 spill bits. All eight values worked at 434 of the
     new destinations in 10,416 runs.
-  - *Bank capacity:* one layout gained 36 writable bit positions after
-    accounting for every control read (116 gained, 80 lost). All 116 passed
-    eight label tests each. With 2,048 bits assigned to each 729-word bank
-    and control words and calibration markers reserved, 15 of the 64 banks
-    still fell short by 4,335 bits in total. A separate layout moved 24
-    primary words between banks, kept every spill address, and gained three
-    writable bit positions net. All eight labels worked at all 24 destinations.
+  - *Bank capacity:* six navigation edits freed 153 three-bit words while
+    preserving both reads and the output slot on every row. All eight labels
+    worked at every word in 3,672 native runs. With 2,048 bits assigned to
+    each 729-word bank and control words and calibration markers reserved,
+    12 of the 64 banks still fell short by 4,230 bits in total. A separate
+    layout moved 24 primary words between banks, kept every spill address,
+    and gained three writable bit positions net. All eight labels worked at
+    all 24 destinations.
   - *Storage shared with the decoder:* 93 words in the jump workspace
     stored three answer bits each. In the same layout, 63 fixed instructions
     encoded three bits each through selectable markers. All eight values
