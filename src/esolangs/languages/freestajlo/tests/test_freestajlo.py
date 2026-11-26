@@ -7,8 +7,8 @@ import pytest
 import esolangs
 from esolangs.languages.freestajlo.interpreter import run
 from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 from tests.support.execution import assert_digit_cap_independent
 

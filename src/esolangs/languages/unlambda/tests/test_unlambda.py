@@ -16,7 +16,7 @@ from esolangs.languages.unlambda.interpreter import (
     _Ret,
     _workspace_value,
 )
-from esolangs.runtime._result_wire import _state_from_wire, _state_wire
+from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.runner import run_program
 from tests.support.raises import assert_rejected_with_hint
@@ -223,7 +223,7 @@ def test_the_parser_is_iterative_over_a_long_chain() -> None:
 
 def test_debugger_and_workspace_repr_keep_deep_shared_terms_readable() -> None:
     from esolangs import Language
-    from esolangs.vm import _capture_workspace
+    from esolangs.runtime._vm_adapter import _capture_workspace
 
     api = Language("Unlambda")
     code = "`" * 1100 + "i" * 1101

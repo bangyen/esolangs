@@ -5,8 +5,8 @@ import pytest
 from esolangs import ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import HaltError
 from esolangs.languages.codesick.interpreter import _Machine, run
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import IO, ScriptedIO
-from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 
 TRUTH = "codesick in a 0 1;\n0 codesick out 0 * halt;\n1 codesick out 1 * 1;"

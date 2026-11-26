@@ -16,7 +16,8 @@ Template bindings come from the backend declaration, shared with runtime.
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import Any
+from threading import Lock
+from typing import TYPE_CHECKING, Any, cast
 
 from esolangs._bindings import TEMPLATE_CHAR, Setters, fill_runs
 from esolangs.artifacts import ProgramArtifact, TemplateArtifact
@@ -26,10 +27,10 @@ from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program
 from esolangs.raster import Raster
 from esolangs.registry import (
-    LANGUAGES,
     LanguageDeclaration,
     canonical_id,
     example_stems,
+    get_catalog,
     resolve,
 )
 from esolangs.registry._backend import Generator
@@ -123,7 +124,7 @@ class BooleanExample:
     @property
     def filename(self) -> str:
         """Return the example filename in the language's source format."""
-        return self.stem + LANGUAGES[resolve(self.language)].source_suffix
+        return self.stem + get_catalog().languages[resolve(self.language)].source_suffix
 
     @property
     def language(self) -> str:
@@ -169,7 +170,7 @@ class BooleanExample:
 
     def emit(self, table: str, *, width: int | None = None) -> Program:
         """Emit example source through the canonical backend request."""
-        language = LANGUAGES[resolve(self.language)]
+        language = get_catalog().languages[resolve(self.language)]
         backend = language.backend
         assert backend is not None
         schema = language.runtime.dialect_schema
@@ -202,7 +203,7 @@ def _contract_fields(interpreter: str, contract: BooleanContract) -> dict[str, A
 
 def _contract_for(interpreter: str) -> BooleanContract:
     """Return the registered Boolean I/O contract for an interpreter."""
-    for lang in LANGUAGES.values():
+    for lang in get_catalog().languages.values():
         if lang.runtime.interpreter == interpreter:
             return lang.contract
     raise LookupError(
@@ -278,8 +279,10 @@ def _fill_from(
     return fill
 
 
-# Example file stem -> how that example is built and run; see ``_stem``.
-BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
+_EXAMPLES_LOCK = Lock()
+
+if TYPE_CHECKING:
+    BOOLEAN_EXAMPLES: dict[str, BooleanExample]
 
 
 def _stem(lang: LanguageDeclaration) -> str:
@@ -287,12 +290,13 @@ def _stem(lang: LanguageDeclaration) -> str:
     return example_stems()[lang.id]
 
 
-def _register() -> None:
+def _build_example_index() -> dict[str, BooleanExample]:
     from esolangs.operations.boolean_io import encode_inputs
 
+    examples: dict[str, BooleanExample] = {}
     # Everything an example needs is in its ``LANGUAGE``: the registry facts
     # ``_reader`` takes, backend bindings, and the committed invocation.
-    for lang in LANGUAGES.values():
+    for lang in get_catalog().languages.values():
         if lang.backend is None or lang.runtime.interpreter is None:
             continue
         spec = lang.example
@@ -322,14 +326,31 @@ def _register() -> None:
                 kwargs=spec.kwargs,
             )
         stem = _stem(lang)
-        BOOLEAN_EXAMPLES[stem] = replace(
+        examples[stem] = replace(
             example,
             stem=stem,
             scale=spec.scale,
             expected_compared=spec.expected_compared,
         )
 
+    return examples
 
-_register()
+
+def __getattr__(name: str) -> dict[str, BooleanExample]:
+    """Build the shared example index only on first access."""
+    if name != "BOOLEAN_EXAMPLES":
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    # Concurrent first accesses must return the same mutable index.
+    with _EXAMPLES_LOCK:
+        namespace = globals()
+        if name not in namespace:
+            namespace[name] = _build_example_index()
+        return cast("dict[str, BooleanExample]", namespace[name])
+
+
+def __dir__() -> list[str]:
+    """Include the deferred example index in module discovery."""
+    return sorted(globals().keys() | {"BOOLEAN_EXAMPLES"})
+
 
 __all__ = ["AND2", "BOOLEAN_EXAMPLES", "BooleanExample"]

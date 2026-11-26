@@ -14,8 +14,7 @@ from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime._drive import _checked_halted
 from esolangs.runtime._validate import _argument_repr, _has_backing_type
-from esolangs.runtime._vm_protocol import VM
-from esolangs.vm import (
+from esolangs.runtime._vm_adapter import (
     _capture_observation,
     _capture_result,
     _controller_vm,
@@ -25,6 +24,7 @@ from esolangs.vm import (
     _raise_halt_fault,
     _record_vm_fault,
 )
+from esolangs.runtime._vm_protocol import VM
 
 StopReason = Literal["halted", "breakpoint", "max_steps", "execution_timeout"]
 type _StopRequest = (

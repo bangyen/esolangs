@@ -53,14 +53,10 @@ from esolangs.registry._certification import load as load_certification
 from esolangs.registry._info import LanguageInfo
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._validate import check_timeout
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import (
-    SnapshotVM,
-    _capture_workspace,
-    complete_vm,
-    run_until_halt_or_cycle,
-)
+from esolangs.vm import SnapshotVM, complete_vm, run_until_halt_or_cycle
 from tests.support.execution import run_guard
 
 _TEXT_TYPES = (str, bytes, bytearray)

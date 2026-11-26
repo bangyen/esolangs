@@ -12,13 +12,9 @@ from esolangs import run
 from esolangs.cli.help import help_text
 from esolangs.results import Completion, CompletionReport
 from esolangs.runtime._execution import interpreter_module
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import (
-    _capture_workspace,
-    complete_vm,
-    make_vm,
-    run_until_halt_or_all_branches_cycle,
-)
+from esolangs.vm import complete_vm, make_vm, run_until_halt_or_all_branches_cycle
 from tests.support.cli_support import call_both, call_main
 from tests.support.execution import run_observed
 from tests.support.generator_support import evaluate_generated, overruns

@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.languages.b_tapemark import interpreter as native
 from esolangs.languages.b_tapemark.interpreter import _workspace_grid
-from esolangs.runtime._result_wire import _state_from_wire, _state_wire
+from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.support.vm_support import assert_rejected_output_retry

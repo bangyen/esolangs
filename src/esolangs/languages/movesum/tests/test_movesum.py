@@ -6,8 +6,9 @@ from esolangs import ArgumentError, ExecutionCapError, ExecutionLimits, Language
 from esolangs.debugger import Debugger
 from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.movesum.interpreter import _Machine, run
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, complete_vm
+from esolangs.vm import complete_vm
 from tests.interpreters.runner import native_runner
 from tests.support.vm_support import assert_rejected_output_retry
 

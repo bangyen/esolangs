@@ -33,9 +33,10 @@ from esolangs.runtime._validate import (
     _has_backing_type,
     check_whole,
 )
+from esolangs.runtime._vm_adapter import _DelegatingVM, _raise_halt_fault
 from esolangs.runtime._vm_protocol import VM
 from esolangs.settings import DialectSettings
-from esolangs.vm import _DelegatingVM, _raise_halt_fault, make_vm
+from esolangs.vm import make_vm
 
 __all__ = [
     "STOP_REASONS",

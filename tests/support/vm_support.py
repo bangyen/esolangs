@@ -15,14 +15,10 @@ import esolangs.debugger as debugger_api
 from esolangs.results import Completion
 from esolangs.runtime._source import ProgramSource
 from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_result, _capture_workspace
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import (
-    _capture_result,
-    _capture_workspace,
-    complete_vm,
-    run_until_halt_or_cycle,
-)
+from esolangs.vm import complete_vm, run_until_halt_or_cycle
 from tests.support.reference import REFERENCE
 
 

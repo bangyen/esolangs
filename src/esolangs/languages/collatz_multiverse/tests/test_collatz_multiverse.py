@@ -14,8 +14,8 @@ from esolangs import (
 )
 from esolangs.debugger import Debugger
 from esolangs.languages.collatz_multiverse.interpreter import _Machine, run
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from tests.interpreters import runner
 from tests.interpreters.contract import (
     CycleContract,

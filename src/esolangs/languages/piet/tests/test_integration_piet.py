@@ -242,7 +242,7 @@ def _check_inflate_block_timeout(path, monkeypatch) -> None:
 def _check_worker_proof_scale(image: Raster) -> None:
     from esolangs.debugger import make_debugger
     from esolangs.runtime._isolated import termination_result_isolated
-    from esolangs.vm import _capture_observation
+    from esolangs.runtime._vm_adapter import _capture_observation
     from tests.support.certification_barrier import guarded_worker
     from tests.support.reference import REFERENCE
 

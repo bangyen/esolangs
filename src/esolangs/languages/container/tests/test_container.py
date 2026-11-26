@@ -184,7 +184,8 @@ class TestStepMachine:
 
         from esolangs import ProgramArtifact
         from esolangs.debugger import make_debugger
-        from esolangs.vm import _capture_workspace, make_vm
+        from esolangs.runtime._vm_adapter import _capture_workspace
+        from esolangs.vm import make_vm
 
         cap = sys.get_int_max_str_digits()
         digits = "1" + "0" * max(5000, cap)

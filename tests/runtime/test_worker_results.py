@@ -12,17 +12,13 @@ import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
+from esolangs.runtime import _snapshot_wire
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._proof import CycleDecision
 from esolangs.runtime._request_wire import encode_request
-from esolangs.runtime._result_wire import (
-    _state_from_wire,
-    _state_wire,
-    decode_result,
-    encode_decision,
-    encode_result,
-)
+from esolangs.runtime._result_wire import decode_result, encode_decision, encode_result
+from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
 from esolangs.vm import make_vm
 from tests.support.execution import run_observed
 from tests.support.reference import REFERENCE
@@ -91,7 +87,6 @@ def test_snapshot_definitions_preserve_aliases_and_distinct_nodes(
 ) -> None:
     from typing import NamedTuple
 
-    from esolangs.runtime import _result_wire
     from esolangs.runtime._json import worker_dumps, worker_loads
 
     first = (8,)
@@ -130,7 +125,7 @@ def test_snapshot_definitions_preserve_aliases_and_distinct_nodes(
     def refuse_import(_name):
         pytest.fail("unregistered snapshot named a module to import")
 
-    monkeypatch.setattr(_result_wire, "import_module", refuse_import)
+    monkeypatch.setattr(_snapshot_wire, "import_module", refuse_import)
     plain = {"define": [0, {"tuple": [8]}]}
     assert _state_wire(Unowned(8)) == plain
     assert type(_state_from_wire(plain)) is tuple

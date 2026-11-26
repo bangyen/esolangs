@@ -9,8 +9,8 @@ import esolangs
 from esolangs._bindings import TEMPLATE_CHAR, fill_runs
 from esolangs.registry import resolve
 from esolangs.registry._certification import load as load_certification
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from tests.support.evaluation import _DEFAULT, _Default, _evaluate
 from tests.support.event_io import ReadFirstIO
 from tests.support.execution import run_observed

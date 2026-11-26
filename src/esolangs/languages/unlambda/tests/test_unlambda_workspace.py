@@ -6,7 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.debugger import make_vm
-from esolangs.vm import _capture_workspace
+from esolangs.runtime._vm_adapter import _capture_workspace
 from scripts.benchmark import WrittenState
 from tests.proofs.deep.execution import run_to_answer
 from tests.proofs.workspace import FORMULAS

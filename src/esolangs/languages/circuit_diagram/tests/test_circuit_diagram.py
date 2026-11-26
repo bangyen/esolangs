@@ -32,8 +32,9 @@ from esolangs.languages.circuit_diagram.interpreter._parse import (
     _Parser,
 )
 from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, run_until_halt_or_cycle
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.runner import run_program
 from tests.support.fixtures import grid
 

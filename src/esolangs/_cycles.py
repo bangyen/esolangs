@@ -17,14 +17,16 @@ from esolangs.runtime._drive import (
 )
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import (
-    _BRANCH_RUNTIME_ERRORS,
     BranchFailure,
     BranchProof,
     CycleDecision,
+    _BranchResult,
+)
+from esolangs.runtime._proof_runtime import (
+    _BRANCH_RUNTIME_ERRORS,
     _branch_callbacks,
     _branch_fault,
     _branch_halt_fault,
-    _BranchResult,
     _check_branch_halt,
     _checked_branch_result,
     _drive_ancestor,
@@ -130,7 +132,7 @@ def _check_driver_fields(
 
 def _checked_adapter(machine: object) -> object:
     """Find the live VM beneath an observer and check for a recorded halt fault."""
-    from esolangs.vm import _controller_vm, _raise_halt_fault
+    from esolangs.runtime._vm_adapter import _controller_vm, _raise_halt_fault
 
     _raise_halt_fault(machine)
     return _controller_vm(machine)
@@ -288,7 +290,7 @@ def _proof_snapshot_reader(
 ) -> tuple[Callable[[], Hashable], bool]:
     """Choose a state reader and whether each returned snapshot needs checking."""
     from esolangs.debugger import Debugger
-    from esolangs.vm import _DelegatingVM
+    from esolangs.runtime._vm_adapter import _DelegatingVM
 
     reader = getattr_static(machine, "snapshot", None)
     if isinstance(machine, _DelegatingVM) and reader is _DelegatingVM.snapshot:
@@ -336,7 +338,7 @@ def _proof_snapshot(
             "provide a machine with a snapshot of its complete state",
         ) from error
     except EsolangError as error:
-        from esolangs.vm import _DelegatingVM, _retain_fault_steps
+        from esolangs.runtime._vm_adapter import _DelegatingVM, _retain_fault_steps
 
         if steps is not None and isinstance(adapter, _DelegatingVM):
             _retain_fault_steps(adapter, error, steps)
@@ -345,7 +347,7 @@ def _proof_snapshot(
         try:
             _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
         except EsolangError as error:
-            from esolangs.vm import _retain_snapshot_key_fault
+            from esolangs.runtime._vm_adapter import _retain_snapshot_key_fault
 
             _retain_snapshot_key_fault(reader, error, steps)
             raise
@@ -424,7 +426,7 @@ def _drive_halt_or_cycle(
             machine.step()
         except EsolangError as error:
             if not evidence:
-                from esolangs.vm import _retain_observer_steps
+                from esolangs.runtime._vm_adapter import _retain_observer_steps
 
                 _retain_observer_steps(machine, error, steps)
             raise
@@ -447,7 +449,7 @@ def _drive_halt_or_cycle(
             ):
                 _check_snapshot_hash(state, _ProofSnapshotUnavailableError)
         except EsolangError as error:
-            from esolangs.vm import _retain_snapshot_key_fault
+            from esolangs.runtime._vm_adapter import _retain_snapshot_key_fault
 
             _retain_snapshot_key_fault(reader, error, None if evidence else steps)
             raise
@@ -479,7 +481,7 @@ def _exact_repeat(
     try:
         cycle = BoundaryCycle(state, first_step, steps, 1)
     except EsolangError as error:
-        from esolangs.vm import _retain_snapshot_key_fault
+        from esolangs.runtime._vm_adapter import _retain_snapshot_key_fault
 
         _retain_snapshot_key_fault(reader, error, None)
         raise
@@ -582,7 +584,7 @@ def _branch_budget(limit: int, *, evidence: bool) -> TimeoutError:
 
 
 def _proof_runtime(adapter: object) -> tuple[str | None, bool]:
-    from esolangs.vm import _DelegatingVM
+    from esolangs.runtime._vm_adapter import _DelegatingVM
 
     if isinstance(adapter, _DelegatingVM):
         return adapter.language, adapter._random  # noqa: SLF001

@@ -5,8 +5,8 @@ import pytest
 from esolangs import ExecutionLimits, ExecutionResult, HaltError, Language
 from esolangs.languages.nor_machine.interpreter import _Machine, run
 from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 from tests.support.vm_support import (
     assert_interrupted_input_scan_retry,

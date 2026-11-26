@@ -13,8 +13,8 @@ from esolangs.debugger import make_vm
 from esolangs.generation.helpers import permute_truth_table
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.back.generator import _back_ordered
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
 from tests.proofs.deep.execution import run_to_answer

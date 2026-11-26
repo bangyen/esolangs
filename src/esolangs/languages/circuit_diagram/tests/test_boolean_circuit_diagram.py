@@ -12,8 +12,8 @@ from esolangs import run as execute
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.circuit_diagram import generator as boolean
 from esolangs.languages.circuit_diagram.generator.hlayout import _LATTICE, _h_size
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
 from tests.support.evaluation import _evaluate

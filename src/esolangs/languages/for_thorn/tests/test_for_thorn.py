@@ -9,7 +9,7 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.for_thorn.interpreter import _advance, _Machine, run
 from esolangs.languages.for_thorn.interpreter import _Machine as Forth
 from esolangs.languages.for_thorn.tests.oracle_checks import check_raw_for_thorn
-from esolangs.runtime._result_wire import _state_from_wire, _state_wire
+from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm, run_until_halt_or_ancestor, run_until_halt_or_cycle
 from tests.interpreters.contract import (

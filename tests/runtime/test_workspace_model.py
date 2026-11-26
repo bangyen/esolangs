@@ -10,8 +10,9 @@ from esolangs.languages.brainfuck.interpreter import _WORKSPACE_MODEL, _Machine
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, complete_vm, make_vm
+from esolangs.vm import complete_vm, make_vm
 from scripts.benchmark import WrittenState, state_bits
 from tests.interpreters.semantic_oracles import brainfuck
 from tests.support.workspace_oracle import WorkspaceOracle, WorkspaceWitness

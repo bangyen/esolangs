@@ -39,6 +39,9 @@ assert values[-1].fill([1]).source == '1'
 for value in values:
     typing.get_type_hints(type(value))
 assert 'esolangs.registry' not in sys.modules, 'value model loaded the catalog'
+from esolangs.generation import examples
+assert 'esolangs.registry._table' not in sys.modules, 'examples loaded the catalog'
+assert 'BOOLEAN_EXAMPLES' not in vars(examples), 'example import built the index'
 names = esolangs.list_languages()
 assert 'esolangs.registry._table' in sys.modules, 'catalog control did not fire'
 for name in names:
@@ -47,6 +50,8 @@ for name in names:
 def loaded():
     return sorted(m for m in sys.modules
                   if m.startswith("esolangs.languages.") and ".generator" in m)
+assert examples.BOOLEAN_EXAMPLES, 'example index did not build on access'
+assert examples.BOOLEAN_EXAMPLES is vars(examples)['BOOLEAN_EXAMPLES']
 assert not loaded(), loaded()
 esolangs.generate(sys.argv[1], "01")
 assert loaded(), "positive control did not load a generator"

@@ -31,14 +31,15 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._proof import (
     BranchProof,
     TerminationResult,
-    _branch_snapshot,
     checked_decision,
     checked_termination,
 )
+from esolangs.runtime._proof_runtime import _branch_snapshot
+from esolangs.runtime._vm_adapter import _capture_observation, _record_vm_fault
 from esolangs.runtime._vm_protocol import VM
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings, dialect_options
-from esolangs.vm import _capture_observation, _make_vm, _record_vm_fault
+from esolangs.vm import _make_vm
 
 
 def _observe_branch_path(machine: VM, proof: BranchProof) -> None:

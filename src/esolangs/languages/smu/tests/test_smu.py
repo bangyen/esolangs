@@ -9,8 +9,9 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.smu.generator import smu
 from esolangs.languages.smu.interpreter import preprocess, run
 from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, complete_vm
+from esolangs.vm import complete_vm
 from tests.interpreters.runner import native_runner
 from tests.support.witness_tables import witnesses
 

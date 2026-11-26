@@ -10,8 +10,8 @@ import esolangs
 from esolangs import run as execute
 from esolangs.debugger import make_vm
 from esolangs.languages.sstack import generator as boolean
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from scripts import new_language
 from scripts.benchmark import WrittenState
 from tests.generators.boolean_runners import _runner

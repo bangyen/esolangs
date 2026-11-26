@@ -7,8 +7,8 @@ import pytest
 import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 
 
 def check_byte_lifecycle(name: str, set_command: str) -> None:

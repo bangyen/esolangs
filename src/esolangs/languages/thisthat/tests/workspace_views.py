@@ -12,7 +12,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.runtime._json import worker_dumps, worker_loads
-from esolangs.runtime._result_wire import _state_from_wire, _state_wire
+from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
 from esolangs.runtime.randomness import FirstDraw, Seeded
 
 from . import full_oracle as model

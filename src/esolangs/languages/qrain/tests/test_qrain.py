@@ -9,8 +9,8 @@ from esolangs.exceptions import HaltError
 from esolangs.languages.qrain import interpreter as native
 from esolangs.languages.qrain.interpreter import run
 from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from tests.interpreters.runner import native_runner
 from tests.support.execution import assert_cycle_proof_replays
 from tests.support.prepared_support import check_image_reuse

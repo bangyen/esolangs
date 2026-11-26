@@ -13,7 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from esolangs import describe, encode_inputs, generate, instantiate
 from esolangs.debugger import make_vm
 from esolangs.registry import BY_BOOLEAN
-from esolangs.vm import _capture_workspace, complete_vm
+from esolangs.runtime._vm_adapter import _capture_workspace
+from esolangs.vm import complete_vm
 from scripts.benchmark import WrittenState
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.deep import deep_arities

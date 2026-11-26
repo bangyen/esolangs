@@ -132,7 +132,8 @@ def test_timing_journal_is_scratch_but_source_edits_change_identity(
 def _check_store_sampling(monkeypatch) -> None:
     import esolangs
     from esolangs.registry import LANGUAGES
-    from esolangs.vm import _capture_workspace, complete_vm, make_vm
+    from esolangs.runtime._vm_adapter import _capture_workspace
+    from esolangs.vm import complete_vm, make_vm
     from scripts import benchmark
 
     cohort = [

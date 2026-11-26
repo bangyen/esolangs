@@ -18,8 +18,9 @@ from esolangs.languages.slashes.tests.template_shape import _is_unfilled_templat
 from esolangs.registry import _table
 from esolangs.registry._backend import BooleanBackend
 from esolangs.runtime._definition import CompressedSourcePolicy
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, make_vm
+from esolangs.vm import make_vm
 from scripts.benchmark import WrittenState
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.evaluation import _evaluate

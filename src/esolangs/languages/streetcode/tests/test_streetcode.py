@@ -35,7 +35,7 @@ def _check_cycle_transport(code: list[str]) -> None:
     from dataclasses import replace
 
     from esolangs import Catalog, ExecutionLimits, Language
-    from esolangs.runtime._result_wire import _state_from_wire, _state_wire
+    from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
     from tests.support.certification_barrier import guarded_worker
 
     from .junction_checks import typed_state

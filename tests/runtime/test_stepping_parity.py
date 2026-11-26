@@ -13,11 +13,8 @@ import esolangs
 import esolangs.debugger as debugger_api
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._lifecycle import Completion
-from esolangs.vm import (
-    _capture_result,
-    machine_traits,
-    run_until_halt,
-)
+from esolangs.runtime._vm_adapter import _capture_result
+from esolangs.vm import machine_traits, run_until_halt
 from tests.support.pick import first
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _STEP_BUDGET, _row

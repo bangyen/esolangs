@@ -20,13 +20,10 @@ from esolangs.languages.thisthat.interpreter import (
     prepare_machine,
     run,
 )
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
 from esolangs.runtime.randomness import FirstDraw, draw
-from esolangs.vm import (
-    _capture_workspace,
-    run_until_halt,
-    run_until_halt_or_all_branches_cycle,
-)
+from esolangs.vm import run_until_halt, run_until_halt_or_all_branches_cycle
 from tests.interpreters.cursorless_io import CursorlessIO
 from tests.interpreters.oracle_support import check_terminal
 from tests.support.factories import reject_rng_options, rng_factory

@@ -95,7 +95,8 @@ def test_scoped_termination_keeps_public_failure_evidence() -> None:
 
 def _check_shared_branch_evidence(scoped, local, worker) -> None:
     from esolangs.runtime._json import worker_dumps
-    from esolangs.runtime._result_wire import _state_wire, encode_decision
+    from esolangs.runtime._result_wire import encode_decision
+    from esolangs.runtime._snapshot_wire import _state_wire
 
     for source, answer in ((">   <", "1"), ("@", "0")):
         program = scoped.from_json(scoped.to_json(scoped.from_source(source)))

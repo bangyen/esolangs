@@ -13,8 +13,9 @@ from esolangs.languages.fractran.descriptor import PAIR as FRACTRAN_PAIR
 from esolangs.languages.fractran.generator import fractran
 from esolangs.languages.fractran.interpreter import _Machine
 from esolangs.languages.fractran.interpreter import run as run_fractran
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, make_vm
+from esolangs.vm import make_vm
 from scripts.benchmark import WrittenState
 from tests.generators.reader_support import _TABLES
 from tests.support.analysis_support import assert_analysis_complement

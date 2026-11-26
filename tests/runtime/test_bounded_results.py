@@ -8,7 +8,8 @@ import pytest
 import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._lifecycle import Completion
-from esolangs.vm import _capture_result, complete_vm, make_vm
+from esolangs.runtime._vm_adapter import _capture_result
+from esolangs.vm import complete_vm, make_vm
 from tests.support.reference import REFERENCE
 
 

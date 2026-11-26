@@ -9,7 +9,7 @@ from esolangs import ExecutionLimits, Language, TemplateArtifact, TemplateBindin
 from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime._result_wire import decode_decision, encode_decision
 from esolangs.runtime._termination import _termination_result
-from esolangs.vm import _capture_workspace
+from esolangs.runtime._vm_adapter import _capture_workspace
 
 
 @pytest.mark.medium

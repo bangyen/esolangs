@@ -5,8 +5,8 @@ import pytest
 from esolangs import ExecutionLimits, ExecutionResult, HaltError, Language
 from esolangs.languages.nandypants.interpreter import run
 from esolangs.runtime._state import WorkspaceVariant
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from tests.support.execution import assert_cycle_proof_replays
 
 CAT = r"0}/>v>^<<^>^\}^0"

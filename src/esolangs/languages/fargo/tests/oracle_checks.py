@@ -16,8 +16,9 @@ from esolangs.languages.fargo.interpreter import (
     _State,
 )
 from esolangs.results import Completion, CompletionReport
+from esolangs.runtime._vm_adapter import _capture_observation, _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_observation, _capture_workspace, make_vm
+from esolangs.vm import make_vm
 from tests.interpreters.oracle_support import assert_exact
 from tests.support.workspace_oracle import WorkspaceWitness
 

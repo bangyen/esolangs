@@ -15,8 +15,9 @@ from esolangs.languages.cvnc.interpreter import (
     run,
 )
 from esolangs.languages.cvnc.tests.oracle_checks import check_raw_cvnc
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, complete_vm, run_until_halt_or_cycle
+from esolangs.vm import complete_vm, run_until_halt_or_cycle
 from tests.interpreters.runner import native_runner
 from tests.support.execution import assert_digit_cap_independent
 from tests.support.vm_support import assert_rejected_output_retry

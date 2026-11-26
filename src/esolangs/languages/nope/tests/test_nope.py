@@ -59,7 +59,8 @@ def test_empty_source_has_one_output_transition(
 
     from esolangs import ProgramArtifact
     from esolangs.results import Completion, CompletionReport, ExecutionResult
-    from esolangs.vm import SnapshotVM, _capture_observation, complete_vm, make_vm
+    from esolangs.runtime._vm_adapter import _capture_observation
+    from esolangs.vm import SnapshotVM, complete_vm, make_vm
 
     vm = make_vm("Nope.", ProgramArtifact("", "Nope."), stdin="λ")
     assert isinstance(vm, SnapshotVM)

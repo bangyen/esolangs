@@ -24,8 +24,8 @@ from esolangs.languages.smallfuck.generator import (
 )
 from esolangs.languages.smallfuck.interpreter import run
 from esolangs.registry import LANGUAGES
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace
 from scripts.docs.evidence import construction_boundaries
 from tests.support.generator_support import (
     assert_saved_rows,

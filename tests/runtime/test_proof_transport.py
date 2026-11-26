@@ -15,13 +15,14 @@ from esolangs.runtime._json import worker_dumps
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime._result_wire import (
-    _state_wire,
     decode_decision,
     encode_decision,
     encode_result,
 )
+from esolangs.runtime._snapshot_wire import _state_wire
+from esolangs.runtime._vm_adapter import _capture_observation
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_observation, make_vm
+from esolangs.vm import make_vm
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import run_observed, termination_observed
 from tests.support.reference import REFERENCE

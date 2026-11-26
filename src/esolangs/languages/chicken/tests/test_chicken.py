@@ -13,8 +13,9 @@ from esolangs.exceptions import HaltError, InterpreterLimitError
 from esolangs.languages.chicken.interpreter import _Machine, run
 from esolangs.runtime._isolated import termination_result_isolated
 from esolangs.runtime._result_wire import decode_decision, encode_decision
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, complete_vm
+from esolangs.vm import complete_vm
 from tests.support.execution import termination_observed
 from tests.support.raises import assert_halts_with_hint, assert_rejected_with_hint
 from tests.support.vm_support import assert_rejected_output_retry

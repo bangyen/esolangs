@@ -15,8 +15,9 @@ from esolangs.languages.whitespace.interpreter import (
 from esolangs.languages.whitespace.tests.oracle_checks import _assemble, _check
 from esolangs.results import Completion
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot
+from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
-from esolangs.vm import _capture_workspace, make_vm
+from esolangs.vm import make_vm
 from scripts.benchmark import WrittenState
 
 
