@@ -51,7 +51,9 @@ def test_befunge_folded_header_reads_the_table(inputs: int, width: int | None) -
     for row in rows:
         bits = [int(bit) for bit in format(row, f"0{inputs}b")]
         stdin = esolangs.encode_inputs("Befunge", bits)
-        assert run("Befunge", program, stdin=stdin).output.strip() == table[row]
+        assert (
+            run("Befunge", program, stdin=stdin).unwrap().output.strip() == table[row]
+        )
 
 
 def test_befunge_keeps_a_header_that_already_fits() -> None:
@@ -127,7 +129,9 @@ def test_packed_ascii_lookup_answers_every_row(inputs: int, width: int | None) -
     for row, expected in enumerate(table):
         bits = [int(bit) for bit in f"{row:0{inputs}b}"]
         stdin = esolangs.encode_inputs("Befunge", bits)
-        assert prepared.run(stdin=stdin, limits=limits).output.strip() == expected
+        assert (
+            prepared.run(stdin=stdin, limits=limits).unwrap().output.strip() == expected
+        )
 
 
 @pytest.mark.parametrize("inputs", [11, 12, 13])
@@ -150,7 +154,9 @@ def test_packed_ascii_lookup_controls_and_balance(inputs: int, kind: str) -> Non
                 program,
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(max_steps=500),
-            ).output.strip()
+            )
+            .unwrap()
+            .output.strip()
             == table[row]
         )
 
@@ -278,7 +284,9 @@ def test_a_width_beyond_the_torus_still_fits_it(width: int) -> None:
                 program,
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(max_steps=500),
-            ).output.strip()
+            )
+            .unwrap()
+            .output.strip()
             == table[row]
         )
 
@@ -379,4 +387,6 @@ def test_packed_header_reserves_a_two_digit_offset() -> None:
         assert len(program.splitlines()) <= 25
         for row, expected in enumerate(table):
             stdin = esolangs.encode_inputs("Befunge", list(map(int, f"{row:08b}")))
-            assert run("Befunge", program, stdin=stdin).output.strip() == expected
+            assert (
+                run("Befunge", program, stdin=stdin).unwrap().output.strip() == expected
+            )

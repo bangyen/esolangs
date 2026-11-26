@@ -56,7 +56,7 @@ def test_streaming_text_round_trip_and_size(tmp_path: Path, monkeypatch) -> None
     with _files.stream_read_deadline(float("inf")):
         restored = api.from_json(api.to_json(archive))
         assert restored.source.to_gzip() == archive
-    assert api.prepare(restored).run().output == "\x01"
+    assert api.prepare(restored).run().unwrap().output == "\x01"
 
     finish_member = gzip._GzipReader._read_eof
     members = 0
@@ -372,13 +372,13 @@ def test_raw_export_cap_does_not_prevent_loading_compressed_source(
     budget = esolangs.TextLimits(plain_chars=0, generation_chars=2, gzip_bytes=100)
     compressed = CompressedText.from_chunks(("+.",), limits=budget)
     artifact = api.from_source(compressed)
-    assert api.prepare(artifact).run().output == "\x01"
+    assert api.prepare(artifact).run().unwrap().output == "\x01"
     for limits in (
         None,
         esolangs.ExecutionLimits(max_steps=2),
         esolangs.ExecutionLimits(total_timeout=5),
     ):
-        assert api.run(artifact, limits=limits).output == "\x01"
+        assert api.run(artifact, limits=limits).unwrap().output == "\x01"
     path = tmp_path / "program"
     with pytest.raises(esolangs.GeneratorCapError, match="raw text"):
         api.to_file(artifact, path)
@@ -415,12 +415,12 @@ def test_wrapping_counts_the_newline_at_an_exact_width() -> None:
 
 def test_compressed_source_retains_language_origin(tmp_path: Path) -> None:
     program = esolangs.ProgramArtifact(CompressedText.from_chunks((",.",)), REFERENCE)
-    assert esolangs.run(REFERENCE, program, stdin="Z").output == "Z"
+    assert esolangs.run(REFERENCE, program, stdin="Z").unwrap().output == "Z"
     other = next(n for n in esolangs.list_languages() if n != REFERENCE)
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         esolangs.run(
             REFERENCE, esolangs.ProgramArtifact(program.source, other), stdin="Z"
-        )
+        ).unwrap()
 
     class AlternateChunks(CompressedText):
         def chunks(self):
@@ -433,7 +433,7 @@ def test_compressed_source_retains_language_origin(tmp_path: Path) -> None:
     assert len(supplied) == 2
     assert str(supplied) == ",."
     assert str(supplied.wrapped(2)) == ",.\n"
-    assert api.run(supplied, stdin="Z").output == "Z"
+    assert api.run(supplied, stdin="Z").unwrap().output == "Z"
 
     artifact = api.from_source(supplied)
     assert type(artifact.source) is CompressedText
@@ -444,7 +444,7 @@ def test_compressed_source_retains_language_origin(tmp_path: Path) -> None:
     api.to_file(supplied, destination, gzip=True)
     assert destination.read_bytes() == archive
     for restored in (artifact, portable, api.from_file(destination)):
-        assert api.run(restored, stdin="Z").output == "Z"
+        assert api.run(restored, stdin="Z").unwrap().output == "Z"
 
     with pytest.raises(esolangs.ProgramError, match="invalid gzip source"):
         AlternateChunks(b"not gzip")

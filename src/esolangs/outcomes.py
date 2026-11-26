@@ -147,7 +147,30 @@ class ExecutionOutcome:
         return None
 
     def unwrap(self) -> ExecutionResult:
-        """Return completion or raise the retained public error."""
+        """Return completion or raise the retained public error.
+
+        Raises:
+            UnknownLanguageError: ``language`` is not registered.
+            ArgumentError: An option is invalid or inapplicable
+                (for example, ``seed`` for a deterministic language).
+            ProgramNotFoundError: ``program`` is a Path that does not exist.
+            ProgramError: The program does not load (base of the above).
+            TemplateError: ``program`` is an unfilled template; see
+                :func:`instantiate`.
+            InputExhaustedError: A read past the end of ``stdin``.  Languages with
+                ``describe(language).eof_is_a_value`` supply a value instead,
+                and some halt.
+            ExecutionTimeoutError: A deadline elapsed.  Also a :class:`TimeoutError`.
+            ExecutionCapError: ``max_steps``, ``max_output`` or ``max_memory`` ran
+                out.
+            ExecutionBudgetError: Base of the two above; ``bound`` names the
+                budget.
+            InterpreterLimitError: The interpreter hit an implementation limit.
+            HaltError: The program halted on an invalid operation (base of the
+                three above).
+            MissingDependencyError: The language needs an uninstalled extra
+                (``esolangs[image]`` for PNG).
+        """
         if self.error is not None:
             raise self.error
         return self.observation

@@ -79,7 +79,7 @@ def test_custom_emitter_does_not_inherit_shipped_evidence() -> None:
     assert facts.examples == ()
     assert facts.generator_scaling is None
     artifact = scoped.generate("01")
-    assert scoped.run(artifact, stdin="1").output == "\x01"
+    assert scoped.run(artifact, stdin="1").unwrap().output == "\x01"
 
 
 def test_catalog_identifiers_cannot_be_shadowed_by_aliases() -> None:
@@ -115,7 +115,7 @@ def test_catalog_freezes_declaration_spellings_before_indexing() -> None:
         esolangs.Catalog([]).with_language(record),
     ):
         assert scoped.resolve("private_interpreter") == "Private interpreter"
-        assert scoped.bind("private-alias").run("+.").output == "\x01"
+        assert scoped.bind("private-alias").run("+.").unwrap().output == "\x01"
 
 
 def test_machine_traits_return_an_independent_snapshot() -> None:
@@ -461,7 +461,7 @@ def test_scoped_description_uses_the_declared_runtime() -> None:
     scoped = esolangs.Catalog([local]).bind(local.name)
     assert scoped.describe().state_model == "other"
     assert scoped.describe().spec == esolangs.describe(REFERENCE).spec
-    assert scoped.run("+.").output == "\x01"
+    assert scoped.run("+.").unwrap().output == "\x01"
 
 
 def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None:
@@ -476,21 +476,21 @@ def test_foreign_artifact_errors_agree_across_transports(tmp_path: Path) -> None
     assert scoped.from_json(document) == program
     assert scoped.from_file(path).source == program.source
     for operation in (
-        lambda: owner.run(program),
+        lambda: owner.run(program).unwrap(),
         lambda: owner.prepare(program),
         lambda: owner.make_vm(program),
         lambda: owner.make_debugger(program),
         lambda: owner.evaluate(program, [1]),
         lambda: owner.to_file(program, tmp_path / "copy.png"),
         lambda: owner.to_json(program),
-        lambda: owner.run(path),
+        lambda: owner.run(path).unwrap(),
         lambda: owner.from_file(path),
         lambda: owner.from_json(document),
     ):
         with pytest.raises(esolangs.ProgramError):
             operation()
     with pytest.raises(esolangs.UnknownLanguageError):
-        esolangs.run(scoped.name, program)
+        esolangs.run(scoped.name, program).unwrap()
 
     ordinary = owner.generate("01")
     owner.to_file(ordinary, path)

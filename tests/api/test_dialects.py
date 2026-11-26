@@ -123,7 +123,7 @@ def test_every_dialect_declares_its_values() -> None:
     with pytest.raises(esolangs.ArgumentError, match="settings belong"):
         esolangs.run(
             first, Unreadable(), stdin=Unreadable(), settings=two, catalog=catalog
-        )
+        ).unwrap()
     with pytest.raises(esolangs.ArgumentError, match="settings belong"):
         esolangs.generate(second, "01", settings=one, catalog=catalog)
     named = DialectSchema(first, {"catalog": ("left", "right")}, {"catalog": "left"})
@@ -156,24 +156,28 @@ def test_invalid_settings_fail_before_reading(language, settings, options) -> No
     with pytest.raises(esolangs.ArgumentError):
         esolangs.run(
             language, Unreadable(), stdin=Unreadable(), settings=settings, **options
-        )
+        ).unwrap()
     with pytest.raises(esolangs.ArgumentError):
         make_vm(language, Unreadable(), stdin=Unreadable(), settings=settings)
     with pytest.raises(esolangs.ArgumentError):
         esolangs.generate(language, "01", settings=settings)
 
 
-@pytest.mark.parametrize("operation", [esolangs.run, esolangs.generate])
-def test_settings_require_the_public_object(operation, capsys) -> None:
+@pytest.mark.parametrize(
+    ("command", "operation"),
+    [
+        ("run", lambda *args, **opts: esolangs.run(*args, **opts).unwrap()),
+        ("generate", esolangs.generate),
+    ],
+)
+def test_settings_require_the_public_object(command, operation, capsys) -> None:
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
         operation(REFERENCE, Unreadable(), settings={})
     from esolangs.cli.args import _settings_arguments, _settings_of
 
     for value in (2, 3):
         document = '{"cell_modulus":2,"cell_modulus":' + str(value) + "}"
-        _, error = _failure(
-            [operation.__name__, "--settings", document, REFERENCE, "01"], capsys
-        )
+        _, error = _failure([command, "--settings", document, REFERENCE, "01"], capsys)
         assert "duplicate field" in error
     language = one_where(lambda info: "cell_modulus" in info.dialect_settings)[0]
     assert _settings_of(
@@ -249,7 +253,7 @@ def test_inherited_choices_are_checked_before_input() -> None:
     source = esolangs.ProgramArtifact("+.", REFERENCE)
     object.__setattr__(source, "settings", foreign_settings())
     with pytest.raises(esolangs.ArgumentError, match="dialect settings"):
-        esolangs.run(REFERENCE, source, stdin=Unreadable())
+        esolangs.run(REFERENCE, source, stdin=Unreadable()).unwrap()
 
 
 @pytest.mark.parametrize(
@@ -287,7 +291,10 @@ def test_custom_dialect_with_large_integer_choices() -> None:
         schema.validate({"mode": 2})
     artifact = bound.from_source("+.", settings=settings)
     replacement = bound.settings(mode=1)
-    for operation in (bound.run, bound.prepare):
+    for operation in (
+        lambda source, **opts: bound.run(source, **opts).unwrap(),
+        bound.prepare,
+    ):
         with pytest.raises(
             esolangs.ProgramError, match=r"mode=<integer with \d+ bits>, not 1"
         ):
@@ -307,7 +314,9 @@ def test_dialect_settings_from_another_schema_name_the_catalog() -> None:
     with pytest.raises(
         esolangs.ArgumentError, match="different schema from this catalog"
     ):
-        esolangs.run(REFERENCE, Unreadable(), stdin=Unreadable(), settings=settings)
+        esolangs.run(
+            REFERENCE, Unreadable(), stdin=Unreadable(), settings=settings
+        ).unwrap()
 
 
 def test_dialect_keys_survive_binding_and_round_trips(tmp_path: Path) -> None:
@@ -426,7 +435,7 @@ def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
     )
     assert scope.describe().dialect_settings["rotation"]["default"] == "forward"
     source = "+,"
-    assert stock.run(source).output == ""
+    assert stock.run(source).unwrap().output == ""
     for settings, output in (
         (None, "\x01"),
         (scope.settings(), "\x01"),
@@ -438,12 +447,14 @@ def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
         assert portable.settings == settings
         if settings is None:
             assert not calls
-        assert scope.run(source, settings=settings).output == output
-        assert scope.run(portable).output == output
+        assert scope.run(source, settings=settings).unwrap().output == output
+        assert scope.run(portable).unwrap().output == output
         assert complete_vm(scope.make_vm(portable)) == output
         prepared = scope.prepare(portable)
         assert prepared.artifact.settings == settings
-        assert prepared.run().output == complete_vm(prepared.make_vm()) == output
+        assert (
+            prepared.run().unwrap().output == complete_vm(prepared.make_vm()) == output
+        )
         assert calls
         assert set(calls) == {"forward" if output else "backward"}
 
@@ -477,8 +488,10 @@ def test_preparation_plan_owns_native_defaults_and_fresh_machine_state() -> None
     settings = scope.settings(rotation="forward")
     prepared = scope.prepare("+,", settings=settings)
     for _ in range(2):
-        assert prepared.run().output == complete_vm(prepared.make_vm()) == "\x01"
-    assert scope.run("+,", settings=settings).output == "\x01"
+        assert (
+            prepared.run().unwrap().output == complete_vm(prepared.make_vm()) == "\x01"
+        )
+    assert scope.run("+,", settings=settings).unwrap().output == "\x01"
 
 
 def test_custom_runtime_defaults_follow_declared_runner_keywords(monkeypatch) -> None:
@@ -540,10 +553,14 @@ def test_custom_runtime_defaults_follow_declared_runner_keywords(monkeypatch) ->
             artifact = scope.from_source("+", settings=settings)
             portable = scope.from_json(scope.to_json(artifact))
             assert portable.settings == settings
-            assert scope.run(portable).output == output
+            assert scope.run(portable).unwrap().output == output
             assert complete_vm(scope.make_vm(portable)) == output
             prepared = scope.prepare(portable)
-            assert prepared.run().output == complete_vm(prepared.make_vm()) == output
+            assert (
+                prepared.run().unwrap().output
+                == complete_vm(prepared.make_vm())
+                == output
+            )
 
 
 def test_dialect_schema_reports_invalid_mapping_arguments() -> None:
@@ -591,7 +608,7 @@ def test_default_pickle_has_no_retained_choices() -> None:
     source = esolangs.generate(REFERENCE, "01")
     restored = pickle.loads(pickle.dumps(source))
     assert restored.settings is None
-    assert esolangs.run(REFERENCE, restored, stdin="1").output == "1"
+    assert esolangs.run(REFERENCE, restored, stdin="1").unwrap().output == "1"
 
 
 def _contradicted() -> list[tuple[str, str, int | str]]:
@@ -619,7 +636,11 @@ def test_generated_programs_refuse_a_contradicting_dialect(
     for selected in (None, bound.settings()):
         artifact = bound.generate("0110", settings=selected)
         assert artifact.settings == bound.settings(**defaults)
-        for operation in (bound.run, bound.prepare, bound.to_json):
+        for operation in (
+            lambda source, **opts: bound.run(source, **opts).unwrap(),
+            bound.prepare,
+            bound.to_json,
+        ):
             with pytest.raises(esolangs.ProgramError, match=f"{key}="):
                 operation(artifact, settings=contrary)
 
@@ -659,3 +680,27 @@ def test_every_reported_default_and_choice_is_accepted(monkeypatch) -> None:
             for value in (None, invalid, True):
                 with pytest.raises(esolangs.ArgumentError, match="choices: "):
                     esolangs.Language(language).settings(**{key: value})
+
+
+def test_catalog_bound_dialect_survives_binding_and_serialization() -> None:
+    from esolangs.planning import Ready
+    from esolangs.serialization import from_json, to_json
+
+    name = one_where(lambda info: "cell_modulus" in info.dialect_settings)[0]
+    language = esolangs.Language(name)
+    settings = language.settings(cell_modulus=256)
+    bound = language.catalog.bind(name, dialect=settings)
+    plan = bound.plan_generation("0110")
+    assert isinstance(plan, Ready)
+    program = plan.build()
+    assert program.settings == bound.generate("0110").settings
+    assert program.settings.options()["cell_modulus"] == 256
+    copy = from_json(name, to_json(name, program), catalog=bound.catalog)
+    for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+        row = copy.bind(bits)
+        output = bound.prepare(row.program).run(stdin=row.stdin).unwrap().output
+        assert (
+            bound.read_answer(output)
+            == copy.evaluate(bits).answer
+            == str(bits[0] ^ bits[1])
+        )

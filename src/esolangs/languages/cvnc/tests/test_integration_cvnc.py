@@ -33,7 +33,9 @@ class TestPathAndTextTrailingNewline:
                 path,
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == "0"
         )
         assert (
@@ -42,7 +44,9 @@ class TestPathAndTextTrailingNewline:
                 path.read_text(),
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == "0"
         )
 
@@ -57,13 +61,17 @@ class TestPathAndTextTrailingNewline:
                 path,
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == run(
                 "CV(N)(C)",
                 path.read_text(),
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
         )
 
 
@@ -83,4 +91,4 @@ def test_the_override_name_specifically(name: str) -> None:
         assert restored.evaluate([1]) == expected
     for slug in ("cvnc", "cv_n_c"):
         with pytest.raises(esolangs.ProgramError, match="generated for"):
-            api.run(replace(artifact, language=slug))
+            api.run(replace(artifact, language=slug)).unwrap()

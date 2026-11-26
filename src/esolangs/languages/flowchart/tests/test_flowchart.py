@@ -195,7 +195,7 @@ class TestParsing:
             for bit in (0, 1):
                 stdin = api.encode_inputs([bit])
                 raw = run_program(lines, stdin)
-                assert raw == api.run(path, stdin=stdin).output
+                assert raw == api.run(path, stdin=stdin).unwrap().output
                 assert api.read_answer(raw) == str(bit)
 
     def test_nodes_touching_side_by_side_are_rejected(self) -> None:
@@ -637,7 +637,7 @@ def test_a_failed_tick_does_not_repeat_accepted_io(monkeypatch) -> None:
 
     result = esolangs.run(
         "Flowchart", complete, stdin="AB", limits=esolangs.ExecutionLimits(max_steps=10)
-    )
+    ).unwrap()
     assert (result.steps, result.output) == (10, "ÿ")
 
 

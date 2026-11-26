@@ -194,7 +194,7 @@ class TestTheWidthFlagDoesNotEatTheTable:
         expected = api.generate("01", width=10 ** (cap + 1) - 1)
         path = tmp_path / "native"
         api.to_file(expected, path, normalize=True)
-        assert api.read_answer(api.run(path, stdin="1").output) == "1"
+        assert api.read_answer(api.run(path, stdin="1").unwrap().output) == "1"
         native = path.read_bytes()
         for options in (["--width", digits], [f"--width={digits}"]):
             result = subprocess.run(

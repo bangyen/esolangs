@@ -66,7 +66,7 @@ class TestErrorsSurviveAProcessBoundary:
                 program,
                 stdin="10",
                 limits=esolangs.ExecutionLimits(execution_timeout=10),
-            )
+            ).unwrap()
         restored = pickle.loads(pickle.dumps(caught.value))
         assert str(restored) == str(caught.value)
         assert restored.reads == caught.value.reads
@@ -155,7 +155,7 @@ class TestABadStdinIsAnArgumentFault:
     @pytest.mark.parametrize(
         "call",
         [
-            lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]).output,
+            lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]).unwrap().output,
             lambda: check_program(REFERENCE, ",.", ["0"]),
             lambda: debugger_api.make_vm(REFERENCE, ",.", stdin=["0"]),
             lambda: debugger_api.make_debugger(REFERENCE, ",.", stdin=["0"]),
@@ -169,7 +169,7 @@ class TestABadStdinIsAnArgumentFault:
     def test_a_bad_program_is_still_a_program_error(self) -> None:
         """The change must not blur the distinction the other way."""
         with pytest.raises(esolangs.ProgramError, match="program must be a string"):
-            esolangs.run(REFERENCE, 42, stdin="")
+            esolangs.run(REFERENCE, 42, stdin="").unwrap()
 
 
 class TestBoolsAreRefusedForAStatedReason:
@@ -190,7 +190,9 @@ class TestRawInputKeepsItsNativeMeaning:
                 program,
                 stdin="1\n1\n0\n0\n1\n1\n",
                 limits=esolangs.ExecutionLimits(execution_timeout=10),
-            ).output
+            )
+            .unwrap()
+            .output
             == "0"
         )
 

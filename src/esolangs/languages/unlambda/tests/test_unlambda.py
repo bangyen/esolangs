@@ -132,7 +132,7 @@ def test_a_read_and_a_test_on_the_character(monkeypatch: pytest.MonkeyPatch) -> 
     api = Language("Unlambda")
     source, stdin = "`@`d``|ii", "Q\n"
     limits = ExecutionLimits(max_steps=32)
-    expected = api.run(source, stdin=stdin, limits=limits)
+    expected = api.run(source, stdin=stdin, limits=limits).unwrap()
     assert (expected.output, expected.steps, expected.input_reads) == ("Q", 27, 1)
 
     write = ScriptedIO.print_str

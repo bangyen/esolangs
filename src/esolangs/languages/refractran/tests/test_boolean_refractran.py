@@ -90,7 +90,7 @@ def test_tables_and_reference() -> None:
                 base, _, exponent = term.partition("^")
                 value *= int(base) ** int(exponent or "1")
             answer = _rational_run(value, fractions)
-            output = run("REFRACTRAN", program).output
+            output = run("REFRACTRAN", program).unwrap().output
             assert int(output, 2) == answer
             assert esolangs.read_answer("REFRACTRAN", output) == table[row]
 
@@ -217,7 +217,7 @@ def _check_marked_paths() -> None:
                 "REFRACTRAN",
                 template.fill(bits),
                 limits=esolangs.ExecutionLimits(max_steps=2 * len(broken) + 1),
-            )
+            ).unwrap()
         except esolangs.ExecutionCapError:
             caught = True
         else:

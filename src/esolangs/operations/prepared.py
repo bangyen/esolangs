@@ -14,7 +14,6 @@ from esolangs.outcomes import ExecutionOutcome
 # The generated initializer resolves the base dataclass's annotations here.
 from esolangs.registry._catalog import Catalog as Catalog
 from esolangs.registry._catalog import get_catalog, resolve_origin
-from esolangs.results import ExecutionResult
 from esolangs.runtime._artifact_source import check_program
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._prepared import _PreparedRuntime
@@ -64,7 +63,7 @@ class PreparedProgram(_PreparedRuntime):
         self._bind_artifact(artifact, catalog)
         self._bind_machine()
 
-    def execute(
+    def run(
         self,
         *,
         stdin: InputSource = "",
@@ -105,19 +104,6 @@ class PreparedProgram(_PreparedRuntime):
             )
             object.__setattr__(self, "_evaluate_row", evaluator)
         return evaluator(bits, limits, self)
-
-    def run(
-        self,
-        *,
-        stdin: InputSource = "",
-        limits: ExecutionLimits | None = None,
-        seed: int | None = None,
-        isolated: bool = False,
-    ) -> ExecutionResult:
-        """Run fresh state; arguments and errors follow :func:`esolangs.run`."""
-        return self.execute(
-            stdin=stdin, limits=limits, seed=seed, isolated=isolated
-        ).unwrap()
 
     def make_debugger(
         self, *, stdin: InputSource = "", seed: int | None = None

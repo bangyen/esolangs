@@ -104,7 +104,9 @@ def test_constant_arms_and_banded_results_shrink_the_tree() -> None:
         assert (
             execute(
                 "Smallfuck", program, limits=esolangs.ExecutionLimits(max_steps=10_000)
-            ).output
+            )
+            .unwrap()
+            .output
             == expected
         )
 
@@ -119,7 +121,7 @@ def test_fresh_setters_lower_the_public_floor() -> None:
             for row, expected in enumerate(table):
                 bits = [int(bit) for bit in format(row, f"0{inputs}b")]
                 source = esolangs.instantiate("Smallfuck", template, bits, width=1)
-                assert execute("Smallfuck", source).output == expected
+                assert execute("Smallfuck", source).unwrap().output == expected
 
 
 @pytest.mark.parametrize("restored", [False, True])
@@ -136,7 +138,7 @@ def test_narrow_smallfuck_saved_provenance(*, restored: bool) -> None:
             "Smallfuck", source, [row >> 1, row & 1], width=1, truth_table=table
         )
         assert max(map(len, program.source.splitlines())) == 1
-        assert execute("Smallfuck", program).output == expected
+        assert execute("Smallfuck", program).unwrap().output == expected
     with pytest.raises(ValueError, match="does not compute that table"):
         esolangs.instantiate("Smallfuck", source, [0, 1], truth_table="1001")
 
@@ -154,7 +156,9 @@ def test_narrow_smallfuck_preserves_fitting_and_large_execution() -> None:
                 execute(
                     "Smallfuck",
                     esolangs.instantiate("Smallfuck", template, bits),
-                ).output
+                )
+                .unwrap()
+                .output
                 == table[row]
             )
 
@@ -343,7 +347,7 @@ def test_one_pair_keeps_completed_constant_paths_and_fixed_code_bits(word) -> No
             [PAIR] * 4,
             [int(bit) for bit in f"{row:04b}"],
         )
-        assert execute("Smallfuck", program).output == expected
+        assert execute("Smallfuck", program).unwrap().output == expected
 
 
 @pytest.mark.parametrize("n", [4, 9])

@@ -146,7 +146,7 @@ def test_a_failed_cycle_retries_with_the_same_draw_input_and_output(
     assert dbg.output == "1"
 
     with pytest.raises(HaltError, match="input must be a bit") as first:
-        language.run(source, stdin="21", seed=4)
+        language.run(source, stdin="21", seed=4).unwrap()
     observed = first.value.observation
     assert observed is not None
     assert (observed.output, observed.input_position, observed.input_reads) == (
@@ -170,7 +170,7 @@ def test_a_failed_cycle_retries_with_the_same_draw_input_and_output(
 def _check_cycle_output_retry(monkeypatch, source, stdin, writes, draws) -> None:
     language = Language("thisthat")
     limit = ExecutionLimits(max_steps=10)
-    expected = language.run(source, stdin=stdin, seed=4, limits=limit)
+    expected = language.run(source, stdin=stdin, seed=4, limits=limit).unwrap()
     assert expected.output == "".join(map(str, writes))
     write = ScriptedIO._write
     for accepted in (0, 1):

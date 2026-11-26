@@ -559,7 +559,7 @@ def test_retries_keep_the_original_intercal_fault(
     api = Language("INTERCAL")
     program = f"PLEASE {source}\nDO {'READ OUT .1' if reads else 'GIVE UP'}\nDO GIVE UP"
     valid = program.replace(",1", "#2")
-    result = api.run(valid, stdin=stdin.replace("TEN", "TWO"), seed=1)
+    result = api.run(valid, stdin=stdin.replace("TEN", "TWO"), seed=1).unwrap()
     assert (result.output, result.input_position, result.input_reads) == (
         control,
         len(stdin),
@@ -991,7 +991,7 @@ def test_branch_search_keeps_clean_qualified_statement_outcomes() -> None:
     _check_wide_chance()
     api = Language("INTERCAL")
     source = "PLEASE DO %0 WRITE IN .1\nDO .2 <- #7\nDO GIVE UP"
-    assert api.run(source, limits=ExecutionLimits(max_steps=3)).steps == 3
+    assert api.run(source, limits=ExecutionLimits(max_steps=3)).unwrap().steps == 3
     for proof in (run_until_halt_or_all_branches_cycle, run_until_halt_or_cycle):
         vm = api.make_vm(source)
         assert proof(vm, limit=4) is True
@@ -1004,9 +1004,9 @@ def test_branch_search_keeps_clean_qualified_statement_outcomes() -> None:
     ):
         source = f"PLEASE DO %50 {command}\nDO .2 <- #7\nDO GIVE UP"
         limits = ExecutionLimits(max_steps=3)
-        assert api.run(source, seed=5, limits=limits).steps == 3
+        assert api.run(source, seed=5, limits=limits).unwrap().steps == 3
         with pytest.raises(error):
-            api.run(source, seed=0, limits=limits)
+            api.run(source, seed=0, limits=limits).unwrap()
         vm = api.make_vm(source, seed=0)
         saved = vm.snapshot()
         assert run_until_halt_or_all_branches_cycle(vm, limit=4) is True
@@ -1028,9 +1028,9 @@ def _check_wide_chance() -> None:
             source = f"PLEASE .1 <- #4\nDO READ OUT .1\nDO %{chance} GIVE UP"
             plan = api.prepare(source)
             for result, steps in (
-                (api.run(source, seed=1), None),
-                (plan.run(limits=limits, seed=1), 3),
-                (plan.run(limits=limits, seed=1, isolated=True), 3),
+                (api.run(source, seed=1).unwrap(), None),
+                (plan.run(limits=limits, seed=1).unwrap(), 3),
+                (plan.run(limits=limits, seed=1, isolated=True).unwrap(), 3),
             ):
                 assert result.output == "IV\n"
                 assert result.steps == steps

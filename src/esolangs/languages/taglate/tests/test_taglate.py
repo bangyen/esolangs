@@ -159,7 +159,7 @@ class TestTaglate:
     ) -> None:
         """``i`` advances one character of the line above it."""
         program = "Hello, World!\niiiiiiiiiiiii"
-        assert execute_program("Taglate", program).output == "Hello, World!"
+        assert execute_program("Taglate", program).unwrap().output == "Hello, World!"
         assert_rejected_output_retry(
             "Taglate",
             "AB\nii",
@@ -269,7 +269,9 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
                 "1\nix",
                 stdin="",
                 limits=ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == "1"
         )
         assert (
@@ -278,7 +280,9 @@ class TestTheTwoQueueLanguagesDifferOnPurpose:
                 "1\ngi",
                 stdin="",
                 limits=ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == "1"
         )
 
@@ -314,7 +318,7 @@ def test_a_halting_division_leaves_the_rest_of_the_queue() -> None:
     limits = ExecutionLimits(max_steps=3)
     expected = ExecutionResult("Z", 0, 0, 0, steps=1)
     for isolated in (False, True):
-        outcome = plan.execute(limits=limits, isolated=isolated)
+        outcome = plan.run(limits=limits, isolated=isolated)
         assert type(outcome.error) is HaltError
         assert outcome.observation == expected
 
@@ -338,6 +342,6 @@ def test_a_halting_division_leaves_the_rest_of_the_queue() -> None:
         assert debug.snapshot() == saved
 
     healthy = "ZA\x02BC\nidi"
-    finished = api.run(healthy, limits=limits)
+    finished = api.run(healthy, limits=limits).unwrap()
     assert (finished.output, finished.steps) == ("ZB", 3)
-    assert api.run(healthy, limits=limits, isolated=True) == finished
+    assert api.run(healthy, limits=limits, isolated=True).unwrap() == finished

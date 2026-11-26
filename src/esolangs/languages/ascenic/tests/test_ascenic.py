@@ -26,10 +26,10 @@ def test_step_bound_does_not_seed_an_unseeded_run(monkeypatch) -> None:
     limits = esolangs.ExecutionLimits(max_steps=2)
     prepared = api.prepare(source)
     monkeypatch.setattr(secrets, "randbelow", lambda _upper: 0)
-    assert api.run(source).output == "0"
-    assert api.run(source, limits=limits).output == "0"
-    assert prepared.run(limits=limits).output == "0"
-    assert prepared.run(limits=limits, seed=0).output == "1"
+    assert api.run(source).unwrap().output == "0"
+    assert api.run(source, limits=limits).unwrap().output == "0"
+    assert prepared.run(limits=limits).unwrap().output == "0"
+    assert prepared.run(limits=limits, seed=0).unwrap().output == "1"
     debugger = prepared.make_debugger()
     assert debugger.run(limits=limits) == "halted"
     assert debugger.output == "1"

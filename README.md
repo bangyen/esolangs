@@ -70,10 +70,10 @@ assert row.answer == "1"
 |---|---|
 | `generate` | Returns a program artifact or input template for a truth table. |
 | `encode_inputs` | Builds the stdin for one input row; each language reads input its own way. |
-| `run` | Returns output, input consumption, and completion evidence. A `str` is source; pass a `Path` to run a file. |
+| `run` | Returns an execution outcome. Use `.unwrap()` for the result or original exception. A `str` is source; pass a `Path` to run a file. |
 | `read_answer` | Pulls the `0`/`1` answer out of the output. |
 | `describe` | Says how a language takes input and where its answer lands. |
-| `instantiate` | Fills a template: some languages put inputs in the source, so `generate` returns a template instead. |
+| `program.bind(bits)` | Returns the runnable artifact and stdin for a row, including languages that embed inputs in source. |
 
 Bound a run with `limits=esolangs.ExecutionLimits(...)`:
 
@@ -87,8 +87,7 @@ a halt or divergence proof. A deadline raises `ExecutionTimeoutError`; `max_step
 Generated artifacts expose `.source` and templates expose `.fill(bits)`.
 Artifacts generated or loaded through a custom catalog use that catalog for
 `.evaluate(bits)`. Portable JSON takes its catalog from the loader.
-The [2.0 migration guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#compatibility) covers the changed return
-types and migrating 1.x source/output callers.
+The [migration guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#compatibility) covers the 3.0 execution and planning changes.
 
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
 covers [input](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program),

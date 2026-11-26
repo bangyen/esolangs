@@ -150,7 +150,7 @@ def _is_grid(name: str) -> bool:
 def _run(name: str, program: str) -> str:
     """What ``program`` does under ``name``'s interpreter: output, or a raise."""
     try:
-        return esolangs.run(name, program, stdin=_stdin(name)).output
+        return esolangs.run(name, program, stdin=_stdin(name)).unwrap().output
     except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
 

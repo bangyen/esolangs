@@ -36,7 +36,7 @@ def _check_input_during_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
     limits = ExecutionLimits(max_steps=2)
     write = ScriptedIO._write
     for stdin, output, reads, eof in (("AB", "A", 1, 0), ("", "\0", 0, 1)):
-        expected = language.run(source, stdin=stdin, limits=limits)
+        expected = language.run(source, stdin=stdin, limits=limits).unwrap()
         assert (expected.output, expected.input_reads, expected.input_past_end) == (
             output,
             reads,
@@ -123,10 +123,10 @@ class TestSpecialAddresses:
                 assert retry.value.observation == debug.observation == expected
                 assert debug.ip == 3
                 assert debug.snapshot() == saved
-            worker = plan.execute(stdin=stdin, limits=limits, isolated=True)
+            worker = plan.run(stdin=stdin, limits=limits, isolated=True)
             assert worker.status == "rejected"
             assert worker.observation == expected
-        valid = api.run("6 -3 0 -2 0 0 65", stdin="BC", limits=limits)
+        valid = api.run("6 -3 0 -2 0 0 65", stdin="BC", limits=limits).unwrap()
         assert valid.output == "A"
         assert valid.input_reads == 1
 

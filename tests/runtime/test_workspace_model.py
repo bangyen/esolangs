@@ -247,7 +247,10 @@ def test_an_invalid_owned_adapter_cannot_fall_back(monkeypatch):
         assert measured.bits > 0
         assert isinstance(_capture_workspace(vm), WorkspaceSnapshot)
         assert saved in retained
-        assert vm.output == esolangs.run(language.name, artifact, stdin=stdin).output
+        assert (
+            vm.output
+            == esolangs.run(language.name, artifact, stdin=stdin).unwrap().output
+        )
         non_boolean += 1
     assert non_boolean > 0
     vm = make_vm("Brainfuck", "+.")

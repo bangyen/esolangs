@@ -66,14 +66,14 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == stdin
-        native = esolangs.run("Piet", source, stdin=stdin)
+        native = esolangs.run("Piet", source, stdin=stdin).unwrap()
         assert native.output == stdin
         assert (native.input_position, native.input_reads, native.input_past_end) == (
             int(bool(stdin)),
             int(bool(stdin)),
             int(not stdin),
         )
-        assert esolangs.run("Piet", source, stdin=stdin, scale=scale) == native
+        assert esolangs.run("Piet", source, stdin=stdin, scale=scale).unwrap() == native
         debug = make_debugger("Piet", source, stdin=stdin, scale=scale)
         assert tuple(name for name, _ in debug.views) == ("cc", "current", "dp")
         assert debug.ip_shape == "grid"
@@ -82,7 +82,9 @@ def test_scale_binding_eof_and_unicode_match_all_routes():
         result, snapshot = debug.observation, debug.snapshot()
         assert result == replace(native, steps=result.steps)
         assert (
-            esolangs.run("Piet", source, stdin=stdin, scale=scale, isolated=True)
+            esolangs.run(
+                "Piet", source, stdin=stdin, scale=scale, isolated=True
+            ).unwrap()
             == native
         )
         debug.step()

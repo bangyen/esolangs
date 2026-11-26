@@ -74,8 +74,8 @@ import esolangs
 
 table = "0110"
 program = esolangs.generate("brainfuck", table)
-stdin = esolangs.encode_inputs("brainfuck", [0, 1])
-result = esolangs.run("brainfuck", program, stdin=stdin)
+row = program.bind([0, 1])
+result = esolangs.run("brainfuck", row.program, stdin=row.stdin).unwrap()
 assert esolangs.read_answer("brainfuck", result.output) == "1"
 ```
 
@@ -88,14 +88,14 @@ One kind of language needs a different call:
   assert isinstance(raster.source, esolangs.Raster)
   raster.source.to_png()  # PNG I/O needs esolangs[image] (Pillow)
   stdin = esolangs.encode_inputs("Piet", [0, 1])
-  assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin).output) == "1"
+  assert esolangs.read_answer("Piet", esolangs.run("Piet", raster, stdin=stdin).unwrap().output) == "1"
   ```
 
 ### Saving and loading artifacts
 
 A generated artifact retains its language, settings, and applicable scale
 and input arity. `evaluate` checks the row against a retained arity and
-uses the installed catalog unless you pass `catalog=`. See [Templates](#templates)
+uses its owning catalog unless you pass `catalog=`. See [Templates](#templates)
 for artifacts with inputs embedded in source.
 
 Use `to_json` and `from_json` to retain settings and template bindings.
@@ -105,11 +105,13 @@ Export templates after filling them.
 ```python
 from pathlib import Path
 
-esolangs.to_file("brainfuck", program, "xor.bf")  # native source
+from esolangs.serialization import from_json, to_file, to_json
+
+to_file("brainfuck", program, "xor.bf")  # native source
 esolangs.run("brainfuck", Path("xor.bf"), stdin="01")  # a str would be source
 esolangs.Language("brainfuck").from_file("xor.bf")  # back to an artifact
-text = esolangs.to_json("brainfuck", program)  # JSON keeps settings
-esolangs.from_json("brainfuck", text)  # takes the JSON text, not a path
+text = to_json("brainfuck", program)  # JSON keeps settings
+from_json("brainfuck", text)  # takes the JSON text, not a path
 ```
 
 `Language.from_source(source)` and `Language.from_file(path)` return runnable
@@ -142,7 +144,8 @@ import esolangs
 
 bf = esolangs.Language("brainfuck")
 program = bf.generate("0110", balance=True)
-result = bf.run(program, stdin=bf.encode_inputs([0, 1]))
+row = program.bind([0, 1])
+result = bf.run(row.program, stdin=row.stdin).unwrap()
 assert bf.read_answer(result.output) == "1"
 info = bf.describe()
 ```
@@ -184,21 +187,19 @@ These language-owned plans retain parsed source:
 
 `Language` also binds `instantiate`; use package functions across languages.
 
-`bf.execute(program, limits=ExecutionLimits(max_steps=10_000))` returns an
+`bf.run(program, limits=ExecutionLimits(max_steps=10_000))` returns an
 `ExecutionOutcome`: `completed`, `rejected`, `input_exhausted`, `fault` or `limit`.
 `CompletedRun.completion` holds the completion evidence. `FailedRun.error` holds
 the original error. Import either variant from `esolangs.outcomes`.
 The outcome’s `.observation` retains output and input counters; `.unwrap()` returns the
-completed result or raises the original error. Prepared programs also expose
-`execute`. Native, cooperative and worker execution return the same internal
-outcome; `run` raises from it.
+completed result or raises the original error. Prepared programs return the same outcome.
 
 `ExecutionLimits.execution_timeout` bounds acquisition and execution, each
 separately, but not worker startup; `total_timeout`
 includes acquisition, worker startup and execution. Set `preparation_timeout`
 to bound acquisition, worker startup and the source preparation hook independently
 of execution. It selects isolation when source needs preparing. A total deadline,
-output cap or memory cap also selects isolation. In-process `PreparedProgram.execute`
+output cap or memory cap also selects isolation. In-process `PreparedProgram.run`
 uses the existing preparation. An isolated call prepares again in its worker.
 `PreparedProgram.evaluate(bits)` can reuse a generated stdin program across rows.
 An execution deadline selects isolation, including with a step budget, so it
@@ -244,26 +245,17 @@ Functions:
 
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.encode_inputs` -- return the stdin encoding for `bits` under the Boolean input contract
-- `esolangs.evaluate` -- run one Boolean row and return its answer and execution evidence
-- `esolangs.execute` -- return completion, rejection, input exhaustion, fault or limit evidence
-- `esolangs.from_file` -- read lossless source with retained metadata
-- `esolangs.from_json` -- restore version-1 JSON as an explicit program or template record
 - `esolangs.from_source` -- declare runnable source, including text that resembles a filename
 - `esolangs.generate` -- return an immutable program or template computing `truth_table`
-- `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
-- `esolangs.plan_generation` -- return a reusable build function or the cap that prevents construction
 - `esolangs.prepare` -- load reusable source; each run or VM owns fresh IO, state and randomness
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
-- `esolangs.run` -- execute `program` and return output, input usage and completion evidence
-- `esolangs.to_file` -- write a program as a native source file
-- `esolangs.to_json` -- return version-1 JSON preserving source, choices, and Boolean bindings
+- `esolangs.run` -- return completion, rejection, input exhaustion, fault or limit evidence
 
 Types:
 
 - `esolangs.Artifact` -- `ProgramArtifact[Program] | TemplateArtifact`
 - `esolangs.BooleanEvaluation` -- answer bit as `read_answer` spells it, the observed IO, and any proof
-- `esolangs.Catalog` -- own a frozen declaration set; derived indexes share the same scope
 - `esolangs.CompressedText` -- validated UTF-8 gzip source; len counts expanded characters
 - `esolangs.DialectSchema` -- a language's enumerated choices and defaults, frozen at declaration
 - `esolangs.DialectSettings` -- validated overrides bound to one language schema
@@ -272,7 +264,6 @@ Types:
 - `esolangs.ExecutionResult` -- output, stdin usage and explicit completion evidence
 - `esolangs.InputSource` -- `str | bytes | IO[str] | IO[bytes]`
 - `esolangs.Language` -- bind a canonical language name to one immutable catalog
-- `esolangs.LanguageDeclaration` -- everything the package and its tests know about one language
 - `esolangs.LanguageInfo` -- what `describe` returns
 - `esolangs.PreparedProgram` -- loaded source and bound runtime; every invocation owns its IO and RNG
 - `esolangs.Program` -- `str | Raster | CompressedText`
@@ -390,7 +381,7 @@ Piped text from `generate`, `encode-inputs`, `run`, and `read-answer` also uses 
 Some Boolean generators embed the input bits in source. For these, `generate`
 returns a template with one ordered placeholder run per input, exactly as long as
 its replacement. Fill it with `template.fill(bits)`,
-`esolangs.instantiate(language, template, bits)`, or `generate --bits BITS` on the CLI.
+`language.instantiate(template, bits)`, or `generate --bits BITS` on the CLI.
 Portable JSON stores the marker and each slot's offsets and setters.
 With `truth_table=`, `instantiate` checks the generated layout and setters.
 Relabeling the marker preserves this match.
@@ -461,9 +452,9 @@ Windows and in worker threads. A timeout kills and reaps the child; errors retai
 
 - `max_memory` bounds an isolated worker's virtual address space, including
   Python overhead. Parent source loading is outside the cap. Exhaustion
-  raises `ExecutionCapError`, never a Boolean answer; a worker killed
-  before it can report raises a bare `InterpreterLimitError`.
-- Exceeding `max_output` raises `ExecutionCapError` with the retained
+  records `ExecutionCapError`, never a Boolean answer; a worker killed
+  before it can report records a bare `InterpreterLimitError`.
+- Exceeding `max_output` records `ExecutionCapError` with the retained
   prefix in `partial_output`. It shares the base `ExecutionBudgetError` with
   `ExecutionTimeoutError`, and is not an `InterpreterLimitError`. Zero permits no output; halting at exactly the
   cap succeeds.
@@ -475,7 +466,7 @@ try:
         ",[.]",
         stdin="y",
         limits=esolangs.ExecutionLimits(execution_timeout=3, max_output=12),
-    )
+    ).unwrap()
 except esolangs.ExecutionCapError as exc:
     assert exc.partial_output == "y" * 12
 ```
@@ -490,7 +481,7 @@ output to stdout afterward, at the reader's pace.
 
 `run(language, program, stdin=stdin,
 limits=ExecutionLimits(max_steps=100_000, execution_timeout=1))`
-returns output on halt. When a bound expires it raises an
+returns a completed outcome on halt. When a bound expires, `.unwrap()` raises an
 `ExecutionBudgetError` with `partial_output`: `ExecutionTimeoutError` with
 `bound` `"execution_timeout"`, or `ExecutionCapError` with `bound`
 `"max_steps"`.
@@ -623,16 +614,21 @@ and `scale` keys, which may hold null values. Version 1 is the supported tag ver
 The 1.x source facade is removed. Retain artifacts through generation, filling
 and execution; use `.source` for native measurements and portable JSON to
 preserve template bindings. Plain source cannot be instantiated.
-Use `run(...).output` for output text; `run_result` is replaced by `run`.
+Use `run(...).unwrap().output` for output text; `run_result` is replaced by `run`.
 
 The CLI is a deliberate subset of the Python API, not a mirror of it:
 commands share the API implementation, a capability lands in the API first,
 and the CLI gains a flag only for a shell workflow. Stepping and programmatic
 saving stay in Python; `list` supports the documented catalog filters.
 
-The public API is `esolangs.__all__`, `esolangs.__version__` and
-`esolangs.debugger.__all__`, plus the documented CLI. Every other module (`esolangs.vm`, `esolangs.registry`,
-`esolangs.generation`, `esolangs.runtime`, ...) is internal.
+In 3.0, replace `execute(...)` with `run(...)` and a raising `run(...)` with
+`run(...).unwrap()`. Use `language.plan_generation(table)` for a
+`Ready` decision with `.build()` or an `Unsupported` decision with `.reason`
+and `.cap`. Planning constructs the artifact once. Bind dialect defaults with
+`Language(name, dialect=settings)` or `catalog.bind(name, dialect=settings)`.
+
+The public API includes the package exports, `__version__`, debugger,
+serialization, planning, and the registry's `Catalog` and `LanguageDeclaration`.
 
 Within a major release, compatibility covers:
 

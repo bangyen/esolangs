@@ -239,8 +239,8 @@ def assert_digit_cap_independent(
     previous = sys.get_int_max_str_digits()
     try:
         sys.set_int_max_str_digits(640)
-        native = api.run(source, stdin=stdin)
+        native = api.run(source, stdin=stdin).unwrap()
         assert native.output == output
-        assert api.run(source, stdin=stdin, isolated=True) == native
+        assert api.run(source, stdin=stdin, isolated=True).unwrap() == native
     finally:
         sys.set_int_max_str_digits(previous)

@@ -96,21 +96,21 @@ def test_slashes_trailing_escape(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_slashes_literal_dollar_and_serialized_template() -> None:
-    assert esolangs.run("///", "/a/$/a").output == "$"
+    assert esolangs.run("///", "/a/$/a").unwrap().output == "$"
     assert (
-        esolangs.run(
-            "Slashalash", "$", limits=esolangs.ExecutionLimits(max_steps=20)
-        ).output
+        esolangs.run("Slashalash", "$", limits=esolangs.ExecutionLimits(max_steps=20))
+        .unwrap()
+        .output
         == "$"
     )
     template = esolangs.generate("///", "01")
     restored = esolangs.from_json("///", esolangs.to_json("///", template))
     with pytest.raises(TemplateError, match="fill the template"):
-        esolangs.run("///", restored)
+        esolangs.run("///", restored).unwrap()
     partial = esolangs.generate("///", "0110").source.replace("$", "a", 1)
     io = ScriptedIO()
     native.run(partial, io)
-    assert esolangs.run("///", partial).output == io.getvalue()
+    assert esolangs.run("///", partial).unwrap().output == io.getvalue()
 
     # dump_program("///", generate("///", "01")) at 517ab78cf predates spans.
     legacy = (
@@ -129,7 +129,7 @@ def test_slashes_literal_dollar_and_serialized_template() -> None:
     assert isinstance(artifact, esolangs.TemplateArtifact)
     assert artifact.spans == ((start, start + 1),)
     for bit in (0, 1):
-        assert api.run(artifact.fill([bit])).output == str(bit)
+        assert api.run(artifact.fill([bit])).unwrap().output == str(bit)
     canonical = api.to_json(artifact)
     assert json.loads(canonical) == value
     assert api.to_json(api.from_json(canonical)) == canonical

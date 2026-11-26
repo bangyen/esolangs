@@ -30,7 +30,9 @@ from tests.support.vm_support import (
 
 def test_bound_execution_passes_the_seed(monkeypatch: pytest.MonkeyPatch) -> None:
     language = esolangs.Language("LaserFuck")
-    assert [language.run("o+++.\n", seed=0).output for _ in range(6)] == ["3"] * 6
+    assert [language.run("o+++.\n", seed=0).unwrap().output for _ in range(6)] == [
+        "3"
+    ] * 6
     check_random_plan_reuse(
         "LaserFuck",
         "o\n+\n+\n+\n.",
@@ -48,7 +50,7 @@ def test_seeded_run_accepts_an_opaque_runner(monkeypatch):
         return original(*args, **kwargs)
 
     monkeypatch.setattr(module, "run", opaque)
-    assert run("LaserFuck", "o+++.\n", seed=0).output == "3"
+    assert run("LaserFuck", "o+++.\n", seed=0).unwrap().output == "3"
 
 
 def test_reproducible_vm_accepts_an_opaque_factory(monkeypatch):
@@ -80,7 +82,9 @@ def test_isolation_preserves_integer_seeds_beyond_the_decimal_rendering_limit() 
             seed=seed,
             limits=esolangs.ExecutionLimits(execution_timeout=5),
             isolated=True,
-        ).output
+        )
+        .unwrap()
+        .output
         for seed in seeds
     ]
     assert set(direct) == {"", "3"}
@@ -186,7 +190,7 @@ def _check_refused_write(monkeypatch: pytest.MonkeyPatch, *, debugger: bool) -> 
             write(io, value)
 
         expected = "".join(map(str, writes))
-        assert language.run(source, stdin=stdin, seed=0).output == expected
+        assert language.run(source, stdin=stdin, seed=0).unwrap().output == expected
         with monkeypatch.context() as port:
             port.setattr(ScriptedIO, "_write", refuse)
             with pytest.raises(
@@ -267,7 +271,7 @@ class TestASeedMakesARunRepeat:
             self.PROGRAM,
             stdin="",
             limits=esolangs.ExecutionLimits(execution_timeout=5),
-        ).output in {
+        ).unwrap().output in {
             "",
             "3",
         }
@@ -281,7 +285,7 @@ class TestASeedMakesARunRepeat:
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
                 seed=1,
-            )
+            ).unwrap()
 
     @pytest.mark.parametrize("seed", ["x", "\ud800", 1.5, True, object()])
     def test_a_seed_that_is_not_an_integer_is_an_argument_error(
@@ -294,7 +298,7 @@ class TestASeedMakesARunRepeat:
                 self.PROGRAM,
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
                 seed=seed,
-            )
+            ).unwrap()
 
     def test_the_languages_that_draw_are_the_ones_named(self) -> None:
         """The message lists them and ``random`` marks them, so both must be right."""
@@ -311,7 +315,7 @@ class TestASeedMakesARunRepeat:
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
                 seed=1,
-            )
+            ).unwrap()
         seed_help = " ".join(help_text("run").split("\n  --seed N", 1)[1].split())
         for name in drawing:
             assert name in str(caught.value)
@@ -406,7 +410,9 @@ def test_run_still_takes_one_because_it_takes_any_program() -> None:
             stdin="",
             limits=esolangs.ExecutionLimits(execution_timeout=5),
             seed=0,
-        ).output
+        )
+        .unwrap()
+        .output
         for _ in range(4)
     } == {
         run(
@@ -415,7 +421,9 @@ def test_run_still_takes_one_because_it_takes_any_program() -> None:
             stdin="",
             limits=esolangs.ExecutionLimits(execution_timeout=5),
             seed=0,
-        ).output
+        )
+        .unwrap()
+        .output
     }
 
 

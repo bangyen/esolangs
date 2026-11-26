@@ -156,7 +156,7 @@ def check_phases():
                 artifact,
                 stdin=case.stdin,
                 limits=ExecutionLimits(max_steps=64),
-            )
+            ).unwrap()
         except checker.esolangs.ProgramError as caught:
             assert type(caught) is checker.esolangs.ProgramError
             assert str(caught) == marker

@@ -78,10 +78,10 @@ def _check_wide_output() -> None:
             prepared = api.prepare(source)
             limits = ExecutionLimits(max_steps=len(source))
             for outcome, bounded in (
-                (api.execute(source), False),
-                (api.execute(source, limits=limits), True),
-                (prepared.execute(), False),
-                (prepared.execute(limits=limits, isolated=True), True),
+                (api.run(source), False),
+                (api.run(source, limits=limits), True),
+                (prepared.run(), False),
+                (prepared.run(limits=limits, isolated=True), True),
             ):
                 if character:
                     assert outcome.status == "fault"

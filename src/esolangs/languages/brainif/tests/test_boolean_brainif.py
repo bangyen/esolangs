@@ -203,8 +203,13 @@ def test_brainif_zero_landing_public_and_larger_samples(width: int) -> None:
         program = esolangs.generate("BrainIf", table, width=width).source
         for row in [0, 1, 2**n // 3, 2**n - 1]:
             stdin = format(row, f"0{n}b")
-            assert execute("BrainIf", program, stdin=stdin).output == table[row]
-            assert execute("BrainIf", str(program), stdin=stdin).output == table[row]
+            assert (
+                execute("BrainIf", program, stdin=stdin).unwrap().output == table[row]
+            )
+            assert (
+                execute("BrainIf", str(program), stdin=stdin).unwrap().output
+                == table[row]
+            )
 
 
 def test_brainif_unpruned_large_tree_uses_spatial_fallback() -> None:

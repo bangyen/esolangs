@@ -67,7 +67,7 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
 def test_skipped_reads_reject_eof() -> None:
     for table, stdin in (("00", ""), ("0011", "0"), ("0101", ""), ("01", "")):
         with pytest.raises(HaltError, match="no branch"):
-            run("Bleh", esolangs.generate("Bleh", table).source, stdin=stdin)
+            run("Bleh", esolangs.generate("Bleh", table).source, stdin=stdin).unwrap()
 
 
 def test_entrypoint_name_is_escaped_without_widening(monkeypatch) -> None:
@@ -88,4 +88,6 @@ def test_entrypoint_name_is_escaped_without_widening(monkeypatch) -> None:
         program = generator.bleh(table)
         n = len(table).bit_length() - 1
         for row in range(len(table)):
-            assert run("Bleh", program, stdin=f"{row:0{n}b}").output == table[row]
+            assert (
+                run("Bleh", program, stdin=f"{row:0{n}b}").unwrap().output == table[row]
+            )

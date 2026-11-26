@@ -17,13 +17,17 @@ from tests.support.reference import REFERENCE
         lambda huge: (
             esolangs.run(
                 REFERENCE, "", limits=esolangs.ExecutionLimits(execution_timeout=huge)
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         lambda huge: esolangs.ExecutionLimits(max_memory=-huge),
         lambda huge: (
             esolangs.run(
                 REFERENCE, "", limits=esolangs.ExecutionLimits(execution_timeout=-huge)
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         lambda huge: (
             esolangs.run(
@@ -31,7 +35,9 @@ from tests.support.reference import REFERENCE
                 "",
                 isolated=True,
                 limits=esolangs.ExecutionLimits(max_output=-huge),
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         lambda huge: esolangs.generate(REFERENCE, "01", width=-huge),
         lambda huge: esolangs.encode_inputs(REFERENCE, [huge]),
@@ -45,14 +51,18 @@ from tests.support.reference import REFERENCE
                 first(source_kind="raster"),
                 esolangs.Raster((((0, 0, 0),),)),
                 scale=-huge,
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         lambda huge: (
             esolangs.run(
                 REFERENCE,
                 "",
                 limits=esolangs.ExecutionLimits(execution_timeout={"value": huge}),
-            ).output
+            )
+            .unwrap()
+            .output
         ),
     ],
 )
@@ -105,8 +115,11 @@ def test_validation_uses_backing_types_without_reading_class_properties() -> Non
             lambda: esolangs.ExecutionLimits(total_timeout=Disguise(float)),
         ),
         ("width", lambda: esolangs.generate(REFERENCE, "01", width=Disguise(int))),
-        ("seed", lambda: esolangs.run(REFERENCE, "+.", seed=Disguise(int))),
-        ("isolated", lambda: esolangs.run(REFERENCE, "+.", isolated=Disguise(bool))),
+        ("seed", lambda: esolangs.run(REFERENCE, "+.", seed=Disguise(int)).unwrap()),
+        (
+            "isolated",
+            lambda: esolangs.run(REFERENCE, "+.", isolated=Disguise(bool)).unwrap(),
+        ),
         ("bits", lambda: esolangs.encode_inputs(REFERENCE, [Disguise(int)])),
         ("bits", lambda: esolangs.encode_inputs(REFERENCE, Disguise(list))),
         (
@@ -117,7 +130,7 @@ def test_validation_uses_backing_types_without_reading_class_properties() -> Non
             "catalog entries",
             lambda: esolangs.Catalog([Disguise(esolangs.LanguageDeclaration)]),
         ),
-        ("limits", lambda: language.run("+.", limits=disguised_limits)),
+        ("limits", lambda: language.run("+.", limits=disguised_limits).unwrap()),
         ("limits", lambda: artifact.evaluate([1], limits=disguised_limits)),
         ("limits", lambda: debugger.run(limits=disguised_limits)),
     ):
@@ -207,7 +220,7 @@ def test_execution_caps_use_the_integer_backing_value(isolated):
             raise AssertionError("integer backing value must be used")
 
     limits = esolangs.ExecutionLimits(max_steps=Limit(0))
-    result = esolangs.execute(REFERENCE, "+.", limits=limits, isolated=isolated)
+    result = esolangs.run(REFERENCE, "+.", limits=limits, isolated=isolated)
     assert result.bound == "max_steps"
     assert result.observation == esolangs.ExecutionResult("", 0, 0, 0, steps=0)
     assert esolangs.ExecutionLimits(max_memory=Limit(1), max_output=Limit(1)) == (
@@ -250,7 +263,7 @@ def test_duration_backing_values_reach_worker_and_debugger(monkeypatch):
     limits = esolangs.ExecutionLimits(execution_timeout=Duration(3))
     api = esolangs.Language(REFERENCE)
     prepared = api.prepare("+.")
-    assert prepared.run(limits=limits).output == "\x01"
+    assert prepared.run(limits=limits).unwrap().output == "\x01"
 
     clock = iter((0.0, 3.0))
     monkeypatch.setattr(_controller, "monotonic", clock.__next__)

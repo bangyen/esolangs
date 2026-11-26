@@ -170,12 +170,12 @@ class TestComments:
             ("B7é6A", "\x92", "\x92"),
             ("7\u06606A", "", "\x00"),
         ):
-            assert language.run(source, stdin=stdin).output == expected
+            assert language.run(source, stdin=stdin).unwrap().output == expected
             limits = ExecutionLimits(max_steps=4)
-            bounded = language.run(source, stdin=stdin, limits=limits)
+            bounded = language.run(source, stdin=stdin, limits=limits).unwrap()
             assert bounded.output == expected
             assert (
-                language.run(source, stdin=stdin, limits=limits, isolated=True)
+                language.run(source, stdin=stdin, limits=limits, isolated=True).unwrap()
                 == bounded
             )
 

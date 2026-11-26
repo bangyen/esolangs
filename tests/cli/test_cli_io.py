@@ -82,7 +82,7 @@ class TestTheStdinReaderInProcess:
         scale_refusal = "scale is only supported for raster interpreters"
         combined = []
         for flags in ([], ["--isolated"]):
-            outcome = esolangs.Language(REFERENCE).execute(
+            outcome = esolangs.Language(REFERENCE).run(
                 path, scale=2, seed=1, isolated=bool(flags)
             )
             assert outcome.status == "rejected"
@@ -187,7 +187,7 @@ class TestNonTextInputIsRefusedNotCrashed:
                 argv, stdin=source, capture_output=True, timeout=10, check=False
             )
             with os.fdopen(os.dup(source.fileno()), "rb") as python_stdin:
-                bad_fd = esolangs.execute(
+                bad_fd = esolangs.run(
                     REFERENCE, program, stdin=python_stdin, isolated=isolated
                 ).error
         assert isinstance(bad_fd, esolangs.ArgumentError)
@@ -201,7 +201,7 @@ class TestNonTextInputIsRefusedNotCrashed:
         undecodable = subprocess.run(
             argv, input=invalid, capture_output=True, timeout=10, check=False
         )
-        bad_text = esolangs.execute(
+        bad_text = esolangs.run(
             REFERENCE, program, stdin=invalid, isolated=isolated
         ).error
         assert isinstance(bad_text, esolangs.ArgumentError)
@@ -217,7 +217,7 @@ class TestNonTextInputIsRefusedNotCrashed:
         path = tmp_path / "binary.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(esolangs.ProgramError, match="not text"):
-            esolangs.run(REFERENCE, path)
+            esolangs.run(REFERENCE, path).unwrap()
 
 
 @pytest.fixture
@@ -509,7 +509,7 @@ class TestReadingTheProgramFileIsBounded:
         path = tmp_path / "p.txt"
         esolangs.to_file(REFERENCE, esolangs.generate(REFERENCE, "0110"), path)
         result = run_cli("run", REFERENCE, str(path), stdin="10")
-        expected = esolangs.run(REFERENCE, path, stdin="10").output
+        expected = esolangs.run(REFERENCE, path, stdin="10").unwrap().output
         assert (result.returncode, result.stdout, result.stderr) == (0, expected, "")
         assert esolangs.read_answer(REFERENCE, expected) == "1"
 
@@ -541,7 +541,7 @@ class TestReadingTheProgramFileIsBounded:
         if directory:
             path.mkdir()
         with pytest.raises(error_type) as caught:
-            esolangs.run(REFERENCE, path)
+            esolangs.run(REFERENCE, path).unwrap()
         assert type(caught.value) is error_type
         opened = run_cli("run", REFERENCE, str(path))
         assert (opened.returncode, opened.stdout) == (2, "")
@@ -674,7 +674,7 @@ def test_gzip_reports_an_unavailable_binary_stdout(monkeypatch, capsys):
         patch.setattr(sys, "argv", command)
         main()
     assert "cannot write stdout: binary output requires" in capsys.readouterr().err
-    assert esolangs.run(REFERENCE, output.getvalue(), stdin="1").output == "1"
+    assert esolangs.run(REFERENCE, output.getvalue(), stdin="1").unwrap().output == "1"
 
 
 @pytest.fixture

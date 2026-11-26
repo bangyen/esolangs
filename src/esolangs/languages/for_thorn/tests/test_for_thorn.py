@@ -143,7 +143,7 @@ def _check_terminal_fault_retries() -> None:
     limits = ExecutionLimits(max_steps=8)
     expected = ExecutionResult("\x01", 0, 0, 0, steps=2)
     for isolated in (False, True):
-        rejected = plan.execute(limits=limits, isolated=isolated)
+        rejected = plan.run(limits=limits, isolated=isolated)
         assert type(rejected.error) is HaltError
         assert rejected.observation == expected
 
@@ -174,7 +174,7 @@ def _check_terminal_fault_retries() -> None:
         assert aborted.ip == (2,)
         assert aborted.error
 
-    healthy = api.run("1.2.", limits=limits)
+    healthy = api.run("1.2.", limits=limits).unwrap()
     assert (healthy.output, healthy.steps) == ("\x01\x02", 5)
 
 

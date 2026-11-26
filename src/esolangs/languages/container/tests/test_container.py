@@ -95,7 +95,7 @@ class TestContainer:
     ) -> None:
         api = Language("Container")
         limits = ExecutionLimits(max_steps=2)
-        complete = api.run(source, stdin="A", limits=limits)
+        complete = api.run(source, stdin="A", limits=limits).unwrap()
         assert (complete.output, complete.input_position, complete.input_reads) == (
             "H",
             1,
@@ -127,7 +127,10 @@ class TestPublicAPI:
     def test_run_returns_output_instead_of_exiting(self) -> None:
         """EXIT is a normal halt, so the public API returns the output."""
 
-        assert execute("Container", "\n".join(HELLO_WORLD)).output == "Hello, world!"
+        assert (
+            execute("Container", "\n".join(HELLO_WORLD)).unwrap().output
+            == "Hello, world!"
+        )
 
 
 class TestStepMachine:

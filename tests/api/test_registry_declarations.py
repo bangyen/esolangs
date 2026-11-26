@@ -64,12 +64,16 @@ def _check_scoped_catalogs():
     bound = scoped.bind("scoped-bf")
     assert bound.catalog is scoped
     assert replace(bound, name="Brainfuck").catalog is scoped
-    assert bound.run("input.bf", limits=ExecutionLimits(max_steps=10)).output == "\x00"
+    assert (
+        bound.run("input.bf", limits=ExecutionLimits(max_steps=10)).unwrap().output
+        == "\x00"
+    )
     with pytest.raises(esolangs.UnknownLanguageError):
         CATALOG.resolve("scoped-bf")
     assert (
         snapshot.bind("Brainfuck")
         .run("input.bf", limits=ExecutionLimits(max_steps=10))
+        .unwrap()
         .output
         == "\x00"
     )
@@ -79,9 +83,9 @@ def _check_scoped_catalogs():
             raise AssertionError("invalid scope must be rejected before reading")
 
     with pytest.raises(esolangs.ArgumentError, match="catalog must"):
-        esolangs.run("brainfuck", Unreadable(), catalog={})
+        esolangs.run("brainfuck", Unreadable(), catalog={}).unwrap()
     with pytest.raises(esolangs.ArgumentError, match="installed catalog"):
-        bound.run(Unreadable(), stdin=Unreadable(), isolated=True)
+        bound.run(Unreadable(), stdin=Unreadable(), isolated=True).unwrap()
 
     barrier = Barrier(2)
 
@@ -112,9 +116,9 @@ def _check_scoped_catalogs():
         assert first.result(timeout=5) == "A:x"
         assert second.result(timeout=5) == "B:y"
     assert (
-        esolangs.run(
-            "brainfuck", ",.", stdin="z", limits=ExecutionLimits(max_steps=2)
-        ).output
+        esolangs.run("brainfuck", ",.", stdin="z", limits=ExecutionLimits(max_steps=2))
+        .unwrap()
+        .output
         == "z"
     )
     assert not hasattr(execution, "io_factory")

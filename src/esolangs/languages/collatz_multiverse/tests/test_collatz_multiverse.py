@@ -330,7 +330,9 @@ def test_a_rejected_operand_does_not_advance_on_retry() -> None:
     assert first.observation == result
     assert (second.ip, second.observation.input_reads) == (2, 3)
     assert second.snapshot()[-1] == pending
-    control = lang.run(_TWO_INPUTS, stdin="3 20 5", limits=ExecutionLimits(max_steps=2))
+    control = lang.run(
+        _TWO_INPUTS, stdin="3 20 5", limits=ExecutionLimits(max_steps=2)
+    ).unwrap()
     assert (control.output, control.input_reads, control.steps) == ("A", 3, 2)
 
 
@@ -383,7 +385,7 @@ def test_an_existing_operand_survives_an_eof_retry(
         data = "3 20 5 99"
         expected = lang.run(
             _TWO_INPUTS, stdin=data, limits=ExecutionLimits(max_steps=2)
-        )
+        ).unwrap()
         with monkeypatch.context() as patch:
             patch.setattr(ScriptedIO, "_write", refuse)
             dbg = lang.make_debugger(_TWO_INPUTS, stdin=data)

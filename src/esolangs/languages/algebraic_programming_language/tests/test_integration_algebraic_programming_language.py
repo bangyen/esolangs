@@ -36,12 +36,12 @@ def test_retried_line_bindings_keep_the_original_input(
 ) -> None:
     api = esolangs.Language("Algebraic Programming Language")
     source = "a + b"
-    result = api.run(source, stdin="2 3")
+    result = api.run(source, stdin="2 3").unwrap()
     assert (result.output, result.input_position, result.input_reads) == ("5\n", 3, 2)
     for outcome in (
-        api.execute(source, stdin=stdin),
-        api.prepare(source).execute(stdin=stdin),
-        api.execute(source, stdin=stdin, isolated=True),
+        api.run(source, stdin=stdin),
+        api.prepare(source).run(stdin=stdin),
+        api.run(source, stdin=stdin, isolated=True),
     ):
         assert type(outcome.error) is error_type
         assert message in str(outcome.error)
@@ -107,7 +107,7 @@ class TestTheVmPathRefusesLikeRunDoes:
             with pytest.raises(esolangs.ProgramError) as stepped:
                 entry(REFERENCE, "]")
             with pytest.raises(esolangs.ProgramError) as ran:
-                run(REFERENCE, "]")
+                run(REFERENCE, "]").unwrap()
             assert str(stepped.value) == str(ran.value)
 
     def test_deep_source_parses_equally_across_routes(self) -> None:
@@ -120,12 +120,12 @@ class TestTheVmPathRefusesLikeRunDoes:
             ("!x = 1 - x\n" + "!" * 321 + "0", "1\n"),
             ("1**" * 320 + "1", "1\n"),
         ):
-            native = api.run(source)
+            native = api.run(source).unwrap()
             assert native.output == expected
-            bounded = api.run(source, limits=limits)
+            bounded = api.run(source, limits=limits).unwrap()
             assert replace(bounded, steps=None) == native
-            assert api.run(source, isolated=True, limits=limits) == bounded
-            assert api.prepare(source).run() == native
+            assert api.run(source, isolated=True, limits=limits).unwrap() == bounded
+            assert api.prepare(source).run().unwrap() == native
             debugger = api.make_debugger(source)
             assert debugger.run(limits=limits) == "halted"
             assert debugger.observation == bounded

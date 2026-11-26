@@ -21,15 +21,17 @@ from tests.support.vm_support import _BUDGET, _LINUX
 )
 def test_underload_errors_have_the_right_hint(source, message, hint) -> None:
     with pytest.raises(esolangs.HaltError, match=message) as caught:
-        run("Underload", source, limits=esolangs.ExecutionLimits(execution_timeout=1))
+        run(
+            "Underload", source, limits=esolangs.ExecutionLimits(execution_timeout=1)
+        ).unwrap()
     assert any(hint in note for note in caught.value.__notes__)
 
 
 def test_underload_literal_text_is_preserved() -> None:
     assert (
-        run(
-            "Underload", "(X)S", limits=esolangs.ExecutionLimits(execution_timeout=1)
-        ).output
+        run("Underload", "(X)S", limits=esolangs.ExecutionLimits(execution_timeout=1))
+        .unwrap()
+        .output
         == "X"
     )
 
@@ -47,7 +49,7 @@ def test_invalid_memory_budget_precedes_source_reads(limit: object) -> None:
             Path("missing"),
             isolated=True,
             limits=esolangs.ExecutionLimits(max_memory=limit),
-        )
+        ).unwrap()
 
 
 def test_memory_budget_selects_isolation(monkeypatch) -> None:
@@ -58,7 +60,7 @@ def test_memory_budget_selects_isolation(monkeypatch) -> None:
             "Underload",
             Path("missing"),
             limits=esolangs.ExecutionLimits(max_memory=_BUDGET),
-        )
+        ).unwrap()
 
 
 @pytest.mark.parametrize("platform", ["win32", "darwin"])
@@ -80,7 +82,7 @@ def test_growing_state_fails_and_worker_is_reaped(spawned) -> None:
             source,
             isolated=True,
             limits=esolangs.ExecutionLimits(execution_timeout=10, max_memory=_BUDGET),
-        )
+        ).unwrap()
     assert caught.value.partial_output == "A"
     assert spawned[0].poll() is not None
     assert (
@@ -89,7 +91,9 @@ def test_growing_state_fails_and_worker_is_reaped(spawned) -> None:
             "(ok)S",
             isolated=True,
             limits=esolangs.ExecutionLimits(max_memory=_BUDGET),
-        ).output
+        )
+        .unwrap()
+        .output
         == "ok"
     )
 

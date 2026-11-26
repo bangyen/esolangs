@@ -62,7 +62,7 @@ if LANGUAGES[language].parameterized:
     stdin = ''
 else:
     stdin = esolangs.encode_inputs(language, [0, 1])
-output = esolangs.run(language, source, stdin=stdin).output
+output = esolangs.run(language, source, stdin=stdin).unwrap().output
 assert esolangs.read_answer(language, output) == '1'
 try:
     importlib.import_module('esolangs.generation.examples')
@@ -72,3 +72,15 @@ else:
     raise AssertionError('import barrier did not fire')
 """
     subprocess.run([sys.executable, "-c", code], check=True, timeout=10)
+
+
+@pytest.mark.parametrize("name", one(parameterized=True, answer_mode="output"))
+def test_binding_a_template_supplies_the_entire_invocation(name: str) -> None:
+    language = esolangs.Language(name)
+    template = language.generate("0110")
+    for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+        row = template.bind(bits)
+        assert row.program == template.fill(bits)
+        assert row.stdin == ""
+        output = language.run(row.program, stdin=row.stdin).unwrap().output
+        assert language.read_answer(output) == template.evaluate(bits).answer

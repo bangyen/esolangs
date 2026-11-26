@@ -1,8 +1,6 @@
 """Generate explicit program artifacts."""
 
-from collections.abc import Callable
 from dataclasses import replace
-from functools import partial
 from typing import cast
 
 from esolangs._dialect import DialectSchema, Scalar
@@ -15,7 +13,6 @@ from esolangs.artifacts import (
 from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import (
     ArgumentError,
-    GeneratorCapError,
     ProgramError,
 )
 from esolangs.generation._template_layout import (
@@ -51,41 +48,6 @@ from esolangs.settings import (
     _settings_for,
     dialect_options,
 )
-
-
-def plan_generation(
-    language: str,
-    truth_table: str,
-    *,
-    width: int | None = None,
-    balance: bool = False,
-    scale: int | None = None,
-    settings: DialectSettings | None = None,
-    catalog: "Catalog | None" = None,
-) -> "Callable[[], Artifact] | GeneratorCapError":
-    """Return a reusable build function or the cap that prevents construction.
-
-    Planning runs the selected backend once, including layout and compression.
-    Call the returned plan to obtain its artifact without rerunning the backend.
-
-    Raises:
-        UnknownLanguageError: The language is unknown.
-        ArgumentError: Generation or the supplied options are unsupported.
-        TruthTableError: The supplied table is invalid.
-        ProgramError: The backend returned an incompatible source type.
-    """
-    try:
-        return _prepare_generation(
-            language,
-            truth_table,
-            width=width,
-            balance=balance,
-            scale=scale,
-            settings=settings,
-            catalog=catalog,
-        )
-    except GeneratorCapError as error:
-        return error.with_traceback(None)
 
 
 def generate(
@@ -134,27 +96,6 @@ def generate(
             ``.generator_restrictions``).
         ProgramError: The backend returned an incompatible source type.
     """
-    return _prepare_generation(
-        language,
-        truth_table,
-        width=width,
-        balance=balance,
-        scale=scale,
-        settings=settings,
-        catalog=catalog,
-    )()
-
-
-def _prepare_generation(
-    language: str,
-    truth_table: str,
-    *,
-    width: int | None,
-    balance: bool,
-    scale: int | None,
-    settings: DialectSettings | None,
-    catalog: Catalog | None,
-) -> Callable[[], Artifact]:
     from esolangs.registry._catalog import get_catalog
 
     catalog = get_catalog(catalog)
@@ -170,7 +111,7 @@ def _prepare_generation(
         scale=scale,
         catalog=catalog,
     )
-    return partial(bind_catalog, artifact, catalog)
+    return bind_catalog(artifact, catalog)
 
 
 def _generate_checked(

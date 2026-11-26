@@ -51,7 +51,9 @@ def test_raster_interpreter_owns_loading_and_scale_support() -> None:
     program = esolangs.generate("Piet", "01", scale=2)
     catalog = CATALOG.with_language(replace(LANGUAGES["Piet"], backend=None))
     assert (
-        run("Piet", program.source.to_png(), stdin="1", scale=2, catalog=catalog).output
+        run("Piet", program.source.to_png(), stdin="1", scale=2, catalog=catalog)
+        .unwrap()
+        .output
         == "1"
     )
     assert (
@@ -62,7 +64,9 @@ def test_raster_interpreter_owns_loading_and_scale_support() -> None:
             scale=2,
             limits=esolangs.ExecutionLimits(max_steps=100),
             catalog=catalog,
-        ).output
+        )
+        .unwrap()
+        .output
         == "1"
     )
 
@@ -86,7 +90,7 @@ def test_raster_interpreter_retains_geometry_hint() -> None:
     with pytest.raises(esolangs.ProgramError, match=r".+") as caught:
         run(
             "Piet", image, scale=2, limits=esolangs.ExecutionLimits(execution_timeout=1)
-        )
+        ).unwrap()
     assert "dividing both image dimensions" in caught.value.__notes__[0]
 
 
@@ -103,9 +107,9 @@ def test_piet_explicit_scale_resolves_ambiguous_image(tmp_path, monkeypatch) -> 
         ((light, black, terminal), (light, red, terminal), (black, black, terminal))
     )
     image = Raster.from_png(logical.upscaled(2).to_png())
-    assert run("Piet", image).output == "2"
-    assert run("Piet", image, scale=1).output == "8"
-    assert run("Piet", image, scale=2, isolated=True).output == "2"
+    assert run("Piet", image).unwrap().output == "2"
+    assert run("Piet", image, scale=1).unwrap().output == "8"
+    assert run("Piet", image, scale=2, isolated=True).unwrap().output == "2"
     _check_worker_proof_scale(image)
 
     path = tmp_path / "ambiguous.png"
@@ -180,7 +184,7 @@ def _check_png_acquisition_timeout(path, monkeypatch) -> None:
         edit.setattr(_png_validation, "_inflate_checked", pause_inflate)
         edit.setattr(pillow, "open", observe_open)
         pending = callers.submit(
-            api.execute,
+            api.run,
             path,
             stdin=stdin,
             isolated=True,
@@ -198,9 +202,9 @@ def _check_png_acquisition_timeout(path, monkeypatch) -> None:
     assert not opens
     assert stdin.tell() == 0
     assert (
-        api.run(
-            path, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=100)
-        ).output
+        api.run(path, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=100))
+        .unwrap()
+        .output
         == "1"
     )
     restored = api.from_json(api.to_json(api.from_file(path)))
@@ -269,7 +273,7 @@ def test_empty_piet_operation_path_halts() -> None:
     from esolangs.languages.piet.generator.balance import _emit, _plan
 
     image = _emit([], _plan([], 13, 14))
-    assert run("Piet", image).output == ""
+    assert run("Piet", image).unwrap().output == ""
 
 
 @pytest.mark.medium

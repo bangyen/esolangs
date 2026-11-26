@@ -75,7 +75,7 @@ def test_the_dereference_argument(monkeypatch: pytest.MonkeyPatch) -> None:
         "no codesick out N never stop;"
     )
     language = Language("Codesick")
-    expected = language.run(source, limits=ExecutionLimits(max_steps=6))
+    expected = language.run(source, limits=ExecutionLimits(max_steps=6)).unwrap()
     assert (expected.output, expected.steps) == ("OKN", 6)
     write = ScriptedIO.print_str
     for accepted in range(3):

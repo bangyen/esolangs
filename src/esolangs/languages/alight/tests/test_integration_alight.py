@@ -119,7 +119,7 @@ def test_single_choice_languages_refuse_other_keys() -> None:
             "Alight",
             Unreadable(),
             settings=foreign_settings("Alight"),
-        )
+        ).unwrap()
 
 
 @pytest.mark.medium
@@ -138,7 +138,7 @@ def test_foreign_language_guard_precedes_retained_choices() -> None:
         settings=esolangs.Language("Alight").settings(expression_syntax="postfix"),
     )
     with pytest.raises(esolangs.ProgramError, match="generated for"):
-        run("Brainfuck", source)
+        run("Brainfuck", source).unwrap()
 
 
 def test_short_settings_flag(capsys) -> None:

@@ -26,12 +26,17 @@ from tests.support.reference import REFERENCE
 
 def test_unsupported_text_scale_does_not_consume_source() -> None:
     api = esolangs.Language(REFERENCE)
-    for operation in (api.run, api.prepare, api.make_vm, api.make_debugger):
+    for operation in (
+        lambda source, **opts: api.run(source, **opts).unwrap(),
+        api.prepare,
+        api.make_vm,
+        api.make_debugger,
+    ):
         source = StringIO("+.")
         with pytest.raises(esolangs.ArgumentError, match="scale is only supported"):
             operation(source, scale=2)
         assert source.tell() == 0
-        assert api.run(source).output == "\x01"
+        assert api.run(source).unwrap().output == "\x01"
 
 
 def test_prepared_constructor_accepts_owner_spelling_and_refuses_invalid_types():
@@ -39,7 +44,9 @@ def test_prepared_constructor_accepts_owner_spelling_and_refuses_invalid_types()
     artifact = esolangs.ProgramArtifact(",+.", api.name.upper())
     direct = esolangs.PreparedProgram(artifact, api.catalog)
     assert direct.language == api.name
-    assert direct.run(stdin="A") == api.prepare(artifact).run(stdin="A")
+    assert (
+        direct.run(stdin="A").unwrap() == api.prepare(artifact).run(stdin="A").unwrap()
+    )
     with pytest.raises(esolangs.ProgramError, match="requires a program artifact"):
         esolangs.PreparedProgram(artifact.source, api.catalog)
     with pytest.raises(esolangs.ArgumentError, match="catalog must be a Catalog"):
@@ -84,12 +91,12 @@ def test_prepared_constructor_refuses_foreign_ownership(
     )
     api = esolangs.Catalog([renamed]).bind(owner.name)
     assert api.name == renamed.name
-    assert api.run(api.from_source("+.")).output == "\x01"
+    assert api.run(api.from_source("+.")).unwrap().output == "\x01"
     settings = owner.settings() if retain_settings else None
     artifact = owner.from_source("+.", settings=settings)
-    assert owner.run(artifact).output == "\x01"
+    assert owner.run(artifact).unwrap().output == "\x01"
     for use in (
-        lambda: api.run(artifact),
+        lambda: api.run(artifact).unwrap(),
         lambda: api.prepare(artifact),
         lambda: esolangs.PreparedProgram(artifact, api.catalog),
         lambda: api.to_json(artifact),
@@ -115,7 +122,7 @@ def test_stored_owner_slug_is_independent_of_lookup() -> None:
         artifact = esolangs.ProgramArtifact(",.", " scoped-runtime ")
         direct = esolangs.PreparedProgram(artifact, catalog)
         assert direct.language == owner.name
-        assert direct.run(stdin="1").output == "1"
+        assert direct.run(stdin="1").unwrap().output == "1"
         assert artifact.evaluate([1], catalog=catalog).answer == "1"
         assert api.evaluate(artifact, [1]).answer == "1"
     _check_ambiguous_owner_slug_requires_a_display_name()
@@ -132,9 +139,9 @@ def _check_ambiguous_owner_slug_requires_a_display_name() -> None:
         api = catalog.bind(owner.name)
         canonical = replace(ambiguous, language=f" {owner.name.upper()} ")
         assert api.prepare(canonical).language == owner.name
-        assert api.run(canonical).output == "\x01"
+        assert api.run(canonical).unwrap().output == "\x01"
         with pytest.raises(esolangs.ProgramError, match="generated for"):
-            api.run(ambiguous)
+            api.run(ambiguous).unwrap()
     with pytest.raises(esolangs.ProgramError, match="generated for"):
         ambiguous.evaluate([1], catalog=catalog)
     without_matching_id = esolangs.Catalog([replace(left, id="runtime_left"), right])
@@ -174,12 +181,14 @@ def test_prepared_gzip_keeps_export_limits_without_decoding_again(
     assert not path.exists()
     api.to_file(prepared.artifact, path, gzip=True)
     assert path.read_bytes() == source.to_gzip()
-    assert prepared.run(stdin="1").output == "1"
+    assert prepared.run(stdin="1").unwrap().output == "1"
     assert (
-        prepared.run(stdin="1", limits=esolangs.ExecutionLimits(max_steps=2)).output
+        prepared.run(stdin="1", limits=esolangs.ExecutionLimits(max_steps=2))
+        .unwrap()
+        .output
         == "1"
     )
-    assert prepared.run(stdin="1", isolated=True).output == "1"
+    assert prepared.run(stdin="1", isolated=True).unwrap().output == "1"
     assert complete_vm(prepared.make_vm(stdin="1"), max_steps=2) == "1"
     assert prepared.evaluate([1]).answer == "1"
     assert reads == [restored.source]
@@ -201,11 +210,11 @@ def test_invalid_stdin_container_leaves_source_unread(options, tmp_path, monkeyp
     source = BytesIO(b",+.")
     limits = esolangs.ExecutionLimits(**options)
     api = esolangs.Language(REFERENCE)
-    rejected = api.execute(source, stdin=object(), limits=limits)
+    rejected = api.run(source, stdin=object(), limits=limits)
     assert rejected.status == "rejected"
     assert isinstance(rejected.error, esolangs.ArgumentError)
     assert source.tell() == 0
-    assert api.run(source, stdin="A", limits=limits).output == "B"
+    assert api.run(source, stdin="A", limits=limits).unwrap().output == "B"
     assert source.tell() == 3
 
     caller, other = tmp_path / "caller", tmp_path / "other"
@@ -229,15 +238,20 @@ def test_invalid_stdin_container_leaves_source_unread(options, tmp_path, monkeyp
             return super().read
 
     provider = Source()
-    rejected = api.execute(provider, stdin=object(), limits=limits)
+    rejected = api.run(provider, stdin=object(), limits=limits)
     assert isinstance(rejected.error, esolangs.ArgumentError)
     assert provider.calls == 0
-    assert api.run(provider, stdin=Stdin("A"), limits=limits).output == "B"
+    assert api.run(provider, stdin=Stdin("A"), limits=limits).unwrap().output == "B"
     assert provider.calls == 1
     monkeypatch.chdir(caller)
-    assert api.run(Path("program"), stdin=Stdin("A"), limits=limits).output == "B"
+    assert (
+        api.run(Path("program"), stdin=Stdin("A"), limits=limits).unwrap().output == "B"
+    )
     monkeypatch.chdir(caller)
-    assert api.run(caller / "program", stdin=Stdin("A"), limits=limits).output == "B"
+    assert (
+        api.run(caller / "program", stdin=Stdin("A"), limits=limits).unwrap().output
+        == "B"
+    )
     monkeypatch.chdir(caller)
     assert complete_vm(api.make_vm(Path("program"), stdin=Stdin("A"))) == "B"
 
@@ -251,12 +265,14 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
     assert second.ip == 0
     assert complete_vm(first) == "B"
     assert complete_vm(second) == "["
-    assert prepared.run(stdin="A").output == "B"
-    bounded = prepared.run(stdin="Z", limits=esolangs.ExecutionLimits(max_steps=3))
+    assert prepared.run(stdin="A").unwrap().output == "B"
+    bounded = prepared.run(
+        stdin="Z", limits=esolangs.ExecutionLimits(max_steps=3)
+    ).unwrap()
     assert bounded.output == "["
     assert bounded.input_position == bounded.input_reads == 1
     assert bounded.steps == 3
-    assert prepared.run(stdin="A").output == "B"
+    assert prepared.run(stdin="A").unwrap().output == "B"
 
     language = esolangs.Language(REFERENCE)
     with pytest.raises(esolangs.ProgramError, match="program or template artifact"):
@@ -272,14 +288,17 @@ def _check_preparation_consumes_source_once_and_keeps_fresh_invocations():
 
 def _check_prepared_isolation_preserves_the_same_observation():
     prepared = esolangs.Language(REFERENCE).prepare(",+.")
-    assert prepared.run(stdin="A", isolated=True) == prepared.run(stdin="A")
+    assert (
+        prepared.run(stdin="A", isolated=True).unwrap()
+        == prepared.run(stdin="A").unwrap()
+    )
 
 
 def _check_prepared_failures_retain_partial_observations():
     prepared = esolangs.Language(REFERENCE).prepare(".,")
     for options in ({}, {"limits": esolangs.ExecutionLimits(max_steps=2)}):
         with pytest.raises(esolangs.InputExhaustedError) as caught:
-            prepared.run(**options)
+            prepared.run(**options).unwrap()
         assert caught.value.partial_output == "\x00"
         observed = caught.value.observation
         assert observed.output == "\x00"
@@ -310,8 +329,8 @@ def _check_preparation_resets_seeded_randomness_for_each_invocation():
         catalog=catalog,
         module_loader=lambda *_a, **_k: module,
     )
-    assert prepared.run(seed=7) == prepared.run(seed=7)
-    prepared.run(seed=8)
+    assert prepared.run(seed=7).unwrap() == prepared.run(seed=7).unwrap()
+    prepared.run(seed=8).unwrap()
     assert draws[0] == draws[1] != draws[2]
 
     factories = []
@@ -385,8 +404,8 @@ def _check_prepared_source_options_and_lines_are_reused():
     )
     assert validated == [2]
     validated.clear()
-    assert prepared.run().output == "firstfirst"
-    assert prepared.run().output == "firstfirst"
+    assert prepared.run().unwrap().output == "firstfirst"
+    assert prepared.run().unwrap().output == "firstfirst"
     assert validated == []
 
 
@@ -409,13 +428,18 @@ def _check_prepared_dialect_validates_distinct_options_once() -> None:
     restored = api.from_json(document)
     once = True
     for perform in (
-        lambda: api.prepare(restored).run(stdin="A").output,
-        lambda: esolangs.PreparedProgram(restored, api.catalog).run(stdin="A").output,
-        lambda: api.run(restored, stdin="A").output,
+        lambda: api.prepare(restored).run(stdin="A").unwrap().output,
         lambda: (
-            api.run(
-                restored, stdin="A", limits=esolangs.ExecutionLimits(max_steps=2)
-            ).output
+            esolangs.PreparedProgram(restored, api.catalog)
+            .run(stdin="A")
+            .unwrap()
+            .output
+        ),
+        lambda: api.run(restored, stdin="A").unwrap().output,
+        lambda: (
+            api.run(restored, stdin="A", limits=esolangs.ExecutionLimits(max_steps=2))
+            .unwrap()
+            .output
         ),
         lambda: complete_vm(api.make_vm(restored, stdin="A"), max_steps=2),
     ):
@@ -429,7 +453,9 @@ def _check_prepared_dialect_validates_distinct_options_once() -> None:
 
     calls.clear()
     with pytest.raises(esolangs.ArgumentError, match="installed catalog"):
-        api.run(Untouched(), stdin=Untouched(), settings=settings, isolated=True)
+        api.run(
+            Untouched(), stdin=Untouched(), settings=settings, isolated=True
+        ).unwrap()
     assert not calls
 
     schema = runtime.dialect_schema
@@ -497,8 +523,11 @@ def _check_relative_source_precedes_dialect_callbacks(tmp_path, monkeypatch):
 
     for route, expected in (
         (lambda source: api.from_file(source, settings=settings).source, "+."),
-        (lambda source: api.run(source, settings=settings).output, "\x01"),
-        (lambda source: api.prepare(source, settings=settings).run().output, "\x01"),
+        (lambda source: api.run(source, settings=settings).unwrap().output, "\x01"),
+        (
+            lambda source: api.prepare(source, settings=settings).run().unwrap().output,
+            "\x01",
+        ),
         (
             lambda source: api.from_json(api.to_json(source, settings=settings)).source,
             "+.",
@@ -532,9 +561,9 @@ def _check_relative_source_precedes_dialect_callbacks(tmp_path, monkeypatch):
         provider = RedirectingSource()
         record = route(provider)
         result = (
-            api.run(record)
+            api.run(record).unwrap()
             if isinstance(record, esolangs.ProgramArtifact)
-            else record.run()
+            else record.run().unwrap()
         )
         assert result.output == "\x01"
         assert provider.calls == 1
@@ -609,7 +638,7 @@ def test_prepared_stdin_acquisition_respects_preparation_deadline(
     stdin = Input()
     limits = esolangs.ExecutionLimits(preparation_timeout=0.2, max_steps=max_steps)
     try:
-        outcome = prepared.execute(stdin=stdin, limits=limits)
+        outcome = prepared.run(stdin=stdin, limits=limits)
         assert started.is_set()
         assert not release.is_set()
         assert outcome.bound == "preparation_timeout"
@@ -621,7 +650,9 @@ def test_prepared_stdin_acquisition_respects_preparation_deadline(
     assert all(not thread.is_alive() for thread in threads)
     assert reads == (["A"] if block == "read" else [])
 
-    result = prepared.run(stdin=stdin, limits=replace(limits, preparation_timeout=2))
+    result = prepared.run(
+        stdin=stdin, limits=replace(limits, preparation_timeout=2)
+    ).unwrap()
     assert result.output == "B"
     assert result.input_reads == 1
     assert bindings == ["A", "B"]
@@ -642,7 +673,7 @@ def test_prepared_input_binding_and_read_share_deadline(monkeypatch) -> None:
 
     monkeypatch.setattr(_acquire, "monotonic", lambda: timeline[0])
     monkeypatch.setattr(_prepared, "_artifact_input_frame", delayed_frame)
-    outcome = prepared.execute(
+    outcome = prepared.run(
         stdin=stdin, limits=esolangs.ExecutionLimits(preparation_timeout=1)
     )
     assert outcome.bound == "preparation_timeout"
@@ -660,17 +691,17 @@ def test_prepared_input_binding_and_read_share_deadline(monkeypatch) -> None:
     for max_steps in (None, 2):
         limits = esolangs.ExecutionLimits(preparation_timeout=1, max_steps=max_steps)
         for binary in (encoded, BytesIO(encoded)):
-            stopped = prepared.execute(stdin=binary, limits=limits)
+            stopped = prepared.run(stdin=binary, limits=limits)
             assert stopped.bound == "preparation_timeout"
             assert stopped.observation == esolangs.ExecutionResult("", None, None, None)
         for binary in (encoded, BytesIO(encoded)):
             ready = prepared.run(
                 stdin=binary, limits=replace(limits, preparation_timeout=3)
-            )
+            ).unwrap()
             assert (ready.output, ready.input_reads) == ("é", 1)
         ready = prepared.run(
             stdin="é", limits=replace(limits, preparation_timeout=1e-30)
-        )
+        ).unwrap()
         assert ready.output == "é"
 
     monkeypatch.setattr(_input, "_decode_input", decode)
@@ -712,7 +743,7 @@ def _check_utf8_chunk_cancellation(monkeypatch, prepared) -> None:
     api = esolangs.Language(REFERENCE)
     encoded = ("a" * 7 + "é😀" * 3).encode()
     limits = esolangs.ExecutionLimits(preparation_timeout=1, max_steps=2)
-    for run in (prepared.execute, lambda **options: api.execute(",.", **options)):
+    for run in (prepared.run, lambda **options: api.run(",.", **options)):
         for stdin in (encoded, BytesIO(encoded)):
             try:
                 stopped = run(stdin=stdin, limits=limits)
@@ -734,11 +765,11 @@ def _check_uniform_outcomes_and_phase_limits():
         {"limits": esolangs.ExecutionLimits(max_steps=10)},
         {"isolated": True},
     ):
-        completed = api.execute(",+.", stdin="A", **options)
+        completed = api.run(",+.", stdin="A", **options)
         assert completed.status == "completed"
         assert completed.unwrap().output == "B"
         assert completed.observation.input_position == 1
-        failed = api.execute(".,", **options)
+        failed = api.run(".,", **options)
         assert failed.status == "input_exhausted"
         assert failed.observation.output == "\x00"
         assert failed.observation.input_past_end == 1
@@ -756,16 +787,16 @@ def _check_uniform_outcomes_and_phase_limits():
         {"limits": esolangs.ExecutionLimits(max_steps=10)},
         {"isolated": True},
     ):
-        rejected = api.execute(",.", stdin=Unread(), seed=0, **options)
+        rejected = api.run(",.", stdin=Unread(), seed=0, **options)
         assert rejected.status == "rejected"
         assert rejected.observation.completion is None
     prepared = api.prepare("+[]")
-    stopped = prepared.execute(limits=esolangs.ExecutionLimits(max_steps=3))
+    stopped = prepared.run(limits=esolangs.ExecutionLimits(max_steps=3))
     assert stopped.status == "limit"
     assert stopped.bound == "max_steps"
     assert stopped.observation.steps == 3
     for isolated in (False, True):
-        stopped = prepared.execute(
+        stopped = prepared.run(
             isolated=isolated,
             limits=esolangs.ExecutionLimits(
                 execution_timeout=0.01, total_timeout=3 if isolated else None
@@ -779,7 +810,7 @@ def _check_uniform_outcomes_and_phase_limits():
     with patch.object(
         execution, "_execute_isolated", wraps=execution._execute_isolated
     ) as worker:
-        stopped = prepared.execute(
+        stopped = prepared.run(
             limits=esolangs.ExecutionLimits(max_steps=3, execution_timeout=3),
         )
     assert worker.call_args is not None
@@ -788,7 +819,7 @@ def _check_uniform_outcomes_and_phase_limits():
     assert stopped.status == "limit"
     assert stopped.bound == "max_steps"
     assert stopped.observation.steps == 3
-    stopped = prepared.execute(
+    stopped = prepared.run(
         limits=esolangs.ExecutionLimits(max_steps=10**9, execution_timeout=0.01),
     )
     assert stopped.status == "limit"
@@ -796,16 +827,16 @@ def _check_uniform_outcomes_and_phase_limits():
     assert stopped.observation.completion is None
     with ThreadPoolExecutor(max_workers=1) as threads:
         stopped = threads.submit(
-            prepared.execute,
+            prepared.run,
             limits=esolangs.ExecutionLimits(execution_timeout=0.01, total_timeout=3),
         ).result(timeout=5)
     assert stopped.status == "limit"
     assert stopped.bound == "execution_timeout"
     assert stopped.observation.completion is None
-    stopped = prepared.execute(limits=esolangs.ExecutionLimits(total_timeout=0.02))
+    stopped = prepared.run(limits=esolangs.ExecutionLimits(total_timeout=0.02))
     assert stopped.status == "limit"
     assert stopped.bound == "total_timeout"
-    rejected = api.execute("[")
+    rejected = api.run("[")
     assert rejected.status == "rejected"
     assert rejected.observation.completion is None
     for kwargs in (
@@ -827,7 +858,7 @@ def _check_uniform_outcomes_and_phase_limits():
             "+",
             isolated=True,
             limits=esolangs.ExecutionLimits(max_memory=-1),
-        )
+        ).unwrap()
     with pytest.raises(esolangs.ArgumentError, match="completion evidence"):
         esolangs.ExecutionOutcome("completed", esolangs.ExecutionResult("", 0, 0, 0))
 
@@ -841,10 +872,10 @@ def _check_preparation_timeout(monkeypatch):
     phase_limits = esolangs.ExecutionLimits(preparation_timeout=1, total_timeout=4)
     for steps in (None, 10):
         limits = replace(phase_limits, max_steps=steps)
-        assert api.execute(",+.", stdin="A", limits=limits).unwrap().output == "B"
+        assert api.run(",+.", stdin="A", limits=limits).unwrap().output == "B"
     prepared = api.prepare(",+.")
     tiny_budget = esolangs.ExecutionLimits(preparation_timeout=0.001)
-    assert prepared.execute(stdin="A", limits=tiny_budget).unwrap().output == "B"
+    assert prepared.run(stdin="A", limits=tiny_budget).unwrap().output == "B"
 
     release = Event()
 
@@ -854,7 +885,7 @@ def _check_preparation_timeout(monkeypatch):
             return "+."
 
     try:
-        stopped = api.execute(Blocked(), limits=tiny_budget)
+        stopped = api.run(Blocked(), limits=tiny_budget)
     finally:
         release.set()
     assert stopped.bound == "preparation_timeout"
@@ -874,12 +905,12 @@ def _check_preparation_timeout(monkeypatch):
         return child
 
     monkeypatch.setattr(_isolated.subprocess, "Popen", slow_parser)
-    stopped = api.execute("+.", limits=phase_limits)
+    stopped = api.run("+.", limits=phase_limits)
     assert stopped.bound == "preparation_timeout"
     assert stopped.observation.output == ""
     assert len(children) == 1
     assert children[0].poll() is not None
-    stopped = api.execute("+.", limits=replace(phase_limits, total_timeout=0.1))
+    stopped = api.run("+.", limits=replace(phase_limits, total_timeout=0.1))
     assert stopped.bound == "total_timeout"
 
 
@@ -894,11 +925,11 @@ def _check_outcomes_are_the_internal_boundary(monkeypatch):
         patch.setattr(execution, "run", refuse_legacy_run)
         api = esolangs.Language(REFERENCE)
         for options in ({}, {"limits": esolangs.ExecutionLimits(max_steps=10)}):
-            assert api.execute(",+.", stdin="A", **options).unwrap().output == "B"
-            assert api.execute(".,", **options).status == "input_exhausted"
+            assert api.run(",+.", stdin="A", **options).unwrap().output == "B"
+            assert api.run(".,", **options).status == "input_exhausted"
         # The real worker runs the same primitive; direct serving is covered
         # by the worker protocol tests, without this parent's monkeypatches.
-        assert api.execute(",+.", stdin="A", isolated=True).unwrap().output == "B"
+        assert api.run(",+.", stdin="A", isolated=True).unwrap().output == "B"
 
     fault = esolangs.HaltError("same fault", hint="retain this note")
     observed = esolangs.ExecutionResult("prefix", 1, 1, 0, steps=2)
@@ -925,7 +956,7 @@ def test_longest_execution_timeout_leaves_time_for_worker_startup() -> None:
     from esolangs.runtime._validate import _TIMEOUT_CEILING
 
     limits = esolangs.ExecutionLimits(execution_timeout=_TIMEOUT_CEILING)
-    assert esolangs.run(REFERENCE, "+.", limits=limits).output == "\x01"
+    assert esolangs.run(REFERENCE, "+.", limits=limits).unwrap().output == "\x01"
     with pytest.raises(esolangs.ArgumentError, match="total_timeout must be at most"):
         esolangs.ExecutionLimits(total_timeout=_TIMEOUT_CEILING + 1)
 
@@ -953,19 +984,19 @@ def test_an_execution_budget_outlasts_the_default_total() -> None:
     api = esolangs.Language(REFERENCE)
     limits = esolangs.ExecutionLimits(execution_timeout=0.5)
     with patch.object(execution, "_ISOLATED_TIMEOUT", 1.0):
-        stopped = api.execute(source, limits=limits)
+        stopped = api.run(source, limits=limits)
         assert stopped.bound == "execution_timeout"
         assert stopped.observation.output == "\x01"
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.5-second") as e:
-            esolangs.run(REFERENCE, source, limits=limits, isolated=True)
+            esolangs.run(REFERENCE, source, limits=limits, isolated=True).unwrap()
         assert e.value.bound == "execution_timeout"
         assert e.value.partial_output == "\x01"
         with pytest.raises(esolangs.ExecutionTimeoutError, match=r"1\.0-second") as e:
-            esolangs.run(REFERENCE, source, isolated=True)
+            esolangs.run(REFERENCE, source, isolated=True).unwrap()
         assert e.value.bound == "total_timeout"
         assert e.value.partial_output == "\x01"
     with pytest.raises(esolangs.ExecutionTimeoutError, match=r"0\.5-second") as e:
-        api.prepare(source).run(limits=limits)
+        api.prepare(source).run(limits=limits).unwrap()
     assert e.value.bound == "execution_timeout"
     assert e.value.partial_output == "\x01"
 

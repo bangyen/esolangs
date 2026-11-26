@@ -40,7 +40,7 @@ def test_compressed_factory_keeps_source_and_owns_fresh_state(monkeypatch):
         ),
     )
     for value in (source, source.to_gzip()):
-        native = esolangs.run("Unary", value)
+        native = esolangs.run("Unary", value).unwrap()
         assert native.output == "\0"
         assert (native.input_position, native.input_reads, native.input_past_end) == (
             0,
@@ -57,7 +57,7 @@ def test_compressed_factory_keeps_source_and_owns_fresh_state(monkeypatch):
         debug.step()
         assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
         assert (debug.observation, debug.snapshot()) == before
-        assert esolangs.run("Unary", value, isolated=True) == native
+        assert esolangs.run("Unary", value, isolated=True).unwrap() == native
 
 
 def test_factory_rejects_unprepared_sources_and_options():

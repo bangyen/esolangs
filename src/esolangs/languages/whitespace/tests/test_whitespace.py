@@ -117,7 +117,7 @@ def test_missing_read_destination_fault_does_not_consume_input(command, stdin) -
         ({"limits": ExecutionLimits(max_steps=2)}, 0),
         ({"isolated": True}, None),
     ):
-        outcome = api.execute(source, stdin=stdin, **options)
+        outcome = api.run(source, stdin=stdin, **options)
         assert isinstance(outcome.error, HaltError)
         assert str(outcome.error) == "the stack is empty, so there is no top to pop"
         assert outcome.observation == ExecutionResult("", 0, 0, 0, steps=steps)
@@ -137,8 +137,8 @@ def test_char_read_with_destination_still_echoes(
 ) -> None:
     api = Language("Whitespace")
     source = push(0) + READ_CHAR + push(0) + RETRIEVE + OUT_CHAR + END
-    result = api.run(source, stdin="A", isolated=True)
-    assert result == api.run(source, stdin="A")
+    result = api.run(source, stdin="A", isolated=True).unwrap()
+    assert result == api.run(source, stdin="A").unwrap()
     assert (result.output, result.input_position, result.input_reads) == ("A", 1, 1)
 
     for program, value in ((push(14) + OUT_NUM, 14), (push(65) + OUT_CHAR, "A")):
@@ -335,13 +335,17 @@ def _check_lossless_containers(tmp_path):
     ):
         prepared = api.prepare(program)
         assert prepared.artifact.source == source
-        assert prepared.run().output == "A"
-        assert prepared.run(limits=ExecutionLimits(max_steps=100)).output == "A"
+        assert prepared.run().unwrap().output == "A"
+        assert (
+            prepared.run(limits=ExecutionLimits(max_steps=100)).unwrap().output == "A"
+        )
     assert (
-        api.run(path, isolated=True, limits=ExecutionLimits(max_steps=100)).output
+        api.run(path, isolated=True, limits=ExecutionLimits(max_steps=100))
+        .unwrap()
+        .output
         == "A"
     )
-    assert api.execute(path).unwrap().output == "A"
+    assert api.run(path).unwrap().output == "A"
     archive = io.BytesIO()
     with gzip.GzipFile("original.ws", "wb", fileobj=archive, mtime=123) as member:
         member.write(source.encode())
@@ -360,9 +364,9 @@ def _check_lossless_containers(tmp_path):
     assert restored == compressed
     api.to_file(restored, path, gzip=True, normalize=True)
     assert path.read_bytes() == data
-    assert api.run(compressed).output == "A"
-    assert api.run(restored).output == "A"
-    assert api.run(path).output == "A"
+    assert api.run(compressed).unwrap().output == "A"
+    assert api.run(restored).unwrap().output == "A"
+    assert api.run(path).unwrap().output == "A"
     # Raw text names no language; normalize appended "\n", which is code here.
     esolangs.to_file("Whitespace", source, path, normalize=True)
     assert path.read_bytes() == source.encode()

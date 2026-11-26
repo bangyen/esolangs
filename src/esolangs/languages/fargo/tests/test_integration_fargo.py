@@ -26,7 +26,7 @@ def test_a_huge_row_index_encodes_and_runs() -> None:
     stdin = esolangs.encode_inputs("Fargo", [1] * 15000)
     assert stdin.endswith("\n")
     assert parse_integer(stdin.strip()) == (1 << 15000) - 1
-    assert run("Fargo", f"% 0 @ {14999:b}\n$", stdin=stdin).output == "1"
+    assert run("Fargo", f"% 0 @ {14999:b}\n$", stdin=stdin).unwrap().output == "1"
 
 
 @pytest.mark.parametrize("choices", ["[]", "no json", '{"eof":true}'])
@@ -50,7 +50,9 @@ def test_bounded_run_executes_generated_xor() -> None:
                 program,
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(max_steps=1000),
-            ).output
+            )
+            .unwrap()
+            .output
             == expected
         )
 
@@ -103,18 +105,26 @@ def test_a_bit_per_line_input_is_the_wrong_row() -> None:
     """Only n>=4 shows it."""
     table = "0000000000000001"  # AND of four inputs
     program = esolangs.generate("Fargo", table)
-    right = run(
-        "Fargo",
-        program,
-        stdin=esolangs.encode_inputs("Fargo", [1, 1, 1, 1]),
-        limits=esolangs.ExecutionLimits(execution_timeout=20),
-    ).output
-    wrong = run(
-        "Fargo",
-        program,
-        stdin="1111\n",
-        limits=esolangs.ExecutionLimits(execution_timeout=20),
-    ).output
+    right = (
+        run(
+            "Fargo",
+            program,
+            stdin=esolangs.encode_inputs("Fargo", [1, 1, 1, 1]),
+            limits=esolangs.ExecutionLimits(execution_timeout=20),
+        )
+        .unwrap()
+        .output
+    )
+    wrong = (
+        run(
+            "Fargo",
+            program,
+            stdin="1111\n",
+            limits=esolangs.ExecutionLimits(execution_timeout=20),
+        )
+        .unwrap()
+        .output
+    )
     assert esolangs.read_answer("Fargo", right) == "1"
     assert esolangs.read_answer("Fargo", wrong) == "0"
 
@@ -127,7 +137,9 @@ def test_missing_stdin_selects_row_zero() -> None:
             esolangs.generate("Fargo", "10010110"),
             stdin="",
             limits=esolangs.ExecutionLimits(execution_timeout=10),
-        ).output
+        )
+        .unwrap()
+        .output
         == "1"
     )
 

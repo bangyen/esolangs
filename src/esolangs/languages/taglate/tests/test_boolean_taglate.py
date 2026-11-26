@@ -24,7 +24,7 @@ from tests.support.witness_tables import row_bits, witnesses
 
 def run_taglate(program: str, inputs: list[str]) -> str:
 
-    return execute("Taglate", program, stdin="".join(inputs)).output
+    return execute("Taglate", program, stdin="".join(inputs)).unwrap().output
 
 
 def test_execution_bound_is_one_form() -> None:

@@ -23,19 +23,19 @@ def test_boolean_artifact_keeps_the_next_record(name):
 
     for row in range(4):
         first = lang.encode_inputs([row >> 1, row & 1])
-        baseline = lang.run(artifact, stdin=first)
+        baseline = lang.run(artifact, stdin=first).unwrap()
         assert lang.read_answer(baseline.output) == table[row]
-        assert lang.run(artifact, stdin=first + second) == baseline
+        assert lang.run(artifact, stdin=first + second).unwrap() == baseline
 
         text = StringIO(first + second)
-        assert prepared.run(stdin=text) == baseline
+        assert prepared.run(stdin=text).unwrap() == baseline
         assert text.read() == second
 
         binary = BytesIO((first + second).encode())
         limited = prepared.run(
             stdin=binary,
             limits=ExecutionLimits(max_steps=50_000, preparation_timeout=5),
-        )
+        ).unwrap()
         assert limited.output == baseline.output
         assert limited.input_position == baseline.input_position == len(first)
         assert limited.input_past_end == baseline.input_past_end
@@ -50,7 +50,7 @@ def test_isolated_boolean_artifact_keeps_the_next_record(name):
     second = lang.encode_inputs([1, 1])
     stream = BytesIO((first + second).encode())
 
-    result = lang.run(artifact, stdin=stream, isolated=True)
+    result = lang.run(artifact, stdin=stream, isolated=True).unwrap()
 
     assert lang.read_answer(result.output) == "0"
     assert result.input_position == len(first)

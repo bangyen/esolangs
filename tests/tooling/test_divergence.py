@@ -6,6 +6,7 @@ import pytest
 
 from esolangs.exceptions import ExecutionTimeoutError
 from tests.support import divergence
+from tests.support.reference import REFERENCE
 
 
 def test_undecided_fallback_timeout_propagates() -> None:
@@ -36,7 +37,7 @@ def test_halting_fallback_returns_true() -> None:
         patch.object(
             divergence.esolangs,
             "run",
-            return_value=divergence.esolangs.ExecutionResult("", None, None, None),
+            return_value=divergence.esolangs.run(REFERENCE, ""),
         ),
     ):
         assert divergence.terminates("fixture", "source", "", 0.001)

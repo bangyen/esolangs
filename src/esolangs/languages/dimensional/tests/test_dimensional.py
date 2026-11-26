@@ -155,10 +155,12 @@ class TestDimensional:
             (">\u0660.", "\x00", 2),
             (">\u0661\u0662?\u0661\u0662.", "\x01", 3),
         ):
-            assert language.run(source).output == output
-            bounded = language.run(source, limits=limits)
+            assert language.run(source).unwrap().output == output
+            bounded = language.run(source, limits=limits).unwrap()
             assert (bounded.output, bounded.steps) == (output, steps)
-            assert language.run(source, limits=limits, isolated=True) == bounded
+            assert (
+                language.run(source, limits=limits, isolated=True).unwrap() == bounded
+            )
 
     def test_a_hex_literal_stops_at_the_command_after_it(self) -> None:
         """The rejected text is the literal alone, not the rest of the line."""
@@ -331,4 +333,7 @@ def test_rejected_number_cannot_skip_to_the_following_output() -> None:
             dbg.run(limits=limits)
         assert repeated.value.observation == first.value.observation
         assert dbg.snapshot() == boundary
-        assert language.run(source, stdin="65" if port == "d" else "41").output == "A"
+        assert (
+            language.run(source, stdin="65" if port == "d" else "41").unwrap().output
+            == "A"
+        )

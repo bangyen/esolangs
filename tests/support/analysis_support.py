@@ -84,7 +84,7 @@ def assert_analysis_complement(
                     program,
                     stdin=stdin,
                     limits=esolangs.ExecutionLimits(max_steps=100000),
-                )
+                ).unwrap()
                 assert esolangs.read_answer(name, result.output) == expected[row]
                 assert result.input_position == len(stdin)
                 assert result.input_past_end == 0

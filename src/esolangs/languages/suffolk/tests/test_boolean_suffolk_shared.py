@@ -91,7 +91,10 @@ def test_constants_keep_the_stream_drain(table, monkeypatch) -> None:
     assert boolean.suffolk(table) == _suffolk_lookup(table)
     assert boolean.constant_output is constant_output
     monkeypatch.setattr(boolean, "constant_output", lambda _: str(1 - int(table[0])))
-    assert run("Suffolk", generate("Suffolk", table), stdin="0").output != table[0]
+    assert (
+        run("Suffolk", generate("Suffolk", table), stdin="0").unwrap().output
+        != table[0]
+    )
 
 
 def test_repeated_passes_overwrite_every_shared_value() -> None:

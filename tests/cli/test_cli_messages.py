@@ -163,7 +163,7 @@ class TestRoundSixQol:
             "",
             r"clear\x1b[2J\nlabel: the program ran and printed nothing" + "\n",
         )
-        assert scope.bind(alias).run(silent).output == ""
+        assert scope.bind(alias).run(silent).unwrap().output == ""
 
         renamed = replace(declaration, name=alias, aliases=())
         random = next(lang for lang in LANGUAGES.values() if lang.runtime.random)
@@ -183,7 +183,10 @@ class TestRoundSixQol:
         assert scope.resolve(random.id) == random_name
 
         api = scope.bind(alias)
-        assert api.prepare(api.from_json(api.to_json("+."))).run().output == "\x01"
+        assert (
+            api.prepare(api.from_json(api.to_json("+."))).run().unwrap().output
+            == "\x01"
+        )
         raster = esolangs.Language(one(source_kind="raster")[0])
         pixels = raster.generate("01").source
         image = tmp_path / "program.png"
@@ -232,7 +235,7 @@ class TestRoundSixQol:
             assert missing.value.__cause__.filename == str(path)
 
             path.write_bytes(b"A\xff")
-            outcome = api.execute(path)
+            outcome = api.run(path)
             assert outcome.status == "rejected"
             assert isinstance(outcome.error, esolangs.ProgramError)
             message = f"cannot read {label}: not text (invalid UTF-8 at byte 1)"
@@ -451,7 +454,7 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
     )
     scope = esolangs.Catalog([replace(original, contract=contract)])
     monkeypatch.setattr(_table, "CATALOG", scope)
-    output = scope.bind(REFERENCE).run("").output
+    output = scope.bind(REFERENCE).run("").unwrap().output
     assert output == ""
     description = call_main(["describe", REFERENCE], capsys)
     assert "printed output ( for 0, 1 for 1)" in description
@@ -466,7 +469,7 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
     scope = esolangs.Catalog([declaration])
     monkeypatch.setattr(_table, "CATALOG", scope)
     api = scope.bind(REFERENCE)
-    output = api.run("+.").output
+    output = api.run("+.").unwrap().output
     assert output == "\x01"
     with pytest.raises(esolangs.ProgramError) as refused:
         api.read_answer(output)
@@ -476,7 +479,7 @@ def test_read_answer_lets_a_regex_recognize_empty_output(monkeypatch, capsys) ->
         str(refused.value).replace(name, label, 1) + "\n",
     )
     generated = api.generate("01")
-    answer = api.run(generated, stdin=api.encode_inputs([1])).output
+    answer = api.run(generated, stdin=api.encode_inputs([1])).unwrap().output
     assert call_both(["read-answer", REFERENCE], capsys, stdin=answer) == ("1\n", "")
     assert (
         json.loads(call_main(["describe", "--json", REFERENCE], capsys))["name"] == name
@@ -593,7 +596,7 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     assert "cannot read" not in diagnostic
 
     missing = path.with_name("missing")
-    expected = scope.bind(name).execute(missing, isolated=True)
+    expected = scope.bind(name).run(missing, isolated=True)
     assert expected.status == "rejected"
     assert isinstance(expected.error, esolangs.ArgumentError)
     worker_options = [
@@ -610,7 +613,7 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
             "",
             f"{expected.error}\n",
         )
-    combined = scope.bind(name).execute(missing, isolated=True, scale=2, seed=1)
+    combined = scope.bind(name).run(missing, isolated=True, scale=2, seed=1)
     assert combined.error is not None
     assert str(combined.error) == str(expected.error)
     assert _failure(
@@ -629,7 +632,7 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
     bound = scope.bind(name)
     checked = esolangs.DialectSettings(schema, mode=1)
     checks.clear()
-    rejected = bound.execute(path, stdin="Q", isolated=True, settings=checked)
+    rejected = bound.run(path, stdin="Q", isolated=True, settings=checked)
     assert rejected.error is not None
     assert str(rejected.error) == str(expected.error)
     for flags, diagnostic in (
@@ -644,7 +647,7 @@ def test_run_reads_and_executes_in_the_same_catalog(tmp_path, monkeypatch, capsy
         ([], None),
         (["--set", "mode=1"], checked),
     ):
-        outcome = bound.execute(path, stdin="Q", settings=settings)
+        outcome = bound.run(path, stdin="Q", settings=settings)
         assert outcome.status == "limit"
         assert outcome.bound == "preparation_timeout"
         assert outcome.error is budget
@@ -691,7 +694,7 @@ def _check_run_validates_runtime_before_reading(path, capsys) -> None:
     ):
         catalog = esolangs.Catalog([replace(original, runtime=runtime)])
         api = catalog.bind(original.name)
-        expected = api.execute(path, stdin=BrokenInput("Q"), limits=budget)
+        expected = api.run(path, stdin=BrokenInput("Q"), limits=budget)
         assert isinstance(expected.error, esolangs.ProgramError)
         assert missing in str(expected.error)
         with (
@@ -736,7 +739,7 @@ def _check_described_input_samples(monkeypatch, capsys, tmp_path) -> None:
         encoded, notices = call_both(["encode-inputs", name, "10"], capsys)
         assert (encoded, notices) == (bound.encode_inputs([1, 0]), "")
         assert shown == (encoded if shape == "line_per_bit" else "2")
-        assert bound.run(source, stdin=shown).output == answer
+        assert bound.run(source, stdin=shown).unwrap().output == answer
         path = _program(tmp_path, source)
         assert call_both(["run", name, path], capsys, stdin=shown) == (answer, "")
 
@@ -880,4 +883,4 @@ def test_generate_swap_suggestion_quotes_metacharacters(
         "01",
     ]
     program = call_main(repair[1:], capsys)
-    assert scope.bind(name).run(program, stdin="1").output == "1"
+    assert scope.bind(name).run(program, stdin="1").unwrap().output == "1"

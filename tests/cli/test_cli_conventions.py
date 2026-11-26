@@ -119,7 +119,7 @@ def test_help_examples_follow_remaining_capabilities(monkeypatch, capsys) -> Non
             assert command == ["esolangs", "generate", "--bits", "10", name, "0110"]
             program = call_main(command[1:], capsys)
             bound = scoped.bind(name)
-            assert bound.read_answer(bound.run(program).output) == "1"
+            assert bound.read_answer(bound.run(program).unwrap().output) == "1"
 
     error = esolangs.ArgumentError("scoped generator backend is disabled")
     error.add_note("hint: enable its provider")
@@ -318,7 +318,7 @@ def test_set_accepts_null_as_a_declared_string_choice(
     assert "--settings is not valid JSON" in error
     assert "looks like a truth table" not in error
 
-    result = esolangs.run(REFERENCE, set_source, stdin="1")
+    result = esolangs.run(REFERENCE, set_source, stdin="1").unwrap()
     assert esolangs.read_answer(REFERENCE, result.output) == "1"
 
 
@@ -601,7 +601,9 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
                             "0110",
                         ]
                         program = call_main(example[1:], capsys)
-                        assert bound.read_answer(bound.run(program).output) == "1"
+                        assert (
+                            bound.read_answer(bound.run(program).unwrap().output) == "1"
+                        )
                         json_line = next(
                             line
                             for line in page.splitlines()
@@ -632,7 +634,7 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
             assert tool == "esolangs"
             assert args == ["generate", "--bits", "1", *operand, "01"]
             program = call_main(args, capsys)
-            assert bound.read_answer(bound.run(program).output) == "1"
+            assert bound.read_answer(bound.run(program).unwrap().output) == "1"
 
             if aliases:
                 _, empty = _failure(["read-answer", spelling], capsys, code=1)
@@ -688,7 +690,7 @@ def test_describe_quotes_shell_metacharacters_in_its_spec_command(
     assert "fill them with instantiate() in Python" in advice
 
     bound = scope.bind(name)
-    output = bound.run(bound.generate("01").fill([1])).output
+    output = bound.run(bound.generate("01").fill([1])).unwrap().output
     assert call_main(["read-answer", name], capsys, stdin=output) == "1\n"
 
 

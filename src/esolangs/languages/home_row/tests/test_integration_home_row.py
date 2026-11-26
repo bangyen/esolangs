@@ -18,7 +18,9 @@ def test_a_wrapped_instantiation_still_computes_the_table() -> None:
             "Home Row",
             esolangs.instantiate("Home Row", template, [a, b], width=10),
             limits=esolangs.ExecutionLimits(execution_timeout=30),
-        ).output
+        )
+        .unwrap()
+        .output
         for a in (0, 1)
         for b in (0, 1)
     )

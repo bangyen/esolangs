@@ -66,16 +66,18 @@ def check_boolean_tables() -> None:
             assert (pointer, direction) == (n, 1)
             assert tuple(int(i in tape) for i in range(n)) == bits
             expected = str(int(pointer in tape))
-            assert execute("Retrograde", source).output == expected == table[row]
+            assert (
+                execute("Retrograde", source).unwrap().output == expected == table[row]
+            )
     source = esolangs.instantiate(
         "Retrograde", esolangs.generate("Retrograde", "01"), (0,)
     )
     at = source.source.index("/")
     broken = source.source[:at] + "\\" + source.source[at + 1 :]
     assert (
-        execute(
-            "Retrograde", broken, limits=esolangs.ExecutionLimits(max_steps=1000)
-        ).output
+        execute("Retrograde", broken, limits=esolangs.ExecutionLimits(max_steps=1000))
+        .unwrap()
+        .output
         != "0"
     )
 

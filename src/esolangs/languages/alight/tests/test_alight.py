@@ -51,7 +51,7 @@ REVERSED_CAT = grid("alight", "reversed_cat.txt")
 @pytest.mark.parametrize("stdin", ["AB", ""])
 def test_retried_input_keeps_the_accepted_character_or_eof(stdin: str) -> None:
     api = esolangs.Language("Alight")
-    result = api.run("begin;var x;inp x;out x;end", stdin="AB")
+    result = api.run("begin;var x;inp x;out x;end", stdin="AB").unwrap()
     assert (result.output, result.input_position, result.input_reads) == ("A", 1, 1)
 
     source = "begin;inp missing;end"
@@ -740,12 +740,14 @@ def test_at_list_update_and_aliases(
     from esolangs import run as run_api
 
     settings = esolangs.Language("Alight").settings(list_update=list_update)
-    native = run_api("Alight", program, settings=settings)
+    native = run_api("Alight", program, settings=settings).unwrap()
     assert native.output == expected
     debug = make_debugger("Alight", program, settings=settings)
     assert debug.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "halted"
     assert debug.observation == replace(native, steps=debug.observation.steps)
-    assert run_api("Alight", program, settings=settings, isolated=True) == native
+    assert (
+        run_api("Alight", program, settings=settings, isolated=True).unwrap() == native
+    )
     assert second.snapshot() == before
     assert second.vars == {}
     assert factory(ScriptedIO()).snapshot() == before

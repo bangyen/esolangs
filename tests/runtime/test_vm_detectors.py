@@ -539,8 +539,8 @@ def test_scoped_random_proofs_require_branch_enumeration(
         prepared = scoped.prepare(source)
         limits = ExecutionLimits(max_steps=steps)
         for execution in (
-            scoped.run(source, seed=seed, limits=limits),
-            prepared.run(seed=seed, limits=limits),
+            scoped.run(source, seed=seed, limits=limits).unwrap(),
+            prepared.run(seed=seed, limits=limits).unwrap(),
         ):
             assert (execution.output, execution.steps) == ("H", steps)
         for machine in (

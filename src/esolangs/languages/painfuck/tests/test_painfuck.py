@@ -170,7 +170,7 @@ def test_read_number_rejects_garbage() -> None:
         plan = api.prepare(_encode(commands))
         expected = ExecutionResult("2", position, reads, 0, steps=2)
         for isolated in (False, True):
-            outcome = plan.execute(stdin=stdin, limits=limits, isolated=isolated)
+            outcome = plan.run(stdin=stdin, limits=limits, isolated=isolated)
             assert type(outcome.error) is HaltError
             assert outcome.observation == expected
         machine = plan.make_debugger(stdin=stdin)
@@ -193,7 +193,7 @@ def test_read_number_rejects_garbage() -> None:
             assert machine.ip == 3
             assert machine.snapshot() == saved
 
-    valid = api.run(_encode("poioe"), stdin="7", limits=limits)
+    valid = api.run(_encode("poioe"), stdin="7", limits=limits).unwrap()
     assert (valid.output, valid.input_reads, valid.steps) == ("27", 1, 5)
 
 
@@ -225,7 +225,7 @@ def _check_repeated_port_retry(target, stdin, *, refusal, monkeypatch) -> None:
     with monkeypatch.context() as port:
         port.setattr(interpreter, "draw", draw_zero)
         port.setattr(ScriptedIO, operand, read_operand)
-        expected = api.run(source, stdin=stdin, limits=limits, seed=0)
+        expected = api.run(source, stdin=stdin, limits=limits, seed=0).unwrap()
         assert (expected.output, expected.input_reads, expected.steps) == (
             "7" if numeric else "g",
             7,
@@ -565,9 +565,9 @@ def test_branch_search_keeps_clean_and_faulting_outcomes(
     for program, error in (("yj", InputExhaustedError), ("yb", HaltError)):
         source = _encode(program)
         limits = ExecutionLimits(max_steps=1)
-        assert api.run(source, seed=0, limits=limits).steps == 1
+        assert api.run(source, seed=0, limits=limits).unwrap().steps == 1
         with pytest.raises(error):
-            api.run(source, seed=4, limits=limits)
+            api.run(source, seed=4, limits=limits).unwrap()
         machine = api.make_vm(source, seed=4)
         saved = machine.snapshot()
         with pytest.raises(TimeoutError, match="coin outcomes"):
@@ -584,7 +584,7 @@ def test_branch_search_keeps_clean_and_faulting_outcomes(
     ):
         source = _encode(target)
         limits = ExecutionLimits(max_steps=steps)
-        expected = api.run(source, seed=4, limits=limits)
+        expected = api.run(source, seed=4, limits=limits).unwrap()
         assert (expected.output, expected.steps) == (answer, steps)
         attempts = []
         faults = 2 if accepted < len(answer) else 1

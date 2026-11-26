@@ -67,7 +67,7 @@ def test_rejected_freestajlo_character_preserves_its_stack_and_position(
             "", 1, 1, 0, steps=1
         )
         assert dbg.snapshot() == boundary
-    assert api.run(",.,.", stdin="BA").output == "BA"
+    assert api.run(",.,.", stdin="BA").unwrap().output == "BA"
     _check_output_retry(api, monkeypatch)
     _check_number_retry(api, monkeypatch)
 

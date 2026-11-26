@@ -120,7 +120,7 @@ class TestInstruction:
         api = Language("AddSubJump")
         source, stdin = "-1 -1 -1 -1", "\x00A"
         limits = ExecutionLimits(max_steps=1)
-        expected = api.run(source, stdin=stdin, limits=limits)
+        expected = api.run(source, stdin=stdin, limits=limits).unwrap()
         assert (expected.output, expected.steps, expected.input_reads) == ("A", 1, 2)
         write = ScriptedIO.print_char
         for accepted in (0, 1):
@@ -217,7 +217,7 @@ class TestSpecialAddresses:
                 "", 1, 1, count, steps=0
             )
 
-        expected = api.run(source, stdin="AB", limits=limits)
+        expected = api.run(source, stdin="AB", limits=limits).unwrap()
         assert (expected.output, expected.steps, expected.input_reads) == ("B", 1, 2)
         read = ScriptedIO.input_char
         positions = []

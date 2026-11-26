@@ -70,15 +70,15 @@ def _check_retry_and_line_endings(monkeypatch: pytest.MonkeyPatch) -> None:
         api.name, "0A560502FF4142", "AB", "AB", prefix=0, monkeypatch=monkeypatch
     )
     for source in ("FF\n", "FF\r\n"):
-        assert api.run(source, limits=limits, isolated=True).steps == 1
+        assert api.run(source, limits=limits, isolated=True).unwrap().steps == 1
     for source in ("FF\r", "FF\r\r\n"):
         with pytest.raises(ProgramError, match="uppercase hex digit"):
-            api.run(source, limits=limits, isolated=True)
+            api.run(source, limits=limits, isolated=True).unwrap()
 
     read = ScriptedIO.input_char
     for command, stdin in (("1A", "ABC"), ("1F", "414243")):
         source = command + "5609020A560502FF0000"
-        expected = api.run(source, stdin=stdin, limits=limits, isolated=True)
+        expected = api.run(source, stdin=stdin, limits=limits, isolated=True).unwrap()
         assert expected.output == "AB"
 
         def refuse(io, prompt="Input: "):
@@ -104,7 +104,7 @@ def _check_retry_and_line_endings(monkeypatch: pytest.MonkeyPatch) -> None:
     for command, prefix in (("1A", "A"), ("1F", "41")):
         source = command + "5609020A560502FF0000"
         stdin = prefix + "\ud800BC"
-        expected = api.execute(source, stdin=stdin, limits=limits, isolated=True)
+        expected = api.run(source, stdin=stdin, limits=limits, isolated=True)
         assert isinstance(expected.error, ProgramError)
         cause = expected.error.__cause__
         assert isinstance(cause, UnicodeEncodeError)
@@ -133,7 +133,7 @@ def test_sixteen_essential_inputs_split_row_zero_and_page_the_return() -> None:
     program = api.generate(table)
     for row in [0, 2**n - 1, *rng.sample(range(2**n), 14)]:
         bits = [int(bit) for bit in f"{row:0{n}b}"]
-        output = api.run(program, stdin=api.encode_inputs(bits)).output
+        output = api.run(program, stdin=api.encode_inputs(bits)).unwrap().output
         assert api.read_answer(output) == table[row], row
 
 

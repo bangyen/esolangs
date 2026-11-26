@@ -20,4 +20,4 @@ def test_invalid_utf8_input_is_an_argument_error(container: str, mode: str) -> N
     elif mode == "isolated":
         bounds["isolated"] = True
     with pytest.raises(esolangs.ArgumentError, match="cannot read stdin"):
-        run(REFERENCE, ",.", stdin=argument, **bounds)
+        run(REFERENCE, ",.", stdin=argument, **bounds).unwrap()

@@ -65,7 +65,7 @@ def test_line_is_a_public_raster_language() -> None:
     assert isinstance(program, esolangs.ProgramArtifact)
     assert isinstance(program.source, Raster)
     assert esolangs.describe("Line").source_kind == "raster"
-    assert run("Line", program, stdin="1\n").output == "1"
+    assert run("Line", program, stdin="1\n").unwrap().output == "1"
 
 
 @pytest.mark.slow
@@ -75,7 +75,7 @@ def test_public_run_loads_line_png(tmp_path: Path) -> None:
     assert isinstance(program.source, Raster)
     path = tmp_path / "line.png"
     esolangs.to_file("Line", program, path)
-    assert run("Line", path, stdin="0\n").output == "0"
+    assert run("Line", path, stdin="0\n").unwrap().output == "0"
 
 
 def test_a_corrupt_png_is_a_value_error(tmp_path: Path) -> None:

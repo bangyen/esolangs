@@ -172,9 +172,9 @@ def _check_wide_decimal_io() -> None:
         ):
             plan = api.prepare(code)
             for result, steps in (
-                (api.run(code, stdin=stdin), None),
-                (plan.run(stdin=stdin, limits=limits), 2),
-                (plan.run(stdin=stdin, limits=limits, isolated=True), 2),
+                (api.run(code, stdin=stdin).unwrap(), None),
+                (plan.run(stdin=stdin, limits=limits).unwrap(), 2),
+                (plan.run(stdin=stdin, limits=limits, isolated=True).unwrap(), 2),
             ):
                 assert result.output == expected
                 assert result.steps == steps

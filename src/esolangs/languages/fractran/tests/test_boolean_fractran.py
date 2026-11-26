@@ -127,7 +127,9 @@ def test_fractran_parity_two_executes_at_every_width() -> None:
                     "FRACTRAN", template, [row // 2, row % 2], truth_table="0110"
                 )
                 assert (
-                    esolangs.read_answer("FRACTRAN", run("FRACTRAN", program).output)
+                    esolangs.read_answer(
+                        "FRACTRAN", run("FRACTRAN", program).unwrap().output
+                    )
                     == expected
                 )
             with pytest.raises(esolangs.TemplateError, match="not the template"):
@@ -144,7 +146,9 @@ def test_fractran_phase_parity_retains_larger_layout_execution(n: int) -> None:
             bits = list(map(int, format(row, f"0{n}b")))
             filled = esolangs.instantiate("FRACTRAN", program, bits)
             assert (
-                esolangs.read_answer("FRACTRAN", run("FRACTRAN", filled).output)
+                esolangs.read_answer(
+                    "FRACTRAN", run("FRACTRAN", filled).unwrap().output
+                )
                 == table[row]
             )
 

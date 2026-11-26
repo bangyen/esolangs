@@ -100,7 +100,7 @@ def test_large_integer_output_matches_across_execution_routes() -> None:
     text = "1" + "0" * 5000
     limits = ExecutionLimits(max_steps=1)
     for options in ({}, {"limits": limits}, {"limits": limits, "isolated": True}):
-        result = api.run(source, stdin=text, **options)
+        result = api.run(source, stdin=text, **options).unwrap()
         assert (result.output, result.input_position, result.input_reads) == (
             text,
             len(text),
@@ -108,11 +108,11 @@ def test_large_integer_output_matches_across_execution_routes() -> None:
         )
     assert complete_vm(api.make_vm(source, stdin=text), max_steps=1) == text
     with pytest.raises(ExecutionCapError) as caught:
-        api.run(source, stdin=text, limits=ExecutionLimits(max_output=17))
+        api.run(source, stdin=text, limits=ExecutionLimits(max_output=17)).unwrap()
     assert caught.value.bound == "max_output"
     assert caught.value.partial_output == text[:17]
     with pytest.raises(ArgumentError, match="input must be positive"):
-        api.run(source, stdin="-" + text)
+        api.run(source, stdin="-" + text).unwrap()
 
 
 def test_ip_is_the_next_instructions_source_offset(tmp_path: Path) -> None:
@@ -141,11 +141,13 @@ def test_ip_is_the_next_instructions_source_offset(tmp_path: Path) -> None:
         assert vm.ip == 0
         vm.step()
         assert vm.ip == source.index("i=i/a")
-        assert api.run(path, stdin="3\n").output == "6"
-        bounded = api.run(path, stdin="3\n", limits=limits)
+        assert api.run(path, stdin="3\n").unwrap().output == "6"
+        bounded = api.run(path, stdin="3\n", limits=limits).unwrap()
         assert (bounded.output, bounded.steps) == ("6", 2)
-        assert api.run(path, stdin="3\n", limits=limits, isolated=True) == bounded
+        assert (
+            api.run(path, stdin="3\n", limits=limits, isolated=True).unwrap() == bounded
+        )
         cli = run_cli("run", api.name, str(path), stdin="3\n")
         assert (cli.returncode, cli.stdout, cli.stderr) == (0, "6", "")
     with pytest.raises(ProgramError, match="not a Blindfolded Arithmetic instruction"):
-        api.run("i=i+i\ri=i/a", stdin="3\n")
+        api.run("i=i+i\ri=i/a", stdin="3\n").unwrap()

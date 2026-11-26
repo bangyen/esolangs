@@ -96,7 +96,7 @@ class TestTheWikiExample:
                 {"limits": limits},
                 {"isolated": True, "limits": limits},
             ):
-                result = api.run(code, **options)
+                result = api.run(code, **options).unwrap()
                 assert result.output == "1"
                 assert result.completion.kind is Completion.POST_HALT
             debugger = api.make_debugger(code)
@@ -197,7 +197,7 @@ class TestBitdequeRefusesNonsense:
                 "PUSH FROB PUSH",
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
         # The whole language was a no-op for anyone who guessed the case.
         with pytest.raises(esolangs.ProgramError, match="upper case"):
             execute(
@@ -205,7 +205,7 @@ class TestBitdequeRefusesNonsense:
                 "push invert push",
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
         # Three refusals are worth nothing if the valid case broke.
         assert (
             execute(
@@ -213,6 +213,8 @@ class TestBitdequeRefusesNonsense:
                 "PUSH INVERT PUSH",
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == "0 1"
         )

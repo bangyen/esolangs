@@ -96,5 +96,5 @@ def test_bracketonly_execution() -> None:
         )
         for row, answer in enumerate(table):
             stdin = esolangs.encode_inputs("BracketOnly", row_bits(row, n))
-            got = program.run(stdin=stdin)
+            got = program.run(stdin=stdin).unwrap()
             assert (got.output, got.input_reads) == (answer, n), (table, row)

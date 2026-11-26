@@ -46,7 +46,7 @@ def test_large_execution_budget_matches_python(tmp_path: Path, bound: str) -> No
     operand = " \t+1_" + "0" * 4400 + "1 "
     options = {bound: magnitude}
     limits = esolangs.ExecutionLimits(**options)
-    expected = esolangs.run(REFERENCE, Path(path), limits=limits).output
+    expected = esolangs.run(REFERENCE, Path(path), limits=limits).unwrap().output
     assert expected == "\x01"
     flag = f"--{bound.replace('_', '-')}"
     result = subprocess.run(
@@ -99,7 +99,7 @@ def test_cli_and_worker_share_acquisition_and_total_budgets(
         assert deadline == 100 + worker_total
         assert preparation_deadline == 106
         assert execution_timeout == int(options[-1])
-        return esolangs.execute(REFERENCE, "+.")
+        return esolangs.run(REFERENCE, "+.")
 
     monkeypatch.setattr(run_cli, "monotonic", lambda: now)
     monkeypatch.setattr(_isolated, "monotonic", lambda: now)

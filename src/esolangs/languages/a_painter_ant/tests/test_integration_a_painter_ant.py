@@ -148,11 +148,11 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
     from esolangs import vm
     from esolangs.languages.a_painter_ant import interpreter
 
-    native = esolangs.run("A Painter Ant", "P")
-    assert esolangs.run("A Painter Ant", "P", isolated=True) == native
+    native = esolangs.run("A Painter Ant", "P").unwrap()
+    assert esolangs.run("A Painter Ant", "P", isolated=True).unwrap() == native
     assert native.completion == report
     monkeypatch.setattr(interpreter._Machine, "completion", Completion.HALTED)
-    assert esolangs.run("A Painter Ant", "P") == native
+    assert esolangs.run("A Painter Ant", "P").unwrap() == native
 
     api = esolangs.Language("A Painter Ant")
     record = api.catalog.languages[api.name]
@@ -185,14 +185,14 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
         expected = esolangs.ExecutionResult("A", 1, 1, 0, steps=steps)
         for failure in ({}, {name: object()}):
             hooks.update(failure)
-            outcome = prepared.execute(stdin="A", limits=limits)
+            outcome = prepared.run(stdin="A", limits=limits)
             assert isinstance(outcome.error, esolangs.InterpreterLimitError)
             assert diagnostic in str(outcome.error)
             assert outcome.observation == outcome.error.observation == expected
         hooks[name] = valid
     for snapshot in (lambda: [0], lambda: ([0],)):
         hooks["snapshot"] = snapshot
-        outcome = prepared.execute(stdin="A", limits=limits)
+        outcome = prepared.run(stdin="A", limits=limits)
         assert isinstance(outcome.error, esolangs.InterpreterLimitError)
         assert "hashable state" in str(outcome.error)
         assert (
@@ -201,7 +201,7 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
             == esolangs.ExecutionResult("A", 1, 1, 0, steps=0)
         )
     hooks["snapshot"] = lambda: (0,)
-    observed = prepared.run(stdin="A", limits=limits)
+    observed = prepared.run(stdin="A", limits=limits).unwrap()
     assert observed.completion.cycle.state == (0,)
     assert (observed.output, observed.steps, observed.completion.kind) == (
         "A",
@@ -215,7 +215,7 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
         raise original
 
     hooks["snapshot"] = refuse
-    outcome = scoped.execute("P", stdin="A", limits=limits)
+    outcome = scoped.run("P", stdin="A", limits=limits)
     assert outcome.error is original
     assert (
         outcome.observation
@@ -241,12 +241,14 @@ def test_native_completion_preserves_the_periodic_evidence(monkeypatch):
         vm.complete_vm(debug.vm, max_steps=0)
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: HALTED_REPORT)
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
-        esolangs.run("A Painter Ant", "P")
+        esolangs.run("A Painter Ant", "P").unwrap()
 
 
 def test_a_step_bound_requires_a_periodic_witness():
     with pytest.raises(esolangs.ExecutionCapError) as caught:
-        esolangs.run("A Painter Ant", "P", limits=esolangs.ExecutionLimits(max_steps=1))
+        esolangs.run(
+            "A Painter Ant", "P", limits=esolangs.ExecutionLimits(max_steps=1)
+        ).unwrap()
     assert caught.value.bound == "max_steps"
     assert caught.value.partial_output == ""
     assert caught.value.observation.steps == 1
@@ -256,7 +258,7 @@ def test_a_step_bound_requires_a_periodic_witness():
         "P",
         limits=esolangs.ExecutionLimits(max_steps=2),
         isolated=True,
-    )
+    ).unwrap()
     assert result.output == "@"
     assert result.steps == 2
     assert result.completion.kind is Completion.PERIODIC

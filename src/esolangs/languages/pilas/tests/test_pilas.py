@@ -39,10 +39,10 @@ def _check_out_of_range_character() -> None:
             bound = 2 * len(line)
             bounded = esolangs.ExecutionLimits(max_steps=bound)
             outcomes = (
-                (api.execute(source), False),
-                (api.execute(source, limits=bounded), True),
-                (prepared.execute(), False),
-                (prepared.execute(limits=bounded, isolated=True), True),
+                (api.run(source), False),
+                (api.run(source, limits=bounded), True),
+                (prepared.run(), False),
+                (prepared.run(limits=bounded, isolated=True), True),
             )
             for outcome, counts_steps in outcomes:
                 if not doublings:
@@ -106,18 +106,19 @@ def test_reads_bytes(tmp_path, monkeypatch) -> None:
     for separator in ("\n", "\r\n"):
         scheduled = "  " + separator + ",."
         path.write_bytes(scheduled.encode())
-        assert api.run(path, stdin="A").output == ""
-        bounded = api.run(path, stdin="A", limits=limits)
+        assert api.run(path, stdin="A").unwrap().output == ""
+        bounded = api.run(path, stdin="A", limits=limits).unwrap()
         assert (bounded.output, bounded.steps, bounded.input_reads) == ("", 3, 1)
         record = api.from_json(api.to_json(path))
         assert record.source == scheduled
         assert (
-            api.prepare(record).run(stdin="A", limits=limits, isolated=True) == bounded
+            api.prepare(record).run(stdin="A", limits=limits, isolated=True).unwrap()
+            == bounded
         )
         cli = run_cli("run", api.name, str(path), stdin="A")
         assert (cli.returncode, cli.stdout, cli.stderr) == (0, "", "")
     for literal in (" \r \n,.", "  \r\r\n,."):
-        result = api.run(literal, stdin="A", limits=limits)
+        result = api.run(literal, stdin="A", limits=limits).unwrap()
         assert (result.output, result.steps) == ("A", 4)
 
     path.write_bytes((source + "\r\n").encode())
@@ -125,13 +126,13 @@ def test_reads_bytes(tmp_path, monkeypatch) -> None:
     for program in (source + "\r\n", path):
         for options in ({}, {"limits": esolangs.ExecutionLimits(max_steps=100)}):
             with pytest.raises(esolangs.ProgramError, match="lines"):
-                api.run(program, stdin="A", **options)
+                api.run(program, stdin="A", **options).unwrap()
     native = api.from_file(path, normalize=True)
     assert native.source == source
-    assert api.run(native, stdin="A").output == "A"
+    assert api.run(native, stdin="A").unwrap().output == "A"
     api.to_file(api.from_source(source), path)
     assert path.read_bytes() == source.encode()
-    assert api.run(path, stdin="A").output == "A"
+    assert api.run(path, stdin="A").unwrap().output == "A"
     api.to_file(api.from_source(source), path, normalize=True)
     assert path.read_bytes() == (source + "\n").encode()
     exported = run_cli("generate", api.name, "01")

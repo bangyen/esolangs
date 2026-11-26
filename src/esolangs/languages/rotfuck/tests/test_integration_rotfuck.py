@@ -21,9 +21,11 @@ def test_rotfuck_rotation_reaches_every_execution_path(
     """
     api = esolangs.Language("Rotfuck")
     forward = api.settings(rotation="forward")
-    assert run("ROTfuck", ",[", stdin="x", isolated=isolated).output == "x"
+    assert run("ROTfuck", ",[", stdin="x", isolated=isolated).unwrap().output == "x"
     assert (
-        run("ROTfuck", ",,", stdin="x", settings=forward, isolated=isolated).output
+        run("ROTfuck", ",,", stdin="x", settings=forward, isolated=isolated)
+        .unwrap()
+        .output
         == "x"
     )
     assert (
@@ -32,11 +34,15 @@ def test_rotfuck_rotation_reaches_every_execution_path(
     assert complete_vm(make_vm("ROTfuck", ",,", stdin="x"), 100) == ""
     generated = esolangs.generate("ROTfuck", "01", settings=forward)
     assert (
-        run("ROTfuck", generated, stdin="0", settings=forward, isolated=isolated).output
+        run("ROTfuck", generated, stdin="0", settings=forward, isolated=isolated)
+        .unwrap()
+        .output
         == "0"
     )
     assert (
-        run("ROTfuck", generated, stdin="1", settings=forward, isolated=isolated).output
+        run("ROTfuck", generated, stdin="1", settings=forward, isolated=isolated)
+        .unwrap()
+        .output
         == "1"
     )
 
@@ -46,7 +52,7 @@ def test_rotfuck_rotation_reaches_every_execution_path(
     assert complete_vm(left, 100) == "A"
     assert right.snapshot() == before
     assert complete_vm(right, 100) == "B"
-    assert prepared.run(stdin="C", isolated=isolated).output == "C"
+    assert prepared.run(stdin="C", isolated=isolated).unwrap().output == "C"
     if not isolated:
         _check_cli_text_dialect_settings(api, capsys, tmp_path)
 

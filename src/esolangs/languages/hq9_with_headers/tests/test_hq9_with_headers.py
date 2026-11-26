@@ -181,9 +181,9 @@ def test_decimal_read_stops_at_and_consumes_a_non_digit(
     api = Language("HQ9+ with headers")
     stdin = "12\n"
     limits = ExecutionLimits(max_steps=2)
-    expected = api.run(code, stdin=stdin, limits=limits)
-    assert api.run(code, stdin=stdin).output == expected.output == "12"
-    assert api.run(code, stdin=stdin, limits=limits, isolated=True) == expected
+    expected = api.run(code, stdin=stdin, limits=limits).unwrap()
+    assert api.run(code, stdin=stdin).unwrap().output == expected.output == "12"
+    assert api.run(code, stdin=stdin, limits=limits, isolated=True).unwrap() == expected
 
     def interrupted(port: ScriptedIO, prompt: str) -> str:
         position = port.position()
@@ -244,7 +244,7 @@ def test_arithmetic_is_unbounded_and_div_floors(monkeypatch) -> None:
     try:
         sys.set_int_max_str_digits(640)
         assert (
-            Language("HQ9+ with headers").run(wide, stdin=zeros + "7").output
+            Language("HQ9+ with headers").run(wide, stdin=zeros + "7").unwrap().output
             == value + "7"
         )
         assert seen_caps == [640, 640]

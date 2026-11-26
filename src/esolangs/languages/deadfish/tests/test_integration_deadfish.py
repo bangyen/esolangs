@@ -64,7 +64,7 @@ def test_large_accumulator_prints_each_number_under_host_digit_cap(
         native = ScriptedIO()
         run(source, native)
         assert native.getvalue() == expected
-        assert esolangs.run("Deadfish", source).output == expected
+        assert esolangs.run("Deadfish", source).unwrap().output == expected
     finally:
         sys.set_int_max_str_digits(previous)
 

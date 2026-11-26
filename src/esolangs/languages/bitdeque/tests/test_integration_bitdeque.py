@@ -34,12 +34,16 @@ class TestEveryDumpSaysWhereTheAnswerIs:
         for combo in range(4):
             bits = [(combo >> (1 - i)) & 1 for i in range(2)]
             program = esolangs.instantiate("Bitdeque", template, bits)
-            dump = run(
-                "Bitdeque",
-                program,
-                stdin="",
-                limits=esolangs.ExecutionLimits(execution_timeout=10),
-            ).output
+            dump = (
+                run(
+                    "Bitdeque",
+                    program,
+                    stdin="",
+                    limits=esolangs.ExecutionLimits(execution_timeout=10),
+                )
+                .unwrap()
+                .output
+            )
             assert dump == "0110"[combo], bits
             assert len(dump) == 1, dump
 
@@ -55,7 +59,7 @@ def test_text_pickle_retains_settings(template) -> None:
     assert type(restored) is type(source)
     if template:
         restored = esolangs.instantiate("Bitdeque", restored, [1, 0])
-    assert run("Bitdeque", restored).output == "1"
+    assert run("Bitdeque", restored).unwrap().output == "1"
 
 
 def test_settings_through_explicit_template_and_override() -> None:
@@ -67,7 +71,7 @@ def test_settings_through_explicit_template_and_override() -> None:
     )
     filled = esolangs.instantiate("Bitdeque", explicit, [1, 0], settings=settings)
     assert filled.settings is settings
-    assert run("Bitdeque", filled).output == "1"
+    assert run("Bitdeque", filled).unwrap().output == "1"
 
     source = esolangs.generate("Brainfuck", "01")
     assert source.settings is None
@@ -77,14 +81,16 @@ def test_settings_through_explicit_template_and_override() -> None:
             source,
             stdin="1",
             settings=esolangs.Language("Brainfuck").settings(),
-        ).output
+        )
+        .unwrap()
+        .output
         == "1"
     )
     filled = esolangs.instantiate(
         "Bitdeque", template, [1, 0], settings=esolangs.Language("Bitdeque").settings()
     )
     assert filled.settings == settings
-    assert run("Bitdeque", filled).output == "1"
+    assert run("Bitdeque", filled).unwrap().output == "1"
 
 
 @pytest.mark.parametrize("restored", [False, True])
@@ -102,7 +108,7 @@ def test_balanced_bitdeque_setters(restored) -> None:
         filled = esolangs.instantiate(
             "Bitdeque", source, bits, truth_table=table, settings=settings
         )
-        assert run("Bitdeque", filled, settings=settings).output == expected
+        assert run("Bitdeque", filled, settings=settings).unwrap().output == expected
 
 
 @pytest.mark.medium
@@ -113,7 +119,9 @@ def test_filled_template_becomes_portable_text() -> None:
     filled = esolangs.instantiate("Bitdeque", source, [1, 0])
     document = esolangs.to_json("Bitdeque", filled)
     assert json.loads(document)["kind"] == "text"
-    assert run("Bitdeque", esolangs.from_json("Bitdeque", document)).output == "1"
+    assert (
+        run("Bitdeque", esolangs.from_json("Bitdeque", document)).unwrap().output == "1"
+    )
 
 
 def test_foreign_language_is_rejected() -> None:
@@ -159,7 +167,7 @@ def test_bound_language_round_trip() -> None:
     document = language.to_json(
         filled, settings=esolangs.Language("Bitdeque").settings()
     )
-    assert language.run(language.from_json(document)).output == "1"
+    assert language.run(language.from_json(document)).unwrap().output == "1"
 
 
 class TestBitdeque:

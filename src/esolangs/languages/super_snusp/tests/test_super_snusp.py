@@ -276,7 +276,7 @@ def test_hints_for_bad_programs_and_input() -> None:
         ):
             for magnitude in ("5", digits):
                 with pytest.raises(HaltError, match=pattern) as fault:
-                    api.run(code, stdin=prefix + magnitude, limits=limits)
+                    api.run(code, stdin=prefix + magnitude, limits=limits).unwrap()
                 assert prefix + magnitude in str(fault.value)
                 assert fault.value.observation.steps == 4
 

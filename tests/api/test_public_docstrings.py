@@ -26,7 +26,7 @@ from tests.support.spec_triggers import all_triggers, run_trigger
 #: Exported functions with no ``Raises:``, each with the reason.
 RAISE_FREE = {
     "list_languages": "returns the registry's names",
-    "execute": "returns each package error as the outcome's error",
+    "run": "returns each package error as the outcome's error",
 }
 
 _MISSING = Path("/nonexistent/program.b")
@@ -36,7 +36,16 @@ def _functions() -> dict[str, Callable[..., object]]:
     """Return every function ``esolangs.__all__`` exports."""
     return {
         name: obj
-        for name in esolangs.__all__
+        for name in (
+            *esolangs.__all__,
+            "from_file",
+            "from_json",
+            "to_file",
+            "to_json",
+            "evaluate",
+            "instantiate",
+            "plan_generation",
+        )
         if inspect.isfunction(obj := getattr(esolangs, name))
     }
 
@@ -67,7 +76,10 @@ def _invalid_input_encoding() -> str:
 
 def _raises(name: str) -> set[str]:
     """Return the exception names a function's ``Raises:`` lists."""
-    doc = inspect.getdoc(_functions()[name]) or ""
+    target = (
+        esolangs.ExecutionOutcome.unwrap if name == "unwrap" else _functions()[name]
+    )
+    doc = inspect.getdoc(target) or ""
     return {
         m[1] for line in section(doc, "Raises") if (m := re.match(r"^    (\w+):", line))
     }
@@ -127,7 +139,7 @@ def _without_pillow(call: Callable[[], object]) -> object:
 
 def _run_png_without_pillow() -> object:
     data = _raster_png()
-    return _without_pillow(lambda: esolangs.run(_first("raster"), data).output)
+    return _without_pillow(lambda: esolangs.run(_first("raster"), data).unwrap().output)
 
 
 def _load_png_without_pillow(load=esolangs.from_json) -> object:
@@ -390,32 +402,46 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         lambda: esolangs.instantiate(_first("parameterized"), _template(), [1, 2]),
         None,
     ),
-    ("run", x.UnknownLanguageError, lambda: esolangs.run("Nolang", "").output, None),
+    (
+        "run",
+        x.UnknownLanguageError,
+        lambda: esolangs.run("Nolang", "").unwrap().output,
+        None,
+    ),
     (
         "run",
         x.ArgumentError,
         lambda: (
-            esolangs.run(R, "", limits=esolangs.ExecutionLimits(max_steps=-1)).output
+            esolangs.run(R, "", limits=esolangs.ExecutionLimits(max_steps=-1))
+            .unwrap()
+            .output
         ),
         None,
     ),
-    ("run", x.ArgumentError, lambda: esolangs.run(R, "", seed=1).output, None),
-    ("run", x.ProgramError, lambda: esolangs.run(R, "[").output, None),
-    ("run", x.ProgramNotFoundError, lambda: esolangs.run(R, _MISSING).output, None),
+    ("run", x.ArgumentError, lambda: esolangs.run(R, "", seed=1).unwrap().output, None),
+    ("run", x.ProgramError, lambda: esolangs.run(R, "[").unwrap().output, None),
+    (
+        "run",
+        x.ProgramNotFoundError,
+        lambda: esolangs.run(R, _MISSING).unwrap().output,
+        None,
+    ),
     (
         "run",
         x.TemplateError,
-        lambda: esolangs.run(_first("parameterized"), _template()).output,
+        lambda: esolangs.run(_first("parameterized"), _template()).unwrap().output,
         None,
     ),
-    ("run", x.InputExhaustedError, lambda: esolangs.run(R, ",").output, None),
+    ("run", x.InputExhaustedError, lambda: esolangs.run(R, ",").unwrap().output, None),
     (
         "run",
         x.ExecutionTimeoutError,
         lambda: (
             esolangs.run(
                 R, "+[]", limits=esolangs.ExecutionLimits(execution_timeout=0.2)
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         None,
     ),
@@ -423,9 +449,9 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         "run",
         x.ExecutionCapError,
         lambda: (
-            esolangs.run(
-                R, "+[]", limits=esolangs.ExecutionLimits(max_steps=100)
-            ).output
+            esolangs.run(R, "+[]", limits=esolangs.ExecutionLimits(max_steps=100))
+            .unwrap()
+            .output
         ),
         None,
     ),
@@ -438,7 +464,9 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
                 "+[.]",
                 isolated=True,
                 limits=esolangs.ExecutionLimits(execution_timeout=5, max_output=10),
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         None,
     ),
@@ -610,7 +638,7 @@ def test_the_documented_error_is_raised(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Each trigger raises the exception its function's ``Raises:`` names."""
-    assert exception.__name__ in _raises(function)
+    assert exception.__name__ in _raises("unwrap" if function == "run" else function)
     for call, setup in probes:
         with monkeypatch.context() as patch:
             if setup is not None:

@@ -178,10 +178,10 @@ def test_exhausted_rotating_input_counts_the_failed_read(monkeypatch) -> None:
         (ExecutionLimits(max_steps=64), 0),
         (ExecutionLimits(max_steps=64, execution_timeout=5), 0),
     ):
-        outcome = api.execute(source, limits=limits)
+        outcome = api.run(source, limits=limits)
         assert isinstance(outcome.error, InputExhaustedError)
         assert outcome.observation == ExecutionResult("", 0, 1, 1, steps=steps)
-        result = api.run(source, stdin="A", limits=limits)
+        result = api.run(source, stdin="A", limits=limits).unwrap()
         assert result.output == "A"
         assert (result.input_position, result.input_reads, result.input_past_end) == (
             1,

@@ -314,7 +314,7 @@ def _observe(
         result = _run(
             lambda *_args: esolangs.run(
                 language, program, stdin=stdin, seed=record.seed
-            ),
+            ).unwrap(),
             "",
             ScriptedIO(""),
             bound,

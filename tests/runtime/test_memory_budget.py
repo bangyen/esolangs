@@ -111,7 +111,7 @@ def test_worker_retains_the_uncapped_memory_failure_evidence(
         raise MemoryError
 
     monkeypatch.setattr(_execution_runtime, "invoke", explode)
-    native = esolangs.execute(REFERENCE, "+", stdin="A")
+    native = esolangs.run(REFERENCE, "+", stdin="A")
     monkeypatch.setattr(
         sys,
         "stdin",

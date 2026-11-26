@@ -65,7 +65,7 @@ def _check_output_retries(monkeypatch) -> None:
             (LIGHT_RED, LIGHT_RED, RED, colour),
             (BLACK, BLACK, BLACK, colour),
         )
-        assert api.run(program, limits=limits).output == expected
+        assert api.run(program, limits=limits).unwrap().output == expected
         for accepted in (False, True):
             attempts = []
             fault = esolangs.ProgramError("sink refused")
@@ -191,7 +191,7 @@ def test_public_api_loads_a_png(tmp_path: Path) -> None:
     )
     path = tmp_path / "program.png"
     path.write_bytes(program.to_png())
-    assert execute_program("Piet", path).output == "3"
+    assert execute_program("Piet", path).unwrap().output == "3"
 
 
 @pytest.mark.parametrize(

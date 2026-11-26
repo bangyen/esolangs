@@ -103,7 +103,7 @@ def test_a_constant_subtree_still_reads_its_inputs() -> None:
     program = boolean.sstack("0" * 8 + "01" * 4)
     assert program.count(";d;") == 5  # 3 folded, 2 at nodes whose halves agree
     stdin = esolangs.encode_inputs("SStack", [0, 1, 1, 0]) + "B"
-    assert execute("SStack", program + ";e;:e:", stdin=stdin).output == "0B"
+    assert execute("SStack", program + ";e;:e:", stdin=stdin).unwrap().output == "0B"
 
 
 def test_popping_before_descent_admits_shared_parity_without_nested_test_bytes() -> (
@@ -128,7 +128,9 @@ def test_popping_before_descent_admits_shared_parity_without_nested_test_bytes()
         assert commands <= 7 * n + 3
         assert machine.snapshot()[1][0] is None
         assert (
-            execute("SStack", program + ";e;:e:", stdin=f"{row:06b}" + "B").output
+            execute("SStack", program + ";e;:e:", stdin=f"{row:06b}" + "B")
+            .unwrap()
+            .output
             == expected + "B"
         )
 
@@ -176,7 +178,9 @@ def test_multiple_definitions_preserve_inputs_commands_and_workspace() -> None:
         assert commands <= limit
         assert written.bits <= bound
         assert (
-            execute("SStack", program + ";e;:e:", stdin=f"{row:08b}" + "B").output
+            execute("SStack", program + ";e;:e:", stdin=f"{row:08b}" + "B")
+            .unwrap()
+            .output
             == expected + "B"
         )
 
@@ -324,7 +328,7 @@ def test_binary_bank_shares_more_than_sixty_three_residuals_within_ledger() -> N
                 assert machine.state[1][0] is None
                 assert machine.state[1][4] is None
     assert (
-        execute("SStack", program + ";e;:e:", stdin="1" * 16 + "B").output
+        execute("SStack", program + ";e;:e:", stdin="1" * 16 + "B").unwrap().output
         == table[-1] + "B"
     )
 
@@ -356,7 +360,9 @@ def test_binary_codes_preserve_completed_outputs_and_fixed_digits(words) -> None
         assert commands <= limit
         assert machine.snapshot()[1][4] is None
         assert (
-            execute("SStack", program + ";e;:e:", stdin=f"{row:0{n}b}" + "B").output
+            execute("SStack", program + ";e;:e:", stdin=f"{row:0{n}b}" + "B")
+            .unwrap()
+            .output
             == expected + "B"
         )
 

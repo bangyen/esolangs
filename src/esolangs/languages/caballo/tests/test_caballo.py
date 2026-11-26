@@ -113,7 +113,7 @@ def test_the_output_is_drawn_by_weight(monkeypatch) -> None:
     api = Language("Caballo")
     limits = ExecutionLimits(max_steps=10)
     source = "(1+qi+qi)"
-    expected = api.run(source, seed=3, limits=limits)
+    expected = api.run(source, seed=3, limits=limits).unwrap()
     assert (expected.output, expected.steps) == ("[]", 10)
     write = ScriptedIO.print_str
     attempts = []

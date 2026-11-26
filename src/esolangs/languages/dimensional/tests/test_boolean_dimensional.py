@@ -173,7 +173,9 @@ class TestDimensional:
                     program,
                     stdin=stdin,
                     limits=esolangs.ExecutionLimits(max_steps=10_000),
-                ).output
+                )
+                .unwrap()
+                .output
                 == expected
             )
 

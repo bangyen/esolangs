@@ -33,7 +33,9 @@ class TestAnswerMode:
                         program,
                         stdin=esolangs.encode_inputs(name, [(row >> 1) & 1, row & 1]),
                         limits=esolangs.ExecutionLimits(execution_timeout=30),
-                    ).output,
+                    )
+                    .unwrap()
+                    .output,
                 )
                 for row in range(4)
             )

@@ -38,7 +38,9 @@ class TestNameResolution:
         assert (
             esolangs.run(
                 "BRAINFUCK", "+.", limits=esolangs.ExecutionLimits(execution_timeout=5)
-            ).output
+            )
+            .unwrap()
+            .output
             == "\x01"
         )
 
@@ -65,16 +67,19 @@ class TestErrorsAreCatchable:
         ("call", "expected"),
         [
             (
-                lambda: esolangs.run(REFERENCE, ",.", stdin="").output,
+                lambda: esolangs.run(REFERENCE, ",.", stdin="").unwrap().output,
                 InputExhaustedError,
             ),
             (lambda: esolangs.generate(REFERENCE, "0121"), TruthTableError),
-            (lambda: esolangs.run(REFERENCE, 42).output, ProgramError),
+            (lambda: esolangs.run(REFERENCE, 42).unwrap().output, ProgramError),
             # A bad stdin is an ArgumentError, not a ProgramError: the stdin
             # is not the program.  Either way it is an EsolangError, which is
             # what this class is about.
-            (lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]).output, ArgumentError),
-            (lambda: esolangs.run("zzzz", "+").output, UnknownLanguageError),
+            (
+                lambda: esolangs.run(REFERENCE, ",.", stdin=["0"]).unwrap().output,
+                ArgumentError,
+            ),
+            (lambda: esolangs.run("zzzz", "+").unwrap().output, UnknownLanguageError),
         ],
     )
     def test_it_derives_from_the_base(self, call: object, expected: type) -> None:
@@ -86,12 +91,12 @@ class TestErrorsAreCatchable:
     def test_exhausted_input_says_how_much_there_was(self) -> None:
         """A bare ``EOFError()`` reached the caller as the empty string."""
         with pytest.raises(InputExhaustedError, match="1 character supplied"):
-            esolangs.run(REFERENCE, ",,.", stdin="0")
+            esolangs.run(REFERENCE, ",,.", stdin="0").unwrap()
 
     def test_it_is_still_an_eoferror(self) -> None:
         """The repo-wide convention every interpreter documents is unchanged."""
         with pytest.raises(EOFError):
-            esolangs.run(REFERENCE, ",.", stdin="")
+            esolangs.run(REFERENCE, ",.", stdin="").unwrap()
 
 
 class TestDebuggerResume:
@@ -204,7 +209,7 @@ class TestEveryDeliberateErrorIsCatchable:
         with pytest.raises(ProgramError) as exc:
             esolangs.run(
                 REFERENCE, "[[[", limits=esolangs.ExecutionLimits(execution_timeout=5)
-            )
+            ).unwrap()
         assert isinstance(exc.value, EsolangError)
         assert str(exc.value)
 
@@ -248,21 +253,21 @@ class TestAMissingFileIsAFileNotFoundError:
                 missing,
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
         with pytest.raises(esolangs.EsolangError):
             esolangs.run(
                 REFERENCE,
                 missing,
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
         with pytest.raises(esolangs.ProgramError):
             esolangs.run(
                 REFERENCE,
                 missing,
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
 
     def test_an_unreadable_file_is_still_a_plain_program_error(
         self, tmp_path: Path
@@ -276,7 +281,7 @@ class TestAMissingFileIsAFileNotFoundError:
                 blocked,
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
         assert not isinstance(caught.value, FileNotFoundError)
 
     def test_a_directory_is_an_os_error_not_a_decode_error(
@@ -289,7 +294,7 @@ class TestAMissingFileIsAFileNotFoundError:
                 tmp_path,
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
         assert not isinstance(caught.value, FileNotFoundError)
         assert "cannot read" in str(caught.value)
 
@@ -321,12 +326,12 @@ class TestAMissingFileIsAFileNotFoundError:
             for invoke in (
                 api.from_file,
                 api.prepare,
-                api.run,
+                lambda source, **opts: api.run(source, **opts).unwrap(),
                 api.make_vm,
-                lambda source: api.run(source, isolated=True),
+                lambda source: api.run(source, isolated=True).unwrap(),
                 lambda source: api.run(
                     source, limits=esolangs.ExecutionLimits(max_steps=2)
-                ),
+                ).unwrap(),
             ):
                 with pytest.raises(esolangs.ArgumentError) as caught:
                     invoke(path)
@@ -340,18 +345,20 @@ class TestSourceAndPathsAreExplicit:
     @pytest.mark.parametrize("argument", ["/tmp/definitely-not-here.txt", r"a\\b.txt"])
     def test_a_missing_filename_is_literal_source(self, argument: str) -> None:
         api = esolangs.Language(REFERENCE)
-        assert api.run(argument) == api.run(api.from_source(argument))
+        assert api.run(argument).unwrap() == api.run(api.from_source(argument)).unwrap()
 
     def test_an_existing_filename_is_still_literal_source(self, tmp_path) -> None:
         path = tmp_path / "p.txt"
         path.write_text("+++.")
         api = esolangs.Language(REFERENCE)
-        assert api.run(str(path)) == api.run(api.from_source(str(path)))
-        assert api.run(path).output == "\x03"
+        assert (
+            api.run(str(path)).unwrap() == api.run(api.from_source(str(path))).unwrap()
+        )
+        assert api.run(path).unwrap().output == "\x03"
 
     def test_every_entry_point_agrees(self) -> None:
         source = "nope.txt"
-        assert esolangs.run(REFERENCE, source).output == "\x00"
+        assert esolangs.run(REFERENCE, source).unwrap().output == "\x00"
         assert check_program(REFERENCE, source).source == source
         from esolangs.vm import complete_vm
 
@@ -368,7 +375,9 @@ class TestSourceAndPathsAreExplicit:
                 "+++.",
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == "\x03"
         )
 
@@ -389,7 +398,9 @@ class TestSourceAndPathsAreExplicit:
                 path,
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            ).output
+            )
+            .unwrap()
+            .output
             == "\x03"
         )
         with pytest.raises(FileNotFoundError):
@@ -398,7 +409,7 @@ class TestSourceAndPathsAreExplicit:
                 tmp_path / "absent.txt",
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=5),
-            )
+            ).unwrap()
 
 
 # 2.2s over 12 tests: runs a diverging program to its bound.
@@ -432,7 +443,9 @@ class TestThreadExecution:
                     "+++.",
                     stdin="",
                     limits=esolangs.ExecutionLimits(execution_timeout=5),
-                ).output
+                )
+                .unwrap()
+                .output
             )
         )
         assert outcome == "\x03"
@@ -504,7 +517,7 @@ class TestSourceSpellingDoesNotSelectAContainer:
     )
     def test_a_path_shaped_string_is_source(self, argument: str) -> None:
         api = esolangs.Language(REFERENCE)
-        assert api.run(argument) == api.run(api.from_source(argument))
+        assert api.run(argument).unwrap() == api.run(api.from_source(argument)).unwrap()
 
     @pytest.mark.parametrize("program", [".", ".."])
     def test_a_real_program_still_runs(self, program: str) -> None:
@@ -514,7 +527,7 @@ class TestSourceSpellingDoesNotSelectAContainer:
             program,
             stdin="",
             limits=esolangs.ExecutionLimits(execution_timeout=5),
-        )
+        ).unwrap()
 
     @pytest.mark.parametrize("program", ["~~", "-", "a/b/c", "/", "./", "1.5"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
@@ -574,7 +587,7 @@ class TestTheArgumentBoundaryRefusesCleanly:
         """Every other wrong-type argument already was."""
         with pytest.raises(ArgumentError, match=r"must be a string, got NoneType$"):
             esolangs.read_answer(REFERENCE, None)  # type: ignore[arg-type]
-        result = esolangs.run(REFERENCE, "+.")
+        result = esolangs.run(REFERENCE, "+.").unwrap()
         with pytest.raises(ArgumentError, match=r"pass its \.output$"):
             esolangs.read_answer(REFERENCE, result)  # type: ignore[arg-type]
 

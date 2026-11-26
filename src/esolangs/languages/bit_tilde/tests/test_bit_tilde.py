@@ -174,4 +174,4 @@ class TestStateViewValues:
 def test_a_wide_character_reads_as_a_byte() -> None:
     """``)`` on U+0100 leaked "zip() argument 2 is longer than argument 1"."""
 
-    assert execute("bit~", ")(", stdin="Ā").output == "\x00"
+    assert execute("bit~", ")(", stdin="Ā").unwrap().output == "\x00"

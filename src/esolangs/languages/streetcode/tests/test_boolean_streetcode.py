@@ -50,4 +50,4 @@ def test_fitting_narrow_lookup_still_shares_its_kerb(
     assert boolean.constant_output is constant_output
     monkeypatch.setattr(boolean, "constant_output", lambda _: "1")
     mutant = generate("Streetcode", "00")
-    assert esolangs.run("Streetcode", mutant, stdin="0").output == "1"
+    assert esolangs.run("Streetcode", mutant, stdin="0").unwrap().output == "1"

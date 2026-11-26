@@ -113,10 +113,12 @@ def test_large_decimal_moves_and_output() -> None:
     address = "2" + "0" * 5000
     source = f"{address}=42\nmove {address} -1"
     expected = number + " " + number
-    assert api.run(f"{address}={number}\nmove {address} -1").output == expected
+    assert api.run(f"{address}={number}\nmove {address} -1").unwrap().output == expected
     limits = ExecutionLimits(max_steps=3)
     for isolated in (False, True):
-        result = api.run(source, stdin=number, limits=limits, isolated=isolated)
+        result = api.run(
+            source, stdin=number, limits=limits, isolated=isolated
+        ).unwrap()
         assert (
             result.output,
             result.input_position,
@@ -131,11 +133,11 @@ def test_large_decimal_moves_and_output() -> None:
     assert complete_vm(api.make_vm(source, stdin=number), max_steps=3) == expected
     cap = len(number) + 3
     with pytest.raises(ExecutionCapError) as caught:
-        api.run(source, stdin=number, limits=ExecutionLimits(max_output=cap))
+        api.run(source, stdin=number, limits=ExecutionLimits(max_output=cap)).unwrap()
     assert caught.value.bound == "max_output"
     assert caught.value.partial_output == expected[:cap]
     with pytest.raises(HaltError, match="negative input"):
-        api.run(source, stdin="-" + number)
+        api.run(source, stdin="-" + number).unwrap()
 
 
 def test_failed_output_does_not_commit_a_quiet_step(monkeypatch) -> None:
@@ -223,9 +225,11 @@ def test_a_rejected_seed_operand_stays_at_the_seed(token, error_type, message) -
         assert workspace.kind == "pending_input"
         assert workspace.values == (-1, *pending)
         assert not dbg.halted
-    control = lang.run(_ADD_TWO, stdin="5 3", limits=ExecutionLimits(max_steps=4))
+    control = lang.run(
+        _ADD_TWO, stdin="5 3", limits=ExecutionLimits(max_steps=4)
+    ).unwrap()
     assert (control.output, control.input_reads, control.steps) == ("8", 2, 4)
-    eof = lang.run(_ADD_TWO, stdin="5", limits=ExecutionLimits(max_steps=4))
+    eof = lang.run(_ADD_TWO, stdin="5", limits=ExecutionLimits(max_steps=4)).unwrap()
     assert (eof.output, eof.input_reads, eof.input_past_end) == ("5", 1, 1)
 
 

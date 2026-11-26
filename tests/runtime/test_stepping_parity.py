@@ -63,7 +63,7 @@ def _check_row(name: str, artifact: esolangs.Artifact, table: str, row: int) -> 
         stdin=stdin,
         seed=seed,
         limits=esolangs.ExecutionLimits(max_steps=_STEP_BUDGET),
-    )
+    ).unwrap()
     vm = debugger_api.make_vm(name, program, stdin=stdin, seed=seed)
     steps = _drive_steps(vm)
     got = _capture_result(vm)

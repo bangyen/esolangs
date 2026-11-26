@@ -103,5 +103,7 @@ def test_named_groups_keep_large_input_bindings(n) -> None:
     assert definitions > (26 if n == 10 else 0)
     for row in (0, (1 << n) // 2, (1 << n) - 1):
         bits = [int(bit) for bit in format(row, f"0{n}b")]
-        actual = run(NAME, source, stdin=esolangs.encode_inputs(NAME, bits)).output
+        actual = (
+            run(NAME, source, stdin=esolangs.encode_inputs(NAME, bits)).unwrap().output
+        )
         assert read_answer(NAME, actual) == table[row]

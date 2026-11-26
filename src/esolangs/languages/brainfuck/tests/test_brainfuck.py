@@ -213,10 +213,12 @@ def _check_lazy_native_plan(monkeypatch):
         assert complete_vm(machine) == "A"
         assert compiled == []
         for value in ("A", "Z", "Q"):
-            assert prepared.run(stdin=value).output == value
+            assert prepared.run(stdin=value).unwrap().output == value
         assert matched == compiled == [code]
         assert (
-            prepared.run(stdin="B", limits=ExecutionLimits(max_steps=1000)).output
+            prepared.run(stdin="B", limits=ExecutionLimits(max_steps=1000))
+            .unwrap()
+            .output
             == "B"
         )
         assert matched == compiled == [code]

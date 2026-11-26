@@ -43,9 +43,11 @@ def assert_interrupted_input_scan_retry(
     limits = esolangs.ExecutionLimits(max_steps=64)
     read_char = ScriptedIO._read_char
     api = esolangs.Language(name)
-    expected = api.run(source, stdin=stdin, limits=limits)
-    assert api.run(source, stdin=stdin).output == expected.output == answer
-    assert api.run(source, stdin=stdin, limits=limits, isolated=True) == expected
+    expected = api.run(source, stdin=stdin, limits=limits).unwrap()
+    assert api.run(source, stdin=stdin).unwrap().output == expected.output == answer
+    assert (
+        api.run(source, stdin=stdin, limits=limits, isolated=True).unwrap() == expected
+    )
     clean = api.make_debugger(source, stdin=stdin)
     assert clean.run(limits=limits) == "halted"
     failure = esolangs.HaltError("transient character failure")
@@ -119,11 +121,11 @@ def assert_rejected_input_retry(
     api = esolangs.Language(language)
     prepared = api.prepare(source)
     limits = esolangs.ExecutionLimits(max_steps=64)
-    assert prepared.run(stdin=valid, limits=limits).output == output
+    assert prepared.run(stdin=valid, limits=limits).unwrap().output == output
     reports = (
-        api.execute(source, stdin=stdin),
-        prepared.execute(stdin=stdin),
-        api.execute(source, stdin=stdin, isolated=True),
+        api.run(source, stdin=stdin),
+        prepared.run(stdin=stdin),
+        api.run(source, stdin=stdin, isolated=True),
     )
     fault = reports[0].error
     assert type(fault) is error_type
@@ -176,7 +178,7 @@ def assert_rejected_output_retry(
     """Resume a debugger after a sink accepts zero, some or all of a write."""
     language = esolangs.Language(name)
     limits = esolangs.ExecutionLimits(max_steps=32)
-    expected = language.run(source, stdin=stdin, limits=limits)
+    expected = language.run(source, stdin=stdin, limits=limits).unwrap()
     assert expected.output == output
     write = ScriptedIO._write
     text = str(value)
@@ -255,7 +257,7 @@ def assert_vm_finalization_is_shared(
     after = debugger_api.Debugger(vm)
     expected = esolangs.run(
         language, source, seed=seed, limits=esolangs.ExecutionLimits(max_steps=steps)
-    )
+    ).unwrap()
     assert expected.output == output
     assert expected.completion.kind is Completion.POST_HALT
     assert _capture_result(vm) == replace(expected, steps=None)

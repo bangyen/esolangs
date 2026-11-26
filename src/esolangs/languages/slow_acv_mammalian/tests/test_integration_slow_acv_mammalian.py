@@ -20,7 +20,7 @@ def test_mammalian_rejects_unknown_words_before_output(word) -> None:
             "SLOW ACV MAMMALIAN",
             f"PRONOUNCE {word}",
             limits=esolangs.ExecutionLimits(execution_timeout=1),
-        )
+        ).unwrap()
 
 
 def test_partial_overrides_merge_and_validate(
@@ -31,22 +31,24 @@ def test_partial_overrides_merge_and_validate(
     source = esolangs.ProgramArtifact(
         "SEED " * 255 + "DIGEST PRONOUNCE", "SLOW ACV MAMMALIAN", settings=settings
     )
-    assert run("SLOW ACV MAMMALIAN", source).output == chr(0)
+    assert run("SLOW ACV MAMMALIAN", source).unwrap().output == chr(0)
     # A choice the artifact does not retain merges in; one it does is fixed.
     assert run(
         "SLOW ACV MAMMALIAN", source, settings=language.settings(io_modulus=256)
-    ).output == chr(255)
+    ).unwrap().output == chr(255)
     with pytest.raises(esolangs.ProgramError, match="cell_modulus=256, not 255"):
-        run("SLOW ACV MAMMALIAN", source, settings=language.settings(cell_modulus=255))
+        run(
+            "SLOW ACV MAMMALIAN", source, settings=language.settings(cell_modulus=255)
+        ).unwrap()
     assert source.settings is settings
     with pytest.raises(esolangs.ArgumentError):
         run(
             "SLOW ACV MAMMALIAN",
             source,
             settings=esolangs.Language("SLOW ACV MAMMALIAN").settings(cell_modulus=257),
-        )
+        ).unwrap()
     with pytest.raises(esolangs.ArgumentError, match="DialectSettings"):
-        run("SLOW ACV MAMMALIAN", source, settings={})
+        run("SLOW ACV MAMMALIAN", source, settings={}).unwrap()
 
     declaration = language.catalog.languages[language.name]
     runtime = declaration.runtime
@@ -68,7 +70,7 @@ def test_partial_overrides_merge_and_validate(
         def read(self):
             pytest.fail("invalid effective settings consumed input")
 
-    refused = scope.execute(row, stdin=Unread(), settings=partial)
+    refused = scope.run(row, stdin=Unread(), settings=partial)
     assert refused.status == "rejected"
     assert refused.error is error
     with pytest.raises(esolangs.ArgumentError) as generated_error:
@@ -76,7 +78,10 @@ def test_partial_overrides_merge_and_validate(
     assert generated_error.value is error
 
     retained = scope.from_source(row, settings=scope.settings(io_modulus=256))
-    assert scope.prepare(retained, settings=partial).run(stdin="ÿ\n").output == "\x01"
+    assert (
+        scope.prepare(retained, settings=partial).run(stdin="ÿ\n").unwrap().output
+        == "\x01"
+    )
     full = scope.settings(cell_modulus=255, io_modulus=256)
     artifact = scope.generate("01", settings=full)
     assert scope.evaluate(artifact, [1]).answer == "1"
@@ -111,7 +116,9 @@ def test_partial_overrides_merge_and_validate(
     )
     assert diagnostic == ""
     assert (
-        scope.run(generated, stdin=scope.encode_inputs([1]), settings=full).output
+        scope.run(generated, stdin=scope.encode_inputs([1]), settings=full)
+        .unwrap()
+        .output
         == "1"
     )
 
@@ -129,7 +136,7 @@ def test_partial_overrides_merge_and_validate(
     )
     assert stored.settings is None
     for limits in (None, esolangs.ExecutionLimits(max_steps=10)):
-        outcome = default_scope.execute(stored, stdin=Unread(), limits=limits)
+        outcome = default_scope.run(stored, stdin=Unread(), limits=limits)
         assert outcome.status == "rejected"
         assert outcome.error is error
     for use in (
@@ -144,7 +151,10 @@ def test_partial_overrides_merge_and_validate(
 
     override = default_scope.settings(io_modulus=256)
     assert (
-        default_scope.prepare(stored, settings=override).run(stdin="ÿ\n").output
+        default_scope.prepare(stored, settings=override)
+        .run(stdin="ÿ\n")
+        .unwrap()
+        .output
         == "\x01"
     )
     monkeypatch.setattr(_table, "CATALOG", default_scope.catalog)
@@ -175,7 +185,7 @@ def test_cli_repeated_set_uses_last_value(tmp_path) -> None:
     stdin = language.encode_inputs([1])
     executed = run_cli("run", *overrides, language.name, str(path), stdin=stdin)
     assert executed.returncode == 0, executed.stderr
-    assert executed.stdout == language.run(artifact, stdin=stdin).output == "1"
+    assert executed.stdout == language.run(artifact, stdin=stdin).unwrap().output == "1"
 
     refused = run_cli("generate", *overrides[2:], *overrides[:2], language.name, "01")
     assert refused.returncode == 2

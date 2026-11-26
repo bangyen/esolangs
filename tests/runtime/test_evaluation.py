@@ -100,7 +100,7 @@ def test_timeout_is_not_a_boolean_answer() -> None:
 def test_answer_rejection_keeps_successful_execution_evidence() -> None:
     api = esolangs.Language(REFERENCE)
     program = api.from_source(",+.")
-    result = api.run(program, stdin=api.encode_inputs([1]))
+    result = api.run(program, stdin=api.encode_inputs([1])).unwrap()
     assert result.output == "2"
     with pytest.raises(esolangs.ProgramError, match="no answer") as caught:
         api.evaluate(program, [1])
@@ -141,7 +141,7 @@ def test_invalid_answer_contracts_stop_before_execution(
     artifact = scoped.from_source(",.")
     prepared = scoped.prepare(artifact)
     assert scoped.encode_inputs([0]) == "0"
-    assert prepared.run(stdin="0").output == "0"
+    assert prepared.run(stdin="0").unwrap().output == "0"
 
     def unexpected_execution(*_args, **_kwargs):
         pytest.fail("invalid answer contract started execution")
@@ -377,7 +377,7 @@ def test_evaluation_requires_unfilled_template_for_embedded_inputs() -> None:
     api = esolangs.Language(first(parameterized=True, answer_mode="output"))
     template = api.generate("01")
     filled = template.fill([1])
-    assert api.read_answer(api.run(filled).output) == "1"
+    assert api.read_answer(api.run(filled).unwrap().output) == "1"
     for target in (filled, api.prepare(filled)):
         with pytest.raises(esolangs.ArgumentError, match="pass the unfilled template"):
             target.evaluate([0])

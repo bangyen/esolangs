@@ -523,11 +523,11 @@ def _seed_refusal():
 
     source = "\n".join(_straight(("read", "write")).rows)
     with pytest.raises(ArgumentError) as caught:
-        public_run("Flowchart", source, stdin=Unread(), seed=0)
+        public_run("Flowchart", source, stdin=Unread(), seed=0).unwrap()
     assert type(caught.value) is ArgumentError
     assert "draws no random values" in str(caught.value)
     with pytest.raises(AssertionError, match="input guard reached"):
-        public_run("Flowchart", source, stdin=Unread())
+        public_run("Flowchart", source, stdin=Unread()).unwrap()
 
 
 def check_raw_flowchart():

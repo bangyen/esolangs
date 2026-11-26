@@ -163,4 +163,4 @@ def test_countdown_reader_cutoff() -> None:
 def test_untagged_source_runs_every_record() -> None:
     lang = esolangs.Language("Suffolk")
     source = lang.generate("0001").source
-    assert lang.run(source, stdin="0011").output == "01"
+    assert lang.run(source, stdin="0011").unwrap().output == "01"

@@ -491,10 +491,11 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
     """``7n`` skips the next *token*, and a newline is one."""
     program = "70621A"
     stdin = BOOLEAN_EXAMPLES["6-5"].stdin
-    unwrapped = execute("6-5", program, stdin=stdin).output
+    unwrapped = execute("6-5", program, stdin=stdin).unwrap().output
     for width in range(2, 12):
         assert (
-            execute("6-5", _six_five(program, width), stdin=stdin).output == unwrapped
+            execute("6-5", _six_five(program, width), stdin=stdin).unwrap().output
+            == unwrapped
         )
 
 

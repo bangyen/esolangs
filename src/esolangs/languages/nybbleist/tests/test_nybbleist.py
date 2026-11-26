@@ -24,7 +24,7 @@ def test_nybbleist_execution() -> None:
         program = esolangs.prepare("Nybbleist", esolangs.generate("Nybbleist", table))
         for row, answer in enumerate(table):
             stdin = esolangs.encode_inputs("Nybbleist", row_bits(row, n))
-            result = program.run(stdin=stdin + "Q")
+            result = program.run(stdin=stdin + "Q").unwrap()
             assert (result.output, result.input_reads, result.input_position) == (
                 answer,
                 n,

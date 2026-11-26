@@ -144,8 +144,8 @@ assert module in sys.modules, 'loading control did not fire'
         timeout=10,
     )
     for source, expected, steps in ((",", "", 0), (",1", "1", 1), (";,10", "0", 2)):
-        native = run("Cyclic tag", source, stdin="unused")
-        isolated = run("Cyclic tag", source, stdin="unused", isolated=True)
+        native = run("Cyclic tag", source, stdin="unused").unwrap()
+        isolated = run("Cyclic tag", source, stdin="unused", isolated=True).unwrap()
         assert native == isolated
         assert native.output == expected
         assert native.completion == CompletionReport(Completion.POST_HALT)
@@ -172,7 +172,7 @@ assert module in sys.modules, 'loading control did not fire'
         lambda _source, _io: CompletionReport(Completion.HALTED),
     )
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
-        run("Cyclic tag", ",1")
+        run("Cyclic tag", ",1").unwrap()
 
 
 def _check_callback_replacement_boundaries(monkeypatch):
@@ -349,4 +349,4 @@ def test_declared_debug_surface_ignores_incidental_machine_attributes(monkeypatc
     assert machine.views == (("answer", "None"), ("head", "0"), ("live", "'10'"))
     assert vm.complete_vm(machine, max_steps=2) == "0"
     assert vm.complete_vm(machine, max_steps=0) == "0"
-    assert run("Cyclic tag", ",10").output == "0"
+    assert run("Cyclic tag", ",10").unwrap().output == "0"

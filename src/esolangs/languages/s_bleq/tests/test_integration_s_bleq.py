@@ -15,7 +15,7 @@ def test_memory_limit_has_an_address_hint() -> None:
             "S*bleq",
             "100000000000000000000 0 0",
             limits=ExecutionLimits(execution_timeout=1),
-        )
+        ).unwrap()
     assert "smaller memory addresses" in caught.value.__notes__[0]
 
 

@@ -78,7 +78,7 @@ def test_isolation_preserves_scale_beyond_the_decimal_limit() -> None:
     api = esolangs.Language(RASTER[0])
     source = Raster((((0, 0, 0),),))
     scale = 10**5000
-    native = api.execute(source, scale=scale)
+    native = api.run(source, scale=scale)
     assert isinstance(native.error, ProgramError)
     assert "scale" in str(native.error)
     for limits in (
@@ -86,7 +86,7 @@ def test_isolation_preserves_scale_beyond_the_decimal_limit() -> None:
         esolangs.ExecutionLimits(total_timeout=5),
         esolangs.ExecutionLimits(execution_timeout=5),
     ):
-        outcome = api.execute(source, limits=limits, scale=scale)
+        outcome = api.run(source, limits=limits, scale=scale)
         assert type(outcome.error) is type(native.error)
         assert str(outcome.error) == str(native.error)
         assert outcome.observation == native.observation
@@ -140,7 +140,9 @@ def test_scale_subclass_cannot_change_geometric_or_metadata_semantics(
     assert hash(record) == hash(
         esolangs.ProgramArtifact(enlarged.source, name, scale=2)
     )
-    assert esolangs.run(name, enlarged, stdin="1\n", scale=Scale(2)).output == "1"
+    assert (
+        esolangs.run(name, enlarged, stdin="1\n", scale=Scale(2)).unwrap().output == "1"
+    )
 
     class Arity(IntEnum):
         ONE = 1
@@ -176,11 +178,11 @@ def test_scale_validation_and_uniformity(name: str) -> None:
     with pytest.raises(ArgumentError, match="raster"):
         esolangs.generate(REFERENCE, "00", scale=2)
     with pytest.raises(ArgumentError, match="raster"):
-        esolangs.run(REFERENCE, "+.", scale=1)
+        esolangs.run(REFERENCE, "+.", scale=1).unwrap()
     with pytest.raises(ArgumentError, match="raster"):
         _evaluate(REFERENCE, "+.", inputs=1, scale=1)
     with pytest.raises(ProgramError, match="uniform"):
-        esolangs.run(name, image, scale=2)
+        esolangs.run(name, image, scale=2).unwrap()
 
 
 def test_monochrome_codel_grid() -> None:
@@ -330,10 +332,10 @@ def test_native_png_checks_explicit_settings_before_pillow(
     for bit in (0, 1):
         stdin = api.encode_inputs([bit])
         assert api.read_answer(
-            api.run(path, stdin=stdin, settings=additions).output
+            api.run(path, stdin=stdin, settings=additions).unwrap().output
         ) == str(bit)
         assert api.read_answer(
-            api.run(generated, stdin=stdin, settings=alternate).output
+            api.run(generated, stdin=stdin, settings=alternate).unwrap().output
         ) == str(bit)
 
     monkeypatch.setattr(png, "Image", None)
@@ -568,9 +570,9 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
         assert load() == artifact
         assert validations == [{}]
     prepared = scoped.prepare(path)
-    assert prepared.run(stdin="1").output == "1"
+    assert prepared.run(stdin="1").unwrap().output == "1"
 
-    nested = esolangs.Language(REFERENCE).execute(
+    nested = esolangs.Language(REFERENCE).run(
         "+.[+]", limits=esolangs.ExecutionLimits(max_steps=2)
     )
     assert nested.observation.output == "\x01"
@@ -598,9 +600,9 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
                 load()
             assert caught.value is error
         for outcome in (
-            scoped.execute(path),
-            scoped.execute(artifact),
-            scoped.execute(artifact.source, settings=settings),
+            scoped.run(path),
+            scoped.run(artifact),
+            scoped.run(artifact.source, settings=settings),
         ):
             assert outcome.error is error
             assert outcome.status == ("limit" if error is timeout else "rejected")
@@ -659,4 +661,4 @@ def test_scoped_settings_hook_preserves_deliberate_failures(tmp_path: Path) -> N
     ):
         with pytest.raises(esolangs.ProgramError, match="invalid dialect settings"):
             load()
-    assert prepared.run(stdin="0").output == "0"
+    assert prepared.run(stdin="0").unwrap().output == "0"

@@ -85,7 +85,7 @@ def test_managed_stdin_uses_library_input_rules(
         with subtests.test(stream=type(make()).__name__):
             monkeypatch.setattr(sys, "stdin", make())
             main()
-            expected = esolangs.run(REFERENCE, program, stdin=make()).output
+            expected = esolangs.run(REFERENCE, program, stdin=make()).unwrap().output
             assert expected == "A"
             assert capsys.readouterr() == (expected, "")
 
@@ -108,7 +108,7 @@ def test_managed_stdin_uses_library_input_rules(
     api_input = BufferedAdapter()
     monkeypatch.setattr(sys, "stdin", cli_input)
     main()
-    result = esolangs.run(REFERENCE, program, stdin=api_input)
+    result = esolangs.run(REFERENCE, program, stdin=api_input).unwrap()
     assert capsys.readouterr() == (result.output, "") == ("Q", "")
     for stream in (cli_input, api_input):
         assert (stream.lookups, stream.text.tell(), stream.raw.tell()) == (1, 1, 0)
@@ -129,7 +129,7 @@ def test_managed_stdin_uses_library_input_rules(
             output, diagnostic = capsys.readouterr()
             assert not output
             with pytest.raises(esolangs.ArgumentError) as error:
-                esolangs.run(REFERENCE, program, stdin=make())
+                esolangs.run(REFERENCE, program, stdin=make()).unwrap()
             message = str(error.value)
             if isinstance(error.value.__cause__, UnicodeDecodeError):
                 message = "cannot read stdin: not text (invalid UTF-8 at byte 1)"
@@ -141,7 +141,7 @@ def test_managed_stdin_uses_library_input_rules(
         return stream
 
     with pytest.raises(esolangs.ArgumentError) as detached:
-        esolangs.run(REFERENCE, program, stdin=detached_input())
+        esolangs.run(REFERENCE, program, stdin=detached_input()).unwrap()
     run = ["esolangs", "run", REFERENCE, str(program)]
     for argv in (
         run,
@@ -752,7 +752,7 @@ def _check_expired_completed_input(
             for module in (cli_io, cli_run, _acquire, _files, _isolated):
                 patch.setattr(module, "monotonic", clock)
             finished = 0.0
-            outcome = esolangs.execute(
+            outcome = esolangs.run(
                 REFERENCE,
                 path,
                 stdin=LateInput(fail=fail),
@@ -1021,7 +1021,7 @@ def test_cli_completes_short_raw_adapter_writes(
         assert data == expected.read_bytes()
         assert (
             esolangs.read_answer(
-                REFERENCE, esolangs.run(REFERENCE, data, stdin="1").output
+                REFERENCE, esolangs.run(REFERENCE, data, stdin="1").unwrap().output
             )
             == "1"
         )

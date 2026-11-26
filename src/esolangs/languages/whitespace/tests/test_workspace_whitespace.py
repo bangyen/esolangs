@@ -149,7 +149,7 @@ def test_repacked_storage_retains_semantic_workspace(monkeypatch, program, stdin
         assert declared.stack == [7]
         assert declared.memory == []
         assert declared.views == ()
-        assert run("Whitespace", source).completion.kind is Completion.HALTED
+        assert run("Whitespace", source).unwrap().completion.kind is Completion.HALTED
 
 
 def test_held_snapshots_survive_heap_deletion_and_failed_division():

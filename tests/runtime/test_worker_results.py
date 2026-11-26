@@ -817,7 +817,7 @@ def _check_request_serialization(monkeypatch) -> None:
         patch.setattr(_worker_json.json, "dumps", stop_after_escape)
         patch.setattr(_isolated, "monotonic", lambda: clock[0])
         patch.setattr(_isolated, "_launch", no_launch)
-        outcome = esolangs.execute(
+        outcome = esolangs.run(
             REFERENCE,
             ",.",
             stdin=payload,
@@ -881,7 +881,7 @@ def _check_raster_acquisition_deadline(monkeypatch) -> None:
         for image in (lazy, solid):
             stdin = StringIO("1")
             try:
-                outcome = api.execute(image, stdin=stdin, limits=limits)
+                outcome = api.run(image, stdin=stdin, limits=limits)
             finally:
                 for thread in threads:
                     thread.join(2)

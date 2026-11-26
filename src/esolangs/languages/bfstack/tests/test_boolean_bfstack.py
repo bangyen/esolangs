@@ -53,7 +53,7 @@ class TestBfstack:
             assert run_bfstack(program, bits) == table[row]
         constant = boolean.bfstack(bit * 4096)
         stdin = esolangs.encode_inputs("BFStack", [1] * 12) + "0\n"
-        assert run("BFStack", constant + ",.", stdin=stdin).output == bit + "0"
+        assert run("BFStack", constant + ",.", stdin=stdin).unwrap().output == bit + "0"
 
     @pytest.mark.medium
     def test_a_block_ignoring_an_input_reads_it_once(self) -> None:
@@ -80,7 +80,8 @@ class TestBfstack:
             bits = list(f"{row:010b}")
             stdin = esolangs.encode_inputs("BFStack", list(map(int, bits))) + "7"
             assert (
-                run("BFStack", program + ",.", stdin=stdin).output == table[row] + "7"
+                run("BFStack", program + ",.", stdin=stdin).unwrap().output
+                == table[row] + "7"
             )
 
     @pytest.mark.medium
@@ -159,7 +160,7 @@ def test_constant_leaf_preserves_shape_and_input_consumption(n: int, bit: str) -
     for row in range(1 << n):
         assert run_bfstack(program, list(format(row, f"0{n}b"))) == bit
     stdin = esolangs.encode_inputs("BFStack", [1] * n) + "0"
-    assert run("BFStack", program + ",.", stdin=stdin).output == bit + "0"
+    assert run("BFStack", program + ",.", stdin=stdin).unwrap().output == bit + "0"
 
 
 def test_small_tables_execute_with_the_specialized_route() -> None:

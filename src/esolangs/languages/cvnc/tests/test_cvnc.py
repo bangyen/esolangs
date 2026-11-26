@@ -432,16 +432,16 @@ def test_an_invalid_function_is_inert_even_after_a_division_by_zero() -> None:
 def _check_deep_function_routes() -> None:
     api = Language("CV(N)(C)")
     flat = "do" + "bodo" * 1100
-    assert api.run(flat + "suθi", stdin="7").output == "7707"
+    assert api.run(flat + "suθi", stdin="7").unwrap().output == "7707"
 
     source = "ʔo" * 400 + flat + "ʡo" * 400 + "suθi"
     prepared = api.prepare(source)
-    native = api.run(source, stdin="7")
+    native = api.run(source, stdin="7").unwrap()
     assert native.output == "7707"
-    assert prepared.run(stdin="7") == native
+    assert prepared.run(stdin="7").unwrap() == native
 
     limits = ExecutionLimits(max_steps=len(source))
-    bounded = api.run(source, stdin="7", limits=limits)
+    bounded = api.run(source, stdin="7", limits=limits).unwrap()
     assert bounded.output == native.output
     assert bounded.steps == len(source)
     assert (bounded.input_position, bounded.input_reads, bounded.input_past_end) == (
@@ -449,8 +449,8 @@ def _check_deep_function_routes() -> None:
         1,
         0,
     )
-    assert prepared.run(stdin="7", limits=limits) == bounded
-    assert api.run(source, stdin="7", limits=limits, isolated=True) == bounded
+    assert prepared.run(stdin="7", limits=limits).unwrap() == bounded
+    assert api.run(source, stdin="7", limits=limits, isolated=True).unwrap() == bounded
     debug = prepared.make_debugger(stdin="7")
     assert debug.run(limits=limits) == "halted"
     assert debug.observation == bounded

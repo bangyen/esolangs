@@ -242,7 +242,7 @@ def test_nonpositive_goto_targets_are_rejected_by_run_and_vm() -> None:
         for guard in (0, 1):
             code = f"if {guard} goto {target}"
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
-                execute("BrainIf", code)
+                execute("BrainIf", code).unwrap()
             vm = debugger_api.make_vm("BrainIf", code)
             with pytest.raises(esolangs.ProgramError, match="positive line number"):
                 vm.step()
@@ -253,7 +253,7 @@ def test_positive_goto_targets_match_run_and_vm() -> None:
         ("if 0 goto 3\nif 0 output\nif 0 increment\nif 1 output", "\x01"),
         ("if 0 goto 2", ""),
     ):
-        assert execute("BrainIf", code).output == expected
+        assert execute("BrainIf", code).unwrap().output == expected
         vm = debugger_api.make_vm("BrainIf", code)
         assert run_until_halt(vm, limit=4)
         assert vm.output == expected

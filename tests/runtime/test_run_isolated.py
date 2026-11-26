@@ -49,9 +49,9 @@ def test_timeout_retains_streamed_output(bound) -> None:
             "+.[]",
             limits=esolangs.ExecutionLimits(**{bound: 1}),
             isolated=True,
-        )
+        ).unwrap()
     assert caught.value.partial_output == "\x01"
-    assert esolangs.run(REFERENCE, "++.", isolated=True).output == "\x02"
+    assert esolangs.run(REFERENCE, "++.", isolated=True).unwrap().output == "\x02"
     assert caught.value.bound == bound
     assert caught.value.observation is None
 
@@ -85,7 +85,7 @@ def test_timeout_retains_output_already_queued(monkeypatch, spawned, bound) -> N
     monkeypatch.setattr(
         _worker_response, "_read_worker_output", expire_after_output_was_queued
     )
-    outcome = esolangs.execute(
+    outcome = esolangs.run(
         REFERENCE,
         ",.[.]",
         stdin="A",
@@ -103,7 +103,7 @@ def test_timeout_retains_output_already_queued(monkeypatch, spawned, bound) -> N
 @pytest.mark.medium
 def test_input_error_retains_counts_and_output() -> None:
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run(REFERENCE, "+.,", isolated=True)
+        esolangs.run(REFERENCE, "+.,", isolated=True).unwrap()
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
     assert caught.value.partial_output == "\x01"
@@ -123,12 +123,12 @@ def test_input_error_retains_counts_and_output() -> None:
 )
 def test_syntax_rejection_preserves_known_zero_input_counters(budgets) -> None:
     limits = esolangs.ExecutionLimits(**budgets)
-    outcome = esolangs.execute(REFERENCE, "[", limits=limits)
+    outcome = esolangs.run(REFERENCE, "[", limits=limits)
     assert isinstance(outcome.error, esolangs.ProgramError)
     assert (
         outcome.error.observation == outcome.observation == ExecutionResult("", 0, 0, 0)
     )
-    outcome = esolangs.execute(REFERENCE, object(), limits=limits)
+    outcome = esolangs.run(REFERENCE, object(), limits=limits)
     assert isinstance(outcome.error, esolangs.ProgramError)
     assert outcome.error.observation is None
     if not budgets:
@@ -142,11 +142,13 @@ def _check_binary_source_boundary() -> None:
     api = esolangs.Language(REFERENCE)
     limits = esolangs.ExecutionLimits(total_timeout=5, max_steps=3)
     prefix = b"[" + b" " * (_BLOCK - 2)
-    assert api.run(prefix + "é".encode() + b"]+.", limits=limits).output == "\x01"
+    assert (
+        api.run(prefix + "é".encode() + b"]+.", limits=limits).unwrap().output == "\x01"
+    )
     with pytest.raises(
         esolangs.ProgramError, match=f"invalid UTF-8 at byte {_BLOCK - 1}"
     ):
-        api.run(prefix + b"\xc3(]+.", limits=limits)
+        api.run(prefix + b"\xc3(]+.", limits=limits).unwrap()
 
 
 def _check_vm_initialization_rejection() -> None:
@@ -188,9 +190,9 @@ def test_worker_preserves_parent_import_and_stdio_options(flag, tmp_path) -> Non
             "-c",
             "import esolangs; "
             "assert esolangs.run('brainfuck', ',.', stdin='é', "
-            "isolated=True).output == 'é'; "
+            "isolated=True).unwrap().output == 'é'; "
             "assert esolangs.run('brainfuck', ',.', stdin='é', limits="
-            "esolangs.ExecutionLimits(execution_timeout=4)).output == 'é'",
+            "esolangs.ExecutionLimits(execution_timeout=4)).unwrap().output == 'é'",
         ],
         env={**os.environ, "PYTHONIOENCODING": "utf-16"},
         cwd=tmp_path,
@@ -208,11 +210,11 @@ def test_worker_ignores_python_environment_when_the_parent_does(flag, tmp_path) 
             flag,
             "-c",
             "import esolangs; "
-            "assert esolangs.run('brainfuck', ',.', stdin='é').output == 'é'; "
+            "assert esolangs.run('brainfuck', ',.', stdin='é').unwrap().output == 'é'; "
             "assert esolangs.run('brainfuck', ',.', stdin='é', "
-            "isolated=True).output == 'é'; "
+            "isolated=True).unwrap().output == 'é'; "
             "assert esolangs.run('brainfuck', ',.', stdin='é', "
-            "limits=esolangs.ExecutionLimits(max_output=1)).output == 'é'",
+            "limits=esolangs.ExecutionLimits(max_output=1)).unwrap().output == 'é'",
         ],
         env={
             **os.environ,
@@ -257,7 +259,7 @@ if sys.flags.isolated:
     subprocess.Popen = with_user_site
 cap = esolangs.ExecutionLimits(max_output=1)
 for options in ({}, {'isolated': True}, {'limits': cap}):
-    output = esolangs.run('brainfuck', ',.', stdin='é', **options).output
+    output = esolangs.run('brainfuck', ',.', stdin='é', **options).unwrap().output
     if output != 'é':
         raise AssertionError(output)
 """
@@ -332,7 +334,7 @@ def test_worker_uses_parent_string_paths_in_order(
     monkeypatch.setattr(
         sys, "path", [tmp_path, ImportPath(package_root), str(tmp_path), *sys.path]
     )
-    result = esolangs.run(REFERENCE, ",.", stdin="Q", **options)
+    result = esolangs.run(REFERENCE, ",.", stdin="Q", **options).unwrap()
     assert result.output == "Q"
 
 
@@ -344,7 +346,7 @@ def test_refuses_an_invalid_deadline(timeout) -> None:
             "",
             limits=esolangs.ExecutionLimits(execution_timeout=timeout),
             isolated=True,
-        )
+        ).unwrap()
 
 
 def test_decode_missing_result_and_notes() -> None:
@@ -619,7 +621,7 @@ limits = ExecutionLimits(
 )
 api = Language(language)
 try:
-    api.execute(program, stdin=stdin, limits=limits)
+    api.run(program, stdin=stdin, limits=limits)
 except KeyboardInterrupt:
     assert len(started) == 1
     assert monotonic() - started[0] < 1.5, "SIGINT waited for the worker deadline"
@@ -645,7 +647,7 @@ if phase == "source":
     _isolated.subprocess.Popen = BaseChild
     _worker_response.Queue = BaseQueue
     _acquire.Thread = BaseThread
-    assert api.run(StringIO(",."), stdin=stdin, limits=limits).output == "A"
+    assert api.run(StringIO(",."), stdin=stdin, limits=limits).unwrap().output == "A"
     assert stdin.tell() == 1
 """
     result = subprocess.run(
@@ -660,12 +662,14 @@ if phase == "source":
 @pytest.mark.medium
 def test_bulk_worker_receives_a_request_larger_than_a_pipe_buffer(spawned) -> None:
     source = "_ignored_" * 20_000 + ",."
-    assert esolangs.run(REFERENCE, source, stdin="A", isolated=True).output == "A"
+    assert (
+        esolangs.run(REFERENCE, source, stdin="A", isolated=True).unwrap().output == "A"
+    )
     (child,) = spawned
     assert child.poll() == 0
     stdin = "A" + "é\ud800\U000103ff" * 8192
     limits = esolangs.ExecutionLimits(max_steps=2, preparation_timeout=3)
-    result = esolangs.run(REFERENCE, ",.", stdin=stdin, limits=limits)
+    result = esolangs.run(REFERENCE, ",.", stdin=stdin, limits=limits).unwrap()
     assert (result.output, result.steps, result.input_reads) == ("A", 2, 1)
     assert [child.poll() for child in spawned] == [0, 0]
 
@@ -714,7 +718,7 @@ def test_output_limit_stops_an_infinite_writer_and_reaps(limit, spawned) -> None
             "+[.]",
             isolated=True,
             limits=esolangs.ExecutionLimits(max_output=limit),
-        )
+        ).unwrap()
     assert caught.value.partial_output == "\x01" * limit
     # A budget the caller named, but no clock ran out.
     assert isinstance(caught.value, esolangs.ExecutionBudgetError)
@@ -729,13 +733,15 @@ def test_an_output_cap_selects_isolation_on_every_route(spawned) -> None:
     """``run(max_output=0)`` said "requires isolated=True"; ``execute`` ran."""
     language = esolangs.Language(REFERENCE)
     limits = esolangs.ExecutionLimits(max_output=1)
-    outcome = language.execute("+[.]", limits=limits)
+    outcome = language.run("+[.]", limits=limits)
     for call in (
         lambda: esolangs.run(
             REFERENCE, "+[.]", limits=esolangs.ExecutionLimits(max_output=1)
-        ),
-        lambda: language.prepare("+[.]").run(
-            limits=esolangs.ExecutionLimits(max_output=1)
+        ).unwrap(),
+        lambda: (
+            language.prepare("+[.]")
+            .run(limits=esolangs.ExecutionLimits(max_output=1))
+            .unwrap()
         ),
     ):
         with pytest.raises(esolangs.ExecutionCapError) as caught:
@@ -745,7 +751,9 @@ def test_an_output_cap_selects_isolation_on_every_route(spawned) -> None:
         assert caught.value.partial_output == outcome.observation.output == "\x01"
     assert len(spawned) == 3
     with pytest.raises(esolangs.ArgumentError, match="max_memory must be a positive"):
-        esolangs.run(REFERENCE, "+", limits=esolangs.ExecutionLimits(max_memory=0))
+        esolangs.run(
+            REFERENCE, "+", limits=esolangs.ExecutionLimits(max_memory=0)
+        ).unwrap()
 
 
 @pytest.mark.medium
@@ -756,7 +764,9 @@ def test_output_limit_beyond_the_decimal_rendering_limit_accepts_small_output() 
             "++.",
             isolated=True,
             limits=esolangs.ExecutionLimits(max_output=10**5000),
-        ).output
+        )
+        .unwrap()
+        .output
         == "\x02"
     )
 
@@ -769,7 +779,7 @@ def test_capped_timeout_retains_output_and_reaps(spawned) -> None:
             "+.[]",
             limits=esolangs.ExecutionLimits(execution_timeout=1, max_output=10),
             isolated=True,
-        )
+        ).unwrap()
     assert caught.value.partial_output == "\x01"
     assert spawned[0].poll() is not None
 
@@ -782,7 +792,7 @@ def test_refuses_invalid_output_limits(limit) -> None:
             "",
             isolated=True,
             limits=esolangs.ExecutionLimits(max_output=limit),
-        )
+        ).unwrap()
 
 
 def test_capped_worker_splits_and_truncates_a_single_large_write(
@@ -815,7 +825,7 @@ def test_capped_input_error_retains_public_class_and_prefix() -> None:
             "+.,",
             isolated=True,
             limits=esolangs.ExecutionLimits(max_output=2),
-        )
+        ).unwrap()
     assert caught.value.partial_output == "\x01"
     assert caught.value.reads == 0
     assert caught.value.supplied == 0
@@ -1041,7 +1051,7 @@ def test_worker_startup_reports_the_first_expired_deadline(
     limits = esolangs.ExecutionLimits(
         preparation_timeout=preparation, total_timeout=total
     )
-    outcome = esolangs.execute(REFERENCE, ",.", stdin="A", limits=limits)
+    outcome = esolangs.run(REFERENCE, ",.", stdin="A", limits=limits)
     assert outcome.bound == bound
     if bound is None:
         assert outcome.unwrap().output == "A"
@@ -1098,7 +1108,7 @@ def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
         ),
     )
     language = one(source_kind="raster", boolean_generator=True)[0]
-    wire = esolangs.run(language, image, isolated=True).output
+    wire = esolangs.run(language, image, isolated=True).unwrap().output
     assert _raster_rows(json.loads(wire)) == rows
 
 
@@ -1175,10 +1185,12 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
     ordinary = esolangs.run(
         REFERENCE, "+.", limits=esolangs.ExecutionLimits(max_steps=2)
-    )
+    ).unwrap()
     _worker()
     assert (
-        esolangs.run(REFERENCE, "+.", limits=esolangs.ExecutionLimits(max_steps=2))
+        esolangs.run(
+            REFERENCE, "+.", limits=esolangs.ExecutionLimits(max_steps=2)
+        ).unwrap()
         == ordinary
     )
     assert not hasattr(_execution_operations, "io_factory")

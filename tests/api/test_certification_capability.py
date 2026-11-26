@@ -151,7 +151,7 @@ for name in esolangs.list_languages():
             stdin = esolangs.encode_inputs(name, [bit], truth_table=table)
         generated += 1
     seed = language.runtime.reproducible_seed if language.runtime.random else None
-    result = esolangs.run(name, program, stdin=stdin, seed=seed)
+    result = esolangs.run(name, program, stdin=stdin, seed=seed).unwrap()
     assert result.completion is not None, name
     assert language.runtime.capabilities.accepts_native(result.completion.kind), name
     assert result.input_position is not None and result.input_reads is not None, name
@@ -207,7 +207,7 @@ with patch.object(_isolated.subprocess, 'Popen', guarded_popen):
              esolangs.ExecutionResult('é', 1, 1, 1, steps=2)),
         ):
             try:
-                esolangs.run(sys.argv[1], source, isolated=isolated, **options)
+                esolangs.run(sys.argv[1], source, isolated=isolated, **options).unwrap()
             except error_type as error:
                 assert error.observation == expected, (isolated, error.observation)
                 assert error.partial_output == expected.output

@@ -115,11 +115,13 @@ class Catalog:
             raise ArgumentError("catalog entries must be LanguageDeclaration records")
         return Catalog(({**self.languages, language.name: language}).values())
 
-    def bind(self, name: str) -> esolangs.Language:
+    def bind(
+        self, name: str, *, dialect: esolangs.DialectSettings | None = None
+    ) -> esolangs.Language:
         """Bind public operations to this immutable catalog."""
         from esolangs._language import Language as BoundLanguage
 
-        return BoundLanguage(name, catalog=self)
+        return BoundLanguage(name, catalog=self, dialect=dialect)
 
     def resolve(self, name: str) -> str:
         """Return the registered display name matching ``name``.

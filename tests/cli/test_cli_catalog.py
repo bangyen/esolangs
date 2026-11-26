@@ -213,7 +213,7 @@ def test_catalog_commands_are_copyable_with_ascii_stdout(
     path = tmp_path / "program"
     api.to_file(program, path, normalize=True)
     stdin = api.encode_inputs([1])
-    assert api.run(program, stdin=stdin).output == "1"
+    assert api.run(program, stdin=stdin).unwrap().output == "1"
     assert call("run", selector, str(path), stdin=stdin.encode()) == b"1"
 
 

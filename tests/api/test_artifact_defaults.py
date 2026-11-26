@@ -80,7 +80,9 @@ def test_default_records_execute_and_round_trip(language, monkeypatch):
                     assert result.observation.input_position > 0
         if isinstance(restored, esolangs.TemplateArtifact):
             with pytest.raises(esolangs.TemplateError):
-                bound.run(restored, limits=esolangs.ExecutionLimits(max_steps=10))
+                bound.run(
+                    restored, limits=esolangs.ExecutionLimits(max_steps=10)
+                ).unwrap()
             filled = bound.instantiate(restored, [0])
             assert isinstance(filled, esolangs.ProgramArtifact)
             assert filled.language == language

@@ -8,6 +8,7 @@ from typing import cast
 from esolangs.artifacts import (
     Artifact,
     BooleanEvaluation,
+    BoundRow,
     ProgramArtifact,
     TemplateArtifact,
 )
@@ -19,6 +20,7 @@ from esolangs.operations.boolean_io import (
 )
 from esolangs.operations.execution import _execute_outcome, _execution_route
 from esolangs.registry._catalog import Catalog
+from esolangs.registry._contracts import BooleanContract
 from esolangs.runtime._prepared import _PreparedRuntime
 from esolangs.runtime._program import Program
 from esolangs.runtime._validate import _has_backing_type, check_bit_count, check_bits
@@ -38,13 +40,9 @@ def evaluate_artifact(
     return _prepare_evaluator(artifact, catalog=catalog)(bits, limits, prepared)
 
 
-def _prepare_evaluator(
+def _row_binder(
     artifact: Artifact, *, catalog: Catalog | None
-) -> Callable[
-    [list[int] | tuple[int, ...], ExecutionLimits | None, _PreparedRuntime | None],
-    BooleanEvaluation,
-]:
-    """Bind one artifact's codecs and answer mode while leaving IO per invocation."""
+) -> tuple[str, BooleanContract, Callable[[list[int] | tuple[int, ...]], BoundRow]]:
     from esolangs.registry._catalog import get_catalog, resolve_origin
 
     catalog = get_catalog(catalog)
@@ -57,18 +55,13 @@ def _prepare_evaluator(
         check_origin(name, origin, catalog=catalog)
     declaration = catalog.languages[name]
     contract = declaration.contract
-    values, pattern = _answer_codec(name, contract)
     encode = (
         contract.row_encoder(name)
         if declaration.runtime.reads_stdin and not declaration.parameterized
         else None
     )
 
-    def evaluate_row(
-        bits: list[int] | tuple[int, ...],
-        limits: ExecutionLimits | None,
-        prepared: _PreparedRuntime | None,
-    ) -> BooleanEvaluation:
+    def bind(bits: list[int] | tuple[int, ...]) -> BoundRow:
         row = check_bits(
             bits,
             "bits",
@@ -96,7 +89,28 @@ def _prepare_evaluator(
                 )
             stdin = encode(row)
 
-        return answer_row(program, stdin, limits, prepared)
+        return BoundRow(program, stdin)
+
+    return name, contract, bind
+
+
+def _prepare_evaluator(
+    artifact: Artifact, *, catalog: Catalog | None
+) -> Callable[
+    [list[int] | tuple[int, ...], ExecutionLimits | None, _PreparedRuntime | None],
+    BooleanEvaluation,
+]:
+    """Bind one artifact's codecs and answer mode while leaving IO per invocation."""
+    name, contract, bind = _row_binder(artifact, catalog=catalog)
+    values, pattern = _answer_codec(name, contract)
+
+    def evaluate_row(
+        bits: list[int] | tuple[int, ...],
+        limits: ExecutionLimits | None,
+        prepared: _PreparedRuntime | None,
+    ) -> BooleanEvaluation:
+        row = bind(bits)
+        return answer_row(row.program, row.stdin, limits, prepared)
 
     def output_answer(
         program: ProgramArtifact[Program],

@@ -77,7 +77,7 @@ def test_seed_hint_tracks_registered_random_languages() -> None:
     "call",
     [
         lambda name: esolangs.generate(name, "x"),
-        lambda name: esolangs.run(name, "x").output,
+        lambda name: esolangs.run(name, "x").unwrap().output,
         lambda name: debugger.make_debugger(name, "+"),
         # Naming the language it refused is the whole use of the message to
         # a caller who passed it by mistake.
@@ -112,7 +112,7 @@ def test_deliberate_error_keeps_partial_output(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(_execution_runtime, "invoke", stop)
     with pytest.raises(EsolangError) as caught:
-        esolangs.run(REFERENCE, "+")
+        esolangs.run(REFERENCE, "+").unwrap()
     assert caught.value is error
     assert caught.value.partial_output == "before"
     assert caught.value.__notes__ == ["the program printed 'before' before this"]
@@ -125,7 +125,7 @@ def test_run_timeout_halts_runaway_program() -> None:
     with pytest.raises(HaltError, match="timeout"):
         esolangs.run(
             REFERENCE, "+[]", limits=esolangs.ExecutionLimits(execution_timeout=0.1)
-        )
+        ).unwrap()
 
 
 def test_run_timeout_halts_a_growing_program() -> None:
@@ -133,7 +133,7 @@ def test_run_timeout_halts_a_growing_program() -> None:
     with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
         esolangs.run(
             REFERENCE, "+[>+]", limits=esolangs.ExecutionLimits(execution_timeout=0.01)
-        )
+        ).unwrap()
 
 
 def test_run_timeout_works_off_main_thread(monkeypatch) -> None:
@@ -146,12 +146,16 @@ def test_run_timeout_works_off_main_thread(monkeypatch) -> None:
 
     monkeypatch.setattr(signal, "signal", forbidden)
     with concurrent.futures.ThreadPoolExecutor() as pool:
-        result = pool.submit(
-            esolangs.run,
-            REFERENCE,
-            "+.",
-            limits=esolangs.ExecutionLimits(execution_timeout=5),
-        ).result(10)
+        result = (
+            pool.submit(
+                esolangs.run,
+                REFERENCE,
+                "+.",
+                limits=esolangs.ExecutionLimits(execution_timeout=5),
+            )
+            .result(10)
+            .unwrap()
+        )
     assert result.output == "\x01"
 
 
@@ -164,17 +168,17 @@ def test_a_timeout_names_the_bound_that_fired() -> None:
             REFERENCE,
             "+[]",
             limits=esolangs.ExecutionLimits(max_steps=100, execution_timeout=30),
-        )
+        ).unwrap()
     with pytest.raises(esolangs.ExecutionTimeoutError) as timed:
         esolangs.run(
             REFERENCE, "+[]", limits=esolangs.ExecutionLimits(execution_timeout=0.05)
-        )
+        ).unwrap()
     with pytest.raises(esolangs.ExecutionTimeoutError) as combined:
         esolangs.run(
             REFERENCE,
             "+[]",
             limits=esolangs.ExecutionLimits(max_steps=10**9, execution_timeout=0.01),
-        )
+        ).unwrap()
     assert combined.value.bound == "execution_timeout"
     for caught, bound in ((stepped, "max_steps"), (timed, "execution_timeout")):
         assert caught.value.bound == bound
@@ -237,9 +241,13 @@ def test_truth_table_examples_execute(table: str) -> None:
     inputs = len(table).bit_length() - 1
     for row, expected in enumerate(table):
         bits = [(row >> shift) & 1 for shift in reversed(range(inputs))]
-        output = esolangs.run(
-            REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, bits)
-        ).output
+        output = (
+            esolangs.run(
+                REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, bits)
+            )
+            .unwrap()
+            .output
+        )
         assert esolangs.read_answer(REFERENCE, output) == expected
 
 
@@ -275,7 +283,7 @@ def test_isolated_execution_loads_a_path_in_worker_thread(tmp_path) -> None:
     path.write_text("++.")
     with ThreadPoolExecutor(max_workers=1) as pool:
         result = pool.submit(esolangs.run, REFERENCE, path, isolated=True)
-        assert result.result(timeout=5).output == "\x02"
+        assert result.result(timeout=5).unwrap().output == "\x02"
 
 
 def test_isolated_seed_is_forwarded(monkeypatch) -> None:
@@ -292,7 +300,7 @@ def test_isolated_seed_is_forwarded(monkeypatch) -> None:
 
     monkeypatch.setattr(_execution_operations, "_execute_isolated", execute)
     name = next(name for name, lang in LANGUAGES.items() if lang.runtime.random)
-    assert esolangs.run(name, "+.", isolated=True, seed=7).output == "result"
+    assert esolangs.run(name, "+.", isolated=True, seed=7).unwrap().output == "result"
     ((language, program, stdin, timeout, kwargs),) = seen
     assert (language, program, stdin, timeout) == (name, "+.", "", 30.0)
     assert kwargs["seed"] == 7
@@ -323,7 +331,9 @@ def test_bound_language_runs_a_boolean_workflow() -> None:
     program = language.generate("0110", balance=True)
     stdin = language.encode_inputs([0, 1], truth_table="0110")
     assert check_program(language.name, program, stdin).source == program.source
-    assert language.read_answer(language.run(program, stdin=stdin).output) == "1"
+    assert (
+        language.read_answer(language.run(program, stdin=stdin).unwrap().output) == "1"
+    )
     assert _evaluate(language.name, program, inputs=2) == "0110"
 
 
@@ -334,7 +344,7 @@ def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path) -> N
     path.write_text("++.")
     with ThreadPoolExecutor(max_workers=1) as pool:
         output = pool.submit(language.run, path, isolated=True)
-        assert output.result(timeout=5).output == "\x02"
+        assert output.result(timeout=5).unwrap().output == "\x02"
         table = pool.submit(_evaluate, language.name, ",.", inputs=1, isolated=True)
         assert table.result(timeout=5) == "01"
     # None is the public default, so under isolation it is the 30-second
@@ -342,7 +352,9 @@ def test_bound_language_preserves_subprocess_defaults_on_a_worker(tmp_path) -> N
     assert (
         language.run(
             path, isolated=True, limits=esolangs.ExecutionLimits(execution_timeout=None)
-        ).output
+        )
+        .unwrap()
+        .output
         == "\x02"
     )
 
@@ -353,5 +365,5 @@ def test_bound_execution_keeps_partial_output_on_step_exhaustion() -> None:
         language.run(
             "+.[]",
             limits=esolangs.ExecutionLimits(max_steps=10, execution_timeout=1),
-        )
+        ).unwrap()
     assert caught.value.partial_output == "\x01"

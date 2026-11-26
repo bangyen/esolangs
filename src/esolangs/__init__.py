@@ -1,26 +1,12 @@
-"""Generate programs, run supplied source, and describe languages.
+"""Generate Boolean programs and run source.
 
-Public operations split by who supplies the program:
-
-* Generator-made: ``plan_generation`` returns a reusable build function or a cap;
-  ``generate`` returns a program artifact or template;
-  ``instantiate`` fills a template into a runnable artifact;
-  ``evaluate`` executes one Boolean row.
-* Caller-supplied: ``run`` returns output, input consumption and completion
-  evidence in an immutable execution result; ``execute`` returns an outcome
-  instead of raising; ``prepare`` loads source once for many invocations.
-  Stepping and debugging live in :mod:`esolangs.debugger`.
-* Records: ``from_source``, ``from_file`` and ``from_json`` declare or
-  restore an artifact; ``to_file`` writes native source and ``to_json``
-  portable JSON.
-* Contract adapters: ``encode_inputs`` spells input bits as stdin and
-  ``read_answer`` extracts an answer bit from output.
-* Catalog: ``describe`` and ``list_languages`` provide registry facts.
-
-Boolean evaluation over every row is private certification machinery,
-not public API.  ``Language(name)`` binds every function above that takes a
-language, and adds ``settings``.
-Names resolve case-insensitively; deliberate errors derive from EsolangError.
+Use generate for a Boolean artifact, run for an execution outcome, and
+prepare for repeated invocations. Use from_source to declare an artifact.
+Generated artifacts bind or evaluate one row. The low-level Boolean
+adapters encode_inputs and read_answer expose the language's I/O convention.
+Use list_languages and describe to inspect the catalog. Language binds a
+catalog and dialect. Serialization lives in esolangs.serialization,
+construction decisions in esolangs.planning and declarations in esolangs.registry.
 """
 
 import importlib
@@ -65,13 +51,12 @@ _LAZY = {
     "PreparedProgram": "esolangs.operations.prepared",
     "Language": "esolangs._language",
     "run": "esolangs.operations.execution",
-    "execute": "esolangs.operations.execution",
     "prepare": "esolangs.operations.execution",
     "evaluate": "esolangs.operations.evaluation",
     "from_file": "esolangs.operations.source",
     "from_source": "esolangs.operations.source",
     "generate": "esolangs.operations.generation",
-    "plan_generation": "esolangs.operations.generation",
+    "plan_generation": "esolangs.planning",
     "instantiate": "esolangs.operations.instantiation",
     "to_json": "esolangs.portable",
     "from_json": "esolangs.portable",
@@ -90,16 +75,15 @@ if TYPE_CHECKING:
     from esolangs.operations.boolean_io import encode_inputs as encode_inputs
     from esolangs.operations.boolean_io import read_answer as read_answer
     from esolangs.operations.evaluation import evaluate as evaluate
-    from esolangs.operations.execution import execute as execute
     from esolangs.operations.execution import prepare as prepare
     from esolangs.operations.execution import run as run
     from esolangs.operations.export import to_file as to_file
     from esolangs.operations.generation import generate as generate
-    from esolangs.operations.generation import plan_generation as plan_generation
     from esolangs.operations.instantiation import instantiate as instantiate
     from esolangs.operations.prepared import PreparedProgram as PreparedProgram
     from esolangs.operations.source import from_file as from_file
     from esolangs.operations.source import from_source as from_source
+    from esolangs.planning import plan_generation as plan_generation
     from esolangs.portable import from_json as from_json
     from esolangs.portable import to_json as to_json
     from esolangs.registry._catalog import Catalog as Catalog
@@ -137,7 +121,6 @@ __all__ = [
     "ArgumentError",
     "Artifact",
     "BooleanEvaluation",
-    "Catalog",
     "CompressedText",
     "DialectSchema",
     "DialectSettings",
@@ -154,7 +137,6 @@ __all__ = [
     "InputSource",
     "InterpreterLimitError",
     "Language",
-    "LanguageDeclaration",
     "LanguageInfo",
     "MissingDependencyError",
     "PreparedProgram",
@@ -172,20 +154,12 @@ __all__ = [
     "UnknownLanguageError",
     "describe",
     "encode_inputs",
-    "evaluate",
-    "execute",
-    "from_file",
-    "from_json",
     "from_source",
     "generate",
-    "instantiate",
     "list_languages",
-    "plan_generation",
     "prepare",
     "read_answer",
     "run",
-    "to_file",
-    "to_json",
 ]
 
 

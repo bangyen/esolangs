@@ -202,13 +202,15 @@ def _smoke_install(package: Path) -> None:
         _evaluate(bound.name, program, inputs=2, isolated=True, max_output=1) == "0110"
     )
     assert (
-        bound.read_answer(bound.run(program, stdin=bound.encode_inputs([0, 1])).output)
+        bound.read_answer(
+            bound.run(program, stdin=bound.encode_inputs([0, 1])).unwrap().output
+        )
         == "1"
     )
     assert (
-        esolangs.run(
-            "brainfuck", "+.", limits=esolangs.ExecutionLimits(max_steps=2)
-        ).output
+        esolangs.run("brainfuck", "+.", limits=esolangs.ExecutionLimits(max_steps=2))
+        .unwrap()
+        .output
         == "\x01"
     )
     assert (
@@ -217,7 +219,9 @@ def _smoke_install(package: Path) -> None:
             "+.",
             limits=esolangs.ExecutionLimits(execution_timeout=1),
             isolated=True,
-        ).output
+        )
+        .unwrap()
+        .output
         == "\x01"
     )
     _refused(
@@ -225,7 +229,9 @@ def _smoke_install(package: Path) -> None:
         lambda: (
             esolangs.run(
                 "brainfuck", "+[]", limits=esolangs.ExecutionLimits(max_steps=10)
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         "the bounded runner accepted a diverging program",
     )
@@ -259,7 +265,8 @@ def _smoke_generators(package: Path, *, image_extra: bool) -> None:
     example = package / examples[0]
     assert (
         esolangs.read_answer(
-            "brainfuck", esolangs.run("brainfuck", example, stdin="0\n1\n").output
+            "brainfuck",
+            esolangs.run("brainfuck", example, stdin="0\n1\n").unwrap().output,
         )
         == "0"
     )
@@ -342,9 +349,13 @@ def _smoke_rasters(*, image_extra: bool) -> None:
         )
         for row in range(4):
             bits = [row >> 1, row & 1]
-            output = esolangs.run(
-                language, artifact, stdin=esolangs.encode_inputs(language, bits)
-            ).output
+            output = (
+                esolangs.run(
+                    language, artifact, stdin=esolangs.encode_inputs(language, bits)
+                )
+                .unwrap()
+                .output
+            )
             assert esolangs.read_answer(language, output) == "0110"[row]
 
 
@@ -371,7 +382,9 @@ def _smoke_deadlines() -> None:
                 "brainfuck",
                 "+[]",
                 limits=esolangs.ExecutionLimits(execution_timeout=0.02),
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         "worker timeout did not stop a loop",
     )
@@ -383,7 +396,9 @@ def _smoke_deadlines() -> None:
                         "brainfuck",
                         "+.",
                         limits=esolangs.ExecutionLimits(execution_timeout=2),
-                    ).output
+                    )
+                    .unwrap()
+                    .output
                 )
             ).result(timeout=5)
             == "\x01"
@@ -423,7 +438,9 @@ def _smoke_deadlines() -> None:
                 "+[]",
                 limits=esolangs.ExecutionLimits(execution_timeout=0.5),
                 isolated=True,
-            ).output
+            )
+            .unwrap()
+            .output
         ),
         "isolated timeout did not stop a loop",
     )

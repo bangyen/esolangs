@@ -43,7 +43,7 @@ def _capped(route: dict) -> dict:
     "route", [*_ROUTES, *(_capped(r) for r in _ROUTES if r.get("isolated"))]
 )
 def test_result_counts_unicode_characters_and_preserves_unread_input(route):
-    result = esolangs.run(REFERENCE, ",.", stdin="éNEXT", **route)
+    result = esolangs.run(REFERENCE, ",.", stdin="éNEXT", **route).unwrap()
     assert result == ExecutionResult(
         "é",
         1,
@@ -71,7 +71,7 @@ def test_result_retains_a_caught_eof(route):
     assert (native.input_position, native.input_reads) == (0, 0)
     assert attempts, "the EOF control did not perform a read"
     assert native.input_past_end == len(attempts)
-    assert replace(esolangs.run(name, source, **route), steps=None) == native
+    assert replace(esolangs.run(name, source, **route).unwrap(), steps=None) == native
 
 
 @pytest.mark.parametrize(
@@ -91,7 +91,9 @@ def test_post_halt_result_includes_the_final_dump(name):
         else template
     )
     stdin = "" if LANGUAGES[name].parameterized else esolangs.encode_inputs(name, [1])
-    results = [esolangs.run(name, source, stdin=stdin, **route) for route in _ROUTES]
+    results = [
+        esolangs.run(name, source, stdin=stdin, **route).unwrap() for route in _ROUTES
+    ]
     assert all(replace(result, steps=None) == results[0] for result in results)
     assert results[1].steps == results[3].steps
     assert results[1].steps is not None
@@ -128,7 +130,7 @@ def _replay_periodic(name, source, stdin, native):
     assert native.output
     bounded = esolangs.run(
         name, source, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=end)
-    )
+    ).unwrap()
     assert bounded == replace(native, steps=end)
 
 
@@ -187,14 +189,17 @@ def test_periodic_result_retains_cycle_evidence_in_a_worker():
     # The productive and zero-command passes take distinct completion paths.
     with guarded_worker(expected=2):
         for name, source, stdin, native in (cases[0], cases[-1]):
-            assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
+            assert (
+                esolangs.run(name, source, stdin=stdin, isolated=True).unwrap()
+                == native
+            )
 
 
 @pytest.mark.parametrize("route", _ROUTES)
 @pytest.mark.parametrize(("source", "stdin"), [(",", ""), (",.,", "é")])
 def test_result_failures_still_raise_with_partial_output(route, source, stdin):
     with pytest.raises(esolangs.InputExhaustedError) as caught:
-        esolangs.run(REFERENCE, source, stdin=stdin, **route)
+        esolangs.run(REFERENCE, source, stdin=stdin, **route).unwrap()
     assert caught.value.partial_output == stdin
     assert caught.value.observation == ExecutionResult(
         stdin,
@@ -212,9 +217,12 @@ def test_bound_language_returns_the_same_record():
         stdin="éNEXT",
         limits=esolangs.ExecutionLimits(max_steps=2, max_output=1, execution_timeout=5),
         isolated=True,
-    )
+    ).unwrap()
     assert result.steps == 2
-    assert replace(result, steps=None) == esolangs.run(REFERENCE, ",.", stdin="éNEXT")
+    assert (
+        replace(result, steps=None)
+        == esolangs.run(REFERENCE, ",.", stdin="éNEXT").unwrap()
+    )
 
 
 def test_public_record_is_immutable():

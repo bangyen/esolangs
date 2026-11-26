@@ -21,13 +21,13 @@ def test_steps_match_an_independently_driven_machine(source, isolated):
         assert steps < 10000, "independent step control did not halt"
         vm.step()
         steps += 1
-    native = esolangs.run(REFERENCE, source, isolated=isolated)
+    native = esolangs.run(REFERENCE, source, isolated=isolated).unwrap()
     bounded = esolangs.run(
         REFERENCE,
         source,
         isolated=isolated,
         limits=esolangs.ExecutionLimits(max_steps=steps),
-    )
+    ).unwrap()
     assert native.output == bounded.output == vm.output
     assert native.steps is None
     assert bounded.steps == steps
@@ -41,7 +41,7 @@ def test_zero_budget_performs_no_command(isolated):
             "+.",
             limits=esolangs.ExecutionLimits(max_steps=0),
             isolated=isolated,
-        )
+        ).unwrap()
     assert caught.value.observation == ExecutionResult("", 0, 0, 0, steps=0)
 
 
@@ -67,7 +67,7 @@ def test_final_dump_is_outside_the_command_budget(isolated):
         source,
         limits=esolangs.ExecutionLimits(max_steps=steps),
         isolated=isolated,
-    )
+    ).unwrap()
     assert result.steps == steps
     assert result.output == output
     assert esolangs.read_answer(name, result.output) == "1"

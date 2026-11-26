@@ -331,10 +331,10 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
         for n in range(1, max_n + 1):
             for table in map("".join, itertools.product("01", repeat=1 << n)):
                 for width in (None, 8) if n < 3 else (None,):
-                    plan = bound.plan_generation(table, width=width)
-                    if isinstance(plan, GeneratorCapError):
+                    try:
+                        program = bound.generate(table, width=width)
+                    except GeneratorCapError:
                         continue
-                    program = plan()
                     for row in range(1 << n):
                         bits = [int(c) for c in f"{row:0{n}b}"]
                         # Kept as generated: a raster or compressed program

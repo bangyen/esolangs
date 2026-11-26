@@ -64,7 +64,7 @@ def test_bit_input_ends_at_physical_eof_or_newline(stdin, position) -> None:
         (ExecutionLimits(max_steps=4), 1),
         (ExecutionLimits(max_steps=4, total_timeout=5), 1),
     ):
-        outcome = api.execute(source, stdin=stdin, limits=limits)
+        outcome = api.run(source, stdin=stdin, limits=limits)
         assert isinstance(outcome.error, InputExhaustedError)
         assert (outcome.error.reads, outcome.error.supplied, outcome.error.unit) == (
             1,
@@ -86,7 +86,7 @@ def test_bit_input_ends_at_physical_eof_or_newline(stdin, position) -> None:
         "", position, position, 2, steps=1
     )
     assert debugger.snapshot() == sealed
-    assert api.run(source, stdin="11\n").output == "1"
+    assert api.run(source, stdin="11\n").unwrap().output == "1"
 
 
 def test_the_empty_program_is_refused() -> None:

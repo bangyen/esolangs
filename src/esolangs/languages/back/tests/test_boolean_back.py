@@ -588,7 +588,7 @@ def _check_held_input_and_dump() -> None:
     # Non-answer cells are storage/scratch; only cell n is the answer contract.
     template = esolangs.generate("Back", "0001")
     source = esolangs.instantiate("Back", template, [1, 0])
-    assert execute("Back", source).output == "0 0 0"
+    assert execute("Back", source).unwrap().output == "0 0 0"
 
 
 def _check_exact_preload_bounds() -> None:

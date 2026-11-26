@@ -33,7 +33,7 @@ def _check_empty_program(language: str) -> None:
     message = LANGUAGES[language].runtime.empty_program
     if not message:
         try:
-            esolangs.run(language, source, **options)
+            esolangs.run(language, source, **options).unwrap()
         except esolangs.EsolangError as exc:
             pytest.fail(
                 f"{language} refuses an empty program; if the spec does, add "
@@ -41,7 +41,7 @@ def _check_empty_program(language: str) -> None:
             )
         return
     with pytest.raises(esolangs.EsolangError) as caught:
-        esolangs.run(language, source, **options)
+        esolangs.run(language, source, **options).unwrap()
     error = caught.value
     assert type(error) in _REJECTION_KINDS, f"{type(error).__name__}: {error}"
     assert str(error) == message, f"{language}: {error}"

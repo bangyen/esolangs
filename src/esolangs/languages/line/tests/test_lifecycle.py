@@ -56,8 +56,8 @@ def test_factory_keeps_cached_geometry_and_fresh_tape_and_input(monkeypatch):
         patch.setattr(interpreter, "_freeze_node", counted)
         prepared = esolangs.Language("Line").prepare(generated)
         assert frozen == []
-        assert prepared.run(stdin="1").output == "1"
-        assert prepared.run(stdin="0").output == "0"
+        assert prepared.run(stdin="1").unwrap().output == "1"
+        assert prepared.run(stdin="0").unwrap().output == "0"
         assert len(frozen) == 1
 
 
@@ -66,7 +66,7 @@ def test_scale_binding_preserves_graph_and_raster_execution_paths():
     for scale in (1, 2, 3):
         generated = line("01", scale=scale)
         for source in (generated, Raster.from_png(generated.to_png())):
-            native = esolangs.run("Line", source, stdin="1")
+            native = esolangs.run("Line", source, stdin="1").unwrap()
             assert native.output == "1"
             options = {"scale": scale}
             factory = interpreter.prepare_machine(source, options)
@@ -81,9 +81,13 @@ def test_scale_binding_preserves_graph_and_raster_execution_paths():
             )
             result, snapshot = debug.observation, debug.snapshot()
             assert result == replace(native, steps=result.steps)
-            assert esolangs.run("Line", source, stdin="1", scale=scale) == native
             assert (
-                esolangs.run("Line", source, stdin="1", scale=scale, isolated=True)
+                esolangs.run("Line", source, stdin="1", scale=scale).unwrap() == native
+            )
+            assert (
+                esolangs.run(
+                    "Line", source, stdin="1", scale=scale, isolated=True
+                ).unwrap()
                 == native
             )
             debug.step()

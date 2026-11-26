@@ -39,7 +39,7 @@ def test_intercal_wrapped_template_keeps_public_provenance(
         program = esolangs.instantiate("INTERCAL", template, bits, truth_table=table)
         shapes.add(tuple(map(len, program.source.splitlines())))
         assert (
-            esolangs.read_answer("INTERCAL", run("INTERCAL", program).output)
+            esolangs.read_answer("INTERCAL", run("INTERCAL", program).unwrap().output)
             == expected
         )
     assert len(shapes) == 1
@@ -86,7 +86,7 @@ def test_balance_stays_within_five_percent_of_every_fit_width(seed: int) -> None
             program = esolangs.instantiate(
                 "INTERCAL", balanced, bits, truth_table=table
             )
-            answer = run("INTERCAL", program).output
+            answer = run("INTERCAL", program).unwrap().output
             assert esolangs.read_answer("INTERCAL", answer) == expected
 
 

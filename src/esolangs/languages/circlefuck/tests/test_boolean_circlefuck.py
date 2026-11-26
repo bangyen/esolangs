@@ -115,7 +115,7 @@ class TestCirclefuck:
 
 def test_run_uses_native_eof() -> None:
     program = boolean.circlefuck("10")  # reads one input bit
-    assert execute("Circlefuck", program, stdin="").output == "0"
+    assert execute("Circlefuck", program, stdin="").unwrap().output == "0"
 
 
 def _check_constants() -> None:

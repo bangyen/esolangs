@@ -65,7 +65,7 @@ class TestInProcess:
         stdin = esolangs.encode_inputs(_RASTER, [1, 0])
         assert (
             esolangs.read_answer(
-                _RASTER, esolangs.run(_RASTER, image, stdin=stdin).output
+                _RASTER, esolangs.run(_RASTER, image, stdin=stdin).unwrap().output
             )
             == "1"
         )
@@ -197,7 +197,7 @@ class TestInProcess:
         assert diagnostic.startswith("program read past the end of input")
 
         api = esolangs.Language(REFERENCE)
-        first = api.execute(path)
+        first = api.run(path)
         shared = first.error
         assert isinstance(shared, esolangs.InputExhaustedError)
         assert shared.partial_output == first.observation.output == output
@@ -213,7 +213,7 @@ class TestInProcess:
 
         monkeypatch.setattr(module, hook, reuse_error)
         path.write_text("++.,")
-        result = api.execute(path)
+        result = api.run(path)
         assert result.error is shared
         assert shared.partial_output == "\x01"
         assert result.observation.output == "\x02"
@@ -226,7 +226,7 @@ class TestInProcess:
             def read(self):
                 raise shared
 
-        assert api.execute(path, stdin=RefusesInput()).observation.output == ""
+        assert api.run(path, stdin=RefusesInput()).observation.output == ""
         with (
             patch.object(sys, "argv", ["esolangs", *command]),
             patch.object(sys, "stdin", RefusesInput()),
@@ -251,7 +251,7 @@ class TestInProcess:
         assert "--max-memory is supported only on Linux" in capsys.readouterr().err
         name = "No such language"
         limits = esolangs.ExecutionLimits(max_memory=1000)
-        expected = esolangs.execute(name, path, limits=limits)
+        expected = esolangs.run(name, path, limits=limits)
         assert isinstance(expected.error, esolangs.UnknownLanguageError)
         assert _failure(["run", "--max-memory", "1000", name, str(path)], capsys) == (
             "",
@@ -346,7 +346,7 @@ def test_width_option(
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= limit
         assert "\n" in out.rstrip("\n")
     if runs:
-        assert esolangs.run(REFERENCE, out, stdin="011").output == "0"
+        assert esolangs.run(REFERENCE, out, stdin="011").unwrap().output == "0"
 
 
 class TestHelp:
@@ -416,7 +416,7 @@ class TestOutputAndAbridging:
         data = capsysbinary.readouterr().out
         expected = esolangs.generate(REFERENCE, "01").source + "\n"
         assert gzip.decompress(data).decode() == expected
-        assert esolangs.run(REFERENCE, data, stdin="1").output == "1"
+        assert esolangs.run(REFERENCE, data, stdin="1").unwrap().output == "1"
 
         declaration = LANGUAGES[REFERENCE]
         source = ",."
@@ -429,11 +429,11 @@ class TestOutputAndAbridging:
             main()
             rendered, diagnostic = capsysbinary.readouterr()
             assert not diagnostic
-            assert esolangs.run(REFERENCE, rendered, stdin="1").output == "1"
+            assert esolangs.run(REFERENCE, rendered, stdin="1").unwrap().output == "1"
 
         source += "\ud800"
         artifact = scope.bind(REFERENCE).generate("01")
-        assert scope.bind(REFERENCE).run(artifact, stdin="1").output == "1"
+        assert scope.bind(REFERENCE).run(artifact, stdin="1").unwrap().output == "1"
         for flags in ([], ["--gzip"]):
             monkeypatch.setattr(
                 sys, "argv", ["esolangs", "generate", *flags, REFERENCE, "01"]
@@ -590,7 +590,7 @@ class TestOutputAndAbridging:
             "the generator retains its original layout\n"
         )
         bound = scope.bind(text.id)
-        result = bound.run(source, stdin=bound.encode_inputs([1]))
+        result = bound.run(source, stdin=bound.encode_inputs([1])).unwrap()
         assert bound.read_answer(result.output) == "1"
 
 
@@ -666,7 +666,7 @@ def _check_dialect_repair(language, capsysbinary, monkeypatch) -> None:
                 _generate(repaired[2:])
                 assert observed[-1] == expected
                 source = capsysbinary.readouterr().out
-                assert original.read_answer(original.run(source).output) == "1"
+                assert original.read_answer(original.run(source).unwrap().output) == "1"
 
     with monkeypatch.context() as active:
         stderr = Diagnostic("ascii", None)
@@ -787,7 +787,7 @@ def test_option_passes_cannot_steal_another_options_value(capsys, tmp_path) -> N
     path = _program(tmp_path, ",.")
     for args in (["--settings", "{}"], ["-s", "{}"], ["-s={}"]):
         program = call_main(["generate", *args, REFERENCE, "01"], capsys)
-        assert esolangs.run(REFERENCE, program, stdin="1").output == "1"
+        assert esolangs.run(REFERENCE, program, stdin="1").unwrap().output == "1"
         assert call_main(["run", *args, REFERENCE, path], capsys, stdin="Q") == "Q"
 
 

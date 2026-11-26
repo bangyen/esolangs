@@ -467,7 +467,7 @@ def _check_public_randomness():
             # No timeout: a timed run executes in a worker, out of these patches.
             result = run(
                 "Caballo", ProgramArtifact(source, "Caballo"), stdin=stdin, **options
-            )
+            ).unwrap()
         assert len(created) == 1
         assert [capture.row for capture in captures] == expected
         assert bounds == [3]

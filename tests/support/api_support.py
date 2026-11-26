@@ -7,6 +7,8 @@ from pathlib import Path
 
 import esolangs
 import esolangs.debugger as debugger_api
+from esolangs.artifacts import BoundRow
+from esolangs.planning import Ready, Unsupported
 
 SIGNATURES: dict[str, str] = json.loads(
     (Path(__file__).resolve().parents[1] / "api/signatures.json").read_text()
@@ -14,6 +16,9 @@ SIGNATURES: dict[str, str] = json.loads(
 
 
 PUBLIC_MEMBERS = {
+    BoundRow: {"program", "stdin"},
+    Ready: {"artifact", "build"},
+    Unsupported: {"cap", "reason"},
     esolangs.Catalog: {
         "languages",
         "resolve",
@@ -45,9 +50,9 @@ PUBLIC_MEMBERS = {
         "run",
         "make_vm",
         "make_debugger",
-        "execute",
     },
     esolangs.ProgramArtifact: {
+        "bind",
         "source",
         "language",
         "settings",
@@ -56,6 +61,7 @@ PUBLIC_MEMBERS = {
         "evaluate",
     },
     esolangs.TemplateArtifact: {
+        "bind",
         "source",
         "language",
         "bindings",
@@ -68,11 +74,11 @@ PUBLIC_MEMBERS = {
     },
     esolangs.TemplateBindings: {"char", "setters", "inputs", "fill"},
     esolangs.Language: {
+        "dialect",
         "catalog",
         "settings",
         "from_source",
         "from_file",
-        "execute",
         "prepare",
         "describe",
         "to_json",

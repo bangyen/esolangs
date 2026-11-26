@@ -21,7 +21,7 @@ def test_relocated_named_cells_execute_and_corrupt_load_is_rejected(monkeypatch)
     assert regions.cells["ZERO"] > regions.cells["OUT"]
     assert workspace_terms(2, source)["M"] == 2
     for row, bit in enumerate(table):
-        assert esolangs.run("Subleq", source, stdin=f"{row:02b}").output == bit
+        assert esolangs.run("Subleq", source, stdin=f"{row:02b}").unwrap().output == bit
     cells[regions.chunk_load] += 1
     with pytest.raises(ValueError, match="packed"):
         workspace_terms(2, " ".join(map(str, cells)))

@@ -73,14 +73,14 @@ def test_short_lines_are_padded_not_out_of_bounds(
     for newline in ("\n", "\r\n"):
         source = newline.join(("  *", "", "  .", ""))
         path.write_bytes(source.encode())
-        assert api.run(path).output == "0"
-        bounded = api.run(path, limits=limits)
+        assert api.run(path).unwrap().output == "0"
+        bounded = api.run(path, limits=limits).unwrap()
         assert (bounded.output, bounded.steps) == ("0", 6)
-        assert api.run(path, limits=limits, isolated=True) == bounded
+        assert api.run(path, limits=limits, isolated=True).unwrap() == bounded
         cli = run_cli("run", api.name, str(path))
         assert (cli.returncode, cli.stdout, cli.stderr) == (0, "0", "")
     with pytest.raises(ProgramError, match="unknown command"):
-        api.run("  *\r  .")
+        api.run("  *\r  .").unwrap()
     check_image_reuse(
         "Balik",
         "  *\n\n  .",

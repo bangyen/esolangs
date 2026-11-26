@@ -72,7 +72,7 @@ def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(boundaries) == 8
     assert clean.run(limits=limits) == "halted"
     complete, final = clean.observation, clean.snapshot()
-    assert complete == api.run(HELLO, limits=limits)
+    assert complete == api.run(HELLO, limits=limits).unwrap()
     assert complete.output == greeting
     write = ScriptedIO._write
 

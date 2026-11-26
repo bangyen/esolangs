@@ -28,7 +28,7 @@ def test_every_row_prints_its_answer() -> None:
             assert "0_I->%0_I" not in program
             # An exact-length setup still leaves a wrong-length binary input unanswered.
             invalid = "0" * (n + 1)
-            assert run("Sonata", program, stdin=invalid).output == invalid
+            assert run("Sonata", program, stdin=invalid).unwrap().output == invalid
         elif len(set(table)) == 2:
             assert "0_I->%0_I" in program
         assert_every_row("Sonata", table, program=program)
@@ -74,7 +74,7 @@ def _check_constants() -> None:
             assert io.getvalue() == "=" + bit
             assert written.bits == 8 * max(n, 2) + 2
         invalid = "0" * (n + 1)
-        assert run("Sonata", program, stdin=invalid).output == invalid
+        assert run("Sonata", program, stdin=invalid).unwrap().output == invalid
     total_chars = total_steps = 0
     for value in range(256):
         table = f"{value:08b}"
@@ -119,4 +119,6 @@ def test_public_generator_switches_to_masks(monkeypatch: pytest.MonkeyPatch) -> 
     for table in ("00000000", "01100110", "01101001"):
         source = language.generate(table).source
         for row, answer in enumerate(table):
-            assert language.run(source, stdin=f"{row:03b}").output == f"={answer}"
+            assert (
+                language.run(source, stdin=f"{row:03b}").unwrap().output == f"={answer}"
+            )

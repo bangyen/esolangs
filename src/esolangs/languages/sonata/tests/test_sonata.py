@@ -49,7 +49,7 @@ def test_one_trailing_newline_leaves_the_input(monkeypatch) -> None:
     language = Language("Sonata")
     source, answer = "A->BC", "BC"
     limits = ExecutionLimits(max_steps=2)
-    expected = language.run(source, stdin="A", limits=limits)
+    expected = language.run(source, stdin="A", limits=limits).unwrap()
     assert (expected.output, expected.steps) == (answer, 2)
     write = ScriptedIO.print_str
     for accepted in range(len(answer) + 1):
@@ -117,10 +117,10 @@ def test_a_later_arrow_is_literal(tmp_path, capsys) -> None:
         path.write_bytes(text.encode())
         record = api.from_json(api.to_json(path))
         assert record.source == text
-        assert api.run(path, stdin="a").output == "b->c"
-        assert api.prepare(record).run(stdin="a").output == "b->c"
+        assert api.run(path, stdin="a").unwrap().output == "b->c"
+        assert api.prepare(record).run(stdin="a").unwrap().output == "b->c"
         assert complete_vm(api.make_vm(text, stdin="a")) == "b->c"
-        assert api.run(text, stdin="a", isolated=True).output == "b->c"
+        assert api.run(text, stdin="a", isolated=True).unwrap().output == "b->c"
         output = call_both(["run", api.name, str(path)], capsys, stdin="a")
         assert output == ("b->c", "")
     for text, expected in (
@@ -128,4 +128,4 @@ def test_a_later_arrow_is_literal(tmp_path, capsys) -> None:
         ("a->b->c\r\r\nb->other", "b->c\r"),
         ("a->b->c\r", "b->c\r"),
     ):
-        assert api.run(text, stdin="a").output == expected
+        assert api.run(text, stdin="a").unwrap().output == expected

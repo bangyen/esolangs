@@ -76,10 +76,10 @@ def _check_large_operands() -> None:
     try:
         sys.set_int_max_str_digits(640)
         code = f"1^{huge} 2/1"
-        assert api.run(code).output == "10"
-        assert api.run(code, limits=limits).output == "10"
-        assert api.run(code, isolated=True, limits=limits).output == "10"
+        assert api.run(code).unwrap().output == "10"
+        assert api.run(code, limits=limits).unwrap().output == "10"
+        assert api.run(code, isolated=True, limits=limits).unwrap().output == "10"
         code = f"{huge} {huge}/{huge}"
-        assert api.run(code, limits=limits).output == format(10**641 - 1, "b")
+        assert api.run(code, limits=limits).unwrap().output == format(10**641 - 1, "b")
     finally:
         sys.set_int_max_str_digits(original)

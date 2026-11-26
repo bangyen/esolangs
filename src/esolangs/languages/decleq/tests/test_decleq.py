@@ -210,7 +210,7 @@ class TestNegativeWriteIndex:
         limits = esolangs.ExecutionLimits(max_steps=2)
         expected = esolangs.ExecutionResult("A", 1, 1, 0, steps=1)
         for isolated in (False, True):
-            outcome = plan.execute(stdin="BC", limits=limits, isolated=isolated)
+            outcome = plan.run(stdin="BC", limits=limits, isolated=isolated)
             assert type(outcome.error) is HaltError
             assert outcome.observation == expected
 
@@ -234,7 +234,7 @@ class TestNegativeWriteIndex:
         assert exhausted.value.observation == esolangs.ExecutionResult(
             "A", 0, 0, 2, steps=1
         )
-        valid = api.run("-2 2 65 -1 -1 0", stdin="BC", limits=limits)
+        valid = api.run("-2 2 65 -1 -1 0", stdin="BC", limits=limits).unwrap()
         assert valid.output == "A"
         assert valid.input_reads == 1
 
@@ -247,4 +247,4 @@ def test_a_huge_address_is_refused_before_allocating() -> None:
             "1 100000000000000000000",
             stdin="",
             limits=esolangs.ExecutionLimits(execution_timeout=2),
-        )
+        ).unwrap()

@@ -82,7 +82,7 @@ def _check_interrupted_send(monkeypatch) -> None:
     program = HELLO_WORLD.replace("Hello, world!", "Hello\nworld!")
     api = Language("Inject")
     limits = ExecutionLimits(max_steps=32)
-    expected = api.run(program, limits=limits)
+    expected = api.run(program, limits=limits).unwrap()
     assert expected.output == "Hello\nworld!\n"
     write = ScriptedIO._write
     attempts = []
@@ -193,10 +193,10 @@ class TestCommands:
             source += "send data \t\nskip \t\ndata;\nhello\ndata;\n"
             path.write_bytes(source.encode())
             expected = f"hell{replacement}\n"
-            assert language.run(path).output == expected
-            bounded = language.run(path, limits=limits)
+            assert language.run(path).unwrap().output == expected
+            bounded = language.run(path, limits=limits).unwrap()
             assert bounded.output == expected
-            assert language.run(path, limits=limits, isolated=True) == bounded
+            assert language.run(path, limits=limits, isolated=True).unwrap() == bounded
             cli = run_cli("run", language.name, str(path))
             assert (cli.returncode, cli.stdout, cli.stderr) == (0, expected, "")
 
@@ -205,10 +205,13 @@ class TestCommands:
                 ("data;", "x", "data;", "inject data=x$/y ", "send data", "")
             )
             path.write_bytes(source.encode())
-            assert language.run(source).output == "y \n"
-            bounded = language.run(path, limits=limits)
+            assert language.run(source).unwrap().output == "y \n"
+            bounded = language.run(path, limits=limits).unwrap()
             assert bounded.output == "y \n"
-            assert language.prepare(path).run(limits=limits, isolated=True) == bounded
+            assert (
+                language.prepare(path).run(limits=limits, isolated=True).unwrap()
+                == bounded
+            )
             cli = run_cli("run", language.name, str(path))
             assert (cli.returncode, cli.stdout, cli.stderr) == (0, "y \n", "")
 
@@ -237,7 +240,7 @@ class TestCommands:
         limits = ExecutionLimits(max_steps=12)
         for isolated in (False, True):
             with pytest.raises(HaltError, match="invalid regex") as caught:
-                api.run(program, limits=limits, isolated=isolated)
+                api.run(program, limits=limits, isolated=isolated).unwrap()
             cause = caught.value.__cause__
             assert isinstance(cause, re.error)
             assert (cause.pattern, cause.pos, cause.lineno, cause.colno) == (
@@ -405,7 +408,7 @@ def test_a_malformed_replacement_is_a_halt(tmp_path: Path) -> None:
     language = Language("Inject")
     path = tmp_path / "program"
     path.write_text(program.replace("\\2", "\x1b[2J\\2"))
-    outcome = language.execute(path)
+    outcome = language.run(path)
     assert isinstance(outcome.error, HaltError)
     assert str(outcome.error) == "invalid replacement: \x1b[2J\\2"
     failed = run_cli("run", language.name, str(path))
@@ -417,7 +420,7 @@ def test_a_malformed_replacement_is_a_halt(tmp_path: Path) -> None:
 
     path.write_text(program.replace("\\2", "\x1b[2Jy"))
     passed = run_cli("run", language.name, str(path))
-    output = language.run(path).output
+    output = language.run(path).unwrap().output
     assert (passed.returncode, passed.stdout, passed.stderr) == (0, output, "")
     assert output == "\x1b[2Jy\n"
 
@@ -446,12 +449,14 @@ def test_a_rewrite_cannot_erase_a_nested_block_s_delimiters() -> None:
             assert retry.value.observation == debug.observation == expected
             assert debug.ip == 1
             assert debug.snapshot() == saved
-        worker = plan.execute(stdin=stdin, limits=limits, isolated=True)
+        worker = plan.run(stdin=stdin, limits=limits, isolated=True)
         assert worker.status == "fault"
         assert worker.observation == expected
 
     valid = program.replace("send in", "send data").replace("in;\nx\nin;", "x")
-    assert language.run(valid, stdin="q\nw\n", limits=limits).output == "pre\nq\n"
+    assert (
+        language.run(valid, stdin="q\nw\n", limits=limits).unwrap().output == "pre\nq\n"
+    )
 
 
 def test_skip_as_the_last_line_exits() -> None:

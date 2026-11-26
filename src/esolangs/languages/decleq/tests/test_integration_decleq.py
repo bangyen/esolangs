@@ -18,7 +18,7 @@ class TestDecleqNegativeAddressing:
                 "4 -8",
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=2),
-            )
+            ).unwrap()
 
     def test_the_documented_negative_write_is_unchanged(self) -> None:
         """Indexing from the right is deliberate and pinned elsewhere."""

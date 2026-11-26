@@ -197,10 +197,12 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             continue
         source, stdin = SAMPLES[name]
         seed = language.runtime.reproducible_seed if language.runtime.random else None
-        native = esolangs.run(name, source, stdin=stdin, seed=seed)
+        native = esolangs.run(name, source, stdin=stdin, seed=seed).unwrap()
         with guarded_worker():
             assert (
-                esolangs.run(name, source, stdin=stdin, seed=seed, isolated=True)
+                esolangs.run(
+                    name, source, stdin=stdin, seed=seed, isolated=True
+                ).unwrap()
                 == native
             )
         module = interpreter_module(name)
@@ -238,14 +240,14 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             assert debug.snapshot() == snapshot
             assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
             assert debug.observation == result
-            assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
+            assert esolangs.run(name, source, stdin=stdin, seed=seed).unwrap() == native
             control.setattr(
                 module,
                 language.runtime.completion_entrypoint,
                 lambda *_args, **_options: HALTED_REPORT,
             )
             with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
-                esolangs.run(name, source, stdin=stdin, seed=seed)
+                esolangs.run(name, source, stdin=stdin, seed=seed).unwrap()
 
 
 def test_native_completion_sets_preserve_the_stepped_policy():
@@ -322,7 +324,7 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
         caps = language.runtime.capabilities
         source, stdin = SAMPLES[name]
         seed = language.runtime.reproducible_seed if language.runtime.random else None
-        native = esolangs.run(name, source, stdin=stdin, seed=seed)
+        native = esolangs.run(name, source, stdin=stdin, seed=seed).unwrap()
         assert native.completion.kind is Completion.HALTED
         module = interpreter_module(name)
         with monkeypatch.context() as control:
@@ -383,14 +385,14 @@ assert modules <= sys.modules.keys(), 'loading control did not fire'
             assert debug.snapshot() == snapshot
             assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
             assert debug.observation == result
-            assert esolangs.run(name, source, stdin=stdin, seed=seed) == native
+            assert esolangs.run(name, source, stdin=stdin, seed=seed).unwrap() == native
             control.setattr(
                 module,
                 language.runtime.completion_entrypoint,
                 lambda *_args, **_options: POST_HALT_REPORT,
             )
             with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
-                esolangs.run(name, source, stdin=stdin, seed=seed)
+                esolangs.run(name, source, stdin=stdin, seed=seed).unwrap()
 
 
 def test_every_runtime_declares_preparation_and_capabilities():

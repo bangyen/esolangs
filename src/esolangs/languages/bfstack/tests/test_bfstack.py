@@ -60,9 +60,9 @@ class TestBFStack:
         assert run_and_capture(">,.", inputs=["Z"]) == "Z"
         for text in ("\ud800\udfff", "\ud800", "\udfff", "\U000103ff"):
             assert (
-                run_public(
-                    "BFStack", ",." * len(text), stdin=text, isolated=True
-                ).output
+                run_public("BFStack", ",." * len(text), stdin=text, isolated=True)
+                .unwrap()
+                .output
                 == text
             )
         with pytest.raises(ExecutionCapError):
@@ -71,7 +71,7 @@ class TestBFStack:
                 "\ud800\udfff>",
                 isolated=True,
                 limits=ExecutionLimits(max_steps=2),
-            )
+            ).unwrap()
 
     def test_input_adds_a_cell_rather_than_overwriting_one(self, monkeypatch) -> None:
         """``,`` pushes, so what was on top before is still underneath."""

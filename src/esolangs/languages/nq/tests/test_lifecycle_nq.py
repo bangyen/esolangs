@@ -78,7 +78,7 @@ def test_nq_declared_construction_preserves_guard_readings(monkeypatch, binding)
     assert machine.ip_shape == "offset"
     assert machine.views == ()
     assert not machine.dumps_on_the_post_halt_step
-    assert run("NQ", "H").completion.kind is Completion.HALTED
+    assert run("NQ", "H").unwrap().completion.kind is Completion.HALTED
     if binding == "recursive":
         with pytest.raises(HaltError):
             vm.run_until_halt(machine, limit=20)

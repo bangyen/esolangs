@@ -833,7 +833,7 @@ def test_circuit_retry_keeps_emitted_output_and_clock_samples(monkeypatch):
 
     source = ")-3-:\n\n(-3-:"
     limits = esolangs.ExecutionLimits(max_steps=2)
-    expected = api.run(source, limits=limits)
+    expected = api.run(source, limits=limits).unwrap()
     assert expected.output == "111000"
     write = ScriptedIO._write
     for accepted in range(4):

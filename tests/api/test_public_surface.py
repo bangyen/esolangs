@@ -11,6 +11,8 @@ import pytest
 
 import esolangs
 import esolangs.debugger as debugger_api
+import esolangs.planning as planning
+import esolangs.serialization as serialization
 from tests.support.api_support import PUBLIC_MEMBERS, SIGNATURES
 from tests.support.paths import ROOT
 from tests.support.pick import first
@@ -26,7 +28,6 @@ class TestPackageSurface:
             "ArgumentError",
             "Artifact",
             "BooleanEvaluation",
-            "Catalog",
             "CompressedText",
             "DialectSchema",
             "DialectSettings",
@@ -43,7 +44,6 @@ class TestPackageSurface:
             "InputSource",
             "InterpreterLimitError",
             "Language",
-            "LanguageDeclaration",
             "LanguageInfo",
             "MissingDependencyError",
             "PreparedProgram",
@@ -61,20 +61,12 @@ class TestPackageSurface:
             "UnknownLanguageError",
             "describe",
             "encode_inputs",
-            "evaluate",
-            "execute",
-            "from_file",
-            "from_json",
             "from_source",
             "generate",
-            "instantiate",
             "list_languages",
-            "plan_generation",
             "prepare",
             "read_answer",
             "run",
-            "to_file",
-            "to_json",
         ]
 
     def test_the_signatures_are_pinned(self) -> None:
@@ -99,7 +91,7 @@ class TestPackageSurface:
                 "esolangs.registry._contracts.", ""
             )
 
-        for module in (esolangs, debugger_api):
+        for module in (esolangs, debugger_api, serialization, planning):
             for name in module.__all__:
                 value = getattr(module, name)
                 if inspect.isfunction(value):
@@ -390,7 +382,7 @@ class TestProgramObjectsRefuseMisuse:
             esolangs.CompressedText.from_chunks(iter(["+."]))
         )
         assert tagged.language == REFERENCE
-        assert esolangs.run(REFERENCE, tagged).output == "\x01"
+        assert esolangs.run(REFERENCE, tagged).unwrap().output == "\x01"
 
     def test_public_annotations_resolve_at_runtime(self) -> None:
         """``DialectSettings`` was a TYPE_CHECKING-only name: NameError."""
@@ -469,9 +461,9 @@ class TestProgramObjectsRefuseMisuse:
                 raise RuntimeError("boom")
 
         with pytest.raises(esolangs.ArgumentError, match="'x at 0xdead'"):
-            esolangs.run(REFERENCE, "+", isolated="x at 0xdead")  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+", isolated="x at 0xdead").unwrap()  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="<Raises>"):
-            esolangs.run(REFERENCE, "+", isolated=Raises())  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+", isolated=Raises()).unwrap()  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("value", ["x's at 0xdead>", b"escaped\\x at 0xdead>"])
     def test_quoted_text_in_a_container_is_kept(self, value: str | bytes) -> None:
@@ -537,7 +529,7 @@ class TestProgramObjectsRefuseMisuse:
                 REFERENCE,
                 "+[]",
                 limits=esolangs.ExecutionLimits(execution_timeout=0.2, max_steps=10**9),
-            )
+            ).unwrap()
 
     def test_settings_need_a_language(self) -> None:
         """Untagged, ``run`` ignored them silently."""
@@ -557,10 +549,10 @@ class TestProgramObjectsRefuseMisuse:
     def test_flags_must_be_bools(self) -> None:
         """A truthy ``isolated="no"`` switched the sandbox on."""
         with pytest.raises(esolangs.ArgumentError, match="isolated"):
-            esolangs.run(REFERENCE, "+", isolated="no")  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+", isolated="no").unwrap()  # type: ignore[arg-type]
         # A falsy non-bool reached ``isolated or timeout is not None`` unchecked.
         with pytest.raises(esolangs.ArgumentError, match="isolated"):
-            esolangs.run(REFERENCE, "+", isolated=[])  # type: ignore[arg-type]
+            esolangs.run(REFERENCE, "+", isolated=[]).unwrap()  # type: ignore[arg-type]
         with pytest.raises(esolangs.ArgumentError, match="balance"):
             esolangs.generate(REFERENCE, "0110", balance="no")  # type: ignore[arg-type]
 
@@ -574,6 +566,6 @@ class TestProgramObjectsRefuseMisuse:
                     "+[]",
                     limits=esolangs.ExecutionLimits(execution_timeout=0.5),
                     isolated=isolated,
-                )
+                ).unwrap()
             messages.add(str(caught.value))
         assert messages == {"execution exceeded the 0.5-second timeout"}

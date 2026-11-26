@@ -8,7 +8,6 @@ from esolangs.limits import ExecutionLimits
 from esolangs.operations.prepared import PreparedProgram
 from esolangs.outcomes import ExecutionOutcome, _capture_outcome
 from esolangs.registry._catalog import Catalog
-from esolangs.results import ExecutionResult
 from esolangs.runtime._acquire import PendingInput, bind_prepared_input
 from esolangs.runtime._controller import ExecutionController
 from esolangs.runtime._execution import (
@@ -49,78 +48,6 @@ def default_total(total: float | None, execution: float | None) -> float:
     if total is not None:
         return total
     return _ISOLATED_TIMEOUT + (0.0 if execution is None else execution)
-
-
-def run(
-    language: str,
-    program: ProgramSource,
-    *,
-    stdin: InputSource = "",
-    limits: ExecutionLimits | None = None,
-    seed: int | None = None,
-    isolated: bool = False,
-    settings: DialectSettings | None = None,
-    scale: int | None = None,
-    catalog: "Catalog | None" = None,
-) -> ExecutionResult:
-    """Execute ``program`` and return output, input usage and completion evidence.
-
-    Args:
-        program: Literal source or a :class:`~pathlib.Path` naming a file.
-            Text retains line endings and terminators in every container.
-            Bytes hold UTF-8 text or PNG; a readable stream is consumed from
-            its current position and left open. Use ``Language.from_file``
-            with ``normalize=True`` for native newline handling.
-        stdin: Consumed verbatim in the language's input unit, without
-            Boolean validation; binary is decoded as UTF-8. Installed hooks
-            leave stdin untouched when the runtime declares no stdin. Build a
-            Boolean-generated program's stdin with :func:`encode_inputs`,
-            which validates the bits.
-        limits: :class:`ExecutionLimits`; None is unbounded.  Every budget but
-            ``max_steps`` selects isolation.
-        seed: Integer fixing the languages that draw
-            (``describe(language).random``); the rest refuse it.
-        isolated: Run in a subprocess whose deadline covers startup and
-            loading (30 seconds plus any ``execution_timeout``); works on
-            Windows and in worker threads.  The catalog must match installed
-            runtimes.
-        settings: Dialect choices for plain source or choices the artifact
-            does not retain. Conflicting retained choices raise ProgramError.
-        scale: Raster scale factor; detected when None.
-
-    Raises:
-        UnknownLanguageError: ``language`` is not registered.
-        ArgumentError: An option is invalid or inapplicable
-            (for example, ``seed`` for a deterministic language).
-        ProgramNotFoundError: ``program`` is a Path that does not exist.
-        ProgramError: The program does not load (base of the above).
-        TemplateError: ``program`` is an unfilled template; see
-            :func:`instantiate`.
-        InputExhaustedError: A read past the end of ``stdin``.  Languages with
-            ``describe(language).eof_is_a_value`` supply a value instead,
-            and some halt.
-        ExecutionTimeoutError: A deadline elapsed.  Also a :class:`TimeoutError`.
-        ExecutionCapError: ``max_steps``, ``max_output`` or ``max_memory`` ran
-            out.
-        ExecutionBudgetError: Base of the two above; ``bound`` names the
-            budget.
-        InterpreterLimitError: The interpreter hit an implementation limit.
-        HaltError: The program halted on an invalid operation (base of the
-            three above).
-        MissingDependencyError: The language needs an uninstalled extra
-            (``esolangs[image]`` for PNG).
-    """
-    return _execute_outcome(
-        language,
-        program,
-        stdin=stdin,
-        limits=limits,
-        seed=seed,
-        isolated=isolated,
-        settings=settings,
-        scale=scale,
-        catalog=catalog,
-    ).unwrap()
 
 
 def _execute_loaded(
@@ -312,7 +239,7 @@ def _execute_outcome(
     )
 
 
-def execute(
+def run(
     language: str,
     program: ProgramSource,
     *,
@@ -326,14 +253,30 @@ def execute(
 ) -> ExecutionOutcome:
     """Return completion, rejection, input exhaustion, fault or limit evidence.
 
-    Total deadlines and output/memory caps select isolation. Execution
-    deadlines bound reading the program and stdin, and execution, each
-    separately; total deadlines also include worker startup.
-    Use outcome.unwrap() for the exception-raising result convention.
+    Use ``outcome.unwrap()`` for the result or original execution error.
 
-    Raises nothing deliberate: each package error is the outcome's
-    ``error``, with status ``rejected``, ``input_exhausted``, ``limit``
-    or ``fault``.
+    Args:
+        program: Literal source or a :class:`~pathlib.Path` naming a file.
+            Text retains line endings and terminators in every container.
+            Bytes hold UTF-8 text or PNG; a readable stream is consumed from
+            its current position and left open. Use ``Language.from_file``
+            with ``normalize=True`` for native newline handling.
+        stdin: Consumed verbatim in the language's input unit, without
+            Boolean validation; binary is decoded as UTF-8. Installed hooks
+            leave stdin untouched when the runtime declares no stdin. Build a
+            Boolean-generated program's stdin with :func:`encode_inputs`,
+            which validates the bits.
+        limits: :class:`ExecutionLimits`; None is unbounded.  Every budget but
+            ``max_steps`` selects isolation.
+        seed: Integer fixing the languages that draw
+            (``describe(language).random``); the rest refuse it.
+        isolated: Run in a subprocess whose deadline covers startup and
+            loading (30 seconds plus any ``execution_timeout``); works on
+            Windows and in worker threads.  The catalog must match installed
+            runtimes.
+        settings: Dialect choices for plain source or choices the artifact
+            does not retain. Conflicts return a rejected outcome with ProgramError.
+        scale: Raster scale factor; detected when None.
     """
     return _execute_outcome(
         language,

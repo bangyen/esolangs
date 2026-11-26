@@ -30,7 +30,7 @@ class TestBitTilde:
         for bit in "01":
             source = boolean._single_lookup([], bit, 2)
             for row in range(4):
-                result = esolangs.run("bit~", source, stdin=f"{row:02b}Q")
+                result = esolangs.run("bit~", source, stdin=f"{row:02b}Q").unwrap()
                 assert result.output == bit
                 assert result.input_position == 2
 

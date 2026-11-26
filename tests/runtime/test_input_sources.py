@@ -56,7 +56,7 @@ def test_invocation_uses_the_first_managed_input_reader(prepared, route) -> None
         limits = esolangs.ExecutionLimits(max_steps=2) if route == "bounded" else None
         result = target.run(
             *arguments, stdin=stdin, limits=limits, isolated=route == "isolated"
-        )
+        ).unwrap()
         output = result.output
         assert result.input_position == result.input_reads == 1
 
@@ -97,7 +97,7 @@ def _check_no_stdin_invocation(prepared, route) -> None:
         )
         result = target.run(
             *arguments, stdin=stdin, limits=limits, isolated=route == "isolated"
-        )
+        ).unwrap()
         output = result.output
         assert result.input_position == result.input_reads == 0
     assert api.read_answer(output) == "1"
@@ -108,9 +108,9 @@ def _check_no_stdin_invocation(prepared, route) -> None:
             reference, runtime=replace(reference.runtime, reads_stdin=False)
         )
         scoped = esolangs.Catalog([without_stdin]).bind(REFERENCE)
-        assert scoped.run("+.", stdin=stdin).output == "\x01"
+        assert scoped.run("+.", stdin=stdin).unwrap().output == "\x01"
         with pytest.raises(esolangs.ArgumentError, match="runtime declared"):
-            scoped.run("+.", stdin=stdin, isolated=True)
+            scoped.run("+.", stdin=stdin, isolated=True).unwrap()
 
 
 @pytest.mark.parametrize("route", ["native", "bounded", "isolated", "vm", "debugger"])
@@ -134,7 +134,10 @@ def test_invocation_rejects_options_before_accessing_streams(route, options, mes
     elif route == "debugger":
         invoke = api.make_debugger
     else:
-        invoke = api.run
+
+        def invoke(source, **options):
+            return api.run(source, **options).unwrap()
+
         options = options | {"isolated": route == "isolated"}
         if route == "bounded":
             options["limits"] = esolangs.ExecutionLimits(max_steps=2)
@@ -184,11 +187,11 @@ def test_managed_input_binding_and_binary_chunks(monkeypatch) -> None:
             prepared = api.prepare(program)
         assert prepared.artifact.source == ",."
         with ChunkedPair(packet(b"A")) as managed_input:
-            assert prepared.run(stdin=managed_input).output == "A"
+            assert prepared.run(stdin=managed_input).unwrap().output == "A"
         with ChunkedPair(packet(b",.")) as program:
             portable = api.from_json(api.to_json(program))
         assert portable.source == ",."
-        assert api.run(portable, stdin="A").output == "A"
+        assert api.run(portable, stdin="A").unwrap().output == "A"
 
     for invalid, message in (
         (None, "stream would block"),
@@ -203,7 +206,7 @@ def test_managed_input_binding_and_binary_chunks(monkeypatch) -> None:
             ChunkedPair(b"A", invalid) as managed_input,
             pytest.raises(esolangs.ArgumentError, match=message),
         ):
-            api.run(",.", stdin=managed_input)
+            api.run(",.", stdin=managed_input).unwrap()
 
     from esolangs.runtime import _files
 
@@ -277,7 +280,7 @@ def test_nonblocking_binary_stdin_waits_for_complete_utf8(
                 assert source.peek(1) == b"\xc3"
             result = esolangs.run(
                 REFERENCE, ",.", stdin=source, limits=esolangs.ExecutionLimits(**budget)
-            )
+            ).unwrap()
             assert not source.closed
             assert not os.get_blocking(source.fileno())
     finally:
@@ -292,14 +295,14 @@ def test_nonblocking_text_stdin_does_not_execute_a_partial_input(nonblocking_pip
     raw, writer = nonblocking_pipe
     writer.write(b"A")
     with io.TextIOWrapper(io.BufferedReader(raw)) as source:
-        outcome = esolangs.execute(REFERENCE, ",.", stdin=source)
+        outcome = esolangs.run(REFERENCE, ",.", stdin=source)
         assert isinstance(outcome.error, esolangs.ArgumentError)
         assert "cannot detect EOF" in str(outcome.error)
         assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
         assert not source.closed
         writer.close()
         os.set_blocking(raw.fileno(), True)
-        assert esolangs.run(REFERENCE, ",.", stdin=source).output == "A"
+        assert esolangs.run(REFERENCE, ",.", stdin=source).unwrap().output == "A"
 
 
 @pytest.mark.parametrize("blocking", [False, True])
@@ -310,7 +313,7 @@ def test_buffered_read_write_pair_reads_through_eof(nonblocking_pipe, blocking):
         writer.write(b"AB")
         writer.close()
         assert source.read(1) == b"A"
-        assert esolangs.run(REFERENCE, ",.", stdin=source).output == "B"
+        assert esolangs.run(REFERENCE, ",.", stdin=source).unwrap().output == "B"
         assert not source.closed
         assert os.get_blocking(raw.fileno()) is blocking
 
@@ -321,13 +324,16 @@ def test_buffered_read_write_pair_refuses_partial_input(nonblocking_pipe, budget
     limits = esolangs.ExecutionLimits(**budget)
     with io.FileIO(os.devnull, "wb") as sink, io.BufferedRWPair(raw, sink) as source:
         writer.write(b"A")
-        outcome = esolangs.execute(REFERENCE, ",.,.", stdin=source, limits=limits)
+        outcome = esolangs.run(REFERENCE, ",.,.", stdin=source, limits=limits)
         assert isinstance(outcome.error, esolangs.ArgumentError)
         assert "stream would block" in str(outcome.error)
         assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
         writer.write(b"B")
         writer.close()
-        assert esolangs.run(REFERENCE, ",.", stdin=source, limits=limits).output == "B"
+        assert (
+            esolangs.run(REFERENCE, ",.", stdin=source, limits=limits).unwrap().output
+            == "B"
+        )
         assert not source.closed
         assert not os.get_blocking(raw.fileno())
 
@@ -353,15 +359,15 @@ def test_stdin_read_access_and_managed_errors_preserve_the_boundary(budget):
     api = esolangs.Language(REFERENCE)
     limits = esolangs.ExecutionLimits(**budget)
     program = io.StringIO(",.")
-    result = api.execute(program, stdin=NoReader(), limits=limits)
+    result = api.run(program, stdin=NoReader(), limits=limits)
     assert isinstance(result.error, esolangs.ArgumentError)
     assert "descriptor unavailable" in str(result.error)
     assert program.tell() == 0
-    result = api.execute(program, stdin=WouldBlock(), limits=limits)
+    result = api.run(program, stdin=WouldBlock(), limits=limits)
     assert isinstance(result.error, esolangs.ArgumentError)
     assert "stream would block" in str(result.error)
     assert result.error.observation is None
-    result = api.execute(",.", stdin=Managed(), limits=limits)
+    result = api.run(",.", stdin=Managed(), limits=limits)
     assert result.error is failure
     assert result.bound == "preparation_timeout"
 
@@ -373,7 +379,7 @@ def test_acquisition_failure_keeps_the_nested_error_and_its_completed_result(
 ) -> None:
     api = esolangs.Language(REFERENCE)
     inner = api.from_source(",+.")
-    expected = api.run(inner, stdin="1")
+    expected = api.run(inner, stdin="1").unwrap()
     assert expected.output == "2"
     assert expected.completion is not None
     failures = []
@@ -388,7 +394,7 @@ def test_acquisition_failure_keeps_the_nested_error_and_its_completed_result(
 
     reader = Reader()
     source, stdin = (reader, "A") if channel == "source" else (",.", reader)
-    result = api.execute(source, stdin=stdin, limits=esolangs.ExecutionLimits(**budget))
+    result = api.run(source, stdin=stdin, limits=esolangs.ExecutionLimits(**budget))
     assert len(failures) == 1
     assert result.status == "rejected"
     assert result.error is failures[0]
@@ -421,9 +427,11 @@ def test_acquisition_failure_keeps_partial_evidence_on_the_nested_error(
 
     def read():
         try:
-            return api.run(
-                ",.,", stdin="A", limits=esolangs.ExecutionLimits(max_steps=3)
-            ).output
+            return (
+                api.run(",.,", stdin="A", limits=esolangs.ExecutionLimits(max_steps=3))
+                .unwrap()
+                .output
+            )
         except esolangs.InputExhaustedError as failure:
             failures.append(failure)
             raise
@@ -439,12 +447,12 @@ def test_acquisition_failure_keeps_partial_evidence_on_the_nested_error(
 
     limits = esolangs.ExecutionLimits(**budget)
     if channel == "path":
-        result = api.execute(CallbackPath(), limits=limits)
+        result = api.run(CallbackPath(), limits=limits)
     elif channel == "prepared_stdin":
-        result = api.prepare(",.").execute(stdin=Reader(), limits=limits)
+        result = api.prepare(",.").run(stdin=Reader(), limits=limits)
     else:
         source, stdin = (Reader(), "A") if channel == "source" else (",.", Reader())
-        result = api.execute(source, stdin=stdin, limits=limits)
+        result = api.run(source, stdin=stdin, limits=limits)
     assert result.status == "input_exhausted"
     assert len(failures) == 1
     assert result.error is failures[0]
@@ -476,7 +484,7 @@ def test_source_and_stdin_providers_see_caller_context(budget):
             Stream(source_text),
             stdin=Stream(input_text),
             limits=esolangs.ExecutionLimits(**budget),
-        )
+        ).unwrap()
     finally:
         input_text.reset(input_token)
         source_text.reset(source_token)
@@ -492,7 +500,7 @@ def test_nonblocking_stdin_prefix_does_not_complete_acquisition(
 ):
     raw, writer = nonblocking_pipe
     writer.write(b"A")
-    outcome = esolangs.execute(
+    outcome = esolangs.run(
         REFERENCE, ",.", stdin=raw, limits=esolangs.ExecutionLimits(**{bound: 0.2})
     )
     assert isinstance(outcome.error, esolangs.ExecutionTimeoutError)
@@ -500,7 +508,7 @@ def test_nonblocking_stdin_prefix_does_not_complete_acquisition(
     assert outcome.observation == esolangs.ExecutionResult("", None, None, None)
     writer.write(b"B")
     writer.close()
-    assert esolangs.run(REFERENCE, ",.", stdin=raw).output == "B"
+    assert esolangs.run(REFERENCE, ",.", stdin=raw).unwrap().output == "B"
 
 
 @pytest.mark.parametrize("block", ["program", "stdin"])
@@ -542,7 +550,7 @@ def test_expired_acquisition_does_not_start_another_read(monkeypatch, block):
     program = Program(",.")
     token = read_context.set(True)
     try:
-        outcome = esolangs.execute(
+        outcome = esolangs.run(
             REFERENCE,
             program,
             stdin=Input(),
@@ -569,7 +577,10 @@ def test_invalid_stdin_leaves_program_stream_at_its_original_offset(route, tmp_p
         invoke = api.make_vm if route == "vm" else api.make_debugger
         options = {}
     else:
-        invoke = api.run
+
+        def invoke(source, **options):
+            return api.run(source, **options).unwrap()
+
         options = {"isolated": route == "isolated"}
         if route == "bounded":
             options["limits"] = esolangs.ExecutionLimits(max_steps=2)

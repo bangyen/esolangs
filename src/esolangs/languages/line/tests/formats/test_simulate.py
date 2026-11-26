@@ -371,7 +371,7 @@ def test_pixel_vm_matches_the_native_arithmetic_fixture(fixture: str) -> None:
     stdin = "3\n2\n"
     vm = make_vm("Line", source, stdin=stdin)
     assert run_until_halt(vm, 1000)
-    assert vm.output == public_run("Line", source, stdin=stdin).output
+    assert vm.output == public_run("Line", source, stdin=stdin).unwrap().output
     assert vm.output == ("5" if fixture == "addition.png" else "6")
 
 

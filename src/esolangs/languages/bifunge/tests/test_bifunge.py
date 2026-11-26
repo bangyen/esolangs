@@ -38,7 +38,7 @@ def _check_raw_playfields() -> None:
             "Bifunge",
             "\n".join(_rows("A", "D")),
             limits=esolangs.ExecutionLimits(max_steps=20),
-        )
+        ).unwrap()
 
 
 def test_bifunge_execution() -> None:
@@ -48,7 +48,7 @@ def test_bifunge_execution() -> None:
         program = esolangs.prepare("Bifunge", esolangs.generate("Bifunge", table))
         for row, answer in enumerate(table):
             stdin = esolangs.encode_inputs("Bifunge", row_bits(row, n))
-            got = program.run(stdin=stdin)
+            got = program.run(stdin=stdin).unwrap()
             assert (got.output, got.input_reads) == (answer, n), (table, row)
 
 

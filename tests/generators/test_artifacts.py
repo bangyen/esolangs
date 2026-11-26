@@ -132,19 +132,19 @@ def test_artifact_persistence_executes_the_same_table(
                         restored,
                         isolated=isolated,
                         limits=esolangs.ExecutionLimits(max_steps=max_steps),
-                    )
+                    ).unwrap()
                 result = esolangs.run(
                     language,
                     restored.fill([0, 1]),
                     isolated=isolated,
                     limits=esolangs.ExecutionLimits(max_steps=max_steps),
-                )
+                ).unwrap()
                 assert result.output == "1"
         if isinstance(restored.source, esolangs.Raster):
             assert restored.scale == source.scale == 2
         if isinstance(restored, ProgramArtifact) and language != REFERENCE:
             with pytest.raises(esolangs.ProgramError):
-                esolangs.run(REFERENCE, restored)
+                esolangs.run(REFERENCE, restored).unwrap()
         current = pickle.loads(pickle.dumps(source))
         assert current == source
         for program in (source, restored, current):
@@ -160,7 +160,7 @@ def test_artifact_persistence_executes_the_same_table(
             esolangs.to_file(
                 language, esolangs.instantiate(language, restored, bits), path
             )
-            result = esolangs.run(language, path, settings=source.settings)
+            result = esolangs.run(language, path, settings=source.settings).unwrap()
             assert esolangs.read_answer(language, result.output) == expected
         return
     esolangs.to_file(language, source, path)
@@ -180,7 +180,7 @@ def test_text_generation_returns_an_immutable_record(language: str) -> None:
         assert filled.source == artifact.bindings.fill(
             artifact.source, [0, 1], spans=artifact.spans
         )
-        assert esolangs.run(language, filled).output == "1"
+        assert esolangs.run(language, filled).unwrap().output == "1"
     else:
         assert isinstance(artifact, ProgramArtifact)
 
@@ -344,12 +344,12 @@ def test_generated_and_restored_bindings_need_no_recovery(
     monkeypatch.setattr(esolangs, "_recover_template", refuse_recovery, raising=False)
     for template in (source, restored):
         with pytest.raises(esolangs.TemplateError):
-            esolangs.run(language, template)
+            esolangs.run(language, template).unwrap()
         with pytest.raises(esolangs.TemplateError):
             esolangs.instantiate(REFERENCE, template, [0, 1])
         filled = esolangs.instantiate(language, template, [0, 1])
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run(REFERENCE, filled)
+            esolangs.run(REFERENCE, filled).unwrap()
 
     with pytest.raises(esolangs.TemplateError, match="fill the template"):
         esolangs.Language(language).from_source(source)
@@ -400,10 +400,10 @@ def _check_wrapped_template_width() -> None:
         for candidate in (record, restored, pickle.loads(pickle.dumps(restored))):
             filled = api.instantiate(candidate, [bit], truth_table="01")
             assert filled == record.fill([bit])
-            assert api.run(filled).output == str(bit)
+            assert api.run(filled).unwrap().output == str(bit)
         for candidate in (legacy, wrong):
             filled = api.instantiate(candidate, [bit], width=3, truth_table="01")
-            assert api.run(filled).output == str(bit)
+            assert api.run(filled).unwrap().output == str(bit)
     for candidate in (legacy, wrong):
         with pytest.raises(esolangs.TemplateError, match="not the template"):
             api.instantiate(candidate, [1], truth_table="01")
@@ -458,7 +458,7 @@ def test_template_record_reuses_validated_runs_and_retains_provenance(
         assert isinstance(filled, ProgramArtifact)
         assert filled.language == language
         assert filled.settings is choices
-        assert esolangs.run(language, filled).output == answer
+        assert esolangs.run(language, filled).unwrap().output == answer
         assert restored.fill(bits) == filled
 
 
@@ -469,7 +469,7 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
     artifact = language.from_source(source)
     with pytest.raises(esolangs.ProgramError, match=r"pass its \.source"):
         language.from_source(artifact)  # type: ignore[arg-type]
-    assert language.run(source) == language.run(artifact)
+    assert language.run(source).unwrap() == language.run(artifact).unwrap()
     restored = language.from_json(language.to_json(artifact))
     path = tmp_path / "source.txt"
     language.to_file(artifact, path)
@@ -481,7 +481,7 @@ def test_explicit_source_survives_all_execution_routes_and_persistence(tmp_path)
                 program,
                 isolated=isolated,
                 limits=esolangs.ExecutionLimits(max_steps=max_steps),
-            )
+            ).unwrap()
             assert result.output == "\x00"
             assert result.input_position == 0
             assert result.completion is not None
@@ -500,7 +500,7 @@ def test_public_records_canonicalize_and_validate_metadata():
     assert artifact.language == REFERENCE.upper()
     canonical = esolangs.Language(REFERENCE.upper()).from_source(artifact.source)
     assert canonical.language == REFERENCE
-    assert esolangs.run(REFERENCE, artifact).output == "\x01"
+    assert esolangs.run(REFERENCE, artifact).unwrap().output == "\x01"
     with pytest.raises(esolangs.ArgumentError):
         ProgramArtifact("+.", REFERENCE, scale=1)
     with pytest.raises(esolangs.ArgumentError):
@@ -509,7 +509,7 @@ def test_public_records_canonicalize_and_validate_metadata():
         TemplateBindings(char="")
     template = TemplateArtifact("", REFERENCE.upper(), TemplateBindings(), spans=())
     with pytest.raises(esolangs.TemplateError):
-        esolangs.run(REFERENCE, template)
+        esolangs.run(REFERENCE, template).unwrap()
     with pytest.raises(esolangs.TemplateError, match="fill the template"):
         ProgramArtifact(template, REFERENCE)
     with pytest.raises(esolangs.TemplateError, match="fill the template"):
@@ -525,7 +525,7 @@ def test_public_records_canonicalize_and_validate_metadata():
     retained = ProgramArtifact(native, name, settings=settings, scale=generated.scale)
     assert retained.settings is settings
     assert retained.scale == generated.scale
-    assert esolangs.run(name, retained, stdin="1\n").output == "1"
+    assert esolangs.run(name, retained, stdin="1\n").unwrap().output == "1"
 
     class Text(str):
         language = name
@@ -533,7 +533,7 @@ def test_public_records_canonicalize_and_validate_metadata():
 
     declared = ProgramArtifact(Text("+."), REFERENCE)
     assert declared.settings is None
-    assert esolangs.run(REFERENCE, declared).output == "\x01"
+    assert esolangs.run(REFERENCE, declared).unwrap().output == "\x01"
 
 
 @pytest.mark.parametrize(
@@ -591,7 +591,7 @@ def test_saved_owner_must_keep_its_punctuation() -> None:
         api = catalog.bind(name)
         artifact = api.from_source("+.", settings=api.settings())
         document = api.to_json(artifact)
-        assert api.run(api.from_json(document)).output == "\x01"
+        assert api.run(api.from_json(document)).unwrap().output == "\x01"
         with pytest.raises(esolangs.ArgumentError, match="settings belong to"):
             replace(artifact, language=slug)
         saved = json.loads(document)
@@ -616,7 +616,7 @@ def test_stream_export_retains_relative_symlink_traversal(
     assert not (tmp_path / "program").exists()
     assert (actual / "program").read_bytes() == b"+."
     assert set(actual.iterdir()) == {child, actual / "program"}
-    assert api.run(actual / "program").output == "\x01"
+    assert api.run(actual / "program").unwrap().output == "\x01"
     assert api.from_file("link/../program").source == "+."
 
     alternate = tmp_path / "alternate"
@@ -657,7 +657,7 @@ def test_stream_export_retains_relative_symlink_traversal(
         api.to_file(RedirectedSource(refuse=False), spelling)
         assert set(original.iterdir()) == entries
         assert not destination.is_symlink()
-        assert api.run(destination).output == "\x01"
+        assert api.run(destination).unwrap().output == "\x01"
         assert decoy.read_bytes() == b"+++."
         assert referent.read_bytes() == b"++."
         link.unlink()
@@ -706,7 +706,7 @@ def _check_stream_export_after_parent_rename(
     api.to_file(RenamingSource(refuse=False), destination)
     assert set(moved.iterdir()) == {saved}
     assert stat.S_IMODE(saved.stat().st_mode) == 0o600
-    assert api.run(saved).output == "\x01"
+    assert api.run(saved).unwrap().output == "\x01"
     assert destination.read_bytes() == b"+++."
 
 
@@ -752,7 +752,7 @@ def _check_materialized_export_after_parent_rename(
                 assert saved.read_bytes() == b"++."
             else:
                 scoped.to_file(source, destination, settings=settings)
-                assert api.run(saved).output == "\x01"
+                assert api.run(saved).unwrap().output == "\x01"
             assert calls == ["move"]
             assert stat.S_IMODE(saved.stat().st_mode) == 0o600
             assert destination.read_bytes() == b"+++."
@@ -784,7 +784,9 @@ def test_recorded_balance_replays_once_and_checks_slot_positions():
     restored = api.from_json(document)
     assert restored.generation_balance is True
     calls.clear()
-    assert api.run(api.instantiate(restored, [1], truth_table="00")).output == "0"
+    assert (
+        api.run(api.instantiate(restored, [1], truth_table="00")).unwrap().output == "0"
+    )
     assert calls == [True]
     damaged = replace(restored, spans=((48, 48),))
     calls.clear()
@@ -795,7 +797,9 @@ def test_recorded_balance_replays_once_and_checks_slot_positions():
     del older["generation_balance"]
     legacy = api.from_json(json.dumps(older))
     calls.clear()
-    assert api.run(api.instantiate(legacy, [0], truth_table="00")).output == "0"
+    assert (
+        api.run(api.instantiate(legacy, [0], truth_table="00")).unwrap().output == "0"
+    )
     assert calls == [False, True]
 
 

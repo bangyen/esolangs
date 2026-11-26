@@ -386,7 +386,7 @@ def _row_answerer(
                         isolated=isolated,
                         scale=scale,
                         settings=settings,
-                    )
+                    ).unwrap()
 
                 result = (
                     call() if isolated else run_guard(call, "", ScriptedIO(""), bound)

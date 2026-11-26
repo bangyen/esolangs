@@ -36,7 +36,7 @@ def test_generator_and_runtime_hints_reach_cli(capsys, tmp_path, monkeypatch) ->
     monkeypatch.setattr(_table, "CATALOG", catalog)
     path = tmp_path / "source.bf"
     path.write_text("Ā", encoding="utf-8")
-    result = api.execute(path)
+    result = api.run(path)
     assert result.status == "rejected"
     assert isinstance(result.error, esolangs.ProgramError)
     hint = result.error.__notes__[0]
@@ -66,7 +66,7 @@ def test_generator_and_runtime_hints_reach_cli(capsys, tmp_path, monkeypatch) ->
         )
         catalog = esolangs.Catalog([declaration])
         api = catalog.bind(name)
-        outcome = api.execute(path)
+        outcome = api.run(path)
         assert outcome.error is not None
         assert outcome.error.__notes__ == [
             "hint: check the language syntax with esolangs describe --spec 'É Befunge'"
@@ -103,11 +103,11 @@ def test_invalid_numeric_input_is_not_mislabeled_as_a_program_error(mode: str) -
         bounds["limits"] = esolangs.ExecutionLimits(max_steps=100)
     elif mode == "isolated":
         bounds["isolated"] = True
-    assert run("Befunge", "&.@", stdin=b"-12345", **bounds).output == "-12345 "
+    assert run("Befunge", "&.@", stdin=b"-12345", **bounds).unwrap().output == "-12345 "
     with pytest.raises(
         esolangs.ArgumentError, match="input must be an integer"
     ) as error:
-        run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds)
+        run("Befunge", '"A",&.@', stdin=io.StringIO("invalid"), **bounds).unwrap()
     assert error.value.partial_output == "A"
 
 
@@ -137,7 +137,9 @@ def test_random_snapshot_cannot_prove_a_cycle(wrapped) -> None:
             source,
             seed=0,
             limits=esolangs.ExecutionLimits(execution_timeout=1),
-        ).output
+        )
+        .unwrap()
+        .output
         == ""
     )
     assert run_until_halt_or_cycle(vm, limit=1000) is True
@@ -162,7 +164,7 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
     source = _RANDOM_BRANCH
     observed = {}
     for seed in range(8):
-        native = run("Befunge", source, seed=seed).output
+        native = run("Befunge", source, seed=seed).unwrap().output
         machine = make_vm("Befunge", source, seed=seed)
         debugger = make_debugger("Befunge", source, seed=seed)
         complete_vm(machine)
@@ -175,7 +177,9 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
                 source,
                 seed=seed,
                 limits=esolangs.ExecutionLimits(max_steps=100),
-            ).output
+            )
+            .unwrap()
+            .output
             == native
         )
         observed.setdefault(native, seed)
@@ -193,7 +197,9 @@ def test_seeded_steps_debuggers_and_combined_worker_budgets_agree(tmp_path):
                 limits=esolangs.ExecutionLimits(
                     execution_timeout=5, max_steps=100, max_output=len(output)
                 ),
-            ).output
+            )
+            .unwrap()
+            .output
             == output
         )
         shell = run_cli(
@@ -229,7 +235,9 @@ def test_cli_large_decimal_seed_matches_python(tmp_path: Path) -> None:
     ]
     outputs = []
     for operand, seed in cases:
-        expected = run("Befunge", _RANDOM_BRANCH, seed=seed, limits=limits).output
+        expected = (
+            run("Befunge", _RANDOM_BRANCH, seed=seed, limits=limits).unwrap().output
+        )
         shell = subprocess.run(
             [
                 sys.executable,

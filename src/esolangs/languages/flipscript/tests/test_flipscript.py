@@ -129,7 +129,7 @@ def test_rejected_assignment_retries_keep_the_first_read() -> None:
     code = "start(0)\nnum X = 1\nstring X = input"
     stdin = "first\nsecond\n"
     limits = ExecutionLimits(max_steps=10)
-    first = api.execute(code, stdin=stdin, limits=limits)
+    first = api.run(code, stdin=stdin, limits=limits)
     assert first.status == "fault"
     assert first.observation.input_position == len("first\n")
 

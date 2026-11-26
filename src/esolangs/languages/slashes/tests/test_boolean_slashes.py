@@ -58,7 +58,7 @@ def test_constant_root_parses_inputs_without_selecting_a_table(inputs, bit) -> N
     assert _evaluate("///", template, inputs=inputs) == table
     assert _is_unfilled_template(template.source)
     with pytest.raises(TemplateError, match="fill the template"):
-        esolangs.run("///", template)
+        esolangs.run("///", template).unwrap()
     for row in (0, (1 << inputs) - 1):
         bits = [int(c) for c in format(row, f"0{inputs}b")]
         program = esolangs.instantiate("///", template, bits)
@@ -98,7 +98,7 @@ def test_more_ignored_slots_than_slots_is_a_program_not_a_template() -> None:
     # Two X in a three-character slot list once shifted by -1 and raised.
     program = boolean._UNARY + boolean._DECODE + "$XX>qAqB"
     assert not _is_unfilled_template(program)
-    assert isinstance(esolangs.run("///", program).output, str)
+    assert isinstance(esolangs.run("///", program).unwrap().output, str)
 
 
 def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
@@ -113,7 +113,7 @@ def test_ignored_input_template_is_recognized_only_while_canonical() -> None:
 
 def test_partly_filled_constant_still_requires_its_remaining_input() -> None:
     assert _is_unfilled_template("/a$b//1")
-    assert esolangs.run("///", "$0").output == "$0"
+    assert esolangs.run("///", "$0").unwrap().output == "$0"
 
 
 def _check_cli_fill_dialect(capsysbinary, monkeypatch) -> None:
@@ -150,14 +150,17 @@ def _check_cli_fill_dialect(capsysbinary, monkeypatch) -> None:
         settings = api.settings(mode=mode)
         calls.clear()
         assert (
-            api.run(source.decode().removesuffix("\n"), settings=settings).output == "1"
+            api.run(source.decode().removesuffix("\n"), settings=settings)
+            .unwrap()
+            .output
+            == "1"
         )
 
 
 def _check_standalone_native_source(path) -> None:
     api = esolangs.Language("///")
     source = api.instantiate(api.generate("01"), [1])
-    expected = api.run(source).output.encode()
+    expected = api.run(source).unwrap().output.encode()
     assert expected == b"1"
     native = esolangs.registry.INTERPRETERS[api.name]
     emitted = subprocess.run(
@@ -177,7 +180,7 @@ def _check_standalone_native_source(path) -> None:
     ):
         path.write_bytes(transport)
         api_source = api.from_file(path, normalize=True)
-        assert api.run(api_source).output.encode() == output
+        assert api.run(api_source).unwrap().output.encode() == output
         result = subprocess.run(
             [sys.executable, "-m", native, str(path)],
             stdin=subprocess.DEVNULL,
@@ -229,7 +232,7 @@ def test_cli_preserves_literal_source(tmp_path, capsysbinary, monkeypatch) -> No
             )
             payload = esolangs.CompressedText.from_chunks((source, ""), limits=limits)
             artifact = api.from_json(api.to_json(api.generate("11")))
-            assert api.run(artifact).output == source
+            assert api.run(artifact).unwrap().output == source
             for flags in ([], ["--gzip"], ["--plain"]):
                 monkeypatch.setattr(sys, "argv", [*generate, *flags])
                 main()

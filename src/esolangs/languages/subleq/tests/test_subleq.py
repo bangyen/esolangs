@@ -168,6 +168,6 @@ def test_large_addresses_keep_their_diagnostic_types() -> None:
         with pytest.raises(
             ProgramError, match=r"invalid Subleq data address <negative integer"
         ):
-            api.run(f"-{digits} 0 0")
+            api.run(f"-{digits} 0 0").unwrap()
     finally:
         sys.set_int_max_str_digits(cap)

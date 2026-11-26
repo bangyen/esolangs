@@ -292,7 +292,7 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
     narrowed = _cm_layout(original, len("_=z x+negativeOne,NOT PRINT."))
     assert narrowed.startswith("_=z x+negativeOne,NOT PRINT.\n")
     for source in (original, spaced, narrowed):
-        result = esolangs.run("Collatz Multiverse", source, stdin="1")
+        result = esolangs.run("Collatz Multiverse", source, stdin="1").unwrap()
         assert result.output == "0"
         assert result.input_position == 1
     rng = random.Random(3)

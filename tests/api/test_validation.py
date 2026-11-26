@@ -66,7 +66,7 @@ class TestTheChecksAreSymmetric:
                 REFERENCE,
                 "+.",
                 limits=esolangs.ExecutionLimits(execution_timeout=timeout),
-            )
+            ).unwrap()
         with pytest.raises(esolangs.ArgumentError, match="timeout"):
             _debugger().run(limits=esolangs.ExecutionLimits(execution_timeout=timeout))
 
@@ -87,7 +87,7 @@ class TestTheChecksAreSymmetric:
         self, program: object, stdin: object, expected: type[Exception]
     ) -> None:
         with pytest.raises(expected):
-            esolangs.run(REFERENCE, program, stdin=stdin)
+            esolangs.run(REFERENCE, program, stdin=stdin).unwrap()
         with pytest.raises(expected):
             debugger_api.make_debugger(REFERENCE, program, stdin=stdin)
 
@@ -163,13 +163,16 @@ class TestOneOperationOneSpelling:
         import inspect
 
         import esolangs.debugger as debugger_api
+        import esolangs.planning as planning
+        import esolangs.serialization as serialization
 
         functions = {
             name: getattr(module, name)
-            for module in (esolangs, debugger_api)
+            for module in (esolangs, debugger_api, planning, serialization)
             for name in module.__all__
             if inspect.isfunction(getattr(module, name))
         }
+        functions.update(evaluate=esolangs.evaluate, instantiate=esolangs.instantiate)
         del functions["list_languages"]
         methods = {
             name
@@ -193,8 +196,10 @@ class TestOneOperationOneSpelling:
         esolangs.to_file(REFERENCE, "+.", path)
         assert esolangs.from_file(REFERENCE, path) == bound.from_file(path)
         assert esolangs.from_source(REFERENCE, "+.") == bound.from_source("+.")
-        assert esolangs.execute(REFERENCE, "+.") == bound.execute("+.")
-        assert esolangs.prepare(REFERENCE, "+.").run() == bound.run("+.")
+        assert esolangs.run(REFERENCE, "+.") == bound.run("+.")
+        assert (
+            esolangs.prepare(REFERENCE, "+.").run().unwrap() == bound.run("+.").unwrap()
+        )
         artifact = esolangs.generate(REFERENCE, "0110")
         assert esolangs.evaluate(REFERENCE, artifact, [0, 1]).answer == "1"
         assert bound.make_vm("+.").ip == bound.prepare("+.").make_vm().ip

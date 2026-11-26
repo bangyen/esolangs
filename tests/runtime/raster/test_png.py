@@ -654,7 +654,7 @@ def test_raster_language_names_gzip_before_decoding(
     gzip_bytes = gzip.compress(b"+.", mtime=0)
     compressed = esolangs.CompressedText(gzip_bytes)
     text = esolangs.Language(REFERENCE)
-    assert text.run(compressed).output == "\x01"
+    assert text.run(compressed).unwrap().output == "\x01"
     document = json.loads(text.to_json(compressed))
     document["language"] = language
     path = tmp_path / "program.gz"
@@ -671,7 +671,7 @@ def test_raster_language_names_gzip_before_decoding(
         lambda: api.to_json(io.BytesIO(gzip_bytes)),
         lambda: api.prepare(compressed),
         lambda: api.from_source(compressed),
-        lambda: api.run(esolangs.ProgramArtifact(compressed, language)),
+        lambda: api.run(esolangs.ProgramArtifact(compressed, language)).unwrap(),
     ):
         with pytest.raises(esolangs.ProgramError, match=message) as refused:
             load()

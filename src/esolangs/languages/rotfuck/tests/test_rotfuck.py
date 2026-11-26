@@ -88,7 +88,7 @@ def _check_portable_template_settings() -> None:
             assert requested == validations
             assert filled.settings == settings
             requested.clear()
-            assert api.run(filled).output == "0"
+            assert api.run(filled).unwrap().output == "0"
 
 
 def _check_cli_generation_settings(capsys, monkeypatch) -> None:
@@ -123,7 +123,7 @@ def _check_cli_generation_settings(capsys, monkeypatch) -> None:
         selected = api.settings(rotation=rotation)
         for bit in "01":
             calls.clear()
-            assert api.run(source, stdin=bit, settings=selected).output == bit
+            assert api.run(source, stdin=bit, settings=selected).unwrap().output == bit
 
 
 class TestRotation:
@@ -148,9 +148,11 @@ class TestRotation:
         alternate = AlternateSettings(schema, rotation="backward")
         retained = api.from_source(",,", settings=backward)
         assert retained.settings is backward
-        assert api.run(",,", stdin="A", settings=alternate).output == ""
-        assert api.run(retained, stdin="A", settings=alternate).output == ""
-        assert api.prepare(",,", settings=alternate).run(stdin="A").output == ""
+        assert api.run(",,", stdin="A", settings=alternate).unwrap().output == ""
+        assert api.run(retained, stdin="A", settings=alternate).unwrap().output == ""
+        assert (
+            api.prepare(",,", settings=alternate).run(stdin="A").unwrap().output == ""
+        )
         generated = api.generate("01", settings=alternate)
         assert generated == api.generate("01", settings=backward)
         assert "".join(api.evaluate(generated, [b]).answer for b in (0, 1)) == "01"
@@ -158,7 +160,7 @@ class TestRotation:
         forward = api.from_source(",,", settings=api.settings(rotation="forward"))
         restored = pickle.loads(pickle.dumps(forward))
         assert restored == forward
-        assert api.run(restored, stdin="A").output == "A"
+        assert api.run(restored, stdin="A").unwrap().output == "A"
         _check_cli_generation_settings(capsys, monkeypatch)
 
     def test_an_unknown_rotation_is_refused(self) -> None:

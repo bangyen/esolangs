@@ -163,7 +163,7 @@ def public(case, rows, *, isolated=False, cap=None):
             ),
             # A timeout selects a worker, which keeps its own digit limit.
             isolated=isolated,
-        )
+        ).unwrap()
     except esolangs.EsolangError as caught:
         assert kind is not None
         assert type(caught) is error_type(kind, raw=False)

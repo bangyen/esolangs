@@ -104,7 +104,7 @@ def test_the_printable_range_is_the_scalar_values() -> None:
         sys.set_int_max_str_digits(640)
         wide = "9" * 641
         with pytest.raises(HaltError, match=f"printing {wide}, which is no code point"):
-            execute("Fackward", wide, limits=ExecutionLimits(max_steps=2))
+            execute("Fackward", wide, limits=ExecutionLimits(max_steps=2)).unwrap()
     finally:
         sys.set_int_max_str_digits(original)
 
@@ -116,7 +116,7 @@ def test_a_count_past_sys_maxsize_is_a_limit() -> None:
             "Fackward",
             "$ 99999999999999999999 1",
             limits=ExecutionLimits(execution_timeout=2),
-        )
+        ).unwrap()
     machine = _Machine("$4096H", ScriptedIO())
     machine.step()
     assert machine.ip == (0, 4096)

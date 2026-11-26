@@ -397,7 +397,7 @@ def test_every_raster_language_generates_shared_source(language: str) -> None:
     assert program.source.rows
     assert program.source.rows[0]
     assert esolangs.describe(language).source_kind == "raster"
-    assert esolangs.run(language, program, stdin="1\n").output == "1"
+    assert esolangs.run(language, program, stdin="1\n").unwrap().output == "1"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -416,7 +416,7 @@ def test_every_raster_language_runs_its_png(language: str, tmp_path: Path) -> No
     assert isinstance(program.source, Raster)
     path = tmp_path / f"{language.lower()}.png"
     esolangs.to_file(language, program, path)
-    assert esolangs.run(language, path, stdin="0\n").output == "0"
+    assert esolangs.run(language, path, stdin="0\n").unwrap().output == "0"
 
 
 @pytest.mark.parametrize("language", RASTER_LANGUAGES)
@@ -525,7 +525,9 @@ def test_bounded_raster_run_preserves_explicit_scale(language: str, native_png) 
             stdin="1\n",
             scale=2,
             limits=esolangs.ExecutionLimits(max_steps=1000),
-        ).output
+        )
+        .unwrap()
+        .output
         == "1"
     )
     vm = make_vm(language, source, stdin="0\n", scale=2)
@@ -1104,7 +1106,7 @@ def test_png_language_tag_refuses_cross_language_execution(
             RASTER_LANGUAGES[1],
             native_png(source),
             limits=esolangs.ExecutionLimits(max_steps=1000),
-        )
+        ).unwrap()
 
     path = tmp_path / "foreign.png"
     original = native_png(source)
@@ -1114,7 +1116,7 @@ def test_png_language_tag_refuses_cross_language_execution(
     path.write_bytes(png.write_metadata(pixels, claims | {"language": foreign}))
     api = esolangs.Language(RASTER_LANGUAGES[0])
     for isolated in (False, True):
-        failure = api.execute(path, isolated=isolated)
+        failure = api.run(path, isolated=isolated)
         assert isinstance(failure.error, esolangs.ProgramError)
         message = str(failure.error)
         assert r"generated for clear\x1b[2J\nlabel" in message
@@ -1154,7 +1156,7 @@ def test_explicit_scale_overrides_png_metadata(
         stdin=esolangs.encode_inputs(language, [1]),
         scale=2,
         limits=esolangs.ExecutionLimits(max_steps=1000),
-    )
+    ).unwrap()
     assert esolangs.read_answer(language, result.output) == "1"
     spec = LANGUAGES[language]
     caps = replace(spec.runtime.capabilities, supports_scale=False)
@@ -1162,7 +1164,7 @@ def test_explicit_scale_overrides_png_metadata(
     catalog = CATALOG.with_language(replace(spec, runtime=runtime))
     monkeypatch.setattr(module, "supports_scale", True)
     with pytest.raises(esolangs.ArgumentError, match="scale"):
-        esolangs.run(language, changed, scale=2, catalog=catalog)
+        esolangs.run(language, changed, scale=2, catalog=catalog).unwrap()
 
     scoped = catalog.bind(language)
     for balance in (False, True):

@@ -29,7 +29,7 @@ class TestModulousSaysWhatWentWrong:
     def test_each_halt_names_its_cause(self, program: str, expected: str) -> None:
         """Not the class, the sentence: an empty message helps nobody."""
         with pytest.raises(esolangs.HaltError, match=expected):
-            run("Modulous", program, stdin="")
+            run("Modulous", program, stdin="").unwrap()
 
 
 @pytest.mark.medium
@@ -57,7 +57,7 @@ def test_cli_prints_runtime_hints(tmp_path: Path, capsys) -> None:
 @pytest.mark.medium
 def test_runtime_error_keeps_partial_output_and_one_hint(isolated) -> None:
     with pytest.raises(HaltError) as caught:
-        run("Modulous", "[PSH INT 65][PRT][SWP]", isolated=isolated)
+        run("Modulous", "[PSH INT 65][PRT][SWP]", isolated=isolated).unwrap()
     assert str(caught.value) == "SWP needs two values on the stack and there are 0"
     assert caught.value.partial_output == "A"
     assert caught.value.__notes__[0] == "hint: push two values before SWP"
@@ -84,7 +84,9 @@ def test_fixed_input_does_not_make_branch_input_forkable() -> None:
             stdin="42\n",
             seed=1,
             limits=esolangs.ExecutionLimits(execution_timeout=1),
-        ).output
+        )
+        .unwrap()
+        .output
         == "42"
     )
 
@@ -104,13 +106,13 @@ class TestOutputSurvivesAFailure:
     def test_a_halt_carries_what_was_printed(self) -> None:
         """The attribute, which is what the CLI reads."""
         with pytest.raises(esolangs.HaltError) as caught:
-            run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
+            run("Modulous", self.PRINTS_THEN_FAILS, stdin="").unwrap()
         assert caught.value.partial_output == "Hi"
 
     def test_it_is_in_the_traceback_too(self) -> None:
         """The note, for anyone who only sees the traceback."""
         with pytest.raises(esolangs.HaltError) as caught:
-            run("Modulous", self.PRINTS_THEN_FAILS, stdin="")
+            run("Modulous", self.PRINTS_THEN_FAILS, stdin="").unwrap()
         assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
 
     def test_a_timeout_carries_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -143,22 +145,22 @@ class TestOutputSurvivesAFailure:
                 self.LOOPS_PRINTING,
                 stdin="",
                 limits=esolangs.ExecutionLimits(execution_timeout=budget),
-            )
+            ).unwrap()
         assert caught.value.bound == "execution_timeout"
         assert caught.value.partial_output.startswith("999")
 
     def test_an_error_before_the_run_carries_nothing(self) -> None:
         """Empty is the honest answer when the program never started."""
         with pytest.raises(esolangs.UnknownLanguageError) as unknown:
-            run("nosuchlang", "+", stdin="")
+            run("nosuchlang", "+", stdin="").unwrap()
         assert unknown.value.partial_output == ""
         with pytest.raises(esolangs.ProgramError) as bad:
-            run(REFERENCE, "[[[", stdin="")
+            run(REFERENCE, "[[[", stdin="").unwrap()
         assert bad.value.partial_output == ""
 
     def test_a_successful_run_is_unchanged(self) -> None:
         """The attribute is for failures; success returns as it always did."""
-        assert run(REFERENCE, "+++.", stdin="").output == "\x03"
+        assert run(REFERENCE, "+++.", stdin="").unwrap().output == "\x03"
 
     def test_the_cli_prints_it_before_the_error(
         self, capsys: pytest.CaptureFixture[str], tmp_path: Path

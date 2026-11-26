@@ -470,7 +470,7 @@ def _execute(
 
     def drive(*_args: object) -> None:
         if not supported:
-            output = esolangs.run(language, source, stdin=stdin).output
+            output = esolangs.run(language, source, stdin=stdin).unwrap().output
             result["execution_status"] = "halted"
             result["actual_answer"] = esolangs.read_answer(language, output)
             return

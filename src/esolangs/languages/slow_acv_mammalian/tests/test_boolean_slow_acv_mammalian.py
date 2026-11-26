@@ -68,12 +68,16 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
     )
     for row in (0, 1, 85, 128, 170, 255):
         bits = [int(bit) for bit in f"{row:08b}"]
-        output = execute(
-            "SLOW ACV MAMMALIAN",
-            program,
-            stdin=esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits),
-            settings=settings,
-        ).output
+        output = (
+            execute(
+                "SLOW ACV MAMMALIAN",
+                program,
+                stdin=esolangs.encode_inputs("SLOW ACV MAMMALIAN", bits),
+                settings=settings,
+            )
+            .unwrap()
+            .output
+        )
         assert esolangs.read_answer("SLOW ACV MAMMALIAN", output) == table[row]
 
 
@@ -144,7 +148,7 @@ class TestSlowAcvMammalian:
             assert io_obj.position() == 2
         monkeypatch.setattr(boolean, "constant_output", lambda _: "1")
         mutant = esolangs.generate("SLOW ACV MAMMALIAN", "00")
-        assert execute("SLOW ACV MAMMALIAN", mutant, stdin="0").output == "1"
+        assert execute("SLOW ACV MAMMALIAN", mutant, stdin="0").unwrap().output == "1"
 
     def test_a_node_opens_the_accumulator_on_a_clean_digit(self) -> None:
         """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever the state."""

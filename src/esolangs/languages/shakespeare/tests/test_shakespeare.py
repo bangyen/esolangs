@@ -202,9 +202,9 @@ def _check_number_retry_and_wide_output() -> None:
     limits = ExecutionLimits(max_steps=5)
     expected = ExecutionResult("1", 3, 1, 0, steps=3)
     for invoke in (
-        lambda: api.execute(source, stdin="bad 7", limits=limits),
-        lambda: plan.execute(stdin="bad 7", limits=limits),
-        lambda: api.execute(source, stdin="bad 7", limits=limits, isolated=True),
+        lambda: api.run(source, stdin="bad 7", limits=limits),
+        lambda: plan.run(stdin="bad 7", limits=limits),
+        lambda: api.run(source, stdin="bad 7", limits=limits, isolated=True),
     ):
         outcome = invoke()
         assert outcome.status == "rejected"
@@ -233,18 +233,18 @@ def _check_number_retry_and_wide_output() -> None:
     with pytest.raises(InputExhaustedError) as exhausted:
         eof.step()
     assert exhausted.value.observation == ExecutionResult("1", 0, 0, 2, steps=3)
-    assert plan.run(stdin="7", limits=limits).output == "17"
+    assert plan.run(stdin="7", limits=limits).unwrap().output == "17"
 
     digits = "9" * 641
     old_limit = sys.get_int_max_str_digits()
     try:
         sys.set_int_max_str_digits(640)
-        assert api.run(source, stdin=digits).output == "1" + digits
+        assert api.run(source, stdin=digits).unwrap().output == "1" + digits
         for isolated in (False, True):
-            assert plan.run(stdin=digits, limits=limits, isolated=isolated).output == (
-                "1" + digits
-            )
-            invalid = api.execute(
+            assert plan.run(
+                stdin=digits, limits=limits, isolated=isolated
+            ).unwrap().output == ("1" + digits)
+            invalid = api.run(
                 _play(read + "Speak your mind!"),
                 stdin=digits,
                 limits=limits,
@@ -289,19 +289,22 @@ def _check_expression_depth() -> None:
     plan = api.prepare(source)
     expected = f"{depth}0"
     limits = ExecutionLimits(max_steps=5)
-    assert api.run(source).output == plan.run().output == expected
+    assert api.run(source).unwrap().output == plan.run().unwrap().output == expected
 
-    bounded = api.run(source, limits=limits)
+    bounded = api.run(source, limits=limits).unwrap()
     assert bounded.output == expected
     assert bounded.steps == 5
-    assert plan.run(limits=limits) == api.run(source, limits=limits, isolated=True)
+    assert (
+        plan.run(limits=limits).unwrap()
+        == api.run(source, limits=limits, isolated=True).unwrap()
+    )
     debug = plan.make_debugger()
     assert debug.run(limits=limits) == "halted"
     assert debug.observation == bounded
 
     deeper = _play(f"You are twice {doubled}.")
     for isolated in (False, True):
-        outcome = api.execute(deeper, limits=limits, isolated=isolated)
+        outcome = api.run(deeper, limits=limits, isolated=isolated)
         assert isinstance(outcome.error, InterpreterLimitError)
         assert str(outcome.error) == "Shakespeare expression nested too deeply"
 

@@ -15,7 +15,10 @@ from tests.support.samples import SAMPLES
 
 def _check_completion_worker(language, source, options, expected) -> None:
     with guarded_worker():
-        assert esolangs.run(language, source, isolated=True, **options) == expected
+        assert (
+            esolangs.run(language, source, isolated=True, **options).unwrap()
+            == expected
+        )
 
 
 @pytest.mark.parametrize("language", LANGUAGES)
@@ -52,7 +55,7 @@ def test_native_driver_reports_completion(language):
         "stdin": stdin,
         "seed": 7 if lang.runtime.random else None,
     }
-    result = esolangs.run(language, source, **options)
+    result = esolangs.run(language, source, **options).unwrap()
     _check_completion_worker(language, source, options, result)
     caps = lang.runtime.capabilities
     if (
@@ -74,7 +77,7 @@ def test_native_driver_reports_completion(language):
             "stdin": sample_stdin,
             "seed": lang.runtime.reproducible_seed if lang.runtime.random else None,
         }
-        native_sample = esolangs.run(language, sample, **raw_options)
+        native_sample = esolangs.run(language, sample, **raw_options).unwrap()
         assert native_sample.completion.kind is Completion.HALTED
         _check_completion_worker(language, sample, raw_options, native_sample)
     assert isinstance(result.completion, CompletionReport)
@@ -101,7 +104,7 @@ def test_native_driver_reports_completion(language):
                         limits=esolangs.ExecutionLimits(max_steps=1),
                         isolated=isolated,
                         **options,
-                    )
+                    ).unwrap()
                     == expected
                 )
             else:
@@ -112,7 +115,7 @@ def test_native_driver_reports_completion(language):
                         limits=esolangs.ExecutionLimits(max_steps=1),
                         isolated=isolated,
                         **options,
-                    )
+                    ).unwrap()
                 assert caught.value.bound == "max_steps"
                 assert caught.value.observation == expected
                 assert expected.completion is None

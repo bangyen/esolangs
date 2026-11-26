@@ -60,7 +60,7 @@ def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
         ("1,1:+=+=", "12", 4, 1),
         ("1,1:+#", "|1|\n", 2, 2),
     ):
-        complete = api.run(source, limits=limits)
+        complete = api.run(source, limits=limits).unwrap()
         assert (complete.output, complete.steps) == (output, steps)
         fault = HaltError("output refused")
         attempts = []

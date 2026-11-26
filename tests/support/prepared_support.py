@@ -42,14 +42,16 @@ def check_image_reuse(
         assert second.snapshot() == before
         assert complete_vm(first) == first_out
         assert complete_vm(second) == second_out
-        assert prepared.run(stdin=first_in).output == first_out
+        assert prepared.run(stdin=first_in).unwrap().output == first_out
         assert (
             prepared.run(
                 stdin=second_in, limits=esolangs.ExecutionLimits(max_steps=100)
-            ).output
+            )
+            .unwrap()
+            .output
             == second_out
         )
-        assert prepared.execute(stdin=third_in).unwrap().output == third_out
+        assert prepared.run(stdin=third_in).unwrap().output == third_out
         assert calls == [source]
 
 
@@ -60,8 +62,8 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
 
     api = esolangs.Language(language)
     default_seed = api.catalog.languages[api.name].runtime.reproducible_seed
-    default_output = api.run(code, seed=default_seed).output
-    expected = {seed: api.run(code, seed=seed) for seed in range(16)}
+    default_output = api.run(code, seed=default_seed).unwrap().output
+    expected = {seed: api.run(code, seed=seed).unwrap() for seed in range(16)}
     assert len({result.output for result in expected.values()}) > 1
     calls = []
     parse = getattr(module, parser_name)
@@ -94,9 +96,9 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
             return min(choice, upper - 1)
 
         patch.setattr(randomness.secrets, "randbelow", controlled)
-        first_unseeded = prepared.run().output
+        first_unseeded = prepared.run().unwrap().output
         choice = 1
-        second_unseeded = prepared.run().output
+        second_unseeded = prepared.run().unwrap().output
         assert first_unseeded != second_unseeded
         assert real_draws
         drawn = len(real_draws)
@@ -104,11 +106,11 @@ def check_random_plan_reuse(language, code, module, parser_name, monkeypatch):
         assert complete_vm(prepared.make_vm()) == default_output
         assert len(real_draws) == drawn
         for seed, want in expected.items():
-            assert prepared.run(seed=seed) == want
-            assert prepared.run(seed=seed) == want
+            assert prepared.run(seed=seed).unwrap() == want
+            assert prepared.run(seed=seed).unwrap() == want
             stepped = prepared.run(
                 seed=seed, limits=esolangs.ExecutionLimits(max_steps=1000)
-            )
+            ).unwrap()
             assert replace(stepped, steps=None) == want
             first, second = prepared.make_vm(seed=seed), prepared.make_vm(seed=seed)
             initial = second.snapshot()

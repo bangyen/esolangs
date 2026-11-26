@@ -188,18 +188,18 @@ def _check_decimal_default_independence() -> None:
                 expected = "0.3Z" + ("0." + "3" * 28) * 2
                 limits = ExecutionLimits(max_steps=60)
                 plan = api.prepare(source)
-                native = api.run(source)
-                local = api.run(source, limits=limits)
+                native = api.run(source).unwrap()
+                local = api.run(source, limits=limits).unwrap()
                 assert local.output == native.output == expected
-                assert plan.run(limits=limits) == local
-                assert api.run(source, limits=limits, isolated=True) == local
+                assert plan.run(limits=limits).unwrap() == local
+                assert api.run(source, limits=limits, isolated=True).unwrap() == local
                 debug = plan.make_debugger()
                 assert debug.run(limits=limits) == "halted"
                 assert debug.observation == local
 
                 fault = "(Z)([/|1|0])"
-                rejected = api.execute(fault, limits=limits)
-                isolated = api.execute(fault, limits=limits, isolated=True)
+                rejected = api.run(fault, limits=limits)
+                isolated = api.run(fault, limits=limits, isolated=True)
                 assert type(rejected.error) is type(isolated.error) is HaltError
                 assert str(rejected.error) == str(isolated.error)
                 assert rejected.observation.output == "Z"
@@ -262,16 +262,16 @@ def test_runtime_errors() -> None:
     source = f"(Z)([^|10|{exponent}])"
     message = f"Parenthesys ValueError: 10 ^ {exponent}"
     limits = ExecutionLimits(max_steps=60)
-    native = api.execute(source)
-    bounded = api.execute(source, limits=limits)
-    worker = api.execute(source, limits=limits, isolated=True)
+    native = api.run(source)
+    bounded = api.run(source, limits=limits)
+    worker = api.run(source, limits=limits, isolated=True)
     for outcome in (native, bounded, worker):
         assert type(outcome.error) is HaltError
         assert str(outcome.error) == message
         assert outcome.observation.output == "Z"
     assert isinstance(native.error.__cause__, Overflow)
     assert bounded.observation == worker.observation
-    assert api.run("(Z)([^|10|3])").output == "Z1000"
+    assert api.run("(Z)([^|10|3])").unwrap().output == "Z1000"
 
     debugger = api.make_debugger(source)
     assert bounded.observation.steps is not None

@@ -70,7 +70,8 @@ def test_compact_pool_retains_its_definition_and_clearance(monkeypatch) -> None:
     model.prefix = ""
     broken = model.render()
     assert any(
-        run("Circuit Diagram", broken, stdin=f"{row:010b}").output != table[row]
+        run("Circuit Diagram", broken, stdin=f"{row:010b}").unwrap().output
+        != table[row]
         for row in rows
     )
     assert _compact_pool_layout("0" * 512) is None

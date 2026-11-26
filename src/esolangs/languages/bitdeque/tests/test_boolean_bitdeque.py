@@ -115,7 +115,7 @@ def test_bitdeque_short_load_witness_tables(width: int) -> None:
             for row, expected in enumerate(table):
                 bits = list(map(int, format(row, f"0{n}b")))
                 program = esolangs.instantiate("Bitdeque", template, bits)
-                assert execute("Bitdeque", program).output == expected
+                assert execute("Bitdeque", program).unwrap().output == expected
 
 
 def test_bitdeque_short_load_floor_and_rendered_total() -> None:
@@ -158,7 +158,7 @@ def test_bitdeque_short_load_saved_source_and_large_tables(width: int) -> None:
             program = esolangs.instantiate(
                 "Bitdeque", template, bits, truth_table=table
             )
-            assert execute("Bitdeque", program).output == table[row]
+            assert execute("Bitdeque", program).unwrap().output == table[row]
 
 
 def test_bitdeque_short_load_rejects_changed_prefix() -> None:

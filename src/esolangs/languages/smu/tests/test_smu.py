@@ -154,7 +154,7 @@ def _check_output_retry(monkeypatch: pytest.MonkeyPatch) -> None:
         ("((++++++++))(+)", "ÿ\x01", 0, 6, 2, 6, (127, 7)),
     ):
         limits = ExecutionLimits(max_steps=10)
-        expected = language.run(source, limits=limits)
+        expected = language.run(source, limits=limits).unwrap()
         assert expected.output == output
         for accepted in (0, 1):
             calls = []

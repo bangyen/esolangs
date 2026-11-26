@@ -84,7 +84,9 @@ def test_a_non_self_halting_machine_can_already_be_finished() -> None:
     vm = make_vm("Suffolk", ",", stdin="1")
     assert not vm.self_halts
     assert run_until_halt(vm, 2)
-    assert complete_vm(vm, max_steps=0) == run("Suffolk", ",", stdin="1").output
+    assert (
+        complete_vm(vm, max_steps=0) == run("Suffolk", ",", stdin="1").unwrap().output
+    )
 
     class SwapAfterCommand(debugger_api.Debugger):
         def __init__(self, replacement):
@@ -160,7 +162,9 @@ def test_documented_eof_halts_with_the_answer(monkeypatch) -> None:
             program,
             stdin=stdin,
             limits=esolangs.ExecutionLimits(execution_timeout=20),
-        ).output
+        )
+        .unwrap()
+        .output
         == "1"
     )
 
@@ -176,7 +180,9 @@ def test_suffolk_no_longer_disagrees_with_itself() -> None:
                 program,
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(execution_timeout=20),
-            ).output
+            )
+            .unwrap()
+            .output
             == want
         )
         debugger = debugger_api.make_debugger("Suffolk", program, stdin=stdin)
@@ -234,8 +240,8 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     from esolangs.languages.suffolk import interpreter
 
     with guarded_worker(expected=2):
-        assert esolangs.run("Suffolk", "<", isolated=True) == result
-        assert esolangs.run("Suffolk", ",", isolated=True) == ended
+        assert esolangs.run("Suffolk", "<", isolated=True).unwrap() == result
+        assert esolangs.run("Suffolk", ",", isolated=True).unwrap() == ended
 
     api = esolangs.Language("Suffolk")
     record = api.catalog.languages[api.name]
@@ -268,14 +274,14 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     ):
         custom = SimpleNamespace(step=lambda: None, **({"halted": False} | fields))
         for outcome in (
-            scoped.execute("<", stdin="A", limits=limits),
-            prepared.execute(stdin="A", limits=limits),
+            scoped.run("<", stdin="A", limits=limits),
+            prepared.run(stdin="A", limits=limits),
         ):
             assert isinstance(outcome.error, esolangs.InterpreterLimitError)
             assert diagnostic in str(outcome.error)
             assert outcome.observation == outcome.error.observation == observed
         custom.halted = True
-        assert prepared.run(stdin="A", limits=limits) == replace(
+        assert prepared.run(stdin="A", limits=limits).unwrap() == replace(
             observed, completion=ended.completion
         )
 
@@ -292,7 +298,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
             return lambda: (index % 2,)
 
     custom = Alternating()
-    stepped = prepared.run(stdin="A", limits=limits)
+    stepped = prepared.run(stdin="A", limits=limits).unwrap()
     assert stepped.output == "A"
     assert stepped.steps == stepped.completion.cycle.repeat_pass == 2
 
@@ -309,7 +315,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
         step=lambda: None, halted=False, snapshot=RefusedComparison
     )
     with pytest.raises(TypeError, match="snapshot comparison") as caught:
-        prepared.execute(stdin="A", limits=limits)
+        prepared.run(stdin="A", limits=limits)
     assert caught.value is original
     _check_snapshot_key_faults(scoped, interpreter, monkeypatch)
 
@@ -331,7 +337,7 @@ def test_native_completion_distinguishes_eof_from_an_actual_repeat(monkeypatch):
     assert eof.observation == replace(ended, steps=1)
     monkeypatch.setattr(interpreter, "_execute", lambda *_args: POST_HALT_REPORT)
     with pytest.raises(esolangs.InterpreterLimitError, match="declared policy"):
-        esolangs.run("Suffolk", "<")
+        esolangs.run("Suffolk", "<").unwrap()
 
 
 def _check_snapshot_key_faults(api, interpreter, monkeypatch):
@@ -389,8 +395,8 @@ def _check_snapshot_key_faults(api, interpreter, monkeypatch):
             (lambda: debugger_api.Debugger(make_debugger()).snapshot(), 2, None, True),
             (prove, 1, 0, True),
             (prove, None, 1, True),
-            (lambda: prepared.run(stdin="A", limits=limits), 1, 0, True),
-            (lambda: prepared.run(stdin="A", limits=limits), None, 1, True),
+            (lambda: prepared.run(stdin="A", limits=limits).unwrap(), 1, 0, True),
+            (lambda: prepared.run(stdin="A", limits=limits).unwrap(), None, 1, True),
             (
                 lambda: debugger_api.Debugger(
                     debugger_api.Debugger(Machine(ScriptedIO("A")))
@@ -442,7 +448,7 @@ def _check_snapshot_key_faults(api, interpreter, monkeypatch):
 
         fault = None
         assert prove() is False
-        result = prepared.run(stdin="A", limits=limits)
+        result = prepared.run(stdin="A", limits=limits).unwrap()
         assert result.output == "A!"
         assert result.steps == result.completion.cycle.repeat_pass == 1
 
@@ -453,7 +459,7 @@ def test_bounded_runs_keep_the_native_first_repeat_boundary(worker):
     api = esolangs.Language("Suffolk")
     artifact = api.from_source("!" * 49 + "<.<!")
     steps = len(artifact.source)
-    native = api.run(artifact)
+    native = api.run(artifact).unwrap()
     assert native.output == "0"
     assert native.completion.cycle.repeat_pass == steps
     expected = replace(native, steps=steps)
@@ -461,17 +467,17 @@ def test_bounded_runs_keep_the_native_first_repeat_boundary(worker):
     limits = esolangs.ExecutionLimits(
         max_steps=steps, total_timeout=5 if worker else None
     )
-    assert api.run(artifact, limits=limits) == expected
-    assert prepared.run(limits=limits) == expected
+    assert api.run(artifact, limits=limits).unwrap() == expected
+    assert prepared.run(limits=limits).unwrap() == expected
     assert api.evaluate(artifact, [0], limits=limits) == esolangs.BooleanEvaluation(
         "0", expected
     )
 
-    earlier = prepared.execute(limits=replace(limits, max_steps=steps - 1))
+    earlier = prepared.run(limits=replace(limits, max_steps=steps - 1))
     assert earlier.bound == "max_steps"
     assert earlier.observation == replace(expected, completion=None, steps=steps - 1)
-    eof = api.run(",.", stdin="A", limits=replace(limits, max_steps=3))
-    assert eof == replace(api.run(",.", stdin="A"), steps=3)
+    eof = api.run(",.", stdin="A", limits=replace(limits, max_steps=3)).unwrap()
+    assert eof == replace(api.run(",.", stdin="A").unwrap(), steps=3)
     assert eof.output == "@"
     assert eof.completion.kind is Completion.HALTED
 

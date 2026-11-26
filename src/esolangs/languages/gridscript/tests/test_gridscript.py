@@ -114,7 +114,7 @@ def test_move_last_node_relocates_a_node_in_this_run(move: str) -> None:
     source = _east("PRINT 7", f"MOVE LAST NODE {move}", "PRINT 8")
     program = Language("GridScript").prepare(source)
     for _ in range(2):
-        assert program.run().output == "778"
+        assert program.run().unwrap().output == "778"
 
 
 def test_move_outside_the_program_removes_the_node() -> None:
@@ -226,11 +226,14 @@ def test_decimal_operands_ignore_pythons_digit_limit() -> None:
     try:
         sys.set_int_max_str_digits(640)
         for isolated in (False, True):
-            assert language.run(source, stdin=wide, isolated=isolated).output == "1"
+            assert (
+                language.run(source, stdin=wide, isolated=isolated).unwrap().output
+                == "1"
+            )
             with pytest.raises(HaltError, match="overflows a 32-bit INT"):
-                language.run(_HEAD + f"(2,1):PRINT {wide}", isolated=isolated)
+                language.run(_HEAD + f"(2,1):PRINT {wide}", isolated=isolated).unwrap()
             with pytest.raises(ProgramError, match="a node lies outside"):
-                language.run(_HEAD + f"({wide},1):PRINT 1", isolated=isolated)
+                language.run(_HEAD + f"({wide},1):PRINT 1", isolated=isolated).unwrap()
     finally:
         sys.set_int_max_str_digits(previous)
 

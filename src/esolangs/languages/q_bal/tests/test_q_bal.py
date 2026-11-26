@@ -165,14 +165,20 @@ def test_integers_ignore_pythons_decimal_limit() -> None:
     previous = sys.get_int_max_str_digits()
     try:
         sys.set_int_max_str_digits(640)
-        assert language.run(f"{number} -> out").output == number + "\n"
-        assert language.run(f"Q x = {{{number}}}\nx -> out").output == number + "\n"
-        assert language.run("in -> out", stdin=f"-{number}\n").output == f"-{number}\n"
-        assert language.run("10 ^ 1000 -> out").output == number + "\n"
+        assert language.run(f"{number} -> out").unwrap().output == number + "\n"
+        assert (
+            language.run(f"Q x = {{{number}}}\nx -> out").unwrap().output
+            == number + "\n"
+        )
+        assert (
+            language.run("in -> out", stdin=f"-{number}\n").unwrap().output
+            == f"-{number}\n"
+        )
+        assert language.run("10 ^ 1000 -> out").unwrap().output == number + "\n"
         with pytest.raises(HaltError, match="divides by zero"):
-            language.run(f"{number} / 0 -> out")
+            language.run(f"{number} / 0 -> out").unwrap()
         with pytest.raises(ProgramError, match="literal queue holds numbers"):
-            language.run("Q x = {²}")
+            language.run("Q x = {²}").unwrap()
 
         table = "0" * (2**14 - 1) + "1"
         artifact = language.generate(table)

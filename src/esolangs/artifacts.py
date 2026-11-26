@@ -40,6 +40,7 @@ from esolangs.runtime.memory import repr_value
 __all__ = [
     "Artifact",
     "BooleanEvaluation",
+    "BoundRow",
     "ProgramArtifact",
     "TemplateArtifact",
     "TemplateBindings",
@@ -111,6 +112,14 @@ def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
         object.__setattr__(artifact, item.name, value)
 
 
+@dataclass(frozen=True, slots=True)
+class BoundRow:
+    """Runnable artifact and literal stdin for one Boolean row."""
+
+    program: ProgramArtifact[Program]
+    stdin: str
+
+
 class _CatalogOwner:
     """Live evaluation scope. Portable and pickle records carry source data only."""
 
@@ -170,6 +179,13 @@ class ProgramArtifact[Source: Program](_CatalogOwner):
             f"scale={repr_value(self.scale)}, "
             f"input_arity={repr_value(self.input_arity)})"
         )
+
+    def bind(self, bits: list[int] | tuple[int, ...]) -> BoundRow:
+        """Return this row's runnable program and stdin."""
+        from esolangs.operations.evaluation import _row_binder
+
+        _, _, bind = _row_binder(self, catalog=self._evaluation_catalog(None))
+        return bind(bits)
 
     def evaluate(
         self,
@@ -336,6 +352,13 @@ class TemplateArtifact(_CatalogOwner):
         for name, value in state.items():
             object.__setattr__(self, name, value)
         self._check_layout()
+
+    def bind(self, bits: list[int] | tuple[int, ...]) -> BoundRow:
+        """Return this row's runnable program and stdin."""
+        from esolangs.operations.evaluation import _row_binder
+
+        _, _, bind = _row_binder(self, catalog=self._evaluation_catalog(None))
+        return bind(bits)
 
     def evaluate(
         self,

@@ -12,6 +12,6 @@ def test_folded_and_wrapped_templates() -> None:
         for ordinal, bits in enumerate(product((0, 1), repeat=3)):
             for template in (native, wrapped):
                 program = instantiate("Trml", template, bits)
-                result = run("Trml", program, stdin="unused")
+                result = run("Trml", program, stdin="unused").unwrap()
                 assert result.output == table[ordinal]
                 assert result.input_reads == 0

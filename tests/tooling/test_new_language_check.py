@@ -173,7 +173,9 @@ def test_a_generator_language_needs_no_hand_sample() -> None:
     name = first(boolean_generator=True, parameterized=False, answer_mode="output")
     program, stdin = samples._generated(name)
     assert (
-        esolangs.read_answer(name, esolangs.run(name, program, stdin=stdin).output)
+        esolangs.read_answer(
+            name, esolangs.run(name, program, stdin=stdin).unwrap().output
+        )
         == "1"
     )
 

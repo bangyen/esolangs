@@ -44,7 +44,9 @@ def test_compressed_and_plain_sources_share_execution(tmp_path, monkeypatch) -> 
                 source,
                 stdin="\x00\xff",
                 limits=esolangs.ExecutionLimits(max_steps=20),
-            ).output
+            )
+            .unwrap()
+            .output
             == ""
         )
     restored = esolangs.from_json("Unary", esolangs.to_json("Unary", program))
@@ -58,7 +60,9 @@ def test_compressed_and_plain_sources_share_execution(tmp_path, monkeypatch) -> 
             stdin="\x00\xff",
             isolated=True,
             limits=esolangs.ExecutionLimits(execution_timeout=5),
-        ).output
+        )
+        .unwrap()
+        .output
         == ""
     )
     _check_normalized_gzip_storage(path)
@@ -122,7 +126,7 @@ def _check_expired_gzip_acquisition(path, monkeypatch) -> None:
     with monkeypatch.context() as edit, ThreadPoolExecutor() as callers:
         edit.setattr(gzip.GzipFile, "read", pause_first_read)
         pending = callers.submit(
-            api.execute,
+            api.run,
             path,
             stdin=stdin,
             isolated=True,
@@ -141,7 +145,9 @@ def _check_expired_gzip_acquisition(path, monkeypatch) -> None:
     assert len(reads) == 1
     with stream_read_deadline(monotonic() - 1), pytest.raises(StreamReadTimeoutError):
         esolangs.CompressedText(data)
-    retry = api.run(path, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=20))
+    retry = api.run(
+        path, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=20)
+    ).unwrap()
     assert (retry.output, retry.steps, stdin.tell()) == ("", 2, 1)
 
 
@@ -175,7 +181,7 @@ def test_cli_exports_gzip_by_default_and_plain_on_request(tmp_path) -> None:
     wrapped = api.generate("01", width=887)
     assert str(wrapped.source) == "0" * 887 + "\n"
     limits = esolangs.ExecutionLimits(max_steps=20)
-    expected = api.run(wrapped, stdin="\0", limits=limits)
+    expected = api.run(wrapped, stdin="\0", limits=limits).unwrap()
     assert (expected.output, expected.steps) == ("", 2)
     for flags in ([], ["--plain"]):
         export = subprocess.run(

@@ -22,7 +22,7 @@ class TestPackageEntryPoint:
         with patch.object(sys, "argv", ["esolangs", "generate", REFERENCE, "0110"]):
             runpy.run_module("esolangs", run_name="__main__")
         out = capsys.readouterr().out
-        assert esolangs.run(REFERENCE, out, stdin="01").output == "1"
+        assert esolangs.run(REFERENCE, out, stdin="01").unwrap().output == "1"
 
 
 class TestASuggestionIsWorthLessThanSilence:

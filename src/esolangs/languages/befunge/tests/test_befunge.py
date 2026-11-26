@@ -284,11 +284,11 @@ def test_integer_subclass_seed_keeps_native_worker_and_vm_results(monkeypatch) -
     rows += [""] * 18 + ["@", ".", "4"]
     source = "\n".join(rows)
     api = esolangs.Language("Befunge")
-    expected = api.run(source, seed=-7)
-    assert expected.output != api.run(source, seed=-1).output
+    expected = api.run(source, seed=-7).unwrap()
+    assert expected.output != api.run(source, seed=-1).unwrap().output
     seeds.clear()
-    assert api.run(source, seed=Seed(-7)) == expected
-    assert api.prepare(source).run(seed=Seed(-7), isolated=True) == expected
+    assert api.run(source, seed=Seed(-7)).unwrap() == expected
+    assert api.prepare(source).run(seed=Seed(-7), isolated=True).unwrap() == expected
     vm = api.make_vm(source, seed=Seed(-7))
     assert run_until_halt(vm, limit=8)
     assert vm.output == expected.output
@@ -467,10 +467,13 @@ def test_a_clean_branch_can_prove_halt_after_an_unforkable_sibling() -> None:
     api = esolangs.Language("Befunge")
     source = "?@\n&"
     assert (
-        api.run(source, seed=2, limits=esolangs.ExecutionLimits(max_steps=2)).steps == 2
+        api.run(source, seed=2, limits=esolangs.ExecutionLimits(max_steps=2))
+        .unwrap()
+        .steps
+        == 2
     )
     with pytest.raises(esolangs.InputExhaustedError):
-        api.run(source, seed=4, limits=esolangs.ExecutionLimits(max_steps=2))
+        api.run(source, seed=4, limits=esolangs.ExecutionLimits(max_steps=2)).unwrap()
 
     vm = api.make_vm(source, seed=4)
     saved = vm.snapshot()

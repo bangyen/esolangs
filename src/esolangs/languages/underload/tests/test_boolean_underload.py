@@ -124,7 +124,7 @@ def test_short_selectors_keep_public_provenance_and_uniform_width(monkeypatch) -
             filled = esolangs.instantiate(
                 "Underload", template, [row // 2, row % 2], truth_table=table
             )
-            assert execute("Underload", filled).output == expected
+            assert execute("Underload", filled).unwrap().output == expected
             if width < 5:
                 assert max(map(len, filled.source.splitlines())) <= max(3, width)
         with pytest.raises(esolangs.TemplateError, match="not the template"):
@@ -178,12 +178,12 @@ def _check_scoped_portable_bindings(monkeypatch) -> None:
 
         filled = scope.instantiate(sparse, [1], truth_table=table)
         assert filled.settings.options() == {"right": 2}
-        assert scope.run(filled).output == "1"
+        assert scope.run(filled).unwrap().output == "1"
         repaired = scope.instantiate(
             restored, [1], truth_table=table, settings=scope.settings(right=2)
         )
         assert repaired.settings.options() == {"left": 2, "right": 2}
-        assert scope.run(repaired).output == "1"
+        assert scope.run(repaired).unwrap().output == "1"
 
     defaults = esolangs.DialectSchema(
         language.name, schema.choices, {"left": 2, "right": 1}
@@ -200,7 +200,7 @@ def _check_scoped_portable_bindings(monkeypatch) -> None:
             no_choices, [1], truth_table=table, settings=scope.settings(right=2)
         )
         assert filled.settings.options() == {"right": 2}
-        assert scope.run(filled).output == "1"
+        assert scope.run(filled).unwrap().output == "1"
 
 
 def test_short_selector_floor_and_actual_narrow_corpus() -> None:
@@ -228,7 +228,7 @@ def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
         changed = replace(
             plain, source=plain.source.replace(f"({bit})", f"(\n{bit})", 1)
         )
-        assert api.run(changed.fill([bit])).output == f"\n{bit}"
+        assert api.run(changed.fill([bit])).unwrap().output == f"\n{bit}"
         with pytest.raises(esolangs.TemplateError, match="not the template"):
             api.instantiate(changed, [bit], truth_table="01")
 
@@ -236,7 +236,7 @@ def test_layout_provenance_does_not_ignore_output_literal_newlines() -> None:
     for valid in (wrapped, *(api.generate("01", width=width) for width in (1, 4, 8))):
         for bit in (0, 1):
             filled = api.instantiate(valid, [bit], truth_table="01")
-            assert api.run(filled).output == str(bit)
+            assert api.run(filled).unwrap().output == str(bit)
 
 
 @pytest.mark.parametrize("n", [4, 5, 6])

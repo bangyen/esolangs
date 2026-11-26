@@ -632,9 +632,9 @@ def test_branch_search_normalizes_a_registered_syntax_fault() -> None:
     api = Language("Modulous")
     source = "[RND 2][JMP F 2 IF 0][PSH INT bad][END]"
     limits = ExecutionLimits(max_steps=4)
-    assert api.run(source, seed=1, limits=limits).steps == 3
+    assert api.run(source, seed=1, limits=limits).unwrap().steps == 3
     with pytest.raises(ProgramError, match="bad") as live:
-        api.run(source, seed=0, limits=limits)
+        api.run(source, seed=0, limits=limits).unwrap()
     vm = api.make_vm(source, seed=0)
     saved = vm.snapshot()
     assert run_until_halt_or_all_branches_cycle(vm, limit=8) is True

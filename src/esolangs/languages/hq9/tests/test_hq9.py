@@ -39,8 +39,11 @@ def _check_native_quine_files(tmp_path) -> None:
             api.to_file(data, path, gzip=packed, normalize=True)
             saved = path.read_bytes()
             assert (gzip.decompress(saved) if packed else saved) == data
-            assert api.run(path).output.encode() == data
-            assert api.run(api.from_file(path, normalize=True)).output.encode() == data
+            assert api.run(path).unwrap().output.encode() == data
+            assert (
+                api.run(api.from_file(path, normalize=True)).unwrap().output.encode()
+                == data
+            )
             for command in ([native], ["esolangs", "run", api.name]):
                 result = subprocess.run(
                     [sys.executable, "-m", *command, str(path)],

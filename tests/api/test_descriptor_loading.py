@@ -219,7 +219,7 @@ def _check_template_hooks_require_real_layouts(declaration, backend, emit) -> No
             [dataclasses.replace(declaration, backend=valid)]
         ).bind(REFERENCE)
         template = bound.generate("01", **options)
-        assert bound.run(bound.instantiate(template, [0])).output == "\x01"
+        assert bound.run(bound.instantiate(template, [0])).unwrap().output == "\x01"
 
         invalid = dataclasses.replace(backend, **{hook: lambda _: ClaimedLayout()})
         bound = esolangs.Catalog(

@@ -33,5 +33,5 @@ def terminates(name: str, source: str, stdin: str, timeout: float) -> bool:
         source,
         stdin=stdin,
         limits=esolangs.ExecutionLimits(execution_timeout=timeout),
-    )
+    ).unwrap()
     return True

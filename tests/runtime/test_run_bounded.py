@@ -29,8 +29,10 @@ def test_bounded_run_matches_whole_program_execution(language: str) -> None:
             program,
             stdin=stdin,
             limits=esolangs.ExecutionLimits(max_steps=100_000),
-        ).output
-        == esolangs.run(language, program, stdin=stdin).output
+        )
+        .unwrap()
+        .output
+        == esolangs.run(language, program, stdin=stdin).unwrap().output
     )
 
 
@@ -42,7 +44,7 @@ def test_step_exhaustion_keeps_partial_output() -> None:
                 "+.[]",
                 limits=esolangs.ExecutionLimits(max_steps=10),
                 isolated=isolated,
-            )
+            ).unwrap()
         assert caught.value.partial_output == "\x01"
         assert caught.value.bound == "max_steps"
 
@@ -58,7 +60,7 @@ def test_timeout_works_on_a_worker_thread() -> None:
             ),
         )
         with pytest.raises(esolangs.ExecutionTimeoutError, match="timeout"):
-            future.result(timeout=5)
+            future.result(timeout=5).unwrap()
 
 
 def test_time_and_step_bounds_allow_a_halt() -> None:
@@ -73,7 +75,9 @@ def test_time_and_step_bounds_allow_a_halt() -> None:
                     max_output=1 if isolated else None,
                 ),
                 isolated=isolated,
-            ).output
+            )
+            .unwrap()
+            .output
             == "\x01"
         )
         assert (
@@ -82,7 +86,9 @@ def test_time_and_step_bounds_allow_a_halt() -> None:
                 "",
                 limits=esolangs.ExecutionLimits(max_steps=0),
                 isolated=isolated,
-            ).output
+            )
+            .unwrap()
+            .output
             == ""
         )
         assert (
@@ -91,7 +97,9 @@ def test_time_and_step_bounds_allow_a_halt() -> None:
                 "+.",
                 limits=esolangs.ExecutionLimits(max_steps=10**5000),
                 isolated=isolated,
-            ).output
+            )
+            .unwrap()
+            .output
             == "\x01"
         )
 
@@ -103,7 +111,7 @@ def test_invalid_bounds_are_refused(options: dict[str, Any]) -> None:
     with pytest.raises(esolangs.ArgumentError):
         esolangs.ExecutionLimits(**options)
     with pytest.raises(esolangs.ArgumentError, match="limits"):
-        esolangs.run(REFERENCE, "", limits=options)  # type: ignore[arg-type]
+        esolangs.run(REFERENCE, "", limits=options).unwrap()  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(
@@ -112,19 +120,28 @@ def test_invalid_bounds_are_refused(options: dict[str, Any]) -> None:
 def test_raster_execution_obeys_the_step_bound(language: str) -> None:
     source = esolangs.generate(language, "01")
     stdin = esolangs.encode_inputs(language, [1])
-    out = esolangs.run(
-        language, source, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=1000)
-    ).output
+    out = (
+        esolangs.run(
+            language,
+            source,
+            stdin=stdin,
+            limits=esolangs.ExecutionLimits(max_steps=1000),
+        )
+        .unwrap()
+        .output
+    )
     assert esolangs.read_answer(language, out) == "1"
     with pytest.raises(esolangs.ExecutionCapError):
         esolangs.run(
             language, source, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=0)
-        )
+        ).unwrap()
 
 
 def test_interpreter_errors_are_preserved() -> None:
     with pytest.raises(esolangs.InputExhaustedError):
-        esolangs.run(REFERENCE, ",", limits=esolangs.ExecutionLimits(max_steps=1))
+        esolangs.run(
+            REFERENCE, ",", limits=esolangs.ExecutionLimits(max_steps=1)
+        ).unwrap()
 
 
 def test_a_program_error_echoing_the_digit_cap_text_stays_a_program_error() -> None:
@@ -193,7 +210,7 @@ def test_worker_budgets_validate_before_acquisition_and_keep_output_limits():
                 stdin=Unread(),
                 isolated=True,
                 limits=esolangs.ExecutionLimits(max_steps=max_steps),
-            )
+            ).unwrap()
     with pytest.raises(esolangs.ExecutionCapError, match="output limit") as caught:
         esolangs.run(
             REFERENCE,
@@ -202,7 +219,7 @@ def test_worker_budgets_validate_before_acquisition_and_keep_output_limits():
             limits=esolangs.ExecutionLimits(
                 execution_timeout=5, max_steps=3, max_output=1
             ),
-        )
+        ).unwrap()
     assert caught.value.partial_output == "\x01"
     with pytest.raises(esolangs.InputExhaustedError) as exhausted:
         esolangs.run(
@@ -210,5 +227,5 @@ def test_worker_budgets_validate_before_acquisition_and_keep_output_limits():
             "+.,",
             isolated=True,
             limits=esolangs.ExecutionLimits(max_steps=3),
-        )
+        ).unwrap()
     assert exhausted.value.partial_output == "\x01"

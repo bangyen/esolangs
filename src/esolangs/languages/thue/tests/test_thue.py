@@ -42,7 +42,7 @@ def test_two_applicable_print_rules_can_fire_in_either_order(
     api = esolangs.Language("Thue")
     source = "a::=~AB\nb::=~CD\n::=\nab"
     limits = esolangs.ExecutionLimits(max_steps=2)
-    expected = api.run(source, seed=4, limits=limits)
+    expected = api.run(source, seed=4, limits=limits).unwrap()
     assert (expected.output, expected.steps) == ("ABCD", 2)
     write = ScriptedIO.print_str
     for accepted in range(3):
@@ -173,12 +173,12 @@ def test_an_empty_output_string_prints_a_newline(tmp_path, capsys) -> None:
         path.write_bytes(text.encode())
         record = api.from_json(api.to_json(path))
         assert record.source == text
-        assert api.run(path).output == "\n"
-        assert api.prepare(record).run().output == "\n"
+        assert api.run(path).unwrap().output == "\n"
+        assert api.prepare(record).run().unwrap().output == "\n"
         debugger = api.make_debugger(text)
         assert debugger.run() == "halted"
         assert debugger.observation.output == "\n"
-        assert api.run(text, isolated=True).output == "\n"
+        assert api.run(text, isolated=True).unwrap().output == "\n"
         assert call_both(["run", api.name, str(path)], capsys) == ("\n", "")
 
 
@@ -318,13 +318,13 @@ def test_thue_keeps_the_selected_input_rule_after_eof() -> None:
             assert dbg.observation == partial
 
     for stdin in ("z\n", "\n"):
-        completed = api.run(source, seed=4, stdin=stdin)
+        completed = api.run(source, seed=4, stdin=stdin).unwrap()
         assert (completed.output, completed.input_position, completed.input_reads) == (
             "",
             len(stdin),
             1,
         )
-    assert api.run(source, seed=0).output == "A"
+    assert api.run(source, seed=0).unwrap().output == "A"
     for unreadable in (
         "a::=:::\n::=\na",
         "a::=:::\na::=a\n::=\na",

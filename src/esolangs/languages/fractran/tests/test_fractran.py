@@ -49,7 +49,7 @@ def test_decimal_exponent_preserves_int_conversion_limit() -> None:
     source = "2 3/2^" + "0" * 640 + "1"
     try:
         sys.set_int_max_str_digits(640)
-        native = language.execute(source)
+        native = language.run(source)
         assert isinstance(native.error, InterpreterLimitError)
         assert "640 digits" in str(native.error)
         for options in (
@@ -58,20 +58,20 @@ def test_decimal_exponent_preserves_int_conversion_limit() -> None:
             {"isolated": True},
             {"limits": ExecutionLimits(max_output=1)},
         ):
-            failed = language.execute(source, **options)
+            failed = language.run(source, **options)
             assert failed.status == native.status == "limit"
             assert isinstance(failed.error, InterpreterLimitError)
             assert str(failed.error) == str(native.error)
             assert failed.observation == native.observation
-            assert language.execute("2 3/2^1", **options).unwrap().output == "3"
+            assert language.run("2 3/2^1", **options).unwrap().output == "3"
         sys.set_int_max_str_digits(0)
-        assert language.execute(source, isolated=True).unwrap().output == "3"
+        assert language.run(source, isolated=True).unwrap().output == "3"
         expected = str(2**2200)
         sys.set_int_max_str_digits(640)
         assert len(expected) > 640
-        assert language.run("2^2200", limits=ExecutionLimits(max_steps=1)).output == (
-            expected
-        )
+        assert language.run(
+            "2^2200", limits=ExecutionLimits(max_steps=1)
+        ).unwrap().output == (expected)
     finally:
         sys.set_int_max_str_digits(limit)
 
@@ -288,7 +288,7 @@ def test_the_final_print_is_its_own_step(monkeypatch: pytest.MonkeyPatch) -> Non
             cursor,
         )
         output = str(result)
-        complete = language.run(source, limits=limits)
+        complete = language.run(source, limits=limits).unwrap()
         assert (complete.output, complete.steps) == (output, 2)
         for accepted in range(len(output) + 1):
             attempts: list[object] = []

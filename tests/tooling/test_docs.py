@@ -284,7 +284,7 @@ def test_readme_program_computes_xor_on_every_row() -> None:
     language = _readme_language()
     for row, expected in enumerate(_TABLE):
         stdin = encode_inputs(language, [row >> 1, row & 1])
-        assert esolangs.run(language, program, stdin=stdin).output == expected
+        assert esolangs.run(language, program, stdin=stdin).unwrap().output == expected
 
 
 def test_readme_states_the_real_length() -> None:

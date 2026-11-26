@@ -233,15 +233,17 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
                 for canvas in (compact, legacy)
             ]
             assert (
-                run("Line", sources[0], stdin=str(value)).output
-                == run("Line", sources[1], stdin=str(value)).output
+                run("Line", sources[0], stdin=str(value)).unwrap().output
+                == run("Line", sources[1], stdin=str(value)).unwrap().output
             )
     assert (
         run(
             "Line",
             Raster.from_png(png.write_grey(render(leaf, acyclic=True).pixels)),
             stdin="",
-        ).output
+        )
+        .unwrap()
+        .output
         == "2"
     )
     leaf.goto = Node("o")
@@ -373,7 +375,7 @@ def test_balanced_choice_scores_the_drawn_extent(
     assert (len(image.rows[0]), len(image.rows)) == size
     for row in (0, 5, 33, 63):
         stdin = "\n".join(f"{row:06b}") + "\n"
-        assert run("Line", image, stdin=stdin).output == table[row]
+        assert run("Line", image, stdin=stdin).unwrap().output == table[row]
 
 
 @pytest.mark.medium

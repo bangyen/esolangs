@@ -34,7 +34,7 @@ def test_onecode_execution(tmp_path: Path) -> None:
         program = esolangs.prepare(_NAME, esolangs.generate(_NAME, table))
         for row, answer in enumerate(table):
             stdin = esolangs.encode_inputs(_NAME, row_bits(row, n))
-            result = program.run(stdin=stdin + "x")
+            result = program.run(stdin=stdin + "x").unwrap()
             assert (result.output, result.input_reads, result.input_position) == (
                 answer,
                 n,
@@ -71,25 +71,25 @@ def _check_nested_expressions() -> None:
     steps = 2 * depth + 5
     caps = esolangs.ExecutionLimits(max_steps=steps)
     prepared = api.prepare(source)
-    native = api.run(source)
+    native = api.run(source).unwrap()
     assert native.output == "7"
-    assert prepared.run() == native
+    assert prepared.run().unwrap() == native
 
-    bounded = api.run(source, limits=caps)
+    bounded = api.run(source, limits=caps).unwrap()
     assert bounded.output == native.output
     assert bounded.steps == steps
-    assert prepared.run(limits=caps) == bounded
-    assert api.run(source, limits=caps, isolated=True) == bounded
+    assert prepared.run(limits=caps).unwrap() == bounded
+    assert api.run(source, limits=caps, isolated=True).unwrap() == bounded
     debug = prepared.make_debugger()
     assert debug.run(limits=caps) == "halted"
     assert debug.observation == bounded
 
     shorter = esolangs.ExecutionLimits(max_steps=steps - 1)
-    stopped = api.execute(source, limits=shorter)
+    stopped = api.run(source, limits=shorter)
     assert isinstance(stopped.error, esolangs.ExecutionCapError)
     assert stopped.observation.output == "7"
     assert stopped.observation.steps == steps - 1
 
-    malformed = api.execute(start + ")" * (depth - 1) + ";")
+    malformed = api.run(start + ")" * (depth - 1) + ";")
     assert isinstance(malformed.error, esolangs.ProgramError)
     assert "expected ')', got ';'" in str(malformed.error)

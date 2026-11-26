@@ -25,8 +25,12 @@ def check_serialized_narrow_template_and_vm() -> None:
     restored = language.from_json(language.to_json(template))
     for row in (0, 1, 511, 1023):
         program = language.instantiate(restored, [int(b) for b in f"{row:010b}"])
-        output = language.run(
-            program,
-            limits=esolangs.ExecutionLimits(max_steps=2 * len(program.source) + 1),
-        ).output
+        output = (
+            language.run(
+                program,
+                limits=esolangs.ExecutionLimits(max_steps=2 * len(program.source) + 1),
+            )
+            .unwrap()
+            .output
+        )
         assert language.read_answer(output) == table[row]

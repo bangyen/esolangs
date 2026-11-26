@@ -41,14 +41,14 @@ def test_default_settings_distinction(choices) -> None:
     )
     restored = esolangs.from_json(REFERENCE, document)
     assert restored.settings == choices
-    assert esolangs.run("Brainfuck", restored).output == "\x01"
+    assert esolangs.run("Brainfuck", restored).unwrap().output == "\x01"
     empty = ProgramArtifact(
         esolangs.CompressedText.from_chunks(("",)), REFERENCE, settings=choices
     )
     document = esolangs.to_json(REFERENCE, empty)
     restored = esolangs.from_json(REFERENCE, document)
     assert restored == empty
-    assert esolangs.run(REFERENCE, restored).output == ""
+    assert esolangs.run(REFERENCE, restored).unwrap().output == ""
     missing_limits = json.loads(document)
     del missing_limits["limits"]
     with pytest.raises(esolangs.ProgramError, match="missing fields"):
@@ -80,7 +80,7 @@ def test_portable_document_uses_the_backing_text() -> None:
     document = api.to_json(program)
     restored = api.from_json(Document(document))
     assert restored == program
-    assert api.run(restored).output == "\x01"
+    assert api.run(restored).unwrap().output == "\x01"
     with pytest.raises(esolangs.ProgramError, match="Unexpected UTF-8 BOM"):
         api.from_json(Document("\ufeff" + document))
 
@@ -246,7 +246,9 @@ def test_ordered_template_setters_round_trip(language: str, tmp_path: Path) -> N
             assert (
                 alternate.fill(template.source, [bit], spans=supplied_spans) == expected
             )
-        assert api.read_answer(api.run(customized.fill([bit])).output) == str(1 - bit)
+        assert api.read_answer(api.run(customized.fill([bit])).unwrap().output) == str(
+            1 - bit
+        )
         assert customized.evaluate([bit]).answer == str(bit)
         assert api.instantiate(customized, [bit]).source == expected
         for candidate in (template, converted, customized, restored, legacy):
@@ -255,7 +257,7 @@ def test_ordered_template_setters_round_trip(language: str, tmp_path: Path) -> N
             assert filled.source == expected
             api.to_file(filled, path)
             assert path.read_bytes() == expected.encode("utf-8")
-            assert api.read_answer(api.run(path).output) == str(bit)
+            assert api.read_answer(api.run(path).unwrap().output) == str(bit)
 
     malformed = json.loads(document)
     malformed["setters"] = ["01"]
@@ -450,7 +452,7 @@ def test_portable_storage_preserves_compression_for_text_languages(
     restored = api.from_json(document)
     for record in (loaded, restored):
         assert record == expected
-        assert api.run(record).output == "\x02"
+        assert api.run(record).unwrap().output == "\x02"
         saved = tmp_path / "saved"
         api.to_file(record, saved, gzip=True)
         assert saved.read_bytes() == data
@@ -469,7 +471,7 @@ def test_portable_storage_preserves_compression_for_text_languages(
         canonical = api.from_json(saved)
         assert canonical == api.from_source(source, settings=api.settings())
         assert json.loads(api.to_json(canonical))["language"] == api.name
-        assert api.prepare(canonical).run().output == "\x02"
+        assert api.prepare(canonical).run().unwrap().output == "\x02"
 
 
 def test_portable_generation_preserves_backend_laid_out_compression(
@@ -758,7 +760,9 @@ def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
     default = api.generate("00")
     requests.clear()
     extracted.clear()
-    assert api.run(api.instantiate(default, [1], truth_table="00")).output == "0"
+    assert (
+        api.run(api.instantiate(default, [1], truth_table="00")).unwrap().output == "0"
+    )
     assert [request.width for request in requests] == [None]
     assert extracted == [(plain.source, 1)]
     requests.clear()
@@ -773,10 +777,10 @@ def test_checked_portable_instantiation_accepts_balanced_eof_slot() -> None:
         assert [request.width for request in requests] == [None]
         assert extracted == [(plain.source, 1), (balanced.source, 1)]
         assert filled == restored.fill([bit])
-        assert api.run(filled).output == "0"
+        assert api.run(filled).unwrap().output == "0"
 
     changed = replace(restored, source="+" + restored.source, spans=((51, 51),))
-    assert api.run(changed.fill([0])).output == "1"
+    assert api.run(changed.fill([0])).unwrap().output == "1"
     requests.clear()
     extracted.clear()
     with pytest.raises(esolangs.TemplateError, match="not the template"):
@@ -801,7 +805,7 @@ def test_checked_portable_instantiation_refuses_unbalanced_mismatch() -> None:
     assert isinstance(restored, esolangs.TemplateArtifact)
     assert restored == record
     assert [
-        api.run(api.instantiate(restored, [bit], truth_table="01")).output
+        api.run(api.instantiate(restored, [bit], truth_table="01")).unwrap().output
         for bit in (0, 1)
     ] == ["0", "1"]
 
@@ -809,7 +813,7 @@ def test_checked_portable_instantiation_refuses_unbalanced_mismatch() -> None:
     edited = api.from_json(api.to_json(changed))
     assert isinstance(edited, esolangs.TemplateArtifact)
     assert edited == changed
-    assert [api.run(edited.fill([bit])).output for bit in (0, 1)] == ["1", "2"]
+    assert [api.run(edited.fill([bit])).unwrap().output for bit in (0, 1)] == ["1", "2"]
     with pytest.raises(esolangs.ProgramError, match="requires a slot-aware balancer"):
         api.generate("01", balance=True)
     with pytest.raises(esolangs.TemplateError, match="not the template"):
@@ -868,12 +872,12 @@ def _check_width_provider_reuse() -> None:
                 [8] if layout_width else [None]
             )
             assert extracted == [(restored.source, 1)]
-            assert api.run(filled).output == str(bit)
+            assert api.run(filled).unwrap().output == str(bit)
 
         altered = replace(
             restored, bindings=replace(restored.bindings, setters=(("+", "x"),))
         )
-        assert api.run(altered.fill([0])).output == "1"
+        assert api.run(altered.fill([0])).unwrap().output == "1"
         requests.clear()
         extracted.clear()
         with pytest.raises(esolangs.TemplateError, match="not the template"):
@@ -920,19 +924,21 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         for candidate in (record, restored, pickled):
             filled = api.instantiate(candidate, [bit], truth_table="01")
             assert filled == restored.fill([bit])
-            assert api.run(filled).output == str(bit)
+            assert api.run(filled).unwrap().output == str(bit)
         filled = api.instantiate(legacy, [bit], width=8, truth_table="01")
-        assert api.run(filled).output == str(bit)
+        assert api.run(filled).unwrap().output == str(bit)
     for unchecked_width in (legacy, replace(restored, generation_width=9)):
         with pytest.raises(esolangs.TemplateError, match="not the template"):
             api.instantiate(unchecked_width, [1], truth_table="01")
 
     refuse_guesses = True
-    assert api.run(api.instantiate(restored, [1], truth_table="01")).output == "1"
+    assert (
+        api.run(api.instantiate(restored, [1], truth_table="01")).unwrap().output == "1"
+    )
     balanced = api.from_json(api.to_json(api.generate("01", balance=True)))
     for bit in (0, 1):
         filled = api.instantiate(balanced, [bit], truth_table="01")
-        assert api.run(filled).output == str(bit)
+        assert api.run(filled).unwrap().output == str(bit)
     with pytest.raises(esolangs.ArgumentError) as caught:
         api.instantiate(balanced, [1], width=1, truth_table="01")
     assert caught.value is rejected_width
@@ -952,7 +958,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         replacement.instantiate(migrated, [1], truth_table="01")
     for bit in (0, 1):
         filled = replacement.instantiate(migrated, [bit], truth_table="01", width=7)
-        assert replacement.run(filled).output == str(bit)
+        assert replacement.run(filled).unwrap().output == str(bit)
     with pytest.raises(esolangs.ArgumentError) as caught:
         replacement.instantiate(migrated, [1], truth_table="01", width=8)
     assert caught.value is retired_width
@@ -976,7 +982,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
     for bit in (0, 1):
         expanded = scoped.instantiate(portable, [bit], truth_table="01")
         assert expanded == saved.fill([bit])
-        assert scoped.run(expanded).output == str(bit)
+        assert scoped.run(expanded).unwrap().output == str(bit)
     with pytest.raises(esolangs.GeneratorCapError) as caught:
         scoped.instantiate(portable, [1], truth_table="01", width=1)
     assert caught.value is cap
@@ -986,7 +992,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
         source="+" + portable.source,
         spans=tuple((start + 1, end + 1) for start, end in portable.spans),
     )
-    assert scoped.run(changed.fill([0])).output == "1"
+    assert scoped.run(changed.fill([0])).unwrap().output == "1"
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         scoped.instantiate(changed, [0], truth_table="01")
 
@@ -1022,7 +1028,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
                 restored, [bit], truth_table="01", width=width
             )
             assert filled == restored.fill([bit])
-            assert explicit.run(filled).output == str(bit)
+            assert explicit.run(filled).unwrap().output == str(bit)
     with pytest.raises(esolangs.GeneratorCapError) as caught:
         explicit.instantiate(restored, [1], truth_table="01", width=1)
     assert caught.value is cap
@@ -1054,7 +1060,7 @@ def test_token_layout_keeps_the_custom_marker_in_portable_templates(layout) -> N
     assert restored.bindings.char == marker
     for bit in (0, 1):
         filled = api.instantiate(restored, [bit], truth_table="01")
-        assert api.run(filled).output == str(bit)
+        assert api.run(filled).unwrap().output == str(bit)
 
     relabeled = replace(
         restored,
@@ -1067,7 +1073,7 @@ def test_token_layout_keeps_the_custom_marker_in_portable_templates(layout) -> N
         source="@" + restored.source[1:],
         spans=((0, 1),),
     )
-    assert api.run(exchanged.fill([0])).output == "/"
+    assert api.run(exchanged.fill([0])).unwrap().output == "/"
     with pytest.raises(esolangs.TemplateError, match="not the template"):
         api.instantiate(exchanged, [0], truth_table="01")
 
@@ -1110,11 +1116,11 @@ def test_no_op_compressed_wrap_retains_the_archive_and_caps(tmp_path: Path) -> N
     api = esolangs.Language(REFERENCE)
     restored = api.from_json(api.to_json(wrapped))
     assert restored == api.from_source(esolangs.CompressedText(data, limits=limits))
-    assert api.run(restored).output == chr(1000 % 256)
+    assert api.run(restored).unwrap().output == chr(1000 % 256)
     path = tmp_path / "program.gz"
     api.to_file(wrapped, path, gzip=True)
     assert path.read_bytes() == data
-    assert api.run(api.from_file(path)).output == chr(1000 % 256)
+    assert api.run(api.from_file(path)).unwrap().output == chr(1000 % 256)
 
 
 def test_portable_compression_retains_only_the_declared_budget_fields() -> None:
@@ -1143,7 +1149,7 @@ def test_portable_compression_retains_only_the_declared_budget_fields() -> None:
         assert json.loads(document)["limits"] == budgets
         restored = api.from_json(document)
         assert restored == artifact
-        assert api.run(restored).output == "\x00\x00"
+        assert api.run(restored).unwrap().output == "\x00\x00"
 
     source = esolangs.CompressedText(compressed, limits=base)
     legacy = esolangs.CompressedText(compressed, limits=base)
@@ -1187,7 +1193,7 @@ def test_source_records_freeze_the_underlying_text(tmp_path: Path) -> None:
     assert type(original.language) is str
     assert original == expected
     assert hash(original) == hash(expected)
-    assert api.run(original).output == "\x01"
+    assert api.run(original).unwrap().output == "\x01"
     path = tmp_path / "source"
     api.to_file(original, path)
     assert api.from_file(path) == expected

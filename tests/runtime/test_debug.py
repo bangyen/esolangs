@@ -25,7 +25,7 @@ class TestRun:
         dbg = debugger_api.make_debugger(REFERENCE, "+++[>+++<-]>.")
         dbg.run()
         assert dbg.halted
-        assert dbg.output == esolangs.run(REFERENCE, "+++[>+++<-]>.").output
+        assert dbg.output == esolangs.run(REFERENCE, "+++[>+++<-]>.").unwrap().output
 
         _check_overridden_step_dispatch()
         _check_replacement_during_halt_inspection()
@@ -611,7 +611,9 @@ class TestABreakpointAtTheHaltIsReported:
                 program,
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(execution_timeout=30),
-            ).output
+            )
+            .unwrap()
+            .output
         )
 
     @pytest.mark.parametrize("name", _DUMPERS)

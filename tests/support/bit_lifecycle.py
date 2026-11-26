@@ -31,9 +31,9 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         assert result.completion is not None
         assert result.completion.kind is Completion.HALTED
         assert result.steps == bits + 2
-        native = esolangs.run(name, source)
+        native = esolangs.run(name, source).unwrap()
         assert result == replace(native, steps=result.steps)
-        assert esolangs.run(name, source, isolated=True) == native
+        assert esolangs.run(name, source, isolated=True).unwrap() == native
         debug.step()
         assert debug.run(limits=esolangs.ExecutionLimits(max_steps=0)) == "halted"
         assert (debug.observation, debug.snapshot()) == (result, snapshot)
@@ -44,7 +44,7 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         (",;", "Ā", "\0", 1, 1, 0),
     ]
     for source, stdin, output, position, reads, past_end in cases:
-        native = esolangs.run(name, source, stdin=stdin)
+        native = esolangs.run(name, source, stdin=stdin).unwrap()
         assert (
             native.output,
             native.input_position,
@@ -54,7 +54,7 @@ def check_byte_lifecycle(name: str, set_command: str) -> None:
         debug = make_debugger(name, source, stdin=stdin)
         assert debug.run(limits=esolangs.ExecutionLimits(max_steps=100)) == "halted"
         assert debug.observation == replace(native, steps=debug.observation.steps)
-        assert esolangs.run(name, source, stdin=stdin, isolated=True) == native
+        assert esolangs.run(name, source, stdin=stdin, isolated=True).unwrap() == native
 
 
 def check_byte_retry(
@@ -73,7 +73,7 @@ def check_byte_retry(
     clean = language.make_debugger(source, stdin=stdin)
     assert clean.run(limits=limits) == "halted"
     assert clean.observation.output == output
-    native = language.run(source, stdin=stdin)
+    native = language.run(source, stdin=stdin).unwrap()
     assert clean.observation == replace(native, steps=clean.observation.steps)
     write = ScriptedIO._write
     attempts: list[object] = []

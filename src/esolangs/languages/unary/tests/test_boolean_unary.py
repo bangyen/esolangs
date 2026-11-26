@@ -133,20 +133,21 @@ def test_constant_one_cycles_after_every_input(n: int) -> None:
 
 
 def test_bound_generation_plan_reports_table_specific_support():
-    from esolangs import GeneratorCapError, Language, ProgramArtifact
+    from esolangs import Language, ProgramArtifact
+    from esolangs.planning import Ready, Unsupported
 
     language = Language("Unary")
     plan = language.plan_generation("0000")
-    assert callable(plan)
+    assert isinstance(plan, Ready)
     with patch("esolangs.languages.unary.generator._emit", side_effect=AssertionError):
-        supported = plan()
-        assert plan() is supported
+        supported = plan.build()
+        assert plan.build() is supported
     assert isinstance(supported, ProgramArtifact)
     for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
         assert language.evaluate(supported, bits).answer == "0"
     refused = language.plan_generation("0110")
-    assert isinstance(refused, GeneratorCapError)
-    assert "generation-work cap" in str(refused)
+    assert isinstance(refused, Unsupported)
+    assert "generation-work cap" in refused.reason
 
 
 def test_cap_crossing_stops_before_building_the_residual_tree():

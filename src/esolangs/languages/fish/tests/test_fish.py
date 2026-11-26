@@ -419,10 +419,10 @@ def test_a_clean_branch_can_prove_halt_after_a_faulting_sibling() -> None:
     api = Language("Fish")
     source = "x;\n~ "
     limits = ExecutionLimits(max_steps=2)
-    good = api.run(source, seed=2, limits=limits)
+    good = api.run(source, seed=2, limits=limits).unwrap()
     assert good.steps == 2
     with pytest.raises(HaltError, match="smells fishy"):
-        api.run(source, seed=4, limits=limits)
+        api.run(source, seed=4, limits=limits).unwrap()
 
     vm = api.make_debugger(source, seed=4)
     saved = vm.snapshot()

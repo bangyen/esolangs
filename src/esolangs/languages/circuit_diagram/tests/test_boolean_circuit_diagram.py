@@ -656,9 +656,11 @@ def test_circuit_gate_column_and_band_fit_transitions(inputs, affine) -> None:
     assert balance_score(balanced) == min(map(balance_score, layouts))
     for row in (0, 1, len(table) // 2, len(table) - 1):
         bits = tuple(map(int, format(row, f"0{inputs}b")))
-        output = execute(
-            language, balanced, stdin=esolangs.encode_inputs(language, bits)
-        ).output
+        output = (
+            execute(language, balanced, stdin=esolangs.encode_inputs(language, bits))
+            .unwrap()
+            .output
+        )
         assert esolangs.read_answer(language, output) == table[row]
 
 
@@ -911,7 +913,7 @@ def test_canonical_classifiers_drive_native_output(monkeypatch) -> None:
             program,
             stdin="0" * n,
             limits=esolangs.ExecutionLimits(max_steps=100),
-        )
+        ).unwrap()
         assert (result.output, result.input_position, result.input_past_end) == (
             "1",
             n,

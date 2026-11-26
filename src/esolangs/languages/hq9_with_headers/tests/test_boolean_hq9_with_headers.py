@@ -43,7 +43,7 @@ def test_every_row_prints_its_answer() -> None:
         assert len(program) == 1594
         for row in (0, 1, 2048, 4095):
             stdin = language.encode_inputs([int(bit) for bit in f"{row:012b}"])
-            result = language.execute(
+            result = language.run(
                 program, stdin=stdin, limits=esolangs.ExecutionLimits(max_steps=57)
             ).unwrap()
             assert result.output == table[row]

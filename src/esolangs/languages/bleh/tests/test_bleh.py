@@ -146,9 +146,9 @@ def test_a_forced_argument_is_read_once(monkeypatch) -> None:
         assert second.value is not first.value
         assert second.value.observation == debugger.observation == expected
         assert debugger.snapshot() == snapshot
-        valid = api.run(source, stdin="éA", limits=limits)
+        valid = api.run(source, stdin="éA", limits=limits).unwrap()
         assert (valid.output, valid.input_position, valid.input_reads) == ("é", 1, 1)
-        eof = api.run(source, limits=limits)
+        eof = api.run(source, limits=limits).unwrap()
         assert (eof.output, eof.input_reads, eof.input_past_end) == ("", 0, 1)
 
     from esolangs.languages.bleh import interpreter
@@ -178,11 +178,13 @@ def test_nested_source_respects_the_parent_recursion_limit() -> None:
         return f'^:std::io; f: {pattern} = "A"; main := io::print(f(1));'
 
     def check_routes(program: str, steps: int) -> None:
-        local = language.run(program, limits=ExecutionLimits(max_steps=600))
+        local = language.run(program, limits=ExecutionLimits(max_steps=600)).unwrap()
         assert (local.output, local.steps) == ("A", steps)
         for deadline in ({"total_timeout": 3}, {"execution_timeout": 3}):
             assert (
-                language.run(program, limits=ExecutionLimits(max_steps=600, **deadline))
+                language.run(
+                    program, limits=ExecutionLimits(max_steps=600, **deadline)
+                ).unwrap()
                 == local
             )
         debugger = language.make_debugger(program)
@@ -207,9 +209,9 @@ def test_nested_source_respects_the_parent_recursion_limit() -> None:
             {"isolated": True},
             {"limits": ExecutionLimits(execution_timeout=3)},
         ):
-            assert language.execute(source(1), **options).unwrap().output == "A"
+            assert language.run(source(1), **options).unwrap().output == "A"
             for program in (source(80), source(85), split(81)):
-                limited = language.execute(program, **options)
+                limited = language.run(program, **options)
                 assert limited.status == "limit"
                 assert isinstance(limited.error, InterpreterLimitError)
                 assert limited.observation == ExecutionResult("", 0, 0, 0)
@@ -217,7 +219,7 @@ def test_nested_source_respects_the_parent_recursion_limit() -> None:
                 assert "recursed deeper" in message
                 assert str(limited.error) == message
         sys.setrecursionlimit(400)
-        assert language.run(source(85), isolated=True).output == "A"
+        assert language.run(source(85), isolated=True).unwrap().output == "A"
         sys.setrecursionlimit(1000)
         check_routes(source(499), 504)
         _check_recursive_snapshot_formatting(language)

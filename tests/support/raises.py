@@ -42,7 +42,7 @@ def assert_rejected_with_hint(
             stdin=stdin,
             limits=esolangs.ExecutionLimits(execution_timeout=2),
             **options,
-        )
+        ).unwrap()
     assert message in str(caught.value)
     assert any(hint in note for note in caught.value.__notes__)
 
@@ -75,4 +75,4 @@ def assert_numeric_token_replayed(name, source, valid, output):
     assert again.value.observation == first.value.observation
     assert again.value.__notes__ == first.value.__notes__
     assert dbg.snapshot() == boundary
-    assert api.run(source, stdin=valid, limits=limit).output == output
+    assert api.run(source, stdin=valid, limits=limit).unwrap().output == output

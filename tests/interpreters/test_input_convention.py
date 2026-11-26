@@ -28,7 +28,7 @@ def test_scripted_and_interactive_reads_preserve_newlines() -> None:
 
 
 def test_stream_echo_preserves_characters_on_the_same_line() -> None:
-    assert esolangs.run(REFERENCE, ",.,.,.", stdin="ab\n").output == "ab\n"
+    assert esolangs.run(REFERENCE, ",.,.,.", stdin="ab\n").unwrap().output == "ab\n"
 
 
 # What a language does when a *reading* program is handed no input at all.
@@ -50,7 +50,7 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
         from esolangs import run
 
         with pytest.raises(EOFError):
-            run(name, program, stdin="")
+            run(name, program, stdin="").unwrap()
         return
     module = importlib.import_module(
         f"esolangs.languages.{example.interpreter}.interpreter"

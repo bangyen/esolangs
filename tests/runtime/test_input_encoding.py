@@ -84,7 +84,7 @@ class TestRemainingGuards:
 
     def test_a_missing_path_is_a_programerror(self) -> None:
         with pytest.raises(ProgramError, match="cannot read"):
-            esolangs.run(REFERENCE, pathlib.Path("nope/missing.txt"))
+            esolangs.run(REFERENCE, pathlib.Path("nope/missing.txt")).unwrap()
 
     def test_a_non_string_language_is_refused_by_name(self) -> None:
         """It leaked ``'NoneType' object has no attribute 'replace'``."""
@@ -110,7 +110,9 @@ class TestEveryDeliberateErrorHasTheBase:
                     REFERENCE,
                     "+.",
                     limits=esolangs.ExecutionLimits(execution_timeout=0),
-                ).output
+                )
+                .unwrap()
+                .output
             ),
             lambda: esolangs.encode_inputs(REFERENCE, [2, 0]),
         ],

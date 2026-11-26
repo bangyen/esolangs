@@ -168,9 +168,9 @@ from esolangs.runtime._termination import _termination_result
 from esolangs.vm import complete_vm
 
 installed = esolangs.Language(LANGUAGE.name)
-assert installed.run('$io').output == '1\n'
+assert installed.run('$io').unwrap().output == '1\n'
 assert installed.read_answer('1\n') == '1'
-assert installed.prepare('$io').run(isolated=True).output == '1\n'
+assert installed.prepare('$io').run(isolated=True).unwrap().output == '1\n'
 path = Path(sys.argv[1]) / 'program.txt'
 path.write_text('$io')
 for options in ([], ['--isolated'], ['--max-steps', '20']):
@@ -188,7 +188,7 @@ assert cli.stdout == '1\n' and cli.stderr == ''
 for steps in (None, 20):
     scoped = esolangs.Catalog([LANGUAGE]).bind(LANGUAGE.name)
     limits = esolangs.ExecutionLimits(max_steps=steps)
-    assert scoped.execute('$io', isolated=True, limits=limits).unwrap().output == '1\n'
+    assert scoped.run('$io', isolated=True, limits=limits).unwrap().output == '1\n'
 
 contract = replace(LANGUAGE.contract, note='local')
 record = replace(LANGUAGE, backend=None, contract=contract)
@@ -203,8 +203,8 @@ black = Raster((((0, 0, 0), (255, 0, 0)),))
 prepared = piet.prepare(loop)
 limits = esolangs.ExecutionLimits(max_steps=20)
 for isolated in (False, True):
-    assert piet.prepare(black).run(isolated=isolated).output == ''
-    outcome = prepared.execute(isolated=isolated, limits=limits)
+    assert piet.prepare(black).run(isolated=isolated).unwrap().output == ''
+    outcome = prepared.run(isolated=isolated, limits=limits)
     assert outcome.status == 'limit' and outcome.observation.steps == 20
 
 for name, source, halts in (('Piet', loop, False), (LANGUAGE.name, '$io', True)):
@@ -227,13 +227,13 @@ class Unread:
 for backend in (None, BackendTrap()):
     record = replace(LANGUAGE, backend=backend)
     api = esolangs.Catalog([record]).bind(record.name)
-    assert api.prepare('$io').run().output == '1\n'
+    assert api.prepare('$io').run().unwrap().output == '1\n'
     for options in ({}, {'limits': esolangs.ExecutionLimits(max_steps=20)}):
-        assert api.execute('$io', **options).unwrap().output == '1\n'
+        assert api.run('$io', **options).unwrap().output == '1\n'
     assert complete_vm(api.prepare('$io').make_vm()) == '1\n'
     template = esolangs.TemplateArtifact('$', record.name,
         esolangs.TemplateBindings(setters=(('i', 's'),)), spans=((0, 1),))
-    outcome = api.execute(template, stdin=Unread())
+    outcome = api.run(template, stdin=Unread())
     assert outcome.status == 'rejected'
     assert isinstance(outcome.error, esolangs.TemplateError)
     assert outcome.observation.input_reads is None

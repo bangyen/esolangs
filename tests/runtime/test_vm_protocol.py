@@ -132,7 +132,7 @@ def _check_protocol(language: str, program: str, stdin: str) -> _Observed:
     vm.step()
     assert (vm.output != at_halt) == vm.dumps_on_the_post_halt_step
     if language not in NONDETERMINISTIC_AGAINST_RUN:
-        assert vm.output == esolangs.run(language, program, stdin=stdin).output
+        assert vm.output == esolangs.run(language, program, stdin=stdin).unwrap().output
 
     settled = _observe(vm)
     state = vm.snapshot()
@@ -232,7 +232,7 @@ def test_completion_agrees_with_running(name) -> None:
         with pytest.raises(esolangs.ArgumentError, match="self-halts"):
             complete_vm(vm)
         return
-    expected = esolangs.run(name, source, stdin=stdin).output
+    expected = esolangs.run(name, source, stdin=stdin).unwrap().output
     assert complete_vm(vm) == expected
     state = vm.snapshot()
     assert complete_vm(vm, max_steps=0) == expected

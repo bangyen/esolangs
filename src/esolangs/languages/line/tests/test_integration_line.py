@@ -113,7 +113,7 @@ class TestTheSmallInconsistencies:
         captured = capsysbinary.readouterr()
         assert b"no effect on Line" in captured.err
         image = esolangs.Raster.from_png(captured.out)
-        assert run("Line", image, stdin="0\n0\n").output == "0"
+        assert run("Line", image, stdin="0\n0\n").unwrap().output == "0"
 
 
 def test_source_kind_cannot_change_language_contract() -> None:
@@ -132,7 +132,7 @@ def test_raster_interpreter_retains_geometry_hint() -> None:
             image,
             scale=None,
             limits=esolangs.ExecutionLimits(execution_timeout=1),
-        )
+        ).unwrap()
     assert "dark connected paths" in caught.value.__notes__[0]
 
 
@@ -158,7 +158,7 @@ def test_a_one_pixel_path_below_a_stair_stepped_arrowhead_keeps_scale_one() -> N
     ]
     ink, blank = (0, 0, 0), (255, 255, 255)
     image = Raster(tuple(tuple(ink if c == "#" else blank for c in r) for r in art))
-    assert run("Line", image).output == ""
+    assert run("Line", image).unwrap().output == ""
 
 
 def test_a_two_pixel_speck_nearer_than_the_path_is_not_the_path() -> None:
@@ -167,8 +167,8 @@ def test_a_two_pixel_speck_nearer_than_the_path_is_not_the_path() -> None:
     for y in (1, 2):
         rows[y][51] = (0, 0, 0)
     image = Raster(tuple(map(tuple, rows)))
-    assert run("Line", image, stdin="0\n").output == "0"
-    assert run("Line", image, stdin="1\n").output == "1"
+    assert run("Line", image, stdin="0\n").unwrap().output == "0"
+    assert run("Line", image, stdin="1\n").unwrap().output == "1"
 
 
 def test_explicit_line_scale_checks_ink_blocks() -> None:
@@ -183,12 +183,13 @@ def test_explicit_line_scale_checks_ink_blocks() -> None:
 @pytest.mark.medium
 def test_explicit_scale_validates_lazy_line_pixels(tmp_path: Path) -> None:
     image = esolangs.generate("Line", "00", scale=2)
-    assert run("Line", image, stdin="1\n", scale=2).output == "0"
+    assert run("Line", image, stdin="1\n", scale=2).unwrap().output == "0"
     assert (
-        run("Line", Raster.from_png(image.source.to_png()), stdin="1\n").output == "0"
+        run("Line", Raster.from_png(image.source.to_png()), stdin="1\n").unwrap().output
+        == "0"
     )
     with pytest.raises(esolangs.ProgramError, match="uniform"):
-        run("Line", image, stdin="1\n", scale=3)
+        run("Line", image, stdin="1\n", scale=3).unwrap()
 
     path = tmp_path / "line.png"
     command = [sys.executable, "-m", INTERPRETERS["Line"], str(path)]

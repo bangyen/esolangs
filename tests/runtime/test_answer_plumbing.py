@@ -204,7 +204,7 @@ class TestAProgramKnowsWhoseItIs:
     def test_a_foreign_program_is_refused_by_run(self) -> None:
         program = esolangs.generate(REFERENCE, "0110")
         with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
-            esolangs.run(TEMPLATED, program)
+            esolangs.run(TEMPLATED, program).unwrap()
 
     def test_a_foreign_program_is_refused_by_make_vm(self) -> None:
         program = esolangs.generate(REFERENCE, "0110")
@@ -216,20 +216,28 @@ class TestAProgramKnowsWhoseItIs:
         program = esolangs.instantiate(TEMPLATED, template, [0, 1])
         assert getattr(program, "language", None) == TEMPLATED
         with pytest.raises(esolangs.ProgramError, match=f"generated for {TEMPLATED}"):
-            esolangs.run(REFERENCE, program)
+            esolangs.run(REFERENCE, program).unwrap()
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         program = esolangs.generate("BRAINFUCK", "0110")
-        assert esolangs.run(
-            REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
-        ).output
+        assert (
+            esolangs.run(
+                REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
+            )
+            .unwrap()
+            .output
+        )
 
     def test_a_plain_string_is_accepted_unchecked(self) -> None:
         program = esolangs.generate(REFERENCE, "0110").source
         assert getattr(program, "language", None) is None
-        assert esolangs.run(
-            REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
-        ).output
+        assert (
+            esolangs.run(
+                REFERENCE, program, stdin=esolangs.encode_inputs(REFERENCE, [0, 1])
+            )
+            .unwrap()
+            .output
+        )
 
     def test_a_width_keeps_the_tag(self) -> None:
         program = esolangs.generate(REFERENCE, "0110", width=20)

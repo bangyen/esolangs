@@ -60,7 +60,7 @@ class TestPaintingAndLoop:
 
         language = esolangs.Language("A Painter Ant")
         source = "N P\nsP"
-        expected = language.run(source)
+        expected = language.run(source).unwrap()
         calls = []
         parse = native_interpreter._prepare_source
 
@@ -77,8 +77,8 @@ class TestPaintingAndLoop:
             first.step()
             assert first.snapshot() != before
             assert second.snapshot() == before
-            assert prepared.run() == expected
-            assert prepared.execute().unwrap() == expected
+            assert prepared.run().unwrap() == expected
+            assert prepared.run().unwrap() == expected
             assert calls == [source]
 
         from .oracle_checks import _check

@@ -24,7 +24,7 @@ from tests.support.witness_tables import parity, row_bits, witnesses
 def run_clockwise(program: str, inputs: list[str] | list[int]) -> str:
 
     # Clockwise loads the complete character stream (7 bits per char).
-    return run("Clockwise", program, stdin="".join(map(str, inputs))).output
+    return run("Clockwise", program, stdin="".join(map(str, inputs))).unwrap().output
 
 
 @pytest.mark.parametrize("n", [1, 3, 8])

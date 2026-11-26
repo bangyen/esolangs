@@ -31,7 +31,7 @@ def test_lone_nor_prints_the_value_itself(monkeypatch: pytest.MonkeyPatch) -> No
     )
     api = Language("NOR machine")
     limits = ExecutionLimits(max_steps=1)
-    complete = api.run("V", stdin="123", limits=limits)
+    complete = api.run("V", stdin="123", limits=limits).unwrap()
     assert (complete.output, complete.steps) == ("123", 1)
     write = ScriptedIO._write
 

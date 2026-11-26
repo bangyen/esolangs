@@ -252,11 +252,19 @@ def test_wide_decimal_values_are_accepted_by_numeric_output() -> None:
     api = Language("SendStuff")
     wide = "1" + "0" * 5000
     limits = ExecutionLimits(max_steps=2)
-    assert api.run(f">(Constant {wide} >(OutputNumber))", limits=limits).output == wide
     assert (
-        api.run(">(InputNumber >(OutputNumber))", stdin=wide, limits=limits).output
+        api.run(f">(Constant {wide} >(OutputNumber))", limits=limits).unwrap().output
+        == wide
+    )
+    assert (
+        api.run(">(InputNumber >(OutputNumber))", stdin=wide, limits=limits)
+        .unwrap()
+        .output
         == wide
     )
     with pytest.raises(HaltError, match=f"Output received {wide}, outside 0"):
-        api.run(">(InputNumber >(Output))", stdin=wide, limits=limits)
-    assert api.run(">(InputNumber >(Output))", stdin="65", limits=limits).output == "A"
+        api.run(">(InputNumber >(Output))", stdin=wide, limits=limits).unwrap()
+    assert (
+        api.run(">(InputNumber >(Output))", stdin="65", limits=limits).unwrap().output
+        == "A"
+    )

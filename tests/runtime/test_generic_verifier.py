@@ -53,12 +53,16 @@ def _verify(name: str, table: str) -> str:
         if facts.answer_mode == "termination":
             got += _terminates(name, source, stdin)
         else:
-            output = esolangs.run(
-                name,
-                source,
-                stdin=stdin,
-                limits=esolangs.ExecutionLimits(execution_timeout=_RUN_TIMEOUT),
-            ).output
+            output = (
+                esolangs.run(
+                    name,
+                    source,
+                    stdin=stdin,
+                    limits=esolangs.ExecutionLimits(execution_timeout=_RUN_TIMEOUT),
+                )
+                .unwrap()
+                .output
+            )
             got += esolangs.read_answer(name, output)
     return got
 
@@ -102,6 +106,6 @@ class TestTheFactsThatMakeItPossible:
                 REFERENCE,
                 "+[]",
                 limits=esolangs.ExecutionLimits(execution_timeout=0.01),
-            )
+            ).unwrap()
         assert isinstance(exc.value, esolangs.HaltError)
         assert isinstance(exc.value, TimeoutError)

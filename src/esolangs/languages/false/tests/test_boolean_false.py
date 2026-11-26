@@ -84,12 +84,16 @@ def test_false_runs_out_of_variables_and_writes_the_rest_inline(monkeypatch) -> 
     )
     assert false(table) == program
     for row in (0, 1, 127, 255, 511):
-        output = execute(
-            "FALSE",
-            program,
-            stdin=f"{row:09b}",
-            limits=esolangs.ExecutionLimits(max_steps=10000),
-        ).output
+        output = (
+            execute(
+                "FALSE",
+                program,
+                stdin=f"{row:09b}",
+                limits=esolangs.ExecutionLimits(max_steps=10000),
+            )
+            .unwrap()
+            .output
+        )
         assert output == table[row]
 
 
@@ -107,7 +111,9 @@ def test_false_single_character_floor_executes_every_small_table() -> None:
                         program,
                         stdin=stdin,
                         limits=esolangs.ExecutionLimits(max_steps=100_000),
-                    ).output
+                    )
+                    .unwrap()
+                    .output
                     == expected
                 )
 

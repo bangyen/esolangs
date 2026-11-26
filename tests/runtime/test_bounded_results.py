@@ -21,10 +21,14 @@ def test_step_exhaustion_does_not_publish_a_completed_result(monkeypatch):
 
     monkeypatch.setattr(Debugger, "__init__", refuse_debugger)
     with pytest.raises(esolangs.ExecutionCapError, match="max_steps") as caught:
-        esolangs.run(REFERENCE, "+.[]", limits=esolangs.ExecutionLimits(max_steps=10))
+        esolangs.run(
+            REFERENCE, "+.[]", limits=esolangs.ExecutionLimits(max_steps=10)
+        ).unwrap()
     assert caught.value.partial_output == "\x01"
     assert caught.value.bound == "max_steps"
-    result = esolangs.run(REFERENCE, "+.", limits=esolangs.ExecutionLimits(max_steps=2))
+    result = esolangs.run(
+        REFERENCE, "+.", limits=esolangs.ExecutionLimits(max_steps=2)
+    ).unwrap()
     assert result.output == "\x01"
     assert result.steps == 2
 
@@ -45,7 +49,7 @@ def test_vm_completion_cap_preserves_observed_io(steps, expected):
     from esolangs.debugger import make_debugger
 
     source = ",.[]"
-    bounded = esolangs.execute(
+    bounded = esolangs.run(
         REFERENCE, source, stdin="A", limits=esolangs.ExecutionLimits(max_steps=steps)
     )
     for make in (make_vm, make_debugger):
@@ -318,7 +322,7 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
     for mode in ("typed", "bare"):
         error_type = esolangs.ProgramError if mode == "bare" else esolangs.HaltError
         calls = (
-            lambda: scoped.execute("+.", stdin="A", limits=limits).unwrap(),
+            lambda: scoped.run("+.", stdin="A", limits=limits).unwrap(),
             lambda: Debugger(scoped.make_debugger("+.", stdin="A")).run(limits=limits),
             lambda: complete_vm(scoped.make_vm("+.", stdin="A"), max_steps=2),
         )
@@ -336,8 +340,8 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
     plan = scoped.prepare("+.")
     for mode in ("final_typed", "final_bare", "final_foreign"):
         for execute in (
-            lambda: scoped.execute("+.", stdin="A", limits=limits),
-            lambda: plan.execute(stdin="A", limits=limits),
+            lambda: scoped.run("+.", stdin="A", limits=limits),
+            lambda: plan.run(stdin="A", limits=limits),
         ):
             reads.clear()
             terminal_checks.clear()
@@ -373,10 +377,10 @@ def _check_halt_read_fault_evidence(api, monkeypatch):
     assert len(reads) == 1
 
     mode = "valid"
-    completed = scoped.run("+.", stdin="A", limits=limits)
+    completed = scoped.run("+.", stdin="A", limits=limits).unwrap()
     assert completed == replace(expected, completion=completed.completion)
     assert completed.completion.kind is Completion.HALTED
-    assert plan.run(stdin="A", limits=limits) == completed
+    assert plan.run(stdin="A", limits=limits).unwrap() == completed
     debug = scoped.make_debugger("+.", stdin="A")
     assert debug.run(limits=limits) == "halted"
     assert debug.observation == completed

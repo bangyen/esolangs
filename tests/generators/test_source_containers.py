@@ -79,7 +79,7 @@ def test_execution_container_parity(
     bounds: dict[str, Any] = {}
     if mode == "isolated":
         bounds["isolated"] = True
-    assert esolangs.run(language, source, stdin=stdin, **bounds).output == "1"
+    assert esolangs.run(language, source, stdin=stdin, **bounds).unwrap().output == "1"
     assert stdin.tell() == 1
     assert not stdin.closed
     if hasattr(source, "closed"):
@@ -113,11 +113,11 @@ def test_nonseekable_streams_are_read_once_from_the_current_position() -> None:
     program, stdin = Stream(b",.,."), Stream("\n\x00")
     assert check_program(REFERENCE, program, stdin).source == ",.,."
     assert stdin.reads == 0
-    assert esolangs.run(REFERENCE, ",.,.", stdin=stdin).output == "\n\x00"
+    assert esolangs.run(REFERENCE, ",.,.", stdin=stdin).unwrap().output == "\n\x00"
     assert (program.reads, stdin.reads) == (1, 1)
     source = io.StringIO("ignored,.")
     source.seek(7)
-    assert esolangs.run(REFERENCE, source, stdin="Z").output == "Z"
+    assert esolangs.run(REFERENCE, source, stdin="Z").unwrap().output == "Z"
 
 
 def test_managed_program_selects_the_read_descriptor_once() -> None:
@@ -138,9 +138,9 @@ def test_managed_program_selects_the_read_descriptor_once() -> None:
 
     api = esolangs.Language(REFERENCE)
     for run in (
-        api.run,
-        lambda stream: api.prepare(stream).run(),
-        lambda stream: api.run(api.from_json(api.to_json(stream))),
+        lambda source, **opts: api.run(source, **opts).unwrap(),
+        lambda stream: api.prepare(stream).run().unwrap(),
+        lambda stream: api.run(api.from_json(api.to_json(stream))).unwrap(),
     ):
         stream = Stream()
         assert run(stream).output == "\x01"
@@ -176,7 +176,7 @@ def test_nonblocking_raw_program_waits_for_a_delayed_suffix() -> None:
             api = esolangs.Language(REFERENCE)
             artifact = api.from_json(api.to_json(stream))
             assert artifact.source == "+."
-            assert api.run(artifact).output == "\x01"
+            assert api.run(artifact).unwrap().output == "\x01"
             assert not stream.closed
             assert not os.get_blocking(read_fd)
     finally:
@@ -193,7 +193,7 @@ def test_nonblocking_text_program_refuses_before_consuming_bytes() -> None:
             with pytest.raises(
                 esolangs.ProgramError, match=r"cannot detect EOF.*nonblocking"
             ):
-                esolangs.run(REFERENCE, stream)
+                esolangs.run(REFERENCE, stream).unwrap()
             assert os.read(read_fd, 2) == b"+."
             assert not stream.closed
     finally:
@@ -208,7 +208,7 @@ def test_nonblocking_buffered_program_preserves_prefetched_bytes() -> None:
             os.set_blocking(read_fd, False)
             sender.write(b"+.")
         assert stream.peek(1) == b"+."
-        assert esolangs.run(REFERENCE, stream).output == "\x01"
+        assert esolangs.run(REFERENCE, stream).unwrap().output == "\x01"
         assert not stream.closed
 
 
@@ -261,7 +261,7 @@ def test_managed_program_stream_preserves_a_deliberate_api_error(
     ):
         for source in (Stream(), RefusedDescriptor(b",.")):
             stdin = io.StringIO("A")
-            outcome = api.execute(source, stdin=stdin, limits=limits)
+            outcome = api.run(source, stdin=stdin, limits=limits)
             assert outcome.error is error
             assert outcome.bound == bound
             assert stdin.tell() == 0
@@ -270,8 +270,8 @@ def test_managed_program_stream_preserves_a_deliberate_api_error(
         native_stdin = RefusedDescriptor(b"A")
         prepared_stdin = RefusedDescriptor(b"A")
         for outcome in (
-            api.execute(",.", stdin=native_stdin, limits=limits),
-            prepared.execute(stdin=prepared_stdin, limits=limits),
+            api.run(",.", stdin=native_stdin, limits=limits),
+            prepared.run(stdin=prepared_stdin, limits=limits),
         ):
             assert outcome.error is error
             assert outcome.bound == bound
@@ -291,14 +291,14 @@ def test_managed_program_stream_preserves_a_deliberate_api_error(
         if isinstance(source, RefusedDescriptor):
             assert source.tell() == 0
     assert path.read_bytes() == b"existing source"
-    assert api.run(io.BytesIO(b",."), stdin=io.BytesIO(b"A")).output == "A"
+    assert api.run(io.BytesIO(b",."), stdin=io.BytesIO(b"A")).unwrap().output == "A"
 
 
 @pytest.mark.parametrize(
     "stdin", ["é", "é".encode(), io.StringIO("é"), io.BytesIO("é".encode())]
 )
 def test_binary_stdin_uses_the_same_unicode_character_stream(stdin: Any) -> None:
-    assert esolangs.run(REFERENCE, ",.", stdin=stdin).output == "é"
+    assert esolangs.run(REFERENCE, ",.", stdin=stdin).unwrap().output == "é"
 
 
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX path semantics")
@@ -359,7 +359,7 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
     api.to_file(api.from_file(path), path)
     assert path.read_bytes() == b"+,\r\n.\r\n"
     assert check_program(REFERENCE, path).source == "+,\r\n.\r\n"
-    assert esolangs.run(REFERENCE, path, stdin="Q").output == "Q"
+    assert esolangs.run(REFERENCE, path, stdin="Q").unwrap().output == "Q"
 
     for raw, changes in ((b"+,\n.", False), (path.read_bytes(), True)):
         output = io.BytesIO()
@@ -374,7 +374,7 @@ def test_path_loading_is_lossless_with_explicit_native_normalization(
         assert json.loads(document)["kind"] == ("text" if changes else "gzip")
         restored = api.from_json(document)
         assert restored == artifact
-        assert api.run(restored, stdin="Q").output == "Q"
+        assert api.run(restored, stdin="Q").unwrap().output == "Q"
         api.to_file(restored, path, gzip=True)
         assert gzip.decompress(path.read_bytes()) == b"+,\n."
         if not changes:
@@ -412,7 +412,7 @@ def test_gzip_diagnostics_keep_filename_and_repair_hint(
         api.from_file,
         api.prepare,
         api.to_json,
-        lambda path: api.run(path, isolated=True),
+        lambda path: api.run(path, isolated=True).unwrap(),
     ):
         with pytest.raises(esolangs.ProgramError, match=message) as caught:
             acquire(path)
@@ -430,7 +430,7 @@ def test_gzip_diagnostics_keep_filename_and_repair_hint(
         api.from_json(json.dumps(document))
     assert any(hint in note for note in caught.value.__notes__)
     path.write_bytes(valid)
-    assert api.prepare(path).run().output == "\x01"
+    assert api.prepare(path).run().unwrap().output == "\x01"
 
 
 @pytest.mark.parametrize("gzip_output", [False, True])
@@ -523,7 +523,7 @@ def test_path_provider_io_errors_match_the_file_operation(
     provider = ReferencedPath()
     api.to_file(source, provider)
     assert provider.calls == 1
-    assert api.run(api.from_file(provider), stdin="Q").output == "Q"
+    assert api.run(api.from_file(provider), stdin="Q").unwrap().output == "Q"
     assert provider.calls == 2
     compressed.to_file(provider)
     assert provider.calls == 3
@@ -534,7 +534,7 @@ def test_managed_path_preserves_deliberate_errors_and_own_observations(
     tmp_path: Path,
 ) -> None:
     api = esolangs.Language(REFERENCE)
-    nested = api.execute("+.[+]", limits=esolangs.ExecutionLimits(max_steps=2))
+    nested = api.run("+.[+]", limits=esolangs.ExecutionLimits(max_steps=2))
     assert nested.observation.output == "\x01"
     with pytest.raises(esolangs.ProgramNotFoundError) as missing:
         api.from_file(tmp_path / "missing")
@@ -561,7 +561,7 @@ def test_managed_path_preserves_deliberate_errors_and_own_observations(
         for isolated in (False, True):
             provider = ManagedPath(error)
             stdin = io.BytesIO(b"Q")
-            outcome = api.execute(provider, stdin=stdin, isolated=isolated)
+            outcome = api.run(provider, stdin=stdin, isolated=isolated)
             assert outcome.error is error
             assert outcome.status == ("limit" if error is timeout else "rejected")
             assert outcome.bound == (timeout.bound if error is timeout else None)
@@ -587,7 +587,7 @@ def test_managed_path_preserves_deliberate_errors_and_own_observations(
     assert source.tell() == 0
     assert not destination.exists()
     api.to_file(source, destination)
-    assert api.run(destination, stdin="Q").output == "Q"
+    assert api.run(destination, stdin="Q").unwrap().output == "Q"
 
 
 @pytest.mark.parametrize(
@@ -614,7 +614,7 @@ def test_invalid_export_destination_does_not_consume_source(
     destination = tmp_path / "program"
     api.to_file(source, destination)
     assert destination.read_bytes() == b"+."
-    assert api.run(destination).output == "\x01"
+    assert api.run(destination).unwrap().output == "\x01"
 
 
 @pytest.mark.skipif(os.name != "posix", reason="requires POSIX filename limits")
@@ -650,7 +650,7 @@ def test_export_preserves_destination_errors_without_consuming_source(
     destination = "x" * limit
     api.to_file(source, destination)
     assert Path(destination).read_bytes() == b"+."
-    assert api.run(Path(destination)).output == "\x01"
+    assert api.run(Path(destination)).unwrap().output == "\x01"
 
 
 @pytest.mark.parametrize(
@@ -684,7 +684,7 @@ def test_export_anchors_relative_destination_before_callbacks(
     api.to_file(Source(b"+."), target)
     assert destination.read_bytes() == b"+."
     assert unrelated.read_bytes() == b"+++."
-    assert api.run(destination).output == "\x01"
+    assert api.run(destination).unwrap().output == "\x01"
 
     class Destination(os.PathLike[str]):
         def __init__(self, path: str) -> None:
@@ -711,7 +711,7 @@ def test_export_anchors_relative_destination_before_callbacks(
             assert provider.calls == 1
             assert Path.cwd().samefile(other)
             assert unrelated.read_bytes() == b"+++."
-            assert api.run(destination).output == "\x01"
+            assert api.run(destination).unwrap().output == "\x01"
 
     declaration = LANGUAGES[REFERENCE]
     schema = esolangs.DialectSchema(
@@ -739,7 +739,7 @@ def test_export_anchors_relative_destination_before_callbacks(
         assert Path.cwd().samefile(other)
         assert destination.read_bytes() == b"+."
         assert unrelated.read_bytes() == b"+++."
-        assert api.run(destination).output == "\x01"
+        assert api.run(destination).unwrap().output == "\x01"
 
     monkeypatch.chdir(caller)
     with pytest.raises(
@@ -771,7 +771,7 @@ def test_unwritable_export_directory_does_not_consume_source(tmp_path: Path) -> 
     api.to_file(source, destination)
     assert list(parent.iterdir()) == [destination]
     assert destination.read_bytes() == b"+."
-    assert api.run(destination).output == "\x01"
+    assert api.run(destination).unwrap().output == "\x01"
 
 
 @pytest.mark.parametrize(
@@ -843,7 +843,7 @@ def test_stream_export_retains_error_when_staging_cleanup_is_denied(
     else:
         assert "cannot save program" in str(caught.value)
         assert isinstance(caught.value.__cause__, PermissionError)
-        assert api.run(destination).output == "\x01"
+        assert api.run(destination).unwrap().output == "\x01"
 
 
 def test_invalid_export_destination_does_not_open_source_path(tmp_path: Path) -> None:
@@ -898,7 +898,11 @@ def test_file_diagnostics_use_the_validated_path_once(tmp_path: Path) -> None:
     source = tmp_path / "invalid.bf"
     source.write_bytes(b"\xff")
     api = esolangs.Language(REFERENCE)
-    for read in (api.run, api.prepare, api.to_json, api.from_file):
+
+    def run(path):
+        return api.run(path).unwrap()
+
+    for read in (run, api.prepare, api.to_json, api.from_file):
         wrapped = ProgramPath(source)
         with pytest.raises(esolangs.ProgramError, match="invalid UTF-8") as caught:
             read(wrapped)
@@ -907,7 +911,7 @@ def test_file_diagnostics_use_the_validated_path_once(tmp_path: Path) -> None:
 
     missing = ProgramPath(tmp_path / "missing.bf")
     with pytest.raises(esolangs.ProgramNotFoundError, match=r"missing\.bf"):
-        api.run(missing)
+        api.run(missing).unwrap()
     blocked = ProgramPath(tmp_path / "missing" / "destination.bf")
     with pytest.raises(esolangs.ProgramError, match=r"destination\.bf"):
         api.to_file("+.", blocked)
@@ -983,16 +987,16 @@ def test_raw_and_stream_sources_use_the_underlying_string_or_bytes() -> None:
     api = esolangs.Language(REFERENCE)
     expected = api.from_source("+.")
     for source in (Text("+."), Blob(b"+.")):
-        assert api.run(source).output == "\x01"
+        assert api.run(source).unwrap().output == "\x01"
         stream = Stream(source)
-        assert api.run(stream).output == "\x01"
+        assert api.run(stream).unwrap().output == "\x01"
         assert stream.reads == 1
         assert api.from_json(api.to_json(Stream(source))) == expected
     for claimed in (str, bytes, esolangs.ProgramArtifact):
         fake = _ClaimedContainer(claimed)
         for limits in (None, esolangs.ExecutionLimits(total_timeout=5)):
             for source in (fake, Stream(fake)):
-                result = api.execute(source, limits=limits)
+                result = api.run(source, limits=limits)
                 assert result.status == "rejected"
                 assert type(result.error) is esolangs.ProgramError
                 assert "program must be" in str(result.error)
@@ -1015,9 +1019,8 @@ def test_stdin_subclasses_keep_the_same_bytes_in_every_execution_route() -> None
             esolangs.ExecutionLimits(max_steps=10),
             esolangs.ExecutionLimits(total_timeout=5),
         ):
-            assert (
-                esolangs.run(REFERENCE, ",.", stdin=stdin, limits=limits).output == "A"
-            )
+            outcome = esolangs.run(REFERENCE, ",.", stdin=stdin, limits=limits)
+            assert outcome.unwrap().output == "A"
 
     class Stream:
         def __init__(self, value: object) -> None:
@@ -1034,7 +1037,7 @@ def test_stdin_subclasses_keep_the_same_bytes_in_every_execution_route() -> None
             esolangs.ExecutionLimits(total_timeout=5),
         ):
             for source in (fake, Stream(fake)):
-                result = esolangs.execute(REFERENCE, ",.", stdin=source, limits=limits)
+                result = esolangs.run(REFERENCE, ",.", stdin=source, limits=limits)
                 assert result.status == "rejected"
                 assert type(result.error) is esolangs.ArgumentError
                 assert "stdin" in str(result.error)
@@ -1106,9 +1109,9 @@ def test_stream_failures_keep_public_error_types(mode: str) -> None:
 
     for stream in (Broken(), Wrong(), NeedsArgument()):
         with pytest.raises(esolangs.ProgramError):
-            esolangs.run(REFERENCE, stream, **bounds)
+            esolangs.run(REFERENCE, stream, **bounds).unwrap()
         with pytest.raises(esolangs.ArgumentError):
-            esolangs.run(REFERENCE, ",.", stdin=stream, **bounds)
+            esolangs.run(REFERENCE, ",.", stdin=stream, **bounds).unwrap()
 
 
 @pytest.mark.parametrize("blocked", ["program", "stdin"])
@@ -1142,19 +1145,15 @@ def test_isolated_deadline_bounds_stream_acquisition(
                 stdin=stdin,
                 limits=esolangs.ExecutionLimits(execution_timeout=0.1),
             ),
-            "program": lambda: (
-                esolangs.Language(REFERENCE)
-                .execute(
-                    program,
-                    stdin=stdin,
-                    isolated=True,
-                    limits=esolangs.ExecutionLimits(total_timeout=0.1),
-                )
-                .unwrap()
+            "program": lambda: esolangs.Language(REFERENCE).run(
+                program,
+                stdin=stdin,
+                isolated=True,
+                limits=esolangs.ExecutionLimits(total_timeout=0.1),
             ),
         }
         with pytest.raises(esolangs.ExecutionTimeoutError, match="loading input"):
-            calls[blocked]()
+            calls[blocked]().unwrap()
         assert entered.is_set()
         assert not finished.is_set()
     finally:
@@ -1182,7 +1181,7 @@ def _check_timed_source_binding_stops_before_descriptor_probe() -> None:
 
     source = DeferredReader(b"+.")
     try:
-        outcome = esolangs.Language(REFERENCE).execute(
+        outcome = esolangs.Language(REFERENCE).run(
             source,
             limits=esolangs.ExecutionLimits(preparation_timeout=0.1, total_timeout=1),
         )
