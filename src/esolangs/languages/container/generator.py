@@ -28,11 +28,11 @@ from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    input_weights,
     short_name,
     subtree_ids,
 )
 from esolangs.generation.lookup import change_points
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score

@@ -6,7 +6,8 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import essential_inputs, permute_truth_table
+from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.projection import essential_inputs
 from esolangs.languages.for_thorn import generator as boolean
 from esolangs.languages.for_thorn.generator import _forth_const, _forth_ordered
 from esolangs.runtime.io import ScriptedIO

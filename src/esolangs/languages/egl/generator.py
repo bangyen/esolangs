@@ -16,12 +16,9 @@ Decisions:
 
 from collections.abc import Sequence
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    input_weights,
-    symmetric_lookup,
-)
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import input_weights, symmetric_lookup
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score, balance_width
 from esolangs.runtime._program import Program

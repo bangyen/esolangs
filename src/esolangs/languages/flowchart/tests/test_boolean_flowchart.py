@@ -38,11 +38,8 @@ class TestFlowchart:
         assert boolean.flowchart(table) == _flowchart_deque(table)
 
         if table == "0110":
-            from esolangs.generation.helpers import (
-                constant_span_test,
-                essential_inputs,
-                read_at,
-            )
+            from esolangs.generation.helpers import constant_span_test
+            from esolangs.generation.projection import essential_inputs, read_at
 
             assert boolean.constant_span_test is constant_span_test
             assert boolean.essential_inputs is essential_inputs

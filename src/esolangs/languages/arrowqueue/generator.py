@@ -37,13 +37,9 @@ from typing import cast
 
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.grid import grid_rank
-from esolangs.generation.helpers import (
-    WeightedLookup,
-    _validate_truth_table,
-    input_weights,
-    read_at,
-)
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import WeightedLookup, input_weights, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,

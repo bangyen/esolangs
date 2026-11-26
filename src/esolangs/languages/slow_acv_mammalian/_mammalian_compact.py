@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field, replace
 from math import gcd, lcm
 
-from esolangs.generation.helpers import read_at
+from esolangs.generation.projection import read_at
 from esolangs.languages.slow_acv_mammalian._sums import (
     _aim,
     _crossing_pair,

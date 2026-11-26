@@ -6,7 +6,8 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from esolangs.generation.helpers import _residual_ids, _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import _residual_ids
 
 from .layout import Node, _Cursor, chain, chain_onto
 from .render import _UNIT

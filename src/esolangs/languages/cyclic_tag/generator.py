@@ -19,11 +19,9 @@ Size:
     cycle); n=8 and: 534 chars, n=16 and: 131,110 chars.
 """
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    input_weights,
-)
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,

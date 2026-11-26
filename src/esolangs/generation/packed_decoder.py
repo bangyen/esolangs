@@ -3,12 +3,9 @@
 from collections.abc import Sequence
 from typing import NamedTuple
 
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    input_weights,
-)
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import input_weights
 
 
 def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:

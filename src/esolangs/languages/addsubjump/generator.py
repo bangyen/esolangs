@@ -20,12 +20,11 @@ from collections.abc import Sequence
 from esolangs.generation.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _residual_ids,
     _validate_truth_table,
-    input_weights,
     stored_inputs,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import _residual_ids, input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

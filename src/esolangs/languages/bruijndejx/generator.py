@@ -27,7 +27,8 @@ Decisions:
     named 1,218 ([ablations.named_sharing_20261117]).
 """
 
-from esolangs.generation.helpers import _residual_ids, _validate_truth_table
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import _residual_ids
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

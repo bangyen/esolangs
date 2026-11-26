@@ -11,7 +11,7 @@ import pytest
 import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import HaltError
-from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.projection import essential_inputs
 from esolangs.languages.alight.generator import alight
 from esolangs.languages.alight.interpreter import _machine as owned
 from esolangs.languages.alight.interpreter import prepare_machine, run

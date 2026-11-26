@@ -27,12 +27,12 @@ from typing import NamedTuple
 from esolangs.generation.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
-    input_weights,
     permute_truth_table,
     stored_inputs,
     subtree_ids,
     subtree_slot,
 )
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

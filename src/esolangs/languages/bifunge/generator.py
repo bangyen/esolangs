@@ -12,7 +12,8 @@ Size:
     O(T) characters, n=4 parity: 6,663 chars.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, input_weights
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.bifunge._commands import Command
 from esolangs.runtime._program import Program

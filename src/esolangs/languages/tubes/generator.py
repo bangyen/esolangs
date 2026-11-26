@@ -19,9 +19,9 @@ Size:
     n=4 parity: 75 chars, n=10 random 1847: 4,611 chars
 """
 
-from esolangs.generation.helpers import (
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import (
     WeightedLookup,
-    _validate_truth_table,
     input_weights,
     symmetric_lookup,
 )

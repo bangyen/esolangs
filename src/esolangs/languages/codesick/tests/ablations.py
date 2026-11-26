@@ -5,7 +5,8 @@ from itertools import pairwise
 from string import ascii_letters, digits, punctuation
 from typing import Literal
 
-from esolangs.generation.helpers import reflected_table, subtree_ids
+from esolangs.generation.helpers import subtree_ids
+from esolangs.generation.projection import reflected_table
 
 
 def ablate(table: str, rule: Literal["default", "dense_names"]) -> str:

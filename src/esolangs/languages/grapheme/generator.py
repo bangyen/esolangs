@@ -11,7 +11,8 @@ Size:
     Constants: 2n + 4 chars and commands in the default dialect.
 """
 
-from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.grapheme.dialect import (
     DEFAULT_GRAPHEME,

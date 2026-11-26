@@ -12,15 +12,10 @@ from esolangs.generation.decision import (
     decision_layers,
     reduced_diagram,
 )
-from esolangs.generation.helpers import (
-    SubtreeDiagram,
-    input_weights,
-    read_at,
-    subtree_ids,
-    symmetric_lookup,
-)
+from esolangs.generation.helpers import SubtreeDiagram, subtree_ids
 from esolangs.generation.lookup import prefix_counts, symmetric_outputs
 from esolangs.generation.packed_decoder import _packed_nonconstant, packed_decoder
+from esolangs.generation.projection import input_weights, read_at, symmetric_lookup
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.registry import LANGUAGES
 from esolangs.registry._operations import OperationRef

@@ -80,7 +80,7 @@ def test_every_kept_level_is_tested_at_every_node(monkeypatch) -> None:
         for row, expected in enumerate(table):
             assert _run(table, row) == (expected, 3)
 
-    from esolangs.generation.helpers import essential_inputs, read_at
+    from esolangs.generation.projection import essential_inputs, read_at
     from esolangs.languages.thisthat import generator
 
     assert generator.essential_inputs is essential_inputs

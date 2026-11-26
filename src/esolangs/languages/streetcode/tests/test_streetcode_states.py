@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs._cycles import _StepMachine
 from esolangs.languages.streetcode.interpreter import _Machine, _State
 from esolangs.languages.streetcode.interpreter import geometry as module
 from esolangs.languages.streetcode.interpreter.geometry import (
@@ -19,6 +18,7 @@ from esolangs.languages.streetcode.interpreter.validation import (
     drive_states,
 )
 from esolangs.languages.streetcode.tests.streetcode_support import _RING_PROGRAM
+from esolangs.runtime._vm_protocol import _StepMachine
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import InputCursorContract

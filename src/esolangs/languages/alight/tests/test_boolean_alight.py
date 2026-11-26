@@ -47,7 +47,7 @@ def test_alight_balance_drops_ignored_inputs(syntax, monkeypatch) -> None:
     kept = esolangs.generate("Alight", full, balance=True, settings=settings).source
     assert len(program) < len(str(kept))
 
-    from esolangs.generation.helpers import input_weights
+    from esolangs.generation.projection import input_weights
 
     assert boolean.input_weights is input_weights
 

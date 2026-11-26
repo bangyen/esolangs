@@ -247,7 +247,7 @@ def test_linear_lookup_drops_ignored_inputs() -> None:
 def test_linear_lookup_loops_stop_at_a_shared_marker_cell() -> None:
     """Ignored inputs 1-7 put levels 0 and 8 on one marker cell: only level 0 loops."""
     from esolangs import generate
-    from esolangs.generation.helpers import input_weights
+    from esolangs.generation.projection import input_weights
     from esolangs.languages.brainif.interpreter import run
 
     n, kept = 12, [0, 8, 9, 10, 11]

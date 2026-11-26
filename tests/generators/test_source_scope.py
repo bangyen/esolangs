@@ -15,6 +15,9 @@ def sources(tmp_path: Path) -> Path:
     (tools / "helpers.py").write_text(
         "def constant_span_test(table):\n    return table[0]\n"
         "def subtree_ids(table):\n    return table\n"
+    )
+    (tools / "projection.py").write_text(
+        "from .helpers import subtree_ids\n"
         "def essential_inputs(table):\n    return subtree_ids(table)\n"
     )
     (tools / "emit.py").write_text(
@@ -76,7 +79,7 @@ def test_shadowed_or_annotated_helpers_are_not_evidence(
 def test_dependency_detection_does_not_establish_emitted_sharing(sources: Path) -> None:
     path = sources / "generator.py"
     path.write_text(
-        "from esolangs.generation.helpers import essential_inputs\n"
+        "from esolangs.generation.projection import essential_inputs\n"
         "def generate(table):\n    return essential_inputs(table)\n"
     )
     assert construction_symbols(path, sources, "generate") == {

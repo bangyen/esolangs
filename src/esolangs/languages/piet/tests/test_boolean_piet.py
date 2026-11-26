@@ -9,7 +9,7 @@ import pytest
 
 import esolangs
 from esolangs import run
-from esolangs.generation.helpers import essential_inputs, read_at
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.languages.piet.generator import piet as generate
 from esolangs.languages.piet.generator.balance import _bounded_operations
 from esolangs.languages.piet.tests.test_boolean_piet_raster_balance import TABLES, score

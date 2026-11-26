@@ -5,7 +5,7 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.projection import essential_inputs
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.registry._backend import Shape
 from esolangs.registry._certification import load as load_certification
@@ -33,7 +33,8 @@ def test_boolean_index_lists_all_declared_backends() -> None:
 
 def test_reorder_permutation_preserves_the_function() -> None:
     """Permuting the table renames the inputs without changing the function."""
-    from esolangs.generation.helpers import permute_truth_table, reflected_table
+    from esolangs.generation.helpers import permute_truth_table
+    from esolangs.generation.projection import reflected_table
 
     table = "00101101"
     n = 3
@@ -47,7 +48,7 @@ def test_reorder_permutation_preserves_the_function() -> None:
 
 
 def test_identity_projection_reuses_the_table() -> None:
-    from esolangs.generation.helpers import read_at
+    from esolangs.generation.projection import read_at
 
     table = "00101101"
     assert read_at(table, (0, 1, 2), 3) is table
@@ -58,7 +59,7 @@ def test_identity_projection_reuses_the_table() -> None:
 
 
 def test_contiguous_projection_holds_omitted_bits_at_zero() -> None:
-    from esolangs.generation.helpers import read_at
+    from esolangs.generation.projection import read_at
 
     n = 7
     table = format(int("ab3260f7e391c45376b018f5c438b2d9", 16), "0128b")

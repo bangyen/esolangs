@@ -35,13 +35,9 @@ Decisions:
 from collections.abc import Callable
 from math import isqrt
 
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-)
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.generation.lookup import constant_output, symmetric_outputs
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.rotfuck.dialect import (
     ROTFUCK_CYCLES,

@@ -9,7 +9,7 @@ Size:
 """
 
 from esolangs.generation.algebraic import affine_form
-from esolangs.generation.helpers import essential_inputs, read_at
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

@@ -32,12 +32,9 @@ Decisions:
 
 from collections.abc import Sequence
 
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    essential_inputs,
-)
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import essential_inputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.slow_acv_mammalian._mammalian255 import decision_tree
 from esolangs.languages.slow_acv_mammalian._mammalian_compact import compact_chain

@@ -16,7 +16,7 @@ import random
 import pytest
 
 import esolangs
-from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.projection import essential_inputs
 from esolangs.registry import LANGUAGES
 from esolangs.registry._backend import Shape
 from scripts.docs.catalogue import load as _catalogue_load

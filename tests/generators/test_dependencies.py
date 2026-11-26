@@ -4,7 +4,7 @@ import random
 from itertools import product
 from types import MappingProxyType
 
-from esolangs.generation import helpers
+from esolangs.generation import helpers, projection
 from esolangs.generation.algebraic import AffineForm, affine_form, parity_bias
 from esolangs.generation.decision import decision_layers, reduced_diagram
 from tests.support.witness_tables import witnesses
@@ -64,7 +64,7 @@ def test_dependencies_exhaustive() -> None:
             tables += ["".join(bits) for bits in product("01", repeat=1 << n)]
         for table in tables:
             dependencies = _oracle(table, n)
-            assert helpers.essential_inputs(table, n) == dependencies
+            assert projection.essential_inputs(table, n) == dependencies
             assert helpers.stored_inputs(table, perm) == {perm[i] for i in dependencies}
             form = forms.get(table)
             assert affine_form(table, n) == form
@@ -74,8 +74,8 @@ def test_dependencies_exhaustive() -> None:
             layers = decision_layers(table)
             nodes, root = reduced_diagram(table, n)
             assert len(layers.children) == n
-            lookup = helpers.input_weights(table, n)
-            assert isinstance(lookup, helpers.WeightedLookup)
+            lookup = projection.input_weights(table, n)
+            assert isinstance(lookup, projection.WeightedLookup)
             assert (
                 tuple(_binary_weights([i in dependencies for i in range(n)]))
                 == lookup.weights
@@ -94,7 +94,7 @@ def test_dependencies_exhaustive() -> None:
                     ]
                     == bit
                 )
-            symmetric = helpers.symmetric_lookup(lookup)
+            symmetric = projection.symmetric_lookup(lookup)
             counts: dict[int, set[str]] = {}
             for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
                 counts.setdefault(sum(row[i] for i in dependencies), set()).add(bit)
@@ -103,7 +103,7 @@ def test_dependencies_exhaustive() -> None:
             )
             assert (symmetric is not None) == expected
             if symmetric is not None:
-                assert isinstance(symmetric, helpers.WeightedLookup)
+                assert isinstance(symmetric, projection.WeightedLookup)
                 assert isinstance(symmetric.weights, tuple)
                 for row, bit in zip(product((0, 1), repeat=n), table, strict=True):
                     index = sum(
@@ -135,7 +135,7 @@ def test_dependencies_late_witnesses_and_ignored_inputs() -> None:
         ]
         tables += ["".join(rng.choice("01") for _ in range(1 << n)) for _ in range(10)]
         for table in tables:
-            assert helpers.essential_inputs(table, n) == _oracle(table, n)
+            assert projection.essential_inputs(table, n) == _oracle(table, n)
 
 
 def test_affine_blocks_with_ignored_low_and_high_inputs() -> None:
@@ -153,7 +153,7 @@ def test_affine_blocks_with_ignored_low_and_high_inputs() -> None:
 
 
 def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
-    original = helpers._residual_ids
+    original = projection._residual_ids
     diagram = original("1010", 2)
     assert diagram.levels == ((3,), (2,), (1, 0))
     assert isinstance(diagram.children, MappingProxyType)
@@ -166,15 +166,15 @@ def test_dependency_fallback_has_positive_control(monkeypatch) -> None:
         calls.append(n)
         return original(table, n)
 
-    monkeypatch.setattr(helpers, "_residual_ids", record)
+    monkeypatch.setattr(projection, "_residual_ids", record)
     table = "".join(str(((row >> 8) ^ row) & 1) for row in range(1024))
-    assert helpers.essential_inputs(table, 10) == [1, 9]
+    assert projection.essential_inputs(table, 10) == [1, 9]
     assert calls == [9]
     calls.clear()
-    assert helpers.essential_inputs("01" * 128, 8) == [7]
+    assert projection.essential_inputs("01" * 128, 8) == [7]
     assert calls == []
     parity = "".join(str(row.bit_count() % 2) for row in range(256))
-    assert helpers.essential_inputs(parity, 8) == list(range(8))
+    assert projection.essential_inputs(parity, 8) == list(range(8))
     assert calls == []
 
 
@@ -190,7 +190,7 @@ def test_dependency_scan_has_linear_character_budget() -> None:
 
     for n in (8, 10, 12):
         table = Metered("01" * (1 << (n - 1)))
-        assert helpers.essential_inputs(table, n) == [n - 1]
+        assert projection.essential_inputs(table, n) == [n - 1]
         assert table.scanned <= 4 * len(table)
         table.scanned = 0
         assert helpers.stored_inputs(table, tuple(reversed(range(n)))) == {0}

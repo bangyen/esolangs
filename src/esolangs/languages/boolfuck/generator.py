@@ -42,13 +42,9 @@ from collections.abc import Sequence
 from typing import Literal
 
 from esolangs.generation.algebraic import affine_form
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    input_weights,
-    move_text,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, move_text, subtree_ids
 from esolangs.generation.lookup import constant_output, symmetric_outputs
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body

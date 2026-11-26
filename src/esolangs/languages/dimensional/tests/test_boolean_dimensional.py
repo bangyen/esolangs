@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import run
-from esolangs.generation.helpers import input_weights
+from esolangs.generation.projection import input_weights
 from esolangs.generation.wrap import (
     wrap_program,
 )

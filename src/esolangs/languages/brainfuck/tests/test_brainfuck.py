@@ -143,7 +143,7 @@ def test_cursorless_input_cannot_prove_cycle_or_growth(
 
 
 def test_compiled_transition_preserves_borrowed_tape_and_reports_effects() -> None:
-    from esolangs.languages.brainfuck.interpreter import _advance_compiled, _compile
+    from esolangs.languages.brainfuck._native import _advance_compiled, _compile
 
     tape = bytearray([3])
     state = (0, 0)

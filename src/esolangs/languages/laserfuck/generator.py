@@ -31,13 +31,9 @@ from itertools import zip_longest
 from typing import NamedTuple
 
 from esolangs.generation.grid import grid_area, grid_width, narrowest_grid
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    input_weights,
-    move_text,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, move_text, subtree_ids
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs._bindings import TEMPLATE_CHAR, fill_runs
-from esolangs.generation.helpers import essential_inputs, read_at
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.languages.cyclic_tag.generator import cyclic_tag
 from esolangs.languages.cyclic_tag.interpreter import _execute, _Machine, run
 from esolangs.runtime._lifecycle import Completion

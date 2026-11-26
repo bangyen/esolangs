@@ -17,15 +17,13 @@ Size:
 
 from collections.abc import Sequence
 
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table, subtree_ids
+from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import (
     WeightedLookup,
-    _validate_truth_table,
     input_weights,
-    subtree_ids,
     symmetric_lookup,
 )
-from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

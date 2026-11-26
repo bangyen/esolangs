@@ -8,13 +8,9 @@ Size:
 from itertools import pairwise
 from math import isqrt
 
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-)
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, wrap_program

@@ -50,8 +50,9 @@ from typing import Any, Literal, NamedTuple
 
 from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.grid import grid_width, narrowest_grid
-from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.circuit_diagram.generator.columns import _FreeColumns
 from esolangs.languages.circuit_diagram.generator.layout import (

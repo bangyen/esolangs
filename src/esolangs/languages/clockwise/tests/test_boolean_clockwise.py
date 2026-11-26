@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import run
-from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.projection import essential_inputs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.clockwise import generator as boolean
 from esolangs.languages.clockwise.generator import (

@@ -14,11 +14,8 @@ from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.source_hints import with_hint
 
 if TYPE_CHECKING:
-    from esolangs._cycles import (
-        _BranchingStepMachine,
-        _FramedMachine,
-        _SteppableMachine,
-    )
+    from esolangs._cycles import _FramedMachine
+    from esolangs.runtime._vm_protocol import _BranchingStepMachine, _SteppableMachine
 
 
 _UNCHECKED_OWNER = object()

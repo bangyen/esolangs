@@ -4,11 +4,8 @@ from functools import cache
 from typing import Literal
 
 from esolangs._bindings import TEMPLATE_CHAR
-from esolangs.generation.helpers import (
-    SubtreeDiagram,
-    _validate_truth_table,
-    reflected_table,
-)
+from esolangs.generation.helpers import SubtreeDiagram, _validate_truth_table
+from esolangs.generation.projection import reflected_table
 from esolangs.languages.underload.generator import _REACH, PAIR
 
 

@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Any, Protocol
 from esolangs.runtime._drive import drive
 
 if TYPE_CHECKING:
-    from esolangs._cycles import _StepMachine
     from esolangs.runtime._lifecycle import Completion, CompletionReport
     from esolangs.runtime._program import RunnerProgram
+    from esolangs.runtime._vm_protocol import _StepMachine
     from esolangs.runtime.io import IO
     from esolangs.runtime.randomness import Randomness
 

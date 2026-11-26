@@ -30,9 +30,9 @@ Decisions:
     passes instead.
 """
 
-from esolangs.generation.helpers import (
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import (
     WeightedLookup,
-    _validate_truth_table,
     input_weights,
     symmetric_lookup,
 )

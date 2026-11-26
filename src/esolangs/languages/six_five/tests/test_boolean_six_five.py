@@ -80,7 +80,8 @@ class TestSixFive:
         # read: a node, whose leaves add 18 to the 31 and 16 to the 32.
         assert boolean.six_five("0110").endswith("7V83666A04655A0")
 
-        from esolangs.generation.helpers import input_weights, stored_inputs
+        from esolangs.generation.helpers import stored_inputs
+        from esolangs.generation.projection import input_weights
 
         assert boolean.subtree_ids is subtree_ids
         assert boolean.stored_inputs is stored_inputs

@@ -57,7 +57,7 @@ from collections.abc import Callable, Iterator
 from functools import cache
 from typing import NamedTuple
 
-from esolangs.generation.helpers import read_at
+from esolangs.generation.projection import read_at
 from esolangs.languages.malbolge.descriptor import _DIGITS_N as _DIGITS_N
 from esolangs.languages.malbolge.interpreter import _crazy
 

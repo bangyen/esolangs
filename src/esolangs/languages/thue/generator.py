@@ -34,14 +34,9 @@ from math import isqrt
 from string import ascii_letters
 
 from esolangs.generation.grid import grid_width
-from esolangs.generation.helpers import (
-    _residual_ids,
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import _residual_ids, essential_inputs, read_at
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score

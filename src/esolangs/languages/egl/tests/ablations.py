@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from esolangs.generation.helpers import input_weights, symmetric_lookup
+from esolangs.generation.projection import input_weights, symmetric_lookup
 
 
 def _grid(weights: list[int], table: str, *, folded: bool) -> str:

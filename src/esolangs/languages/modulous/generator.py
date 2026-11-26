@@ -22,12 +22,8 @@ from collections.abc import Sequence
 from math import isqrt
 
 from esolangs.generation.grid import grid_width
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    input_weights,
-    symmetric_lookup,
-)
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.generation.projection import input_weights, symmetric_lookup
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (

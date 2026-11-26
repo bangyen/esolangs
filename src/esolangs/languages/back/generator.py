@@ -43,13 +43,9 @@ from itertools import pairwise
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.grid import grid_rank, grid_width
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    input_weights,
-    move_text,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, move_text, subtree_ids
 from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,

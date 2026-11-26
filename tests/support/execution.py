@@ -148,9 +148,9 @@ def assert_branch_proof_replays(
     name: str, source: str, output: str, *, halts: bool = True
 ) -> None:
     """Replay the exact named states retained by a real worker."""
-    from esolangs._cycles import _BranchingStepMachine
     from esolangs.runtime._isolated import termination_result_isolated
     from esolangs.runtime._vm_adapter import _DelegatingVM
+    from esolangs.runtime._vm_protocol import _BranchingStepMachine
     from esolangs.vm import make_vm
     from tests.support.certification_barrier import guarded_worker
 

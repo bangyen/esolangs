@@ -100,7 +100,7 @@ class TestGraphemeTable:
 
 @pytest.mark.parametrize("mode", ["between_letters", "after_each_letter"])
 def test_generator_literals_are_exact(mode: str) -> None:
-    from esolangs.generation.helpers import read_at
+    from esolangs.generation.projection import read_at
     from esolangs.languages.grapheme.generator import grapheme
 
     assert boolean.read_at is read_at

@@ -1,7 +1,10 @@
 """The execution and inspection interface, without adapters or registry imports."""
 
+from collections.abc import Hashable, Sequence
+from inspect import getattr_static
 from typing import Protocol, runtime_checkable
 
+from esolangs.exceptions import ArgumentError, EsolangError
 from esolangs.runtime._capabilities import IpShape
 
 
@@ -117,3 +120,92 @@ class VM(Protocol):
         ``self_halts``, which a language carries while still writing its
         answer.  Use :func:`esolangs.run`.
         """
+
+
+@runtime_checkable
+class _SteppableMachine(Protocol):
+    """The bare step-and-ask-if-halted surface a bounded drive needs.
+
+    No ``snapshot()``, so :class:`~esolangs.debugger.Debugger` qualifies.
+    """
+
+    def step(self) -> None:
+        """Execute one command, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+
+@runtime_checkable
+class _StepMachine(_SteppableMachine, Protocol):
+    """The minimal step-capable surface the hang detector steps on.
+
+    Deterministic snapshots must contain complete state, input cursor included,
+    or a repeat is not a cycle. Random machines require branching analysis
+    rather than a concrete-path snapshot repeat.
+    """
+
+    def snapshot(self) -> Hashable:
+        """Return complete state, hashable for deterministic cycle detection.
+
+        Opaque; ``ip``, ``memory``, ``stack`` and ``output`` are the views.
+        """
+
+
+@runtime_checkable
+class _BranchingStepMachine(Protocol):
+    """A machine whose next random choice can be enumerated exactly.
+
+    The state is an immutable value: exploring one outcome must not
+    consume a draw, input or output belonging to a sibling.
+    """
+
+    def branching_snapshot(self) -> Hashable:
+        """Return the initial complete state for a branching search."""
+
+    def branching_halted(self, state: Hashable) -> bool:
+        """Whether ``state`` has halted."""
+
+    def branching_successors(
+        self, state: Hashable, limit: int
+    ) -> Sequence[Hashable] | None:
+        """Return every state or BranchFailure, or ``None`` when unforkable.
+
+        ``limit`` bounds the outcomes one transition may materialize.
+        """
+
+
+_MISSING = object()
+
+
+def _check_driver(
+    machine: object,
+    argument: str,
+    *fields: str,
+    error_type: type[EsolangError] = ArgumentError,
+) -> None:
+    """Accept the fields a direct driver needs, including on a forwarding VM."""
+    if isinstance(machine, type) or not callable(getattr(machine, "step", None)):
+        raise error_type(f"{argument} must provide a callable step()")
+    _check_driver_fields(machine, argument, "halted", *fields, error_type=error_type)
+
+
+def _check_driver_fields(
+    machine: object,
+    argument: str,
+    *fields: str,
+    error_type: type[EsolangError] = ArgumentError,
+) -> None:
+    """Check fields when the current driver phase needs them."""
+    machine_type = type(machine)
+    # The common case is a property on an ordinary class. A direct class
+    # dictionary lookup avoids descriptor execution and an MRO search.
+    declared = vars(machine_type) if type(machine_type) is type else ()
+    for name in fields:
+        if (
+            name not in declared
+            and getattr_static(machine, name, _MISSING) is _MISSING
+            and not hasattr(machine, name)
+        ):
+            raise error_type(f"{argument} must provide a {name} attribute")

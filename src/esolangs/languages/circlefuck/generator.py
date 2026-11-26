@@ -16,12 +16,9 @@ Decisions:
 
 from itertools import pairwise
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-)
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output, symmetric_outputs
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

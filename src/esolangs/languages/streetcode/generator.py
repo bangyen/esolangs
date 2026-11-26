@@ -54,12 +54,9 @@ from math import isqrt
 from typing import NamedTuple
 
 from esolangs.generation.grid import grid_area, grid_rank, grid_width
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    constant_span_test,
-    input_weights,
-)
+from esolangs.generation.helpers import _validate_truth_table, constant_span_test
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score

@@ -26,12 +26,8 @@ Decisions:
 
 from esolangs.compressed import CompressedText, TextLimits
 from esolangs.exceptions import GeneratorCapError
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    essential_inputs,
-    move_text,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, move_text, subtree_ids
+from esolangs.generation.projection import essential_inputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.unary.descriptor import check_arity
 from esolangs.runtime._program import Program

@@ -35,12 +35,9 @@ Decisions:
 import re
 from functools import cache
 
-from esolangs.generation.helpers import (
-    SubtreeDiagram,
-    _validate_truth_table,
-    reflected_table,
-)
+from esolangs.generation.helpers import SubtreeDiagram, _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import reflected_table
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
 from esolangs.generation.wrap import TokenWrapper

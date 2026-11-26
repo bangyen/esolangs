@@ -47,8 +47,8 @@ class TestEveryLanguageIsSteppable:
 
     def test_every_random_machine_implements_the_branching_protocol(self) -> None:
         """Randomness no longer costs a language its hang proof."""
-        from esolangs._cycles import _BranchingStepMachine
         from esolangs.registry import LANGUAGES
+        from esolangs.runtime._vm_protocol import _BranchingStepMachine
         from tests.support.samples import SAMPLES
 
         observed = set()

@@ -29,13 +29,9 @@ from functools import cached_property
 
 from esolangs.generation.algebraic import affine_form
 from esolangs.generation.grid import grid_width
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-)
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.generation.lookup import constant_output, exceptional_row, packed_cells
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program

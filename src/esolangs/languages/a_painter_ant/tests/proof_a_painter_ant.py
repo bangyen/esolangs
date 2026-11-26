@@ -10,8 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
 from esolangs._bindings import TEMPLATE_CHAR
-from esolangs.generation.helpers import input_weights
 from esolangs.generation.lookup import near_unanimity
+from esolangs.generation.projection import input_weights
 from esolangs.generation.template import TemplateToken, layout_fragments
 from esolangs.languages.a_painter_ant.generator import (
     _east,

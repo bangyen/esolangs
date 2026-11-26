@@ -51,8 +51,8 @@ def test_small_tables_keep_existing_paths(monkeypatch) -> None:
     assert affine_stream("0001") is None
 
     from esolangs.generation.algebraic import affine_form
-    from esolangs.generation.helpers import input_weights
     from esolangs.generation.lookup import symmetric_outputs
+    from esolangs.generation.projection import input_weights
     from esolangs.generation.shared_flag import flag_tree_body
     from esolangs.languages.boolfuck import generator
 

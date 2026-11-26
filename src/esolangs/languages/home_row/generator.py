@@ -23,12 +23,9 @@ Decisions:
 
 from itertools import groupby
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-)
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,

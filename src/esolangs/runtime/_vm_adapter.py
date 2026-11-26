@@ -10,8 +10,6 @@ from inspect import getattr_static
 from types import FunctionType, MethodType, ModuleType
 from typing import Any, cast
 
-import esolangs._cycles as _cycles
-from esolangs._cycles import _check_driver
 from esolangs.exceptions import ArgumentError, EsolangError, InterpreterLimitError
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
@@ -32,7 +30,7 @@ from esolangs.runtime._prepared import _PreparedRuntime
 from esolangs.runtime._state import WorkspaceSnapshot, WorkspaceVariant
 from esolangs.runtime._traits import trait
 from esolangs.runtime._validate import check_whole
-from esolangs.runtime._vm_protocol import VM
+from esolangs.runtime._vm_protocol import VM, _check_driver, _StepMachine
 from esolangs.runtime._vm_views import machine_views
 from esolangs.runtime.io import ScriptedIO, _scripted_io
 
@@ -69,7 +67,7 @@ def _retain_fault_steps(vm: VM, error: EsolangError, steps: int) -> None:
 class _DelegatingVM:
     """Wrap a registered interpreter, copying its exposed memory and stack."""
 
-    _machine: _cycles._StepMachine
+    _machine: _StepMachine
     _fault_observation: ExecutionResult | None = None
     _halt_fault: EsolangError | None = None
     _replayed_halt_fault = False

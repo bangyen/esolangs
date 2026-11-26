@@ -2,7 +2,8 @@
 
 from typing import Literal
 
-from esolangs.generation.helpers import essential_inputs, permute_truth_table, read_at
+from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.projection import essential_inputs, read_at
 
 
 def ablate(truth: str, rule: Literal["default", "orientation_carry"]) -> str:

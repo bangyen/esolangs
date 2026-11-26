@@ -19,11 +19,8 @@ Decisions:
 
 from itertools import groupby
 
-from esolangs.generation.helpers import (
-    _ASCII_ZERO,
-    _validate_truth_table,
-    input_weights,
-)
+from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

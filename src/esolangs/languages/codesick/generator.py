@@ -28,10 +28,8 @@ from collections import Counter
 from string import ascii_letters, digits, punctuation
 
 from esolangs.generation.decision import decision_layers
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    reflected_table,
-)
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import reflected_table
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

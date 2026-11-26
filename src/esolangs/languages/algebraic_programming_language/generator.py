@@ -30,11 +30,10 @@ from esolangs.generation.grid import grid_width
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
-    essential_inputs,
     in_input_order,
-    read_at,
     short_name,
 )
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program

@@ -7,7 +7,7 @@ import pytest
 
 import esolangs
 from esolangs import run as execute
-from esolangs.generation.helpers import input_weights
+from esolangs.generation.projection import input_weights
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.fish.generator import (
     _column,

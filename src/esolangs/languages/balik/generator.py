@@ -24,12 +24,8 @@ Decisions:
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    constant_span_test,
-    essential_inputs,
-    read_at,
-)
+from esolangs.generation.helpers import _validate_truth_table, constant_span_test
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

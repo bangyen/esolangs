@@ -24,14 +24,8 @@ from typing import NamedTuple
 
 from esolangs.generation.decision import decision_layers, fold_subtables
 from esolangs.generation.grid import grid_width
-from esolangs.generation.helpers import (
-    _ASCII_ONE,
-    _ASCII_ZERO,
-    _validate_truth_table,
-    essential_inputs,
-    input_weights,
-    read_at,
-)
+from esolangs.generation.helpers import _ASCII_ONE, _ASCII_ZERO, _validate_truth_table
+from esolangs.generation.projection import essential_inputs, input_weights, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -624,7 +618,7 @@ def _brainif_linear(truth_table: str, weights: Sequence[int] | None = None) -> s
     the crossings and costs one marker.  Commands use the published spellings.
 
     ``weights`` gives each input's row weight (see
-    :func:`~esolangs.generation.helpers.input_weights`); an ignored input, weight 0,
+    :func:`~esolangs.generation.projection.input_weights`); an ignored input, weight 0,
     is read and stepped past, and ``truth_table`` is then its projection.
     The default is every input essential.
     """

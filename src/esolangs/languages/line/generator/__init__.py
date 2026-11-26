@@ -26,12 +26,11 @@ from collections.abc import Callable, Iterator
 from functools import lru_cache, partial
 from typing import NamedTuple, cast
 
-from esolangs.generation.helpers import (
+from esolangs.generation.helpers import _validate_truth_table, permute_truth_table
+from esolangs.generation.projection import (
     ResidualDiagram,
     _residual_ids,
-    _validate_truth_table,
     essential_inputs,
-    permute_truth_table,
     read_at,
 )
 from esolangs.generation.requests import BalanceRequest, GenerationRequest

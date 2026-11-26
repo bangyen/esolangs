@@ -15,8 +15,9 @@ Size:
 
 from functools import cached_property
 
-from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import packed_cells
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.languages.piet.generator.balance import (
     _bounded_operations,

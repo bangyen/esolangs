@@ -11,8 +11,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from esolangs.generation.helpers import essential_inputs, read_at
 from esolangs.generation.lookup import exceptional_row, majority_bias
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.raster import Raster
 from esolangs.runtime.codels import BLACK, COLOURS
 

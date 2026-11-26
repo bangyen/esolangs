@@ -30,10 +30,10 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
     in_input_order,
-    input_weights,
     subtree_ids,
 )
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

@@ -860,7 +860,8 @@ def test_capped_protocol_truncated_record_retains_prefix(protocol_child) -> None
 def test_broken_request_pipe_still_drains_worker_failure(protocol_child) -> None:
     from io import StringIO
 
-    from esolangs.runtime._isolated import _bounded_output, _failure_wire
+    from esolangs.runtime._failure_wire import _failure_wire
+    from esolangs.runtime._isolated import _bounded_output
 
     class ClosedInput(StringIO):
         def write(self, _text):

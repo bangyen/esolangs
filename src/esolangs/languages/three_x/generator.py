@@ -28,11 +28,10 @@ from enum import Enum, auto
 from esolangs.generation.helpers import (
     _validate_truth_table,
     constant_span_test,
-    essential_inputs,
     in_input_order,
-    read_at,
     subtree_ids,
 )
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 

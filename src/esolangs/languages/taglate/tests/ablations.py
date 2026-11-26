@@ -2,7 +2,8 @@
 
 from typing import Literal
 
-from esolangs.generation.helpers import _validate_truth_table, essential_inputs, read_at
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.languages.taglate.generator import _affine, _even_reduce, _with_discards
 
 

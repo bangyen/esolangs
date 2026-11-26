@@ -7,7 +7,8 @@ from typing import NamedTuple
 
 import pytest
 
-from esolangs.generation.helpers import permute_truth_table, reflected_table
+from esolangs.generation.helpers import permute_truth_table
+from esolangs.generation.projection import reflected_table
 from esolangs.registry import LANGUAGES
 from scripts.docs.fragments import section
 from scripts.docs.resource_evidence import PACKAGES, _provider

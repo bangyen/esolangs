@@ -25,13 +25,9 @@ from typing import Literal, NamedTuple
 
 from esolangs.generation.decision import DecisionLayers, decision_layers
 from esolangs.generation.grid import grid_area, grid_rank, grid_width, narrowest_grid
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    essential_inputs,
-    read_at,
-    subtree_ids,
-)
+from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program

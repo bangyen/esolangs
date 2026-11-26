@@ -3,7 +3,8 @@
 from functools import cache
 from math import factorial
 
-from esolangs.generation.helpers import _validate_truth_table, essential_inputs
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import essential_inputs
 from esolangs.languages.eval.generator import _ordered
 
 # ``~`` swaps the active stack, ``*`` reverses it, ``=`` pops it onto the

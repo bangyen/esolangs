@@ -14,6 +14,7 @@ from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime import _snapshot_wire
 from esolangs.runtime._execution import interpreter_module
+from esolangs.runtime._failure_wire import _failure_wire
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._proof import CycleDecision
 from esolangs.runtime._request_wire import encode_request
@@ -441,7 +442,7 @@ def test_worker_refuses_partial_counters_and_wrong_periodic_steps() -> None:
 
 
 def test_large_worker_counters_keep_completion_proof_and_failure() -> None:
-    from esolangs.runtime._isolated import _failure_wire
+    from esolangs.runtime._failure_wire import _failure_wire
     from esolangs.runtime._json import worker_dumps
 
     count = 1 << 18000
@@ -525,7 +526,7 @@ def test_worker_budget_errors_preserve_the_named_bound() -> None:
     unknown = esolangs.ExecutionBudgetError("no phase declared")
     assert (
         _isolated._decode_outcome(
-            json.dumps(_isolated._failure_wire(unknown)), expired=False
+            json.dumps(_failure_wire(unknown)), expired=False
         ).bound
         is None
     )
@@ -535,7 +536,7 @@ def test_worker_budget_errors_preserve_the_named_bound() -> None:
     ):
         error.bound = bound
         outcome = _isolated._decode_outcome(
-            json.dumps(_isolated._failure_wire(error)), expired=False
+            json.dumps(_failure_wire(error)), expired=False
         )
         assert type(outcome.error) is type(error)
         assert outcome.bound == bound
@@ -1007,7 +1008,7 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
 
 
 def _check_worker_explicit_causes() -> None:
-    from esolangs.runtime._isolated import _failure_wire
+    from esolangs.runtime._failure_wire import _failure_wire
     from esolangs.runtime._json import worker_dumps
 
     causes = (

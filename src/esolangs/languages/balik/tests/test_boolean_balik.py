@@ -47,7 +47,8 @@ def _check_constants() -> None:
 
 def _check_projection() -> None:
     """Projection leaves preserve the tested cell used by every merge."""
-    from esolangs.generation.helpers import constant_span_test, read_at
+    from esolangs.generation.helpers import constant_span_test
+    from esolangs.generation.projection import read_at
     from esolangs.languages.balik import generator
 
     assert generator.constant_span_test is constant_span_test

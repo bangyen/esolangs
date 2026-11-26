@@ -17,12 +17,8 @@ Size:
     Constants: n + 2 chars, n + 3 commands including frame completion.
 """
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    essential_inputs,
-    permute_truth_table,
-    read_at,
-)
+from esolangs.generation.helpers import _validate_truth_table, permute_truth_table
+from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,

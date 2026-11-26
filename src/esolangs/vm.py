@@ -24,7 +24,7 @@ from collections.abc import Callable, Hashable
 from dataclasses import replace
 from typing import Protocol, runtime_checkable
 
-from esolangs._cycles import _check_driver, _check_driver_fields, _drive_until_halt
+from esolangs._cycles import _drive_until_halt
 from esolangs._cycles import (
     run_until_halt as run_until_halt,
 )
@@ -76,7 +76,7 @@ from esolangs.runtime._vm_adapter import (
     _raise_halt_fault,
     _retain_fault_steps,
 )
-from esolangs.runtime._vm_protocol import VM
+from esolangs.runtime._vm_protocol import VM, _check_driver, _check_driver_fields
 from esolangs.runtime.io import ScriptedIO
 from esolangs.settings import DialectSettings
 

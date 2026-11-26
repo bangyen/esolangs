@@ -28,11 +28,9 @@ Decisions:
     undecoded (116 of 126 wrong).
 """
 
-from esolangs.generation.helpers import (
-    _validate_truth_table,
-    input_weights,
-)
+from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output
+from esolangs.generation.projection import input_weights
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import (
     InputSlot,

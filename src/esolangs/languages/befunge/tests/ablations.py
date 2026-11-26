@@ -2,7 +2,8 @@
 
 from typing import Literal
 
-from esolangs.generation.helpers import _validate_truth_table, input_weights
+from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.projection import input_weights
 from esolangs.languages.befunge.generator import (
     _check_cap,
     _constant,

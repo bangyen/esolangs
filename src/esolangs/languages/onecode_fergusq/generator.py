@@ -8,7 +8,7 @@ Size:
     O(T) characters, n=4 parity: 96 chars.
 """
 
-from esolangs.generation.helpers import essential_inputs
+from esolangs.generation.projection import essential_inputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
