@@ -41,14 +41,18 @@ evidence, not optimization tasks.
     the paused loop.
     Sweep results in `a7b3f7abd:docs/roadmap.md`.
   - *Native decoder:* scratch builds ran from reset on all 131,072 inputs
-    of four tables. Two random tables reached 129,172 and 128,895 correct
+    of four tables. Two random tables reached 129,292 and 128,895 correct
     answers. On the first, both reads and the output slot matched on every
     row. All 130,621 legal reads printed the stored bit and halted. Of the
-    1,900 misses, 197 read an invalid packed byte and 1,703 read the wrong
-    stored bit. A separate decoder distinguished two fixed instruction words
-    in different banks. All 101 writable three-bit words in the bank whose
-    marker changed retained all eight values. Placing arbitrary table bits
-    remains open.
+    1,780 misses, 197 read an invalid packed byte and 1,583 read the wrong
+    stored bit.
+  - *Storage shared with the decoder:* 93 words in the jump workspace
+    stored three answer bits each. In the same layout, 63 fixed instructions
+    encoded three bits each through selectable markers. All eight values
+    at each word worked across 64 paired patterns (29,952 row executions).
+    A separate marker distinguished two fixed instructions while preserving
+    all eight values at 101 writable words in its bank. Placing arbitrary
+    table bits across the full program remains open.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
