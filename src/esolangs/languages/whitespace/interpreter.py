@@ -44,7 +44,7 @@ Decisions:
       The former error claim for sliding past the stack was false.
     * ``copy`` counts from 0 at the top, as the reference implementation does.
     * Duplicate marks use the first occurrence, matching VM.hs findLabel.
-    * Conditional branches resolve labels only when taken, as VM.hs does.
+    * Conditional branches fault on undefined labels only when taken, as VM.hs does.
       Falling off code halts in this adapter.
     * The wiki's Cat, Hello and Truth-machine pages show a line break after
       each rendered line that is not a line feed: breaks are dropped and each
@@ -67,7 +67,6 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from operator import floordiv, mod
-from types import MappingProxyType
 from typing import Any
 
 from esolangs.exceptions import ArgumentError, HaltError, ProgramError
@@ -93,7 +92,6 @@ _EMPTY_STACK = "the stack is empty, so there is no top to pop"
 type _Instruction = tuple[str, int | str]
 type _Heap = tuple[tuple[int, int], ...]
 type _State = tuple[int, tuple[int, ...], _Heap, tuple[int, ...], bool]
-type _Effect = tuple[str, int] | None
 
 _WORKSPACE_MODEL = WorkspaceModel(
     "whitespace-v1",
@@ -125,28 +123,6 @@ _OPERATIONS: dict[str, Callable[[int, int], int]] = {
     "div": floordiv,
     "mod": mod,
 }
-
-
-def _read_heap(heap: _Heap, address: int) -> int:
-    for index, value in heap:
-        if index == address:
-            return value
-    return 0
-
-
-def _write_heap(heap: _Heap, address: int, value: int) -> _Heap:
-    updated = dict(heap)
-    if value:
-        updated[address] = value
-    else:
-        updated.pop(address, None)
-    return tuple(sorted(updated.items()))
-
-
-def _pop(stack: tuple[int, ...]) -> tuple[int, tuple[int, ...]]:
-    if not stack:
-        raise HaltError(_EMPTY_STACK)
-    return stack[-1], stack[:-1]
 
 
 def _parse(code: str) -> tuple[list[_Instruction], list[int]]:
@@ -223,108 +199,6 @@ def _parse(code: str) -> tuple[list[_Instruction], list[int]]:
     return instructions, offsets
 
 
-def _rearrange(kind: str, depth: int, stack: tuple[int, ...]) -> tuple[int, ...]:
-    """Return the stack after a dup, swap, discard, copy or slide."""
-    if kind == "dup":
-        return (*stack, _pop(stack)[0])
-    if kind == "swap":
-        first, stack = _pop(stack)
-        second, stack = _pop(stack)
-        return (*stack, first, second)
-    if kind == "discard":
-        return _pop(stack)[1]
-    if kind == "copy":
-        if not 0 <= depth < len(stack):
-            raise HaltError(
-                f"'copy' asked for item {depth} of a {len(stack)}-item stack"
-            )
-        return (*stack, stack[-1 - depth])
-    if not stack:
-        raise HaltError("'slide' needs a top item, and the stack is empty")
-    below = stack[:-1]
-    return (*below[: max(0, len(below) - depth)], stack[-1])
-
-
-def _flow(
-    kind: str,
-    label: str,
-    labels: Mapping[str, int],
-    frame: tuple[int, tuple[int, ...], tuple[int, ...]],
-) -> tuple[tuple[int, ...], tuple[int, ...], int]:
-    """Return the stack, call stack and next pc after a labelled jump."""
-    pc, stack, calls = frame
-    if kind in {"jz", "jn"}:
-        value, stack = _pop(stack)
-        if not ((value == 0) if kind == "jz" else (value < 0)):
-            return stack, calls, pc + 1
-    target = labels.get(label)
-    if target is None:
-        raise HaltError(f"'{kind}' names the undefined label {label!r}")
-    if kind == "call":
-        return stack, (*calls, pc + 1), target
-    return stack, calls, target
-
-
-def _advance(
-    state: _State,
-    instructions: Sequence[_Instruction],
-    labels: Mapping[str, int],
-    char_input: int | None = None,
-    number_input: int | None = None,
-) -> tuple[_State, _Effect]:
-    """Return the next state and an output effect, if this command emits."""
-    pc, stack, heap, calls, done = state
-    if done:
-        return state, None
-    kind, argument = instructions[pc]
-    effect, jump = None, pc + 1
-
-    if kind == "push":
-        stack = (*stack, int(argument))
-    elif kind in {"dup", "swap", "discard", "copy", "slide"}:
-        stack = _rearrange(kind, int(argument), stack)
-    elif kind in _OPERATIONS:
-        right, stack = _pop(stack)
-        left, stack = _pop(stack)
-        if kind in {"div", "mod"} and not right:
-            raise HaltError(f"'{kind}' divides by zero")
-        result = _OPERATIONS[kind](left, right)
-        stack = (*stack, result)
-    elif kind == "store":
-        value, stack = _pop(stack)
-        address, stack = _pop(stack)
-        heap = _write_heap(heap, address, value)
-    elif kind == "retrieve":
-        address, stack = _pop(stack)
-        stack = (*stack, _read_heap(heap, address))
-    elif kind in {"out_char", "out_num"}:
-        value, stack = _pop(stack)
-        if kind == "out_char" and not 0 <= value <= 0x10FFFF:
-            raise HaltError("character output is outside 0..0x10FFFF")
-        effect = ("char" if kind == "out_char" else "num", value)
-    elif kind == "read_char":
-        address, stack = _pop(stack)
-        if char_input is None:
-            raise HaltError("'read_char' reads and there is no input left")
-        heap = _write_heap(heap, address, char_input)
-    elif kind == "read_num":
-        address, stack = _pop(stack)
-        if number_input is None:
-            raise HaltError("'read_num' reads and there is no input left")
-        heap = _write_heap(heap, address, number_input)
-    elif kind == "mark":
-        pass
-    elif kind in {"call", "jump", "jz", "jn"}:
-        stack, calls, jump = _flow(kind, str(argument), labels, (pc, stack, calls))
-    elif kind == "return":
-        if not calls:
-            raise HaltError("'return' ran with no call to return from")
-        jump, calls = calls[-1], calls[:-1]
-    else:
-        done = True
-    return (jump, stack, heap, calls, done), effect
-
-
 def _parse_number(line: str) -> int:
     """Parse one complete signed ASCII decimal line."""
     # VM.hs ReadNum calls getLine: input_num would accept "2 3" and leave
@@ -339,7 +213,7 @@ def _parse_number(line: str) -> int:
     return parse_integer(line)
 
 
-_Image = tuple[tuple[_Instruction, ...], tuple[int, ...], Mapping[str, int]]
+_Image = tuple[tuple[_Instruction, ...], tuple[int, ...]]
 
 
 def _prepare_source(code: str) -> _Image:
@@ -350,24 +224,112 @@ def _prepare_source(code: str) -> _Image:
     for index, (kind, argument) in enumerate(instructions):
         if kind == "mark":
             labels.setdefault(str(argument), index)
-    return tuple(instructions), tuple(offsets), MappingProxyType(labels)
+    for index, (kind, argument) in enumerate(instructions):
+        if kind in {"call", "jump", "jz", "jn"} and isinstance(argument, str):
+            # An unresolved spelling faults only if this transfer is taken.
+            instructions[index] = kind, labels.get(argument, argument)
+    return tuple(instructions), tuple(offsets)
+
+
+type _StackEdit = tuple[int, tuple[int, ...]]
+
+
+def _require(stack: Sequence[int], count: int) -> None:
+    if len(stack) < count:
+        raise HaltError(_EMPTY_STACK)
+
+
+def _stack_edit(
+    kind: str, arg: int, stack: Sequence[int], heap: Mapping[int, int]
+) -> _StackEdit:
+    """Return the suffix length to remove and the values to append."""
+    if kind == "push":
+        return 0, (arg,)
+    if kind == "copy":
+        if not 0 <= arg < len(stack):
+            raise HaltError(f"'copy' asked for item {arg} of a {len(stack)}-item stack")
+        return 0, (stack[-1 - arg],)
+    if kind == "slide":
+        if not stack:
+            raise HaltError("'slide' needs a top item, and the stack is empty")
+        return min(len(stack), max(0, arg) + 1), (stack[-1],)
+    if kind in _OPERATIONS:
+        _require(stack, 2)
+        if kind in {"div", "mod"} and not stack[-1]:
+            raise HaltError(f"'{kind}' divides by zero")
+        return 2, (_OPERATIONS[kind](stack[-2], stack[-1]),)
+    if kind == "swap":
+        _require(stack, 2)
+        return 2, (stack[-1], stack[-2])
+    if kind == "store":
+        _require(stack, 2)
+        return 2, ()
+    _require(stack, 1)
+    if kind == "dup":
+        return 0, (stack[-1],)
+    if kind == "retrieve":
+        return 1, (heap.get(stack[-1], 0),)
+    if kind == "out_char" and not 0 <= stack[-1] <= 0x10FFFF:
+        raise HaltError("character output is outside 0..0x10FFFF")
+    return 1, ()
+
+
+def _advance(
+    pc: int,
+    instruction: _Instruction,
+    stack: Sequence[int],
+    heap: Mapping[int, int],
+    calls: Sequence[int],
+) -> tuple[int, int, tuple[int, ...]]:
+    """Resolve control and the operand edit before any machine or I/O effects."""
+    kind, argument = instruction
+    if kind == "return":
+        if not calls:
+            raise HaltError("'return' ran with no call to return from")
+        return calls[-1], 0, ()
+    if kind in {"mark", "end"}:
+        return pc + 1, 0, ()
+    if kind in {"call", "jump", "jn", "jz"}:
+        conditional = kind in {"jn", "jz"}
+        if conditional:
+            _require(stack, 1)
+            if stack[-1] != 0 if kind == "jz" else stack[-1] >= 0:
+                return pc + 1, 1, ()
+        if isinstance(argument, str):
+            raise HaltError(f"'{kind}' names the undefined label {argument!r}")
+        return argument, int(conditional), ()
+    drop, append = _stack_edit(kind, int(argument), stack, heap)
+    return pc + 1, drop, append
 
 
 class _Machine:
-    """Protocol shell holding one immutable Whitespace state value."""
+    """One execution with private operand, heap, and return storage."""
 
     def __init__(self, code: str | _Image, io: IO) -> None:
-        self.instructions, self.offsets, self.labels = (
+        self.instructions, self.offsets = (
             _prepare_source(code) if isinstance(code, str) else code
         )
         self.io = io
         self._writer = _BufferedOutput()
-        self.state: _State = (0, (), (), (), False)
+        self.pc = 0
+        self.ended = False
+        self._operands: list[int] = []
+        self.heap: dict[int, int] = {}
+        self.calls: list[int] = []
+
+    def _freeze_state(self) -> _State:
+        return (
+            self.pc,
+            tuple(self._operands),
+            tuple(sorted(self.heap.items())),
+            tuple(self.calls),
+            self.ended,
+        )
 
     @property
     def halted(self) -> bool:
         """Whether ``end`` has run, or the pointer has left the program."""
-        return self.state[4] or self.state[0] >= len(self.instructions)
+        return self.ended or self.pc >= len(self.instructions)
 
     #: The position is a character offset into the source, so the debugger
     #: can mark the token the pointer stands on.
@@ -375,19 +337,19 @@ class _Machine:
 
     @property
     def ip(self) -> int | None:
-        return None if self.halted else self.offsets[self.state[0]]
+        return None if self.halted else self.offsets[self.pc]
 
     @property
     def stack(self) -> list[object]:
-        return list(self.state[1])
+        return list(self._operands)
 
     def snapshot(self) -> tuple[object, ...]:
-        boundary = (*self.state, self.io.progress())
+        boundary = (*self._freeze_state(), self.io.progress())
         return self._writer.snapshot(boundary)
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Count logical fields; ended records END, not falling off the code."""
-        pc, stack, heap, calls, ended = self.state
+        pc, stack, heap, calls, ended = self._freeze_state()
         accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             instruction=(
@@ -405,37 +367,56 @@ class _Machine:
     def step(self) -> None:
         if self.halted:
             return
-        kind = self.instructions[self.state[0]][0]
-        char_input = number_input = None
-        if kind in {"read_char", "read_num"}:
-            # VM.hs matches the destination on the stack before getChar/getLine.
-            if not self.state[1]:
-                raise HaltError(_EMPTY_STACK)
-            if kind == "read_char":
-                char_input = self.io.input_char()
-            else:
-                number_input = _parse_number(self.io.input_str())
-        state, effect = _advance(
-            self.state, self.instructions, self.labels, char_input, number_input
+        instruction = self.instructions[self.pc]
+        kind = instruction[0]
+        stack = self._operands
+        target, drop, append = _advance(
+            self.pc, instruction, stack, self.heap, self.calls
         )
-        if effect is not None:
-            out_kind, value = effect
-            io = self.io
-            if isinstance(io, ScriptedIO):
-                if out_kind == "char":
-                    char = chr(value)
-                    self._writer.write(io, char, first=partial(io.print_char, char))
-                else:
-                    self._writer.write(
-                        io, format_integer(value), first=partial(io.print_num, value)
-                    )
+        if kind == "store":
+            self._store(stack[-2], stack[-1])
+        elif kind == "read_char":
+            self._store(stack[-1], self.io.input_char())
+        elif kind == "read_num":
+            self._store(stack[-1], _parse_number(self.io.input_str()))
+        elif kind in {"out_char", "out_num"}:
+            self._output(kind, stack[-1])
+            return
+        elif kind == "call":
+            self.calls.append(self.pc + 1)
+        elif kind == "return":
+            self.calls.pop()
+        elif kind == "end":
+            self.ended = True
+        if drop:
+            del stack[-drop:]
+        if append:
+            stack.extend(append)
+        self.pc = target
+
+    def _store(self, address: int, value: int) -> None:
+        if value:
+            self.heap[address] = value
+        else:
+            self.heap.pop(address, None)
+
+    def _output(self, kind: str, value: int) -> None:
+        io = self.io
+        if isinstance(io, ScriptedIO):
+            if kind == "out_char":
+                char = chr(value)
+                self._writer.write(io, char, first=partial(io.print_char, char))
             else:
-                self.state = state
-                if out_kind == "char":
-                    io.print_char(chr(value))
-                else:
-                    io.print_num(value)
-        self.state = state
+                self._writer.write(
+                    io, format_integer(value), first=partial(io.print_num, value)
+                )
+        self._operands.pop()
+        self.pc += 1
+        if not isinstance(io, ScriptedIO):
+            if kind == "out_char":
+                io.print_char(chr(value))
+            else:
+                io.print_num(value)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

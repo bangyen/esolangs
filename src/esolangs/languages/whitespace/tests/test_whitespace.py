@@ -14,7 +14,7 @@ from esolangs.exceptions import (
     InputExhaustedError,
     ProgramError,
 )
-from esolangs.languages.whitespace.interpreter import _advance, run
+from esolangs.languages.whitespace.interpreter import _Machine, run
 from esolangs.results import Completion, CompletionReport
 from esolangs.runtime.io import IO, ScriptedIO
 from esolangs.vm import complete_vm
@@ -97,11 +97,12 @@ def test_slide_on_an_empty_stack_halts() -> None:
 
 
 def test_a_read_with_no_input_halts() -> None:
-    # ``_advance`` is called with no value supplied; the shell's read raises
-    # EOF before reaching this guard, so this is a direct-call contract.
-    for kind in ("read_char", "read_num"):
-        with pytest.raises(HaltError, match="input left"):
-            _advance((0, (0,), (), (), False), [(kind, 0)], {})
+    for command in (READ_CHAR, READ_NUM):
+        machine = _Machine(push(0) + command, ScriptedIO(""))
+        machine.step()
+        with pytest.raises(EOFError):
+            machine.step()
+        assert machine.stack == [0]
 
 
 @pytest.mark.parametrize(
@@ -176,8 +177,11 @@ def test_debugger_sees_recovery_through_another_driver(resume) -> None:
 
 
 def test_advancing_a_done_state_is_a_no_op() -> None:
-    done = (0, (), (), (), True)
-    assert _advance(done, [], {}) == (done, None)
+    machine = _Machine(END, ScriptedIO(""))
+    machine.step()
+    done = machine.snapshot()
+    machine.step()
+    assert machine.snapshot() == done
 
 
 @pytest.mark.parametrize(

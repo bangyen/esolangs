@@ -210,7 +210,7 @@ def _check(factory, program, stdin="unused"):
     source, offsets = _assemble(program)
 
     def state(machine):
-        pc, stack, heap, calls, done = machine.state
+        pc, stack, heap, calls, done = machine._freeze_state()
         return pc, stack, heap, calls, done, machine.ip
 
     workspace.agrees(
@@ -333,7 +333,7 @@ def check_raw_whitespace():
         )
         _check(_Machine, ((kind,),), stdin)
     for source in ("", "ignored", " ", "\t", "\n\n ", "\t\t\n"):
-        assert observed(_Machine, source, "", lambda m: m.state) == (
+        assert observed(_Machine, source, "", lambda m: m._freeze_state()) == (
             "syntax",
             [(None, False, "", 0, 0)],
         )
@@ -422,15 +422,8 @@ def check_raw_whitespace():
     class WrongNumber(_Machine):
         def step(self):
             super().step()
-            pc, stack, heap, calls, ended = self.state
-            if heap:
-                self.state = (
-                    pc,
-                    stack,
-                    tuple((a, n + 1) for a, n in heap),
-                    calls,
-                    ended,
-                )
+            for address in self.heap:
+                self.heap[address] += 1
 
     with pytest.raises(AssertionError):
         _check(WrongNumber, numeric, "0" * 5000 + "65\nQ")

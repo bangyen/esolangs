@@ -6,7 +6,7 @@ import pytest
 
 from esolangs import run
 from esolangs import vm as vm_api
-from esolangs.exceptions import EsolangError
+from esolangs.exceptions import EsolangError, HaltError
 from esolangs.languages.whitespace.interpreter import (
     _WORKSPACE_MODEL,
     _Machine,
@@ -23,29 +23,15 @@ from scripts.benchmark import WrittenState
 
 class _RepackedMachine(_Machine):
     @property
-    def state(self):
-        data = self._packed
-        return (
-            data["control"][0],
-            tuple(data["stack"][: data["used"]]),
-            tuple(sorted(data["heap"].items())),
-            tuple(data["control"][2]),
-            data["control"][1],
-        )
+    def _operands(self):
+        return self._packed["operands"]
 
-    @state.setter
-    def state(self, state):
-        pc, stack, heap, calls, ended = state
-        self._packed = {
-            "control": (pc, ended, list(calls)),
-            "stack": [*stack, *([0] * 8)],
-            "used": len(stack),
-            "heap": dict(heap),
-            "cache": "not logical state",
-        }
+    @_operands.setter
+    def _operands(self, values):
+        self._packed = {"operands": values, "padding": [0] * 8}
 
     def snapshot(self):
-        pc, stack, heap, calls, ended = self.state
+        pc, stack, heap, calls, ended = self._freeze_state()
         return ((pc, ended), (stack, heap, calls), self.io.progress())
 
 
@@ -122,7 +108,7 @@ def test_repacked_storage_retains_semantic_workspace(monkeypatch, program, stdin
         captures = [m.workspace_snapshot() for m in machines]
         assert captures[0] == captures[1]
         for machine, capture, written in zip(machines, captures, semantic, strict=True):
-            assert capture.parts == (*machine.state, machine.io.progress())
+            assert capture.parts == (*machine._freeze_state(), machine.io.progress())
             written.sample(capture)
         legacy.sample(WorkspaceSnapshot(reference, machines[0].snapshot()))
         regrouped.sample(WorkspaceSnapshot(grouped, machines[1].snapshot()))
@@ -164,3 +150,35 @@ def test_repacked_storage_retains_semantic_workspace(monkeypatch, program, stdin
         assert declared.memory == []
         assert declared.views == ()
         assert run("Whitespace", source).completion.kind is Completion.HALTED
+
+
+def test_held_snapshots_survive_heap_deletion_and_failed_division():
+    source, _ = _assemble(
+        (
+            ("push", -9),
+            ("push", 7),
+            ("store",),
+            ("call", "0"),
+            ("end",),
+            ("mark", "0"),
+            ("push", -9),
+            ("push", 0),
+            ("store",),
+            ("push", 8),
+            ("push", 0),
+            ("div",),
+        )
+    )
+    machine = _Machine(source, ScriptedIO(""))
+    for _ in range(4):
+        machine.step()
+    held = machine.snapshot()
+    workspace = machine.workspace_snapshot()
+    for _ in range(6):
+        machine.step()
+    before = machine.snapshot()
+    with pytest.raises(HaltError, match="divides by zero"):
+        machine.step()
+    assert machine.snapshot() == before
+    assert before[:5] == (11, (8, 0), (), (4,), False)
+    assert held == workspace.parts == (5, (), ((-9, 7),), (4,), False, 0)
