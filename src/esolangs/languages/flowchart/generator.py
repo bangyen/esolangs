@@ -23,9 +23,8 @@ Size:
 """
 
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
-from itertools import chain
 
 from esolangs.generation.grid import grid_area, grid_width, narrowest_grid
 from esolangs.generation.helpers import (
@@ -33,7 +32,8 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.projection import essential_inputs
-from esolangs.generation.requests import GenerationRequest
+from esolangs.generation.requests import GenerationRequest, layout_choice
+from esolangs.generation.token_balance import rendered_side
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.flowchart._layout import (
     _ANSWER,
@@ -45,6 +45,9 @@ from esolangs.languages.flowchart._layout import (
     _set,
 )
 from esolangs.languages.flowchart._stacked import _flowchart_stacked
+
+type _Drawing = str | dict[tuple[int, int], str]
+
 
 # Leaf column pitch: 5-cell ``(( ))`` plus 1 gutter.
 _FLOWCHART_PITCH = 6
@@ -346,7 +349,7 @@ class _TopPainter(_TreePainter):
 
 def _banded(
     table: str, split: int, fold: int, *, plan: _InputPlan | None = None
-) -> str:
+) -> dict[tuple[int, int], str]:
     """Stack the ``2**split`` subtrees of ``table`` and join their buses.
 
     A top tree over the first ``split`` inputs sits at the upper east and
@@ -390,7 +393,7 @@ def _banded(
             for y in range(wire - height + 1, wire):
                 out[(stairs[b - 1], y)] = "│"
     _answer_column(out, stairs[-1], row + bus + 1)
-    return _flowchart_render(out)
+    return out
 
 
 def _flowchart_cells(
@@ -466,12 +469,12 @@ def _deque_depth(levels: int) -> int:
     return max(1, (levels + 1) // 2)
 
 
-def _flowchart_deque(
+def _deque_drawing(
     truth_table: str,
     *,
     plan: _InputPlan | None = None,
     used: tuple[int, ...] | None = None,
-) -> str:
+) -> _Drawing:
     r"""Address one preloaded answer by walking the deque cursor to it.
 
     A deque holds ``2 ** k`` entries, ``k = ceil(m / 2)`` for ``m`` essential
@@ -564,10 +567,32 @@ def _flowchart_deque(
     del cells[(end - 1, spine)]
 
     left = min(x for x, _ in cells)
-    return _flowchart_render({(x - left, row): c for (x, row), c in cells.items()})
+    return {(x - left, row): c for (x, row), c in cells.items()}
 
 
-def _banded_candidates(table: str, *, plan: _InputPlan | None = None) -> list[str]:
+def _render(drawing: _Drawing) -> str:
+    return drawing if isinstance(drawing, str) else _flowchart_render(drawing)
+
+
+def _drawing_score(drawing: _Drawing) -> tuple[int, int, int]:
+    if isinstance(drawing, str):
+        return balance_score(drawing)
+    widths: dict[int, int] = {}
+    for (x, y), char in drawing.items():
+        if char != " " and x >= widths.get(y, 0):
+            widths[y] = x + 1
+    height = max(y for _, y in drawing) + 1
+    width = max(widths.values(), default=0)
+    return rendered_side(width, height), sum(widths.values()) + height - 1, width
+
+
+def _flowchart_deque(truth_table: str, *, used: tuple[int, ...] | None = None) -> str:
+    return _render(_deque_drawing(truth_table, used=used))
+
+
+def _banded_candidates(
+    table: str, *, plan: _InputPlan | None = None
+) -> Iterator[_Drawing]:
     """Return the banded drawing when ``m`` read levels leave room to split.
 
     Split ``(m - 3) // 2`` levels off the top, folded over 3 columns: the
@@ -579,7 +604,8 @@ def _banded_candidates(table: str, *, plan: _InputPlan | None = None) -> list[st
     if plan is None:
         plan = _plan(table)
     split = (len(plan[1]) - 3) // 2
-    return [_banded(table, split, 3, plan=plan)] if split > 0 else []
+    if split > 0:
+        yield _banded(table, split, 3, plan=plan)
 
 
 def _balance(table: str, *, plan: _InputPlan | None = None) -> str:
@@ -599,12 +625,11 @@ def _balance(table: str, *, plan: _InputPlan | None = None) -> str:
     """
     if plan is None:
         plan = _plan(table)
-    default = _flowchart_deque(table, plan=plan)
     constant = constant_span_test(plan[0])
-    folded = (
-        _flowchart_render(
-            _flowchart_cells(table, fold, cols, plan=plan, constant=constant)
-        )
+
+    def candidates() -> Iterator[_Drawing]:
+        yield _deque_drawing(table, plan=plan)
+        yield from _banded_candidates(table, plan=plan)
         for fold, cols in (
             (1, 2),
             (1, 4),
@@ -615,19 +640,18 @@ def _balance(table: str, *, plan: _InputPlan | None = None) -> str:
             (3, 6),
             (5, 4),
             (5, 6),
-        )
-    )
-    return min(
-        chain((default,), _banded_candidates(table, plan=plan), folded),
-        key=balance_score,
-    )
+        ):
+            yield _flowchart_cells(table, fold, cols, plan=plan, constant=constant)
+
+    return _render(min(candidates(), key=_drawing_score))
 
 
 def flowchart_request(request: GenerationRequest) -> str:
     """Emit source through the declared generation request interface."""
     used = request.truth_table.essential_inputs()
-    if request.balance:
+    layout = layout_choice(request.width, balance=request.balance)
+    if layout == "balanced":
         return _balance(request.table, plan=_plan(request.table, used=used))
-    if request.width is None:
+    if layout == "default":
         return _flowchart_deque(request.table, used=used)
-    return _draw(request.table, request.width, _plan(request.table, used=used))
+    return _draw(request.table, layout, _plan(request.table, used=used))

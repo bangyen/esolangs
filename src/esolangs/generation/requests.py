@@ -16,6 +16,16 @@ from esolangs.runtime._program import Program
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.runtime.memory import repr_value
 
+type LayoutChoice = Literal["default", "balanced"] | int
+
+
+def layout_choice(width: int | None, *, balance: bool) -> LayoutChoice:
+    """Resolve a request to a default, balanced, or fixed-width layout."""
+    if balance:
+        return "balanced"
+    return "default" if width is None else width
+
+
 type GeneratedProgram = Program | TemplateLayout
 
 

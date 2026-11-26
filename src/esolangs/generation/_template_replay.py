@@ -1,7 +1,6 @@
 """Match saved templates against the selected generator's renderings."""
 
 from collections.abc import Callable
-from typing import Protocol
 
 from esolangs._bindings import check_setters, validate_spans
 from esolangs.artifacts import Artifact, TemplateArtifact, TemplateBindings
@@ -15,7 +14,9 @@ from esolangs.exceptions import (
 from esolangs.generation.requests import (
     GeneratedProgram,
     GenerationRequest,
+    LayoutChoice,
     call_backend,
+    layout_choice,
 )
 from esolangs.generation.template import TemplateLayout, layout_fragments
 from esolangs.generation.wrap import can_balance_template, can_wrap_template
@@ -23,11 +24,7 @@ from esolangs.registry import template_setters
 from esolangs.registry._backend import Generator
 from esolangs.registry._catalog import Catalog
 
-
-class _Render(Protocol):
-    def __call__(
-        self, width: int | None = None, *, balance: bool = False
-    ) -> Artifact: ...
+type _Render = Callable[[LayoutChoice], Artifact]
 
 
 class TemplateProbes:
@@ -140,7 +137,9 @@ def matches_template(
     ):
         try:
             rendered = render(
-                template.generation_width, balance=template.generation_balance
+                layout_choice(
+                    template.generation_width, balance=template.generation_balance
+                )
             )
         except (ArgumentError, GeneratorCapError):
             if width is not None or template.generation_width is None:
@@ -175,7 +174,7 @@ def _match_candidate_layouts(
     backend = catalog.languages[name].backend
     retained = template.generation_width if width is None else None
     try:
-        canonical = render()
+        canonical = render("default")
         default_available = True
     except GeneratorCapError:
         fallback_width = width if width is not None else retained
@@ -236,7 +235,7 @@ def _match_candidate_layouts(
         ):
             return False
         try:
-            balanced = render(balance=True)
+            balanced = render("balanced")
         except GeneratorCapError:
             return False
         return _same_generated_template(balanced, template, text)

@@ -7,6 +7,7 @@ from esolangs.exceptions import ArgumentError, TemplateError
 from esolangs.generation._template_replay import TemplateProbes, matches_template
 from esolangs.generation.helpers import check_table_text
 from esolangs.generation.reflow import wrap_program
+from esolangs.generation.requests import LayoutChoice
 from esolangs.raster import Raster
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._validate import (
@@ -40,14 +41,14 @@ def _is_template_for(
     probes = TemplateProbes()
 
     @cache
-    def render(width: int | None = None, *, balance: bool = False) -> Artifact:
+    def render(layout: LayoutChoice) -> Artifact:
         return _generate(
             name,
             truth_table,
             options,
             settings,
-            width=width,
-            balance=balance,
+            width=layout if isinstance(layout, int) else None,
+            balance=layout == "balanced",
             catalog=catalog,
             probes=probes,
         )

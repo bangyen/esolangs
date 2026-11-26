@@ -425,3 +425,29 @@ def test_width_candidates_share_one_input_analysis(monkeypatch):
     assert calls == [(table, 3)]
     for row, expected in enumerate(table):
         assert run_flowchart(program, list(f"{row:03b}")) == expected
+
+
+@pytest.mark.parametrize("n", [3, 4, 5, 6])
+def test_deque_proof_landmarks(n: int) -> None:
+    import re
+
+    from esolangs.languages.flowchart.proof_formulas import _rail, _switch
+
+    table = "10" * ((1 << (n - 1)) - 1) + "01"
+    upper, spine = boolean.flowchart(table).splitlines()
+
+    def check(top: str) -> None:
+        switches = [m.start() for m in re.finditer("< >", spine)][::-1]
+        junctions = [m.start() for m in re.finditer("┌", top)][::-1]
+        assert len(switches) == n
+        assert len(junctions) == n - 1
+        for k, switch in enumerate(switches):
+            assert switch == _switch(n, k), (n, k, "switch")
+            if k < n - 1:
+                width = _rail(n, k)
+                assert switch - junctions[k] - 1 == width, (n, k, "rail")
+                assert spine[junctions[k] : switch] == "┴" + "─" * width
+
+    check(upper)
+    with pytest.raises(AssertionError, match="rail"):
+        check(upper.replace("┌", " ┌", 1))
