@@ -10,7 +10,8 @@ import pytest
 import esolangs
 from esolangs import run as execute
 from esolangs.languages.brainif import generator as boolean
-from esolangs.languages.brainif.generator import _brainif_tree, _Strip
+from esolangs.languages.brainif._linear import _Strip
+from esolangs.languages.brainif.generator import _brainif_tree
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
@@ -286,8 +287,8 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
     Checked at the arities where the rule and the old cap of 4 differ or
     agree on a seeded random table: n=5..10 (rule 1, 1, 2, 2, 3, 3).
     """
-    import esolangs.languages.brainif.generator as generator
-    from esolangs.languages.brainif.generator import _top_level
+    from esolangs.languages.brainif import _linear
+    from esolangs.languages.brainif._linear import _top_level
 
     rng = random.Random(11)
     for n in (5, 6, 7, 8, 9, 10):
@@ -295,7 +296,7 @@ def test_loop_depth_rule_is_within_the_bar_of_the_measured_best(monkeypatch) -> 
         sizes = []
         for top in range(5):
             monkeypatch.setattr(
-                generator, "_top_level", lambda m, top=top: min(top, (m - 2) // 2)
+                _linear, "_top_level", lambda m, top=top: min(top, (m - 2) // 2)
             )
             sizes.append(len(_brainif_tree(table)))
         monkeypatch.undo()

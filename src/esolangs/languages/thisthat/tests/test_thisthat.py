@@ -10,13 +10,15 @@ import pytest
 
 from esolangs import ExecutionLimits, Language
 from esolangs.exceptions import HaltError
-from esolangs.languages.thisthat.generator import thisthat
-from esolangs.languages.thisthat.interpreter import (
+from esolangs.languages.thisthat._transition import (
     _advance,
-    _Machine,
     _NeedDrawError,
     _NeedInputError,
     _Pointer,
+)
+from esolangs.languages.thisthat.generator import thisthat
+from esolangs.languages.thisthat.interpreter import (
+    _Machine,
     prepare_machine,
     run,
 )

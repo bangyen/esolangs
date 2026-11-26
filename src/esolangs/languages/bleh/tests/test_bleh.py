@@ -9,7 +9,8 @@ import pytest
 
 from esolangs import Catalog, ExecutionLimits, ExecutionResult, Language
 from esolangs.exceptions import InterpreterLimitError, ProgramError
-from esolangs.languages.bleh.interpreter import _Lazy, _Machine, run
+from esolangs.languages.bleh._syntax import _Lazy
+from esolangs.languages.bleh.interpreter import _Machine, run
 from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.runtime.io import ScriptedIO
 from tests.interpreters.oracle_support import check_terminal

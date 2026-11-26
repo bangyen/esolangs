@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from esolangs.languages.thisthat.interpreter import _Pointer
+    from esolangs.languages.thisthat._transition import _Pointer
 
 
 type _Point = tuple[int, int]
