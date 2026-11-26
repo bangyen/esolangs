@@ -121,8 +121,9 @@ evidence, not optimization tasks.
     free 482 words holding 1,355 row bits. All eight values at each word
     passed in 10,840 row executions per table. With five output lookup
     entries repaired, both programs printed one digit and halted on every
-    input. They answered 130,919 and 130,927 rows correctly. Independent
-    storage is still missing for 346 positions, including 211 in banks
+    input. Reassigning 896 spill rows reduced the remaining gap from 346
+    to 339 positions. The two tables answered 130,923 and 130,930 rows
+    correctly. Of the 339 positions, 209 are in the output routines in banks
     15 and 24.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
