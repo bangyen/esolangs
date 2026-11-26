@@ -82,8 +82,13 @@ evidence, not optimization tasks.
     encoded three bits each through selectable markers. All eight values
     at each word worked across 64 paired patterns (29,952 row executions).
     A separate marker distinguished two fixed instructions while preserving
-    all eight values at 101 writable words in its bank. Placing arbitrary
-    table bits across the full program remains open.
+    all eight values at 101 writable words in its bank. Shortening two output
+    routines in the 961-bit layout left 587 bits short with control words
+    reserved. Sharing instructions and calibration markers supplied 412
+    independently writable bits. Of those, 376 filled bank deficits, leaving
+    211 bits across five banks. All 1,194 local bit patterns passed in 3,762
+    row executions. The two random tables produced 129,875 and 129,887
+    correct answers out of 131,072 each. Universal placement remains open.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
