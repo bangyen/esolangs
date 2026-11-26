@@ -101,8 +101,18 @@ evidence, not optimization tasks.
     moved the phase workspace 10,935 cells. Delaying the lookup six steps
     freed seven three-bit words. The two random tables answered 130,075
     and 130,030 rows correctly. Reserving the control cells used by either
-    table left 176 bits short, including 165 in bank 41. Universal
-    placement remains open.
+    table left 176 bits short, including 165 in bank 41.
+    Shortening startup by 368 instructions made room for the phase lookup
+    before the first output routine. A 22-instruction pointer shortcut
+    freed space in bank 9. Counting three bits per unreserved word and
+    368 independently selectable bits, all 64 banks reached their
+    2,048-bit target with the control cells from both traces reserved.
+    The decoder still addressed 1,745 row positions outside that writable
+    set. Reassigning 4,160 spill rows reduced that count to 1,648. The
+    two tables answered 130,317 and 130,302 rows correctly. A separate
+    layout reached two previously unused low address values. Counting
+    only reached low values reduced the shortfall from 317 bits to 94,
+    but left 1,795 rows outside independently writable storage.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
