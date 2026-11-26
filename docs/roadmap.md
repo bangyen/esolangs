@@ -41,13 +41,12 @@ evidence, not optimization tasks.
     the paused loop.
     Sweep results in `a7b3f7abd:docs/roadmap.md`.
   - *Native decoder:* scratch builds ran from reset on all 131,072 inputs
-    of four tables. The latest layout reached 130,211 and 129,845 correct
-    answers on the two random tables. Both reads and the output slot matched
-    on every row of both tables. All 130,931 legal reads per table printed
-    the stored bit and halted. On the first table, 69 misses read an
-    invalid packed byte and 792 read the wrong stored bit. An earlier
-    one-cell return shift freed 42 words. All eight values at each word
-    ran natively.
+    of four tables. One layout reached 130,347 and 130,277 correct
+    answers on the two random tables. Both reads and the output slot
+    matched on every row. All 130,949 legal reads per table printed the
+    stored bit and halted. On the first table, 58 misses read an invalid
+    packed byte and 667 read the wrong stored bit. An earlier one-cell
+    return shift freed 42 words. All eight values at each word ran natively.
     After swapping the highest address trit, 103 groups reread their
     selector to choose among three spill routes. This moved 4,944 primary
     words and preserved every spill address. Two other layouts used a
@@ -62,11 +61,15 @@ evidence, not optimization tasks.
     freed 871 consecutive cells for decoder code and a 408-word output
     lookup. Moving the lookup and the final decoder block freed 369 and
     77 three-bit words, respectively. All eight values at each word
-    passed in 10,704 row executions across the two layouts. With 2,048 bits assigned per 729-word bank and
-    control words and calibration markers reserved, the shortfall fell
-    from 4,230 bits across 12 banks to 2,085 across nine. A separate
-    layout moved 24 primary words between banks, kept every spill address,
-    and gained three writable bit positions net. All eight labels worked at
+    passed in 10,704 row executions across the two layouts. Moving the
+    phase read 94 cells earlier made room for a pointer shortcut. Clearing
+    one temporary register and rotating the calibration byte earlier freed
+    161 more three-bit words. All eight values passed in 3,864 executions.
+    With 2,048 bits per 729-word bank and control words and calibration
+    markers reserved, the smallest measured shortfall is 1,213 bits
+    across five banks. A separate layout moved 24 primary words between
+    banks, kept every spill address, and gained three writable bit positions
+    net. All eight labels worked at
     all 24 destinations.
   - *Storage shared with the decoder:* 93 words in the jump workspace
     stored three answer bits each. In the same layout, 63 fixed instructions
