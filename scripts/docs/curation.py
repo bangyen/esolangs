@@ -11,7 +11,14 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .fragments import AggregateKey, aggregate, registry, section, sections
+from checks.certification.fragments import (
+    AggregateKey,
+    aggregate,
+    registry,
+    section,
+    sections,
+)
+
 from .writing import write_if_changed
 
 if TYPE_CHECKING:

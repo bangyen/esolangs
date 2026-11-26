@@ -12,7 +12,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,11 +20,12 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.flowchart.generator", "flowchart_request"
         ),
-        layout_width=True,
-        layout_balance=True,
+        layout=ConstructedLayout(
+            layout_balance=True,
+            grid=True,
+        ),
         # Not a tree: one deque push per entry.
         shape=Shape.LOOKUP,
-        grid=True,
     )
 
 

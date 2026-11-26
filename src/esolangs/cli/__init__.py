@@ -353,7 +353,7 @@ def _layout_ignored(declaration: LanguageDeclaration, *, balance: bool) -> bool:
     """Whether the generator ignores ``--width`` or ``--balance``."""
     backend = declaration.backend
     return _width_effect(declaration) == "none" and not (
-        balance and backend is not None and backend.balance is not None
+        balance and backend is not None and backend.layout.balance is not None
     )
 
 

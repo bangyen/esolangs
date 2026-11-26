@@ -142,7 +142,7 @@ def test_parity_still_runs_the_race_and_ships_the_tree() -> None:
 @pytest.mark.parametrize("n", [3, 4, 5, 8, 10])
 def test_size_below_eleven_inputs_is_at_most_the_shorter_route(n: int) -> None:
     """The ledger's ``worst P`` starts at n = 11; below, min(tree, P) bounds it."""
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     bound = resource_bounds("S*bleq")["scaling"].formula(n, "")
     for table in _tables("S*bleq", n):
@@ -201,8 +201,8 @@ def test_answer_routes_jump_to_loaded_instructions(build) -> None:
 
 
 def test_packed_execution_bound_recognizes_the_emitted_cells() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.s_bleq.proof_formulas import _packed_steps
-    from scripts.docs.resource_evidence import resource_bounds
 
     execution = resource_bounds("S*bleq")["execution"].formula
     for n in (5, 6, 10):

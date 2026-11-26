@@ -161,8 +161,8 @@ def _check_reader() -> None:
             assert io.input_char() == ord("7")
     assert total == 34090
 
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.circlefuck.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Circlefuck")
     execution = bounds["execution"].formula

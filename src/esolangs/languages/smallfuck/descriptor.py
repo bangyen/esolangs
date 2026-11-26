@@ -14,7 +14,11 @@ def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_chars
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -22,15 +26,16 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.smallfuck.generator", "smallfuck_request"
         ),
-        layout_width=True,
-        same_layout=FunctionRef(
-            "esolangs.languages.smallfuck.generator",
-            "_same_layout",
-            ("template", "plain", "_layout"),
-        ),
-        wrap=wrap_chars,
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.smallfuck.generator", "smallfuck_balance_request"
+        layout=ConstructedLayout(
+            same_layout=FunctionRef(
+                "esolangs.languages.smallfuck.generator",
+                "_same_layout",
+                ("template", "plain", "_layout"),
+            ),
+            wrap=wrap_chars,
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.smallfuck.generator", "smallfuck_balance_request"
+            ),
         ),
         template=TemplateSpec(
             setters=FunctionRef(

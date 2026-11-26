@@ -303,8 +303,8 @@ def test_rotation_is_checked() -> None:
 @pytest.mark.medium
 @pytest.mark.parametrize("bit", "01")
 def test_every_constant_row_within_written_state_bound(bit: str) -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs import generate
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("ROTfuck")["workspace"].formula
 
@@ -386,9 +386,9 @@ def _search_pad_until(builder: object, done: Callable[[int], bool]) -> int | Non
 
 
 def _check_native_constants(bit: str) -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.rotfuck.interpreter import _Machine
     from esolangs.languages.rotfuck.proof_formulas import execution
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("ROTfuck")["workspace"].formula
 
@@ -419,9 +419,9 @@ def _check_native_constants(bit: str) -> None:
 
 
 def _check_symmetric_multipliers() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.rotfuck import generator as g
     from esolangs.languages.rotfuck.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("ROTfuck")["workspace"].formula
 

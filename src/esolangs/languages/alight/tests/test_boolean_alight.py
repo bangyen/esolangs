@@ -274,7 +274,7 @@ def test_alight_small_tables_at_width_40_keep_their_exact_silhouette() -> None:
 
 
 def _check_native_constants(syntax: str, update: str, bit: str) -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Alight")["workspace"].formula
     settings = esolangs.Language("Alight").settings(

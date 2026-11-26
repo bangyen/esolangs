@@ -12,7 +12,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -21,21 +21,22 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.taglate.generator", "taglate_request"
         ),
-        layout_width=True,
+        layout=ConstructedLayout(
+            wrap=FunctionRef(
+                "esolangs.languages.taglate.wrapping", "_taglate", ("program", "width")
+            ),
+            wrap_multiline=True,
+            same_layout=FunctionRef(
+                "esolangs.languages.taglate.wrapping",
+                "same_layout",
+                ("template", "plain", "_layout"),
+            ),
+            balance=OperationRef[BalanceRequest, Program](
+                "esolangs.languages.taglate.generator", "taglate_balance_request"
+            ),
+        ),
         # Both concatenate before tokenizing (Taglate after the queue seed; A
         # Painter Ant drops whitespace), so no break can land inside a command.
-        wrap=FunctionRef(
-            "esolangs.languages.taglate.wrapping", "_taglate", ("program", "width")
-        ),
-        wrap_multiline=True,
-        same_layout=FunctionRef(
-            "esolangs.languages.taglate.wrapping",
-            "same_layout",
-            ("template", "plain", "_layout"),
-        ),
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.taglate.generator", "taglate_balance_request"
-        ),
     )
 
 

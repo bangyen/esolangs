@@ -16,7 +16,12 @@ def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_chars
-    from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        Shape,
+        SourceLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._operations import OperationRef
 
     return BooleanBackend(
@@ -24,11 +29,12 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.bitwise_cyclic_tag.generator",
             "bitwise_cyclic_tag_request",
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=wrap_chars,
+        ),
         # A positional walk, not a tree of callable residuals.
         shape=Shape.LOOKUP,
         # Safe anywhere: every space and newline is stripped before parsing.
-        wrap=wrap_chars,
         template=TemplateSpec(pair=PAIR),
     )
 

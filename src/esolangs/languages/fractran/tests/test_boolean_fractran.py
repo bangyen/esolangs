@@ -179,7 +179,7 @@ def test_fractran_parity_two_balances_and_executes() -> None:
 
 
 def _check_native_constants() -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     workspace = resource_bounds("FRACTRAN")["workspace"].formula
 

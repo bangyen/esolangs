@@ -53,8 +53,8 @@ class TestParameterizedBack:
 
     @pytest.mark.medium
     def test_constant_embedding_keeps_its_resource_bounds(self) -> None:
+        from checks.certification.resource_evidence import resource_bounds
         from esolangs import generate, instantiate, read_answer
-        from scripts.docs.resource_evidence import resource_bounds
 
         bounds = resource_bounds("Back")
         execution = bounds["execution"].formula
@@ -592,12 +592,12 @@ def _check_held_input_and_dump() -> None:
 
 
 def _check_exact_preload_bounds() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.generation.grid import grid_area
     from esolangs.languages.back.tests.formulas import (
         execution_witness,
         witness,
     )
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Back")
     execution = bounds["execution"].formula

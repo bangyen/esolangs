@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.wrap import wrap_space_delimited
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -21,12 +21,13 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.quassaunt.generator", "quassaunt_request"
         ),
-        layout_width=False,
-        # Whitespace separates words and a word holds none, so break only there.
-        wrap=wrap_space_delimited,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.quassaunt.generator", "quassaunt_balance_request"
+        layout=SourceLayout(
+            wrap=wrap_space_delimited,
+            balance=OperationRef[BalanceRequest, Program](
+                "esolangs.languages.quassaunt.generator", "quassaunt_balance_request"
+            ),
         ),
+        # Whitespace separates words and a word holds none, so break only there.
     )
 
 

@@ -201,7 +201,7 @@ def intercal_plain(truth_table: str, perm: tuple[int, ...]) -> str:
 @pytest.mark.medium
 def test_constants_reuse_one_variable_and_print_the_literal() -> None:
     _check_emitted_resource_routes()
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     workspace = resource_bounds("INTERCAL")["workspace"].formula
 
@@ -229,12 +229,12 @@ def test_constants_reuse_one_variable_and_print_the_literal() -> None:
 
 def _check_emitted_resource_routes() -> None:
     """Check high-arity write-set syntax without building exponential tables."""
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.intercal.generator import _VARIABLE_MAX
     from esolangs.languages.intercal.proof_formulas import (
         global_execution,
         global_workspace,
     )
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("INTERCAL")
     execution = bounds["execution"].formula

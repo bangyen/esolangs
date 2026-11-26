@@ -186,7 +186,9 @@ These language-owned plans retain parsed source:
 
 `bf.execute(program, limits=ExecutionLimits(max_steps=10_000))` returns an
 `ExecutionOutcome`: `completed`, `rejected`, `input_exhausted`, `fault` or `limit`.
-Its `.observation` retains output and input counters; `.unwrap()` returns the
+`CompletedRun.completion` holds the completion evidence. `FailedRun.error` holds
+the original error. Import either variant from `esolangs.outcomes`.
+The outcome’s `.observation` retains output and input counters; `.unwrap()` returns the
 completed result or raises the original error. Prepared programs also expose
 `execute`. Native, cooperative and worker execution return the same internal
 outcome; `run` raises from it.

@@ -23,6 +23,7 @@ from esolangs.exceptions import (
 from esolangs.results import CompletionReport, ExecutionResult
 from esolangs.runtime._validate import _has_backing_type
 
+FailureStatus = Literal["rejected", "input_exhausted", "limit", "fault"]
 OutcomeStatus = Literal["completed", "rejected", "input_exhausted", "limit", "fault"]
 
 
@@ -74,7 +75,7 @@ def _remember_failure_evidence(
         failure.observation = observation
 
 
-def _failure_status(error: EsolangError) -> OutcomeStatus:
+def _failure_status(error: EsolangError) -> FailureStatus:
     if _has_backing_type(error, InputExhaustedError):
         return "input_exhausted"
     if issubclass(type(error), (ExecutionBudgetError, InterpreterLimitError)):
@@ -105,6 +106,26 @@ class ExecutionOutcome:
     observation: ExecutionResult
     error: EsolangError | None = field(default=None, kw_only=True)
 
+    def __new__(
+        cls, *args: object, error: EsolangError | None = None, **kwargs: object
+    ) -> ExecutionOutcome:
+        """Preserve the original constructor while returning a concrete outcome."""
+        if cls is ExecutionOutcome and (args or kwargs):
+            return object.__new__(CompletedRun if error is None else FailedRun)
+        return object.__new__(cls)
+
+    def __setstate__(self, state: list[object]) -> None:
+        """Restore legacy three-field pickle records as concrete outcomes."""
+        status, observation, error = state
+        if type(self) is ExecutionOutcome:
+            object.__setattr__(
+                self, "__class__", CompletedRun if error is None else FailedRun
+            )
+        object.__setattr__(self, "status", status)
+        object.__setattr__(self, "observation", observation)
+        object.__setattr__(self, "error", error)
+        self.__post_init__()
+
     def __post_init__(self) -> None:
         """Require completion evidence or a matching unfinished failure."""
         if not _has_backing_type(self.observation, ExecutionResult):
@@ -115,19 +136,6 @@ class ExecutionOutcome:
                 raise ArgumentError("an outcome requires a text status")
             status = str.__str__(status)
             object.__setattr__(self, "status", status)
-        if self.error is None:
-            if status != "completed" or not _has_backing_type(
-                self.observation.completion, CompletionReport
-            ):
-                raise ArgumentError("a completed outcome requires completion evidence")
-        elif (
-            not _has_backing_type(self.error, EsolangError)
-            or status != _failure_status(self.error)
-            or self.observation.completion is not None
-        ):
-            raise ArgumentError(
-                "a failed outcome requires its error and unfinished observation"
-            )
 
     @property
     def bound(self) -> str | None:
@@ -145,6 +153,56 @@ class ExecutionOutcome:
         return self.observation
 
 
+class CompletedRun(ExecutionOutcome):
+    """A finalized observation with completion evidence."""
+
+    __slots__ = ()
+    status: Literal["completed"]
+    error: None
+
+    def __post_init__(self) -> None:
+        """Require the successful case of the execution contract."""
+        super().__post_init__()
+        if (
+            self.status != "completed"
+            or self.error is not None
+            or not _has_backing_type(self.observation.completion, CompletionReport)
+        ):
+            raise ArgumentError("a completed outcome requires completion evidence")
+
+    @classmethod
+    def from_result(cls, observation: ExecutionResult) -> CompletedRun:
+        """Finish a run with its observed result."""
+        return cls("completed", observation)
+
+    @property
+    def completion(self) -> CompletionReport:
+        """Return the validated completion evidence."""
+        completion = self.observation.completion
+        assert completion is not None
+        return completion
+
+
+class FailedRun(ExecutionOutcome):
+    """An unfinished observation with the original execution error."""
+
+    __slots__ = ()
+    status: FailureStatus
+    error: EsolangError
+
+    def __post_init__(self) -> None:
+        """Require the failure case of the execution contract."""
+        super().__post_init__()
+        if (
+            not _has_backing_type(self.error, EsolangError)
+            or self.status != _failure_status(self.error)
+            or self.observation.completion is not None
+        ):
+            raise ArgumentError(
+                "a failed outcome requires its error and unfinished observation"
+            )
+
+
 def _failed_outcome(
     error: EsolangError, *, observation: ExecutionResult | None = None
 ) -> ExecutionOutcome:
@@ -158,7 +216,7 @@ def _failed_outcome(
             and observation.completion is not None
         ):
             observation = _UNOBSERVED
-    return ExecutionOutcome(_failure_status(error), observation, error=error)
+    return FailedRun(_failure_status(error), observation, error=error)
 
 
 def _capture_outcome[**P](

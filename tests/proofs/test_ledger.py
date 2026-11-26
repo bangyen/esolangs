@@ -6,13 +6,13 @@ import re
 
 import pytest
 
-from esolangs.registry import BY_BOOLEAN
-from scripts.docs.resource_description import (
+from checks.certification.resource_description import (
     EXECUTION_CLASSES,
     SCALING_CLASSES,
     SCALING_EVIDENCE,
     WORKSPACE_CLASSES,
 )
+from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import (
     FORMULA_CLAUSE_WORDS,
     LINEAR_CLAUSE_WORDS,

@@ -82,7 +82,7 @@ def test_an_ignored_input_is_one_pad() -> None:
 
 
 def _check_terminal_leaves() -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Smu")
     workspace = bounds["workspace"].formula
@@ -130,7 +130,7 @@ def _check_terminal_leaves() -> None:
 
 def _check_constants() -> None:
     assert_analysis_complement("Smu", "decision_layers")
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Smu")
     workspace = bounds["workspace"].formula

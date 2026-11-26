@@ -17,7 +17,11 @@ def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_space_delimited
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -25,18 +29,19 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.fractran.generator", "fractran_request"
         ),
-        layout_width=True,
-        same_layout=FunctionRef(
-            "esolangs.generation.helpers",
-            "same_token_layout",
-            ("template", "plain", "_layout"),
+        layout=ConstructedLayout(
+            same_layout=FunctionRef(
+                "esolangs.generation.helpers",
+                "same_token_layout",
+                ("template", "plain", "_layout"),
+            ),
+            wrap=wrap_space_delimited,
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.fractran.generator", "fractran_balance_request"
+            ),
         ),
         # Whitespace- or comma-separated tokens, and a break inside one would
         # change a number.
-        wrap=wrap_space_delimited,
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.fractran.generator", "fractran_balance_request"
-        ),
         template=TemplateSpec(pair=PAIR),
     )
 

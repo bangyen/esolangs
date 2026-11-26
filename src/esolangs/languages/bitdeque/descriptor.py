@@ -13,7 +13,11 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -21,19 +25,22 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.bitdeque.generator", "bitdeque_request"
         ),
-        layout_width=True,
-        same_layout=FunctionRef(
-            "esolangs.generation.helpers",
-            "same_token_layout",
-            ("template", "plain", "_layout"),
+        layout=ConstructedLayout(
+            same_layout=FunctionRef(
+                "esolangs.generation.helpers",
+                "same_token_layout",
+                ("template", "plain", "_layout"),
+            ),
+            wrap=FunctionRef(
+                "esolangs.languages.bitdeque.generator",
+                "_bitdeque",
+                ("program", "width"),
+            ),
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.bitdeque.generator", "bitdeque_balance_request"
+            ),
         ),
         # Space-delimited, but ``GOTO`` and its target must stay on one line.
-        wrap=FunctionRef(
-            "esolangs.languages.bitdeque.generator", "_bitdeque", ("program", "width")
-        ),
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.bitdeque.generator", "bitdeque_balance_request"
-        ),
         template=TemplateSpec(
             setters=FunctionRef(
                 "esolangs.languages.bitdeque.generator",

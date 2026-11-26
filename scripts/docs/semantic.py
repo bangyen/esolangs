@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from verify.process import stop_process_tree  # noqa: E402
 
-from .fragments import section  # noqa: E402
+from checks.certification.fragments import section  # noqa: E402
 
 
 @dataclass(frozen=True)

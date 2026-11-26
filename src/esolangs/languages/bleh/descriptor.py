@@ -15,7 +15,7 @@ _TOKEN = r'"[^\"]*"|::|\w+|[\s\S]'
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import TokenWrapper
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -23,8 +23,9 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.bleh.generator", "bleh_request"
         ),
-        layout_width=False,
-        wrap=TokenWrapper(_TOKEN),
+        layout=SourceLayout(
+            wrap=TokenWrapper(_TOKEN),
+        ),
     )
 
 

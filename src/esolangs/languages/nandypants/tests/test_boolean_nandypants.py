@@ -20,8 +20,8 @@ def test_every_row_prints_its_answer() -> None:
 
 
 def _check_constants() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.nandypants.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Nandypants")["workspace"].formula
     for n in range(1, 13):

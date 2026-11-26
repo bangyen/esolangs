@@ -19,7 +19,11 @@ TEMPLATE_CHAR = "@"
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -27,14 +31,15 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.intercal.generator", "intercal_request"
         ),
-        layout_width=True,
-        same_layout=FunctionRef(
-            "esolangs.languages.intercal.generator",
-            "_same_layout",
-            ("template", "plain", "_layout"),
-        ),
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.intercal.generator", "intercal_balance_request"
+        layout=ConstructedLayout(
+            same_layout=FunctionRef(
+                "esolangs.languages.intercal.generator",
+                "_same_layout",
+                ("template", "plain", "_layout"),
+            ),
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.intercal.generator", "intercal_balance_request"
+            ),
         ),
         template=TemplateSpec(pair=PAIR, char=TEMPLATE_CHAR),
     )

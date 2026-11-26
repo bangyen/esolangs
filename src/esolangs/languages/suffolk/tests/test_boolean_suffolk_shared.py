@@ -26,7 +26,7 @@ def test_nor_cancels_the_targets_old_value(target, left, right) -> None:
 
 def _execute(table, program, rows):
     n = len(table).bit_length() - 1
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Suffolk")
     cap = bounds["workspace"].formula(n, program)

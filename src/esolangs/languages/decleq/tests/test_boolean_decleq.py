@@ -122,7 +122,7 @@ def test_multiline_source_is_untouched() -> None:
 
 @pytest.mark.medium
 def test_constants_reuse_scratch_and_print_after_every_read() -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Decleq")["workspace"].formula
 
@@ -149,8 +149,8 @@ def test_taken_branches_stay_in_the_program(table: str) -> None:
 
 
 def _check_gadgets_and_owner_families() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.decleq.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Decleq")["workspace"].formula
 

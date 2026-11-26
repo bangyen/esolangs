@@ -170,8 +170,8 @@ def _check_constants() -> None:
 
 
 def _check_zero_fold_and_chain() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.painfuck.interpreter import _Machine, _translate
-    from scripts.docs.resource_evidence import resource_bounds
 
     execution = resource_bounds("Painfuck")["execution"].formula
 

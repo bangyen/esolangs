@@ -78,7 +78,7 @@ def test_constants_read_every_input(n: int, bit: str) -> None:
 
 
 def _check_store_loop() -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Quassaunt")
     execution = bounds["execution"].formula

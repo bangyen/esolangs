@@ -105,7 +105,7 @@ def test_every_kept_level_is_tested_at_every_node(monkeypatch) -> None:
 
 
 def _check_literal_leaf_outputs() -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     execution = resource_bounds("thisthat")["execution"].formula
     for table in ("01", "10", "01010101", "10101010", "11110000"):
@@ -551,7 +551,7 @@ def test_coalescing_preserves_the_single_pointer_schedule() -> None:
 
 
 def _check_constants() -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     workspace = resource_bounds("thisthat")["workspace"].formula
     for n, bit, options, program in constant_programs("thisthat", range(1, 13)):

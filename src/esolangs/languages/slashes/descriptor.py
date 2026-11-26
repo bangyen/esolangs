@@ -15,20 +15,26 @@ PAIR = ("a", "b")
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
-    from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        Shape,
+        SourceLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._operations import OperationRef
 
     return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.slashes.generator", "slashes_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            no_wrap="newlines are literal output and substitution data",
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.slashes.generator", "slashes_balance_request"
+            ),
+        ),
         # Not a tree: an indexed table rewrite.
         shape=Shape.LOOKUP,
-        no_wrap="newlines are literal output and substitution data",
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.slashes.generator", "slashes_balance_request"
-        ),
         template=TemplateSpec(pair=PAIR),
     )
 

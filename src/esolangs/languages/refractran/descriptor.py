@@ -17,7 +17,11 @@ def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import wrap_space_delimited
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -25,13 +29,14 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.refractran.generator", "refractran_request"
         ),
-        layout_width=True,
-        layout_balance=True,
-        wrap=wrap_space_delimited,
-        same_layout=FunctionRef(
-            "esolangs.generation.helpers",
-            "same_token_layout",
-            ("template", "plain", "_layout"),
+        layout=ConstructedLayout(
+            layout_balance=True,
+            wrap=wrap_space_delimited,
+            same_layout=FunctionRef(
+                "esolangs.generation.helpers",
+                "same_token_layout",
+                ("template", "plain", "_layout"),
+            ),
         ),
         template=TemplateSpec(pair=PAIR),
     )

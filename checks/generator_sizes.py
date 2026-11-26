@@ -17,7 +17,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from docs.fragments import FRAGMENT, AggregateKey, aggregate, sections
+from checks.certification.fragments import FRAGMENT, AggregateKey, aggregate, sections
 
 if TYPE_CHECKING:
     from esolangs.registry import LanguageDeclaration

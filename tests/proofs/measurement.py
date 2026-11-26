@@ -1,10 +1,10 @@
 """Run resource witnesses and measure native commands and written state."""
 
 import esolangs
+from checks.certification.resource_evidence import resource_cases
 from esolangs.runtime._vm_adapter import _capture_workspace
 from esolangs.vm import complete_vm, make_vm
 from scripts.benchmark import WrittenState
-from scripts.docs.resource_evidence import resource_cases
 from tests.proofs._witnesses import (
     _seeded,
 )

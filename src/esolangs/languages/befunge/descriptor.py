@@ -30,7 +30,7 @@ def check_arity(inputs: int) -> None:
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -40,12 +40,13 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.befunge.generator", "befunge_request"
         ),
-        layout_width=True,
-        layout_balance=True,
+        layout=ConstructedLayout(
+            layout_balance=True,
+            no_wrap="a row is a grid row and the lookup table is indexed by column",
+            grid=True,
+        ),
         # Not a tree: reads a packed grid cell with ``g``.
         shape=Shape.LOOKUP,
-        no_wrap="a row is a grid row and the lookup table is indexed by column",
-        grid=True,
     )
 
 

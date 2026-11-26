@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -22,12 +22,13 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.algebraic_programming_language.generator",
             "algebraic_programming_language_request",
         ),
-        layout_width=True,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.algebraic_programming_language.generator",
-            "algebraic_programming_language_balance_request",
+        layout=ConstructedLayout(
+            balance=OperationRef[BalanceRequest, Program](
+                "esolangs.languages.algebraic_programming_language.generator",
+                "algebraic_programming_language_balance_request",
+            ),
+            no_wrap="a line with '=' defines, one without runs",
         ),
-        no_wrap="a line with '=' defines, one without runs",
     )
 
 

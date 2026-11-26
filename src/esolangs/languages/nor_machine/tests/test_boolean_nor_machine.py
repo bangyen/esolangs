@@ -21,8 +21,8 @@ def test_constants_consume_the_queue_then_print_once() -> None:
     assert_analysis_complement("NOR machine", "read_at")
     _check_single_accumulator_boundaries()
 
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.nor_machine.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("NOR machine")["workspace"].formula
 
@@ -63,9 +63,9 @@ def test_constants_consume_the_queue_then_print_once() -> None:
 
 
 def _check_single_accumulator_boundaries() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.nor_machine.generator import _low_from_singleton, _Queue
     from esolangs.languages.nor_machine.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("NOR machine")
     execution = bounds["execution"].formula

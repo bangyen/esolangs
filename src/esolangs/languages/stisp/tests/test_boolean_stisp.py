@@ -1,12 +1,12 @@
 """Tests for the Stisp Boolean generator."""
 
 import esolangs
+from checks.certification.resource_evidence import resource_bounds
 from esolangs.languages.stisp.generator import stisp
 from esolangs.languages.stisp.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
-from scripts.docs.resource_evidence import resource_bounds
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.execution import run_observed as run
 from tests.support.generator_support import (

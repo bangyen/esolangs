@@ -89,7 +89,7 @@ def execution_witness(n: int) -> str:
     if n in (8, 9):
         block = 1 << 5  # pair slots in a five-level comb base
         quarter = block // 4
-        from scripts.docs.resource_evidence import resource_bounds
+        from checks.certification.resource_evidence import resource_bounds
 
         area = resource_bounds("Back")["scaling"].formula(n, "")
         deficit = (1 << (n - 1)) - area // (3 * n + 5)

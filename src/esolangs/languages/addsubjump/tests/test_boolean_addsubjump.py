@@ -311,8 +311,8 @@ def test_five_input_all_essential_table_pins_its_balanced_size() -> None:
 
 
 def _check_native_constants() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.addsubjump.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("AddSubJump")["workspace"].formula
 

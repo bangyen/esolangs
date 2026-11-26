@@ -177,7 +177,9 @@ class BooleanExample:
         schema = language.runtime.dialect_schema
         options = Options(tuple(schema.defaults.items())) if schema else Options()
         generated = self.generator(
-            GenerationRequest(table, width if backend.layout_width else None, options)
+            GenerationRequest(
+                table, width if backend.layout.constructs_width else None, options
+            )
         )
         return generated.source if isinstance(generated, TemplateLayout) else generated
 

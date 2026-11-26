@@ -6,9 +6,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from checks.certification.resource_description import (
+    SCALING_CLASSES as SCALING_CLASSES,
+)
+from checks.certification.resource_description import (
+    SCALING_EVIDENCE as SCALING_EVIDENCE,
+)
 from scripts.docs.proof_status import ProofRow
-from scripts.docs.resource_description import SCALING_CLASSES as SCALING_CLASSES
-from scripts.docs.resource_description import SCALING_EVIDENCE as SCALING_EVIDENCE
 
 #: Resolved from this file, not the working directory: the suite is run from
 #: the repo root, from `just`, and from a worktree, and only ``__file__`` is

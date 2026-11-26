@@ -29,7 +29,7 @@ def _dialect(expression_syntax: str = "infix", list_update: str = "in_place") ->
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -37,11 +37,12 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.alight.generator", "alight_request"
         ),
-        layout_width=True,
-        layout_balance=True,
+        layout=ConstructedLayout(
+            layout_balance=True,
+            no_wrap="a command is a word walked cell by cell; a row end cuts it",
+        ),
         # Not a tree: a Horner row index into a string literal.
         shape=Shape.LOOKUP,
-        no_wrap="a command is a word walked cell by cell; a row end cuts it",
     )
 
 

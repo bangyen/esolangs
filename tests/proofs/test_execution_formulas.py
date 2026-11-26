@@ -12,10 +12,10 @@ from fractions import Fraction
 import pytest
 
 import esolangs
+from checks.certification.resource_description import parse_descriptions
+from checks.certification.resource_evidence import PACKAGES, parse_bounds
+from checks.certification.resource_formula import expression_formula
 from esolangs.registry import LANGUAGES
-from scripts.docs.resource_description import parse_descriptions
-from scripts.docs.resource_evidence import PACKAGES, parse_bounds
-from scripts.docs.resource_formula import expression_formula
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs.execution import FORMULAS, measure
 from tests.support.generator_support import CHECK
@@ -97,7 +97,7 @@ def _check_formula_reference(data: dict) -> None:
 
 
 def _check_source_term_schema() -> None:
-    from scripts.docs.resource_formula import arity_cases, case_formula
+    from checks.certification.resource_formula import arity_cases, case_formula
 
     terms = frozenset({"S"})
     for expression in ("2X", "2", "S(n)"):

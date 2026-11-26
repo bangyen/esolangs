@@ -11,7 +11,7 @@ from time import monotonic
 from typing import Any, TextIO, cast
 
 from esolangs import exceptions
-from esolangs.outcomes import ExecutionOutcome, _failed_outcome
+from esolangs.outcomes import CompletedRun, ExecutionOutcome, _failed_outcome
 from esolangs.runtime._acquire import preparation_expired
 from esolangs.runtime._failure_wire import _error_from_wire
 from esolangs.runtime._proof import TerminationResult
@@ -80,7 +80,7 @@ def _decode_outcome(text: str, *, expired: bool) -> _WorkerResponse:
                 raise ValueError("worker omitted input counters")
             if execution.completion is None:
                 raise ValueError("worker omitted output completion")
-            return ExecutionOutcome("completed", execution)
+            return CompletedRun.from_result(execution)
     except (TypeError, ValueError, KeyError) as cause:
         error = exceptions.InterpreterLimitError("invalid isolated execution result")
         error.partial_output = partial

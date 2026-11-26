@@ -11,7 +11,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -19,9 +19,10 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.balik.generator", "balik_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            no_wrap="a newline adds a grid row and moves every vertical path",
+        ),
         shape=Shape.TREE,
-        no_wrap="a newline adds a grid row and moves every vertical path",
     )
 
 

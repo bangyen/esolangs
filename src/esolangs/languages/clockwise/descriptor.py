@@ -12,7 +12,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,12 +20,13 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.clockwise.generator", "clockwise_request"
         ),
-        layout_width=True,
-        layout_balance=True,
+        layout=ConstructedLayout(
+            layout_balance=True,
+            no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
+            grid=True,
+        ),
         # Not a tree: a countdown stops on the entry's own column.
         shape=Shape.LOOKUP,
-        no_wrap="a row is a ring row; the walk's turns sit at fixed cells",
-        grid=True,
     )
 
 

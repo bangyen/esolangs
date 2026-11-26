@@ -6,6 +6,7 @@ import pytest
 
 from esolangs import ArgumentError, ExecutionLimits, Language
 from esolangs.registry import LANGUAGES
+from esolangs.registry._contracts import BooleanContract
 from esolangs.runtime._input import InputFrame, read_input
 
 FRAMED = [entry.name for entry in LANGUAGES.values() if entry.contract.frame_stdin]
@@ -87,3 +88,28 @@ def test_framed_input_rejects_invalid_reader_responses(chunks, message):
     responses = iter(chunks)
     with pytest.raises(ArgumentError, match=message):
         read_input(Reader(), frame=InputFrame(1, lines=False))
+
+
+@pytest.mark.parametrize(
+    "contract",
+    [
+        BooleanContract(frame_stdin=True, input_shape="row_number"),
+        BooleanContract(frame_stdin=True, input_shape="row_index"),
+        BooleanContract(frame_stdin=True, alphabet=("no", "yes")),
+        BooleanContract(
+            frame_stdin=True, input_shape="char_stream", alphabet=("αβ", "γδ")
+        ),
+        BooleanContract(
+            frame_stdin=True, input_shape="char_stream", alphabet=("a", "βγ")
+        ),
+    ],
+)
+def test_encoding_frames_its_own_adjacent_records(contract):
+    first = contract.encode_row("test", [0, 1])
+    second = contract.encode_row("test", [1, 0])
+    frame = contract.input_frame(2)
+    assert frame.prefix(first + second) == first
+    for stream in (StringIO(first + second), BytesIO((first + second).encode())):
+        assert read_input(stream, frame=frame) == first
+        assert read_input(stream, frame=frame) == second
+        assert read_input(stream, frame=frame) == ""

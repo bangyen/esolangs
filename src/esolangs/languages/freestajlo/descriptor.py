@@ -14,7 +14,7 @@ _UNIT = r'"[^"]*"|\'[\s\S]|\d+|[\s\S]'
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import TokenWrapper
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -22,10 +22,11 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.freestajlo.generator", "freestajlo_request"
         ),
-        layout_balance=True,
-        layout_width=False,
+        layout=SourceLayout(
+            layout_balance=True,
+            wrap=TokenWrapper(_UNIT),
+        ),
         shape=Shape.LOOKUP,
-        wrap=TokenWrapper(_UNIT),
     )
 
 

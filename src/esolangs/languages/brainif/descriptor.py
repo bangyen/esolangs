@@ -12,7 +12,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,11 +20,12 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.brainif.generator", "brainif_request"
         ),
-        layout_width=True,
+        layout=ConstructedLayout(
+            layout_balance=True,
+            no_wrap="each line is one instruction and goto targets are line numbers",
+        ),
         # The default DAG wins the balance race (full and zero-jump trees,
         # n=1..8), so the generator uses the same path for both.
-        layout_balance=True,
-        no_wrap="each line is one instruction and goto targets are line numbers",
     )
 
 

@@ -16,7 +16,7 @@ from esolangs.runtime._definition import (
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -24,10 +24,11 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.piet.generator", "piet_request"
         ),
-        layout_width=True,
-        layout_balance=True,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.piet.generator", "piet_balance_request"
+        layout=ConstructedLayout(
+            layout_balance=True,
+            balance=OperationRef[BalanceRequest, Program](
+                "esolangs.languages.piet.generator", "piet_balance_request"
+            ),
         ),
     )
 

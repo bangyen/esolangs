@@ -11,6 +11,7 @@ from esolangs.exceptions import (
     InputExhaustedError,
     InterpreterLimitError,
 )
+from esolangs.outcomes import CompletedRun, FailedRun
 from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import execute_prepared
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
@@ -173,6 +174,12 @@ def test_execution_records_use_the_backing_text() -> None:
         ("input_exhausted", unfinished, fault),
     ):
         outcome = ExecutionOutcome(WrappedText(status), result, error=error)
+        if error is None:
+            assert isinstance(outcome, CompletedRun)
+            assert outcome.completion is result.completion
+        else:
+            assert isinstance(outcome, FailedRun)
+            assert outcome.error is error
         assert type(outcome.status) is str
         assert outcome.status == status
         with pytest.raises(ArgumentError, match="outcome"):

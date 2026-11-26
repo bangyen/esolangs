@@ -31,7 +31,7 @@ from tests.support.witness_tables import witnesses
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
 def test_source_length_is_the_documented_formula(n: int) -> None:
     """Alternating run boundaries maximize the compressed sweep count."""
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     scaling = resource_bounds("///")["scaling"].formula
 
@@ -288,9 +288,9 @@ def test_balanced_side_is_square_at_n8() -> None:
 
 
 def _check_run_macros() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.slashes.generator import _SWEEP_DEF
     from esolangs.languages.slashes.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("///")["workspace"].formula
 

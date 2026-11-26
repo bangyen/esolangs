@@ -404,8 +404,8 @@ def test_three_input_corpus_size() -> None:
 
 
 def _check_affine_stream() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.collatz_multiverse.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Collatz Multiverse")
     execution = bounds["execution"].formula

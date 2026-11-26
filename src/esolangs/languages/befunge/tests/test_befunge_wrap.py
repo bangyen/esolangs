@@ -327,9 +327,9 @@ def _check_constants() -> None:
 
 
 def _check_one_row_nibbles() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.befunge.interpreter import _Machine
     from esolangs.languages.befunge.tests.ablations import ablate
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Befunge")
     execution = bounds["execution"].formula

@@ -16,7 +16,7 @@ KNOWN = {
     "evidence",  # scripts/docs/evidence.py
     "generator_sizes",  # checks/generator_sizes.py
     "interpreter_ablations",  # scripts/docs/ablations.py
-    "resource_evidence",  # scripts/docs/resource_evidence.py
+    "resource_evidence",  # checks/certification/resource_evidence.py
     "proof_status",  # scripts/docs/proof_status.py
     "schemes",  # tests/proofs/_schemes.py
     "semantic_evidence",  # scripts/docs/semantic.py

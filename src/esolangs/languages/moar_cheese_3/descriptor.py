@@ -15,22 +15,30 @@ PAIR = ("n", "y")
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
-    from esolangs.registry._backend import BooleanBackend, Shape, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        Shape,
+        SourceLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._operations import OperationRef
 
     return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.moar_cheese_3.generator", "moar_cheese_3_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            no_wrap=(
+                "a break inside ( ) or an input slot's ( ) changes it; balance folds"
+            ),
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.moar_cheese_3.generator",
+                "moar_cheese_3_balance_request",
+            ),
+        ),
         # Input bits filter a queued table; no tree of residuals.
         shape=Shape.LOOKUP,
-        no_wrap="a break inside ( ) or an input slot's ( ) changes it; balance folds",
         template=TemplateSpec(pair=PAIR),
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.moar_cheese_3.generator",
-            "moar_cheese_3_balance_request",
-        ),
     )
 
 

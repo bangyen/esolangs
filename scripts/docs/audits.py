@@ -16,7 +16,7 @@ import datetime
 from pathlib import Path
 from typing import Any
 
-from .fragments import registry, sections
+from checks.certification.fragments import registry, sections
 
 ROOT = Path(__file__).resolve().parents[2]
 

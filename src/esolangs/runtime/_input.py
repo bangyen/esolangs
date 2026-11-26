@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from codecs import getincrementaldecoder
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from inspect import getattr_static
 from io import (
@@ -50,33 +50,78 @@ class InputFrame:
         return text[:end]
 
     def read(self, bound: _BoundReader) -> str:
-        """Read up to the record boundary without taking a byte from its tail."""
-        decoder = getincrementaldecoder("utf-8")()
+        """Read one frame without consuming any of the next record."""
+        if not self.units:
+            return ""
         remaining = self.units
         parts: list[str] = []
-        binary = False
-        while remaining:
-            value = read_snapshot(bound.stream, reader=bound.read, size=1)
-            if _has_backing_type(value, str):
-                if binary:
-                    raise TypeError("stdin stream changed from bytes to text")
-                char = str.__str__(value)
-            elif _has_backing_type(value, bytes):
-                binary = True
-                data = bytes.__bytes__(value)
-                char = decoder.decode(data, final=not data)
-                if data and not char:
-                    continue
-            else:
-                raise TypeError("stdin stream must return a string or bytes")
-            if not char:
-                break
-            if len(char) != 1:
-                raise ValueError("stdin stream returned too much input for read(1)")
+        for char in _characters(bound):
             parts.append(char)
             if not self.lines or char == "\n":
                 remaining -= 1
+                if not remaining:
+                    break
         return "".join(parts)
+
+
+@dataclass(frozen=True, slots=True)
+class SymbolFrame:
+    """A record containing a fixed number of prefix-free variable-width symbols."""
+
+    units: int
+    symbols: tuple[str, str]
+
+    def _record(self, characters: Iterable[str]) -> str:
+        parts: list[str] = []
+        token = ""
+        remaining = self.units
+        for char in characters:
+            parts.append(char)
+            token += char
+            if token in self.symbols:
+                remaining -= 1
+                if not remaining:
+                    break
+                token = ""
+            elif not any(symbol.startswith(token) for symbol in self.symbols):
+                raise ArgumentError("input does not match the framed bit alphabet")
+        return "".join(parts)
+
+    def prefix(self, text: str) -> str:
+        """Keep one encoded record."""
+        return self._record(text)
+
+    def read(self, bound: _BoundReader) -> str:
+        """Read up to the final symbol from a text or UTF-8 stream."""
+        return self._record(_characters(bound))
+
+
+type RecordFrame = InputFrame | SymbolFrame
+
+
+def _characters(bound: _BoundReader) -> Iterator[str]:
+    """Decode single characters on demand to preserve the following record."""
+    decoder = getincrementaldecoder("utf-8")()
+    binary = False
+    while True:
+        value = read_snapshot(bound.stream, reader=bound.read, size=1)
+        if _has_backing_type(value, str):
+            if binary:
+                raise TypeError("stdin stream changed from bytes to text")
+            char = str.__str__(value)
+        elif _has_backing_type(value, bytes):
+            binary = True
+            data = bytes.__bytes__(value)
+            char = decoder.decode(data, final=not data)
+            if data and not char:
+                continue
+        else:
+            raise TypeError("stdin stream must return a string or bytes")
+        if not char:
+            break
+        if len(char) != 1:
+            raise ValueError("stdin stream returned too much input for read(1)")
+        yield char
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,7 +219,7 @@ def _decode_input(value: bytes) -> str:
 
 
 def read_input(
-    source: InputSource | CheckedInput, *, frame: InputFrame | None = None
+    source: InputSource | CheckedInput, *, frame: RecordFrame | None = None
 ) -> str:
     """Snapshot input through the selected record boundary or physical EOF."""
     bound = (

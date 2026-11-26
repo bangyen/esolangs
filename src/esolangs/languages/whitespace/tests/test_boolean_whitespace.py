@@ -53,9 +53,9 @@ def _check_constants() -> None:
 
 
 def _check_power_steps() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.whitespace.generator import whitespace
     from esolangs.languages.whitespace.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Whitespace")
     execution = bounds["execution"].formula

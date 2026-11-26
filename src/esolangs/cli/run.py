@@ -52,6 +52,7 @@ from esolangs.operations.execution import (
     _execution_route,
     default_total,
 )
+from esolangs.outcomes import FailedRun
 from esolangs.registry import Catalog, get_catalog
 from esolangs.runtime._execution import check_seed_for
 from esolangs.runtime._files import _source_directory
@@ -231,9 +232,9 @@ def _run(rest: list[str]) -> None:
             catalog=catalog,
         )
     output = outcome.observation.output
-    if (error := outcome.error) is not None:
+    if isinstance(outcome, FailedRun):
         _emit_partial(output)
-        _fail_run(error, language, catalog)
+        _fail_run(outcome.error, language, catalog)
     _write_output(output)
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.

@@ -5,6 +5,7 @@ import random
 import pytest
 
 import esolangs
+from checks.certification.resource_evidence import resource_bounds
 from esolangs import run
 from esolangs.languages.algebraic_programming_language.generator import (
     _apl_reduced_ordered,
@@ -16,7 +17,6 @@ from esolangs.languages.algebraic_programming_language.interpreter import _Machi
 from esolangs.operations.boolean_io import read_answer
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
-from scripts.docs.resource_evidence import resource_bounds
 
 NAME = "Algebraic Programming Language"
 

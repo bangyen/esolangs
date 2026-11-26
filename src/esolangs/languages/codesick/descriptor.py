@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import wrap_space_delimited
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -21,9 +21,10 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.codesick.generator", "codesick_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=wrap_space_delimited,
+        ),
         # An argument holds no whitespace, so break only between arguments.
-        wrap=wrap_space_delimited,
     )
 
 

@@ -10,7 +10,7 @@ from typing import Literal
 
 from esolangs.exceptions import ArgumentError, EsolangError, steps_exhausted
 from esolangs.limits import ExecutionLimits
-from esolangs.outcomes import ExecutionOutcome, _failed_outcome
+from esolangs.outcomes import CompletedRun, ExecutionOutcome, _failed_outcome
 from esolangs.results import Completion, CompletionReport, ExecutionResult
 from esolangs.runtime._drive import _checked_halted
 from esolangs.runtime._validate import _argument_repr, _has_backing_type
@@ -386,7 +386,7 @@ class ExecutionController:
         if report is None:
             return None
         result = replace(_capture_observation(vm, report), steps=self._steps)
-        return ExecutionOutcome("completed", result)
+        return CompletedRun.from_result(result)
 
     def _execute(self, *, max_steps: int) -> ExecutionOutcome:
         """Finish a non-interactive invocation, retaining faults and bound stops."""
@@ -397,8 +397,8 @@ class ExecutionController:
                     return completed
             reason = self._run(max_steps, None)
             if reason == "halted":
-                return ExecutionOutcome(
-                    "completed", replace(_capture_result(self.vm), steps=self._steps)
+                return CompletedRun.from_result(
+                    replace(_capture_result(self.vm), steps=self._steps)
                 )
         except EsolangError as fault:
             observation = replace(_capture_observation(self.vm), steps=self._steps)

@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 
-from scripts.docs.fragments import FRAGMENT, cached, fingerprint, section
+from checks.certification.fragments import FRAGMENT, cached, fingerprint, section
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGES = ROOT / "src" / "esolangs" / "languages"

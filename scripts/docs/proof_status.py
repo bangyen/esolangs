@@ -8,9 +8,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from checks.certification.fragments import AggregateKey, cached, fingerprint
+from checks.certification.resource_description import (
+    ResourceDescriptions,
+    parse_descriptions,
+)
+
 from .anchors import anchors
-from .fragments import AggregateKey, cached, fingerprint
-from .resource_description import ResourceDescriptions, parse_descriptions
 from .writing import write_if_changed as _write_if_changed
 
 ROOT = Path(__file__).resolve().parents[2]

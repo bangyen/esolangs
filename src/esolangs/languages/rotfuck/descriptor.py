@@ -20,7 +20,7 @@ def _dialect(rotation: str = "backward") -> None:
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import wrap_chars
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -28,10 +28,11 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.rotfuck.generator", "rotfuck_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=wrap_chars,
+        ),
         # A sum, not a tree: a lookup over the essential inputs only.
         shape=Shape.REDUCING,
-        wrap=wrap_chars,
     )
 
 

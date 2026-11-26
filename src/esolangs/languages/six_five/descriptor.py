@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import _six_five
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -21,9 +21,10 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.six_five.generator", "six_five_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=_six_five,
+        ),
         # 7n/8n are two-character tokens; see ``_SIX_FIVE_COMMAND``.
-        wrap=_six_five,
     )
 
 

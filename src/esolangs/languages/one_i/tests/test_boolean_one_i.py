@@ -4,12 +4,12 @@ from fractions import Fraction
 from unittest.mock import patch
 
 import esolangs
+from checks.certification.resource_evidence import resource_bounds
 from esolangs.generation.algebraic import parity_bias
 from esolangs.languages.one_i import generator
 from esolangs.languages.one_i import interpreter as native
 from esolangs.languages.one_i.tests.formulas import workspace_witness
 from scripts.benchmark import WrittenState
-from scripts.docs.resource_evidence import resource_bounds
 from tests.support import generator_support as checks
 from tests.support.event_io import ReadFirstIO
 from tests.support.witness_tables import SMALL_TABLES as TABLES

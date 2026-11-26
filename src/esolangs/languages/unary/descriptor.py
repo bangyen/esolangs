@@ -26,7 +26,7 @@ def check_arity(inputs: int) -> None:
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import wrap_chars
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -34,14 +34,15 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.unary.generator", "unary_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=wrap_chars,
+        ),
         max_inputs=MAX_INPUTS,
         arity_guard=check_arity,
         restrictions=(
             "raw export 32 Mi characters; generation 256 Mi characters; "
             "gzip 256 KiB; table-dependent caps"
         ),
-        wrap=wrap_chars,
     )
 
 

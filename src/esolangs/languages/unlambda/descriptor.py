@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import _unlambda
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -21,8 +21,9 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.unlambda.generator", "unlambda_request"
         ),
-        layout_width=False,
-        wrap=_unlambda,
+        layout=SourceLayout(
+            wrap=_unlambda,
+        ),
     )
 
 

@@ -13,6 +13,7 @@ from typing import Any
 from esolangs import exceptions
 from esolangs.artifacts import ProgramArtifact
 from esolangs.compressed import CompressedText
+from esolangs.outcomes import FailedRun
 from esolangs.raster import Raster
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._error_causes import cause_chain
@@ -220,7 +221,7 @@ def _serve_request(*, catalog: Catalog | None = None) -> None:
                 io_factory=StreamingIO,
                 prepared=prepared,
             )
-            if outcome.error is not None:
+            if isinstance(outcome, FailedRun):
                 send_failure(outcome.error)
                 return
             result = outcome.observation

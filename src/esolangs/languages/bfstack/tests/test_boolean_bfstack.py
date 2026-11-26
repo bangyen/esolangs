@@ -178,8 +178,8 @@ def test_small_tables_execute_with_the_specialized_route() -> None:
 
 
 def _check_identities() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.bfstack.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("BFStack")["workspace"].formula
     execution = resource_bounds("BFStack")["execution"].formula

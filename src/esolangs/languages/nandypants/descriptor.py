@@ -12,7 +12,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,8 +20,9 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.nandypants.generator", "nandypants_request"
         ),
-        layout_width=False,
-        no_wrap="a line break inside a label would split one number into two",
+        layout=SourceLayout(
+            no_wrap="a line break inside a label would split one number into two",
+        ),
     )
 
 

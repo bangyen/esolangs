@@ -12,7 +12,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,10 +20,11 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.movesum.generator", "movesum_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            no_wrap="each line is one instruction and a break splits it",
+        ),
         # Not a tree: one rung per row, whatever the table says.
         shape=Shape.LOOKUP,
-        no_wrap="each line is one instruction and a break splits it",
     )
 
 

@@ -16,18 +16,23 @@ PAIR = (".", "~")
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.template import TemplateLayout
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._operations import OperationRef
 
     return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.arrowqueue.generator", "arrowqueue_request"
         ),
-        layout_width=True,
-        layout_balance=True,
-        no_wrap="the queue and decision tree occupy fixed grid coordinates",
+        layout=ConstructedLayout(
+            layout_balance=True,
+            no_wrap="the queue and decision tree occupy fixed grid coordinates",
+            grid=True,
+        ),
         template=TemplateSpec(pair=PAIR),
-        grid=True,
     )
 
 

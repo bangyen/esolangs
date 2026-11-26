@@ -2,11 +2,11 @@
 
 import random
 
+from checks.certification.resource_evidence import resource_bounds
 from esolangs.languages.line.generator import balance, line
 from esolangs.languages.line.interpreter import _Machine
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
-from scripts.docs.resource_evidence import resource_bounds
 from tests.support.generator_support import measure_run
 
 

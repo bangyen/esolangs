@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.wrap import _false
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -21,12 +21,13 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.false.generator", "false_request"
         ),
-        layout_width=True,
-        # ``'x`` and ``.x``/``?x`` take the character after them.
-        wrap=_false,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.false.generator", "false_balance_request"
+        layout=ConstructedLayout(
+            wrap=_false,
+            balance=OperationRef[BalanceRequest, Program](
+                "esolangs.languages.false.generator", "false_balance_request"
+            ),
         ),
+        # ``'x`` and ``.x``/``?x`` take the character after them.
     )
 
 

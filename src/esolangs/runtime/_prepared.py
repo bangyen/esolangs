@@ -24,7 +24,7 @@ from esolangs.runtime._execution import (
     prepare_call,
     runtime_hook,
 )
-from esolangs.runtime._input import CheckedInput, InputFrame, InputSource
+from esolangs.runtime._input import CheckedInput, InputSource, RecordFrame
 from esolangs.runtime._interpreter_errors import interpreter_errors
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import (
@@ -89,12 +89,10 @@ def _scoped_dialect_defaults(
 
 def _artifact_input_frame(
     artifact: ProgramArtifact[Program], catalog: Catalog
-) -> InputFrame | None:
+) -> RecordFrame | None:
     """Only explicitly framed languages bind input using their artifact arity."""
     contract = catalog.languages[artifact.language].contract
-    if contract.frame_stdin and artifact.input_arity is not None:
-        return InputFrame(artifact.input_arity, contract.input_shape == "line_per_bit")
-    return None
+    return contract.input_frame(artifact.input_arity)
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,7 +177,7 @@ class _PreparedRuntime:
         return self.artifact.language
 
     @property
-    def _input_frame(self) -> InputFrame | None:
+    def _input_frame(self) -> RecordFrame | None:
         return _artifact_input_frame(self.artifact, self.catalog)
 
     def _options(

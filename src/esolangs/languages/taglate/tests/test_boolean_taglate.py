@@ -28,7 +28,7 @@ def run_taglate(program: str, inputs: list[str]) -> str:
 
 
 def test_execution_bound_is_one_form() -> None:
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
 
     execution = resource_bounds("Taglate")["execution"].formula
 
@@ -232,9 +232,9 @@ def _check_constants() -> None:
 
 
 def _check_packed_leaves() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.taglate.interpreter import _Machine, run
     from esolangs.languages.taglate.tests.ablations import ablate
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Taglate")
     execution = bounds["execution"].formula
@@ -274,9 +274,9 @@ def _check_packed_leaves() -> None:
 
 
 def _check_resource_layouts() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.taglate.interpreter import _Machine
     from esolangs.languages.taglate.tests.formulas import resource_witness
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Taglate")
     execution = bounds["execution"].formula

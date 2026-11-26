@@ -69,11 +69,11 @@ def wrap_program(
     if width is None or width <= 0:
         return program
     backend = _backend(language_id, catalog=catalog)
-    if backend is None or backend.wrap is None:
+    if backend is None or backend.layout.wrap is None:
         return program
-    if "\n" in program and not backend.wrap_multiline:
+    if "\n" in program and not backend.layout.wrap_multiline:
         return program
-    wrapped = call_backend(backend.wrap, program, width)
+    wrapped = call_backend(backend.layout.wrap, program, width)
     return _wrapped_text(wrapped, language_id)
 
 
@@ -100,17 +100,17 @@ def _layout_compressed(
     if language is None or (backend := language.backend) is None:
         return program
     if balance:
-        if backend.wrap is None and backend.wrap_balance is None:
+        if backend.layout.wrap is None and backend.layout.wrap_balance is None:
             return program
-    elif backend.wrap is None:
+    elif backend.layout.wrap is None:
         return program
     multiline = program._is_multiline()  # noqa: SLF001
-    if multiline and (not backend.wrap_multiline or backend.wrap is None):
+    if multiline and (not backend.layout.wrap_multiline or backend.layout.wrap is None):
         return program
     if (
         not multiline
-        and backend.wrap is wrap_chars
-        and (not balance or backend.wrap_balance is None)
+        and backend.layout.wrap is wrap_chars
+        and (not balance or backend.layout.wrap_balance is None)
     ):
         size = len(program)
         if language.runtime.compressed_source:
@@ -162,10 +162,10 @@ def _balance_line(
     backend = _backend(language_id, catalog=catalog)
     if backend is None:
         return None
-    if backend.wrap_balance is not None:
-        balanced = call_backend(backend.wrap_balance, program)
+    if backend.layout.wrap_balance is not None:
+        balanced = call_backend(backend.layout.wrap_balance, program)
         return _wrapped_text(balanced, language_id)
-    wrapper = backend.wrap
+    wrapper = backend.layout.wrap
     if wrapper is wrap_space_delimited:
         return _token_fit(program, program.split(), " ")
     if isinstance(wrapper, TokenWrapper):

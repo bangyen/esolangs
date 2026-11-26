@@ -12,7 +12,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,12 +20,13 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.fish.generator", "fish_request"
         ),
-        layout_width=True,
-        layout_balance=True,
+        layout=ConstructedLayout(
+            layout_balance=True,
+            no_wrap="a row is a codebox row and the lookup table is indexed by column",
+            grid=True,
+        ),
         # Not a tree: an indexed table read.
         shape=Shape.LOOKUP,
-        no_wrap="a row is a codebox row and the lookup table is indexed by column",
-        grid=True,
     )
 
 

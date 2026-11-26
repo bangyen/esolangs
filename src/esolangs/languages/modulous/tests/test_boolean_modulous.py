@@ -108,8 +108,8 @@ def test_an_ignored_input_is_read_and_dropped() -> None:
 
 @pytest.mark.medium
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.modulous.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Modulous")["workspace"].formula
 
@@ -156,8 +156,8 @@ def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
 
 
 def _check_pair_resources() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.modulous.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Modulous")["workspace"].formula
 

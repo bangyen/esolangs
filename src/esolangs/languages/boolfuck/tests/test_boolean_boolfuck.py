@@ -36,8 +36,8 @@ def test_program_stays_within_the_command_bound(table) -> None:
 
 
 def _check_constants() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.boolfuck.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Boolfuck")["workspace"].formula
 
@@ -71,9 +71,9 @@ def _check_constants() -> None:
 
 
 def _check_zero_guard() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.boolfuck.generator import _boolfuck_tree, _command_bound
     from esolangs.languages.boolfuck.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Boolfuck")["workspace"].formula
 

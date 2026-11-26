@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import TokenWrapper
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -22,9 +22,10 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.fackward.generator", "fackward_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=_wrap,
+        ),
         # Whitespace only separates tokens, so a newline between two is harmless.
-        wrap=_wrap,
     )
 
 

@@ -7,11 +7,11 @@ from typing import NamedTuple
 
 import pytest
 
+from checks.certification.fragments import section
+from checks.certification.resource_evidence import PACKAGES, _provider
 from esolangs.generation.helpers import permute_truth_table
 from esolangs.generation.projection import reflected_table
 from esolangs.registry import LANGUAGES
-from scripts.docs.fragments import section
-from scripts.docs.resource_evidence import PACKAGES, _provider
 from tests.support.witness_tables import parity as _parity
 
 

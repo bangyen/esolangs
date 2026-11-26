@@ -14,7 +14,11 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -22,16 +26,17 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.crement.generator", "crement_request"
         ),
-        layout_width=True,
-        same_layout=FunctionRef(
-            "esolangs.generation.helpers",
-            "same_token_layout",
-            ("template", "plain", "_layout"),
+        layout=ConstructedLayout(
+            same_layout=FunctionRef(
+                "esolangs.generation.helpers",
+                "same_token_layout",
+                ("template", "plain", "_layout"),
+            ),
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.crement.generator", "crement_balance_request"
+            ),
+            no_wrap="jumps and patches name instruction numbers, so lines stay whole",
         ),
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.crement.generator", "crement_balance_request"
-        ),
-        no_wrap="jumps and patches name instruction numbers, so lines stay whole",
         template=TemplateSpec(
             setters=FunctionRef(
                 "esolangs.languages.crement.generator",

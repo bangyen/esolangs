@@ -222,7 +222,7 @@ def _generate(
             resolved, truth_table, options, settings, catalog=catalog, probes=probes
         )
     width = check_width(width)
-    laid_out = balance or (width is not None and backend.layout_width)
+    laid_out = balance or (width is not None and backend.layout.constructs_width)
     request = GenerationRequest(
         truth_table,
         width if laid_out else None,
@@ -241,11 +241,11 @@ def _generate(
                 f"{resolved}'s generator returned an undeclared template"
             )
         generation_width = request.width
-        if width is not None and not laid_out and backend.wrap is not None:
+        if width is not None and not laid_out and backend.layout.wrap is not None:
             generated = _wrap_template_layout(
                 generated,
                 width,
-                backend.wrap,
+                backend.layout.wrap,
                 name=resolved,
                 char=backend.template.char,
             )
@@ -315,7 +315,7 @@ def _generate_balanced(
     lang = catalog.languages[name]
     backend = lang.backend
     assert backend is not None  # the default was generated above
-    balancer = backend.balance
+    balancer = backend.layout.balance
     choices = _backend_options(lang.runtime.dialect_schema, options)
     if isinstance(source, CompressedText):
         assert isinstance(default, ProgramArtifact)
@@ -388,7 +388,9 @@ def _generate_balanced(
         return _balance_template(
             default,
             name,
-            wrapper=None if backend.wrap_balance is not None else backend.wrap,
+            wrapper=None
+            if backend.layout.wrap_balance is not None
+            else backend.layout.wrap,
         )
     return ProgramArtifact(
         balance_program(source, lang.id, catalog=catalog),

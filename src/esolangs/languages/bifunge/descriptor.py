@@ -13,7 +13,7 @@ from esolangs.runtime._lifecycle import Completion
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -22,8 +22,10 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.bifunge.generator", "bifunge_request"
         ),
         shape=Shape.TREE,
-        grid=True,
-        no_wrap="a line break moves the 2x2 commands",
+        layout=SourceLayout(
+            grid=True,
+            no_wrap="a line break moves the 2x2 commands",
+        ),
     )
 
 

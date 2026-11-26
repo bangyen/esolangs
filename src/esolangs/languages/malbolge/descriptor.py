@@ -48,7 +48,7 @@ def check_arity(inputs: int) -> None:
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import wrap_chars
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -62,11 +62,12 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.malbolge.generator", "malbolge_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=wrap_chars,
+        ),
         # Not a tree: straight-line code into the fixed store.
         shape=Shape.LOOKUP,
         # Loader whitespace is discarded before assigning memory addresses.
-        wrap=wrap_chars,
     )
 
 

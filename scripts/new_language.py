@@ -450,7 +450,8 @@ def _generator_gaps(lang: LanguageDeclaration) -> list[Gap]:
     """List the steps a language with a Boolean generator needs."""
     from docs.ablations import parse_audits
     from docs.evidence import parse_anchors
-    from docs.fragments import section
+
+    from checks.certification.fragments import section
 
     assert lang.backend is not None
     module_rel = lang.backend.generate.__module__.replace(".", "/")
@@ -537,8 +538,8 @@ def _ledger_gaps(name: str) -> list[Gap]:
         ]
     if "FILL" in repr(row):
         return [Gap(toml, "replace each FILL in [proof_status]")]
-    from docs.fragments import section
-    from docs.resource_evidence import parse_bounds
+    from checks.certification.fragments import section
+    from checks.certification.resource_evidence import parse_bounds
 
     try:
         parse_bounds(name, section(ROOT / toml, "resource_evidence") or {})

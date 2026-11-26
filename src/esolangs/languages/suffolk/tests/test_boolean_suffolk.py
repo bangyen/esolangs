@@ -111,8 +111,8 @@ def test_eof_continuation_only_prints_complete_records(table: str) -> None:
 
 
 def _check_stored_input_records() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.suffolk.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Suffolk")["workspace"].formula
     for n in (2, 6, 8):

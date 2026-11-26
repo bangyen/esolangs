@@ -15,6 +15,7 @@ from esolangs.exceptions import (
     ProgramError,
 )
 from esolangs.outcomes import (
+    CompletedRun,
     ExecutionOutcome,
     _capture_outcome,
 )
@@ -106,8 +107,7 @@ def execute_prepared(
                 "completion report disagrees with declared policy",
                 hint="check the descriptor and native completion runner",
             )
-    return ExecutionOutcome(
-        "completed",
+    return CompletedRun.from_result(
         ExecutionResult(
             io_obj.getvalue(),
             io_obj.position(),

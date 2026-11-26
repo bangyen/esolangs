@@ -86,8 +86,8 @@ def _check_constants() -> None:
 
 
 def _check_folded() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.egl.tests.ablations import ablate
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("EGL")
     execution = bounds["execution"].formula

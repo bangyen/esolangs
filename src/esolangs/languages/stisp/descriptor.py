@@ -19,15 +19,16 @@ def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import TokenWrapper
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import BooleanBackend, SourceLayout, TemplateSpec
     from esolangs.registry._operations import OperationRef
 
     return BooleanBackend(
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.stisp.generator", "stisp_request"
         ),
-        layout_width=False,
-        wrap=TokenWrapper(_TOKEN),
+        layout=SourceLayout(
+            wrap=TokenWrapper(_TOKEN),
+        ),
         template=TemplateSpec(pair=PAIR),
     )
 

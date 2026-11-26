@@ -11,7 +11,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -19,10 +19,11 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.artppeice.generator", "artppeice_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            no_wrap="each line is one instruction and a break splits it",
+        ),
         # One table word per entry of the essential inputs' table.
         shape=Shape.REDUCING,
-        no_wrap="each line is one instruction and a break splits it",
     )
 
 

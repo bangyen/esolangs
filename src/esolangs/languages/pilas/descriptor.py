@@ -12,7 +12,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,8 +20,9 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.pilas.generator", "pilas_request"
         ),
-        layout_width=False,
-        no_wrap="a newline starts line two, which runs a different stack",
+        layout=SourceLayout(
+            no_wrap="a newline starts line two, which runs a different stack",
+        ),
     )
 
 

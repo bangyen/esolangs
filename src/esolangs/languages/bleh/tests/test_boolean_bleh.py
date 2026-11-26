@@ -25,8 +25,8 @@ def test_every_row_prints_its_answer() -> None:
 
 @pytest.mark.medium
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.bleh.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Bleh")["workspace"].formula
 

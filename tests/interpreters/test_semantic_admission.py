@@ -5,9 +5,9 @@ from dataclasses import replace
 
 import pytest
 
+from checks.certification.fragments import section
 from esolangs.registry import LANGUAGES
 from scripts.docs import semantic
-from scripts.docs.fragments import section
 
 
 def _check_trace_diagnostics(tmp_path, monkeypatch):

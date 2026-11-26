@@ -13,7 +13,11 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
     from esolangs.generation.template import TemplateLayout
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import (
+        BooleanBackend,
+        ConstructedLayout,
+        TemplateSpec,
+    )
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -21,16 +25,17 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.underload.generator", "underload_request"
         ),
-        layout_width=True,
-        same_layout=FunctionRef(
-            "esolangs.languages.underload.generator",
-            "_same_layout",
-            ("template", "plain", "_layout"),
+        layout=ConstructedLayout(
+            same_layout=FunctionRef(
+                "esolangs.languages.underload.generator",
+                "_same_layout",
+                ("template", "plain", "_layout"),
+            ),
+            balance=OperationRef[BalanceRequest, TemplateLayout](
+                "esolangs.languages.underload.generator", "underload_balance_request"
+            ),
+            no_wrap="a break inside a pushed element changes the string it contains",
         ),
-        balance=OperationRef[BalanceRequest, TemplateLayout](
-            "esolangs.languages.underload.generator", "underload_balance_request"
-        ),
-        no_wrap="a break inside a pushed element changes the string it contains",
         template=TemplateSpec(
             setters=FunctionRef(
                 "esolangs.languages.underload.generator",

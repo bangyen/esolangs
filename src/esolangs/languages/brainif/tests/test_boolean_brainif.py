@@ -330,8 +330,8 @@ def test_constants_read_first_and_leave_the_next_record(n) -> None:
 
 
 def _check_or_zero_entries() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.brainif.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("BrainIf")["workspace"].formula
     for n, mask in ((1, 1), (3, 4), (6, 33), (8, 255), (8, 192)):

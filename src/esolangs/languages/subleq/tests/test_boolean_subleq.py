@@ -24,7 +24,7 @@ def _execute_count(program: str, text: str) -> tuple[str, int, int]:
 @pytest.mark.parametrize("bit", ["0", "1"])
 def test_constant_reads_once_and_falls_off_after_output(n: int, bit: str) -> None:
     if n == 1 and bit == "0":
-        from scripts.docs.resource_evidence import resource_bounds
+        from checks.certification.resource_evidence import resource_bounds
 
         workspace = resource_bounds("Subleq")["workspace"].formula
 
@@ -97,7 +97,7 @@ def _check_io_targets() -> None:
                 assert (output, consumed) == (table[row], n)
 
     # A constructive packed peak retains n=9 coverage without a 512-row trace.
-    from scripts.docs.resource_evidence import resource_bounds
+    from checks.certification.resource_evidence import resource_bounds
     from tests.proofs._witnesses import _subleq_worst
 
     workspace = resource_bounds("Subleq")["workspace"].formula

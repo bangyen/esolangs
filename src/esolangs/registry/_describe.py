@@ -229,9 +229,7 @@ def _width_effect(lang: LanguageDeclaration) -> WidthEffect:
     backend = lang.backend
     if backend is None:
         return "none"
-    if backend.layout_width:
-        return "layout"
-    return "wrap" if backend.wrap is not None else "none"
+    return backend.layout.width_effect
 
 
 def _spec(language: str, *, catalog: "Catalog | None" = None) -> str:

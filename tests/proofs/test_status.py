@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from checks.certification.resource_description import parse_descriptions
 from scripts.docs import proof_status as status
-from scripts.docs.resource_description import parse_descriptions
 
 
 def test_rendering_preserves_committed_tables(

@@ -13,7 +13,7 @@ from esolangs.runtime._definition import RuntimeSpec
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.wrap import wrap_chars
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -22,9 +22,10 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.object_disoriented.generator",
             "object_disoriented_request",
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=wrap_chars,
+        ),
         # Whitespace is ignored everywhere, class names included.
-        wrap=wrap_chars,
     )
 
 

@@ -68,10 +68,10 @@ def _check_projection() -> None:
         assert evaluate_generated("Balik", "0011") == "1100"
         assert corrupted.called
 
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.balik.generator import balik
     from esolangs.languages.balik.interpreter import _Machine, run
     from esolangs.languages.balik.tests.formulas import execution_witness
-    from scripts.docs.resource_evidence import resource_bounds
 
     execution = resource_bounds("Balik")["execution"].formula
     for table in ("00001111", "00110011", "01010101", "01101001"):

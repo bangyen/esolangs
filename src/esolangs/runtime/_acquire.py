@@ -10,8 +10,8 @@ from esolangs.exceptions import ExecutionTimeoutError
 from esolangs.runtime._files import stream_read_deadline
 from esolangs.runtime._input import (
     CheckedInput,
-    InputFrame,
     InputSource,
+    RecordFrame,
     check_input,
     read_input,
 )
@@ -79,7 +79,7 @@ class PendingInput:
     deadline: float
     context: Context
 
-    def snapshot(self, *, frame: InputFrame | None = None) -> str:
+    def snapshot(self, *, frame: RecordFrame | None = None) -> str:
         """Consume the bound input after execution preflight."""
 
         def capture(_stopped: Callable[[], bool]) -> str:

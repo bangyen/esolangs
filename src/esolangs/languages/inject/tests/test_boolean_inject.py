@@ -209,8 +209,8 @@ def test_counted_halving_splits_unrepresentable_repeat_counts() -> None:
 
 @pytest.mark.medium
 def test_constant_scratch_reuse_reads_first_and_preserves_the_next_line() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.inject.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("Inject")["workspace"].formula
 

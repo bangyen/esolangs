@@ -12,7 +12,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout, Shape
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -21,14 +21,17 @@ def _backend() -> BackendDefinition:
     )
     return BooleanBackend(
         entrypoint=entrypoint,
-        layout_width=True,
+        layout=ConstructedLayout(
+            layout_balance=entrypoint,
+            balance=OperationRef[BalanceRequest, Program](
+                "esolangs.languages.thue.generator", "thue_balance_request"
+            ),
+            no_wrap=(
+                "a newline ends a rule, and the state's own newlines are part of it"
+            ),
+        ),
         # Not a tree: the table is the state, and each read halves it.
         shape=Shape.LOOKUP,
-        layout_balance=entrypoint,
-        balance=OperationRef[BalanceRequest, Program](
-            "esolangs.languages.thue.generator", "thue_balance_request"
-        ),
-        no_wrap="a newline ends a rule, and the state's own newlines are part of it",
     )
 
 

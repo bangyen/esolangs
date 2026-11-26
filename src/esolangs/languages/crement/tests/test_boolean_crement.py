@@ -151,7 +151,7 @@ class TestCrementTree:
 
     def test_constant_tables_fold_to_the_gadget_alone(self) -> None:
         """One control instruction precedes all fixed-width, unreachable slots."""
-        from scripts.docs.resource_evidence import resource_bounds
+        from checks.certification.resource_evidence import resource_bounds
 
         workspace = resource_bounds("Crement")["workspace"].formula
 

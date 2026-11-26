@@ -14,7 +14,7 @@ def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
     from esolangs.generation.template import TemplateLayout
     from esolangs.generation.wrap import _quote_literal
-    from esolangs.registry._backend import BooleanBackend, TemplateSpec
+    from esolangs.registry._backend import BooleanBackend, SourceLayout, TemplateSpec
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
 
@@ -22,9 +22,10 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, TemplateLayout](
             "esolangs.languages.eval.generator", "eval_request"
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=_quote_literal,
+        ),
         # Print through a literal that must not be broken.
-        wrap=_quote_literal,
         template=TemplateSpec(
             setters=FunctionRef(
                 "esolangs.languages.eval.generator", "eval_setters", ("template", "n")

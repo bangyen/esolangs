@@ -31,8 +31,8 @@ def test_equal_subtables_share_one_node() -> None:
 
 @pytest.mark.medium
 def test_constants_read_first_within_bounds_and_keep_a_sentinel() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.sendstuff.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     workspace = resource_bounds("SendStuff")["workspace"].formula
 

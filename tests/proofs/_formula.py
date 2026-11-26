@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from checks.certification.resource_evidence import Formula, resource_bounds
 from esolangs.registry import LANGUAGES
-from scripts.docs.resource_evidence import Formula, resource_bounds
 
 Exact = bool | frozenset[int]
 

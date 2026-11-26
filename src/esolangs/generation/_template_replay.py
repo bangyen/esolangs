@@ -142,7 +142,11 @@ def matches_template(
         default_available = True
     except GeneratorCapError:
         fallback_width = width if width is not None else retained
-        if fallback_width is None or backend is None or not backend.layout_width:
+        if (
+            fallback_width is None
+            or backend is None
+            or not backend.layout.constructs_width
+        ):
             raise
         canonical = render(fallback_width)
         default_available = False
@@ -167,8 +171,8 @@ def matches_template(
         return True
     assert backend is not None  # _generate above refuses absent backends
     canonical_layout = TemplateLayout(plain, canonical.spans)
-    width_aware = backend.layout_width or can_wrap_template(
-        canonical_layout, backend.wrap
+    width_aware = backend.layout.constructs_width or can_wrap_template(
+        canonical_layout, backend.layout.wrap
     )
 
     def layout(width: int) -> str:
@@ -187,10 +191,10 @@ def matches_template(
     def matches_balance() -> bool:
         if (
             not backend.balances_natively
-            and backend.balance is None
+            and backend.layout.balance is None
             and (
-                backend.wrap_balance is not None
-                or not can_balance_template(canonical_layout, backend.wrap)
+                backend.layout.wrap_balance is not None
+                or not can_balance_template(canonical_layout, backend.layout.wrap)
             )
         ):
             return False
@@ -200,7 +204,7 @@ def matches_template(
             return False
         return _same_generated_template(balanced, template, text)
 
-    matcher = backend.same_layout
+    matcher = backend.layout.same_layout
     if matcher is not None:
         try:
             if any(

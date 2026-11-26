@@ -12,7 +12,7 @@ from esolangs.runtime._definition import LineSourcePolicy, RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend
+    from esolangs.registry._backend import BooleanBackend, ConstructedLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,10 +20,11 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.thisthat.generator", "thisthat_request"
         ),
-        layout_width=True,
-        layout_balance=True,
-        no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
-        grid=True,
+        layout=ConstructedLayout(
+            layout_balance=True,
+            no_wrap="the H-tree's nodes and wires occupy fixed grid coordinates",
+            grid=True,
+        ),
     )
 
 

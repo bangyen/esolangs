@@ -15,7 +15,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._functions import FunctionRef
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -25,25 +25,26 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.slow_acv_mammalian.generator",
             "slow_acv_mammalian_request",
         ),
-        layout_width=False,
+        layout=SourceLayout(
+            wrap=FunctionRef(
+                "esolangs.languages.slow_acv_mammalian.wrapping",
+                "_mammalian",
+                ("program", "width"),
+            ),
+            wrap_balance=FunctionRef(
+                "esolangs.languages.slow_acv_mammalian.wrapping",
+                "_balance_mammalian",
+                ("program",),
+            ),
+            same_layout=FunctionRef(
+                "esolangs.generation.helpers",
+                "same_token_layout",
+                ("template", "plain", "_layout"),
+            ),
+        ),
         # Not a tree: a branch-free chain into a flat leaf table.
         shape=Shape.LOOKUP,
         # Four-character cells align the ``SEED`` runs; longer words span cells.
-        wrap=FunctionRef(
-            "esolangs.languages.slow_acv_mammalian.wrapping",
-            "_mammalian",
-            ("program", "width"),
-        ),
-        wrap_balance=FunctionRef(
-            "esolangs.languages.slow_acv_mammalian.wrapping",
-            "_balance_mammalian",
-            ("program",),
-        ),
-        same_layout=FunctionRef(
-            "esolangs.generation.helpers",
-            "same_token_layout",
-            ("template", "plain", "_layout"),
-        ),
     )
 
 

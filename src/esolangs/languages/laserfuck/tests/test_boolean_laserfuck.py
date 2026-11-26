@@ -62,9 +62,9 @@ class TestLaserFuck:
                     for heading in range(4):
                         assert run_laserfuck(program, bits, heading) == table[combo]
 
+        from checks.certification.resource_evidence import resource_bounds
         from esolangs.languages.laserfuck.interpreter import _Machine
         from esolangs.runtime.randomness import FirstDraw
-        from scripts.docs.resource_evidence import resource_bounds
 
         bounds = resource_bounds("LaserFuck")
         execution = bounds["execution"].formula

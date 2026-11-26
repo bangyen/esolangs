@@ -12,7 +12,7 @@ from esolangs.runtime._definition import RuntimeSpec
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
-    from esolangs.registry._backend import BooleanBackend, Shape
+    from esolangs.registry._backend import BooleanBackend, Shape, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
 
@@ -20,8 +20,9 @@ def _backend() -> BackendDefinition:
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.q_bal.generator", "q_bal_request"
         ),
-        layout_width=False,
-        no_wrap="each line is one statement and a break splits it",
+        layout=SourceLayout(
+            no_wrap="each line is one statement and a break splits it",
+        ),
         # One attachment: the table is an integer shifted by the row.
         shape=Shape.LOOKUP,
     )

@@ -330,8 +330,8 @@ def test_compact_majority_is_smaller() -> None:
 
 
 def _check_majority() -> None:
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.piet.interpreter import _Machine
-    from scripts.docs.resource_evidence import resource_bounds
 
     bounds = resource_bounds("Piet")
     bound_area = bounds["scaling"].formula
@@ -425,11 +425,11 @@ def _check_constants() -> None:
 
 def _check_triples() -> None:
     """Exercise the command-admitted strip, polarity and ignored-input layouts."""
+    from checks.certification.resource_evidence import resource_bounds
     from esolangs.languages.piet import generator as boolean
     from esolangs.languages.piet.generator import _INITIAL, _chunks, _next_colour, strip
     from esolangs.languages.piet.interpreter import _Machine
     from esolangs.languages.piet.tests.formulas import _projected_steps
-    from scripts.docs.resource_evidence import resource_bounds
 
     language = esolangs.Language("Piet")
     for witness in construction_boundaries("Piet")[

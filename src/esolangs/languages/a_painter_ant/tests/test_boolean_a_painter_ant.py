@@ -24,8 +24,8 @@ from tests.support.witness_tables import parity as _parity
 def _check_bound_uses_significant_characters() -> None:
     import tomllib
 
-    from scripts.docs.resource_description import parse_descriptions
-    from scripts.docs.resource_evidence import PACKAGES, parse_bounds
+    from checks.certification.resource_description import parse_descriptions
+    from checks.certification.resource_evidence import PACKAGES, parse_bounds
 
     path = PACKAGES / "a_painter_ant" / "language.toml"
     evidence = tomllib.loads(path.read_text())["resource_evidence"]
