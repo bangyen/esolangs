@@ -223,26 +223,12 @@ def _execute(code: str | tuple[_Op, ...], io: IO) -> CompletionReport:
     tape = bytearray(1)
     state: _CompiledState = (0, 0)
     while state[0] < len(ops):
-        moved, effects, output, wants_read = _advance_compiled(state, ops, tape)
-        if wants_read:
-            moved, effects, output, _ = _advance_compiled(
-                state, ops, tape, io.input_char()
-            )
-        prefix, suffix, writes = effects
-        if prefix:
-            tape[0:0] = bytes(prefix)
-        if suffix:
-            tape.extend(bytes(suffix))
-        for at, value in writes:
-            tape[at] = value
-        state = moved
-        if output is not None:
-            io.print_char(output)
+        state = _advance_compiled(state, ops, tape, io)
     return HALTED_REPORT
 
 
 def run(code: str, io: IO) -> None:
-    """Run compact operations, applying the pure core's tape and IO effects."""
+    """Run compact operations on a fresh tape."""
     _execute(code, io)
 
 

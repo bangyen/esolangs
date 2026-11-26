@@ -5,7 +5,7 @@ from bisect import bisect_left
 import pytest
 
 from esolangs.exceptions import InputExhaustedError
-from esolangs.languages.brainfuck import _native
+from esolangs.languages.brainfuck import _native, interpreter
 from esolangs.languages.brainfuck.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 
@@ -50,27 +50,14 @@ def _compare(source, stdin, *, budget=10000):
                     break
         except InputExhaustedError as error:
             assert reference.snapshot() == before, span
-            assert _native._advance_compiled(state, ops, tape)[3], span
+            saved = bytes(tape)
             with pytest.raises(type(error)) as native_error:
-                native_io.input_char()
+                interpreter._advance_compiled(state, ops, tape, native_io)
+            assert tape == saved, span
             assert str(native_error.value) == str(error), span  # noqa: PT017
             assert native_io.progress() == reference_io.progress(), span
             return
-        moved, effects, output, needs_input = _native._advance_compiled(
-            state, ops, tape
-        )
-        if needs_input:
-            moved, effects, output, _ = _native._advance_compiled(
-                state, ops, tape, native_io.input_char()
-            )
-        prefix, suffix, writes = effects
-        tape[:0] = bytes(prefix)
-        tape.extend(bytes(suffix))
-        for cell, value in writes:
-            tape[cell] = value
-        if output is not None:
-            native_io.print_char(output)
-        state = moved
+        state = interpreter._advance_compiled(state, ops, tape, native_io)
 
 
 @pytest.mark.parametrize(
@@ -90,15 +77,15 @@ def test_compiled_boundaries(source, stdin):
 
 
 def test_difference_reports_the_first_faulty_source_span(monkeypatch):
-    advance = _native._advance_compiled
+    advance = interpreter._advance_compiled
 
-    def changed(state, ops, tape, byte=None):
-        moved, edits, output, read = advance(state, ops, tape, byte)
-        if ops[state[0]][0] == _native._ADD:
-            edits = (0, 0, ((state[1], 99),))
-        return moved, edits, output, read
+    def changed(state, ops, tape, io):
+        moved = advance(state, ops, tape, io)
+        if ops[state[0]] == (_native._ADD, 3):
+            tape[state[1]] = 99
+        return moved
 
-    monkeypatch.setattr(_native, "_advance_compiled", changed)
+    monkeypatch.setattr(interpreter, "_advance_compiled", changed)
     with pytest.raises(AssertionError, match=r"\(2, 5\)"):
         _compare(">>+++.", "")
 

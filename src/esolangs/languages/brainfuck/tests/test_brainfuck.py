@@ -142,25 +142,31 @@ def test_cursorless_input_cannot_prove_cycle_or_growth(
     assert io.reads == 5
 
 
-def test_compiled_transition_preserves_borrowed_tape_and_reports_effects() -> None:
-    from esolangs.languages.brainfuck._native import _advance_compiled, _compile
+@pytest.mark.medium
+@pytest.mark.parametrize(
+    "body", [">++<-", "->+<", "<->-", "->+<<++>", "->+-<", "-<<>>"]
+)
+def test_transfer_at_each_tape_edge_for_every_byte(body: str) -> None:
+    from esolangs.languages.brainfuck import _native
 
-    tape = bytearray([3])
-    state = (0, 0)
-    ops = _compile("[>++<-]")
-    first = _advance_compiled(state, ops, tape)
-    assert _advance_compiled(state, ops, tape) == first
-    assert state == (0, 0)
-    assert tape == bytearray([3])
-    assert first == ((1, 0), (0, 1, ((1, 6), (0, 0))), None, False)
-    ops = _compile(",")
-    assert _advance_compiled(state, ops, tape)[3]
-    assert _advance_compiled(state, ops, tape, 65) == (
-        (1, 0),
-        (0, 0, ((0, 65),)),
-        None,
-        False,
-    )
+    code = "[" + body + "]"
+    ops = _native._compile(code)
+    assert len(ops) == 1
+    assert isinstance(ops[0], _native._Transfer)
+    io = ScriptedIO("")
+    for ptr in (0, 2):
+        for value in range(256):
+            tape = bytearray([17, 255, 91])
+            tape[ptr] = value
+            reference = _Machine(code, io)
+            reference.state = (0, ptr, tuple(tape))
+            while not reference.halted:
+                reference.step()
+            ip, native_ptr = _native._advance_compiled((0, ptr), ops, tape, io)
+            padding = native_ptr - reference.ptr
+            assert ip == 1
+            assert padding >= 0
+            assert tape == bytes(padding) + bytes(reference.tape)
 
 
 @pytest.mark.medium
