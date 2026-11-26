@@ -41,11 +41,12 @@ evidence, not optimization tasks.
     the paused loop.
     Sweep results in `a7b3f7abd:docs/roadmap.md`.
   - *Native decoder:* scratch builds ran from reset on all 131,072 inputs
-    of four tables. Two random tables reached 129,292 and 128,895 correct
+    of four tables. Two random tables reached 129,325 and 128,895 correct
     answers. On the first, both reads and the output slot matched on every
     row. All 130,621 legal reads printed the stored bit and halted. Of the
-    1,780 misses, 197 read an invalid packed byte and 1,583 read the wrong
-    stored bit.
+    1,747 misses, 186 read an invalid packed byte and 1,561 read the wrong
+    stored bit. Moving the terminal return one cell earlier freed 42 words
+    to store three bits each. All eight values at each word ran natively.
   - *Storage shared with the decoder:* 93 words in the jump workspace
     stored three answer bits each. In the same layout, 63 fixed instructions
     encoded three bits each through selectable markers. All eight values
