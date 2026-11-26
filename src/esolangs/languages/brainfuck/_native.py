@@ -34,39 +34,49 @@ def _compile(code: str) -> tuple[_Op, ...]:
     return _compile_ops(code, matches(code))
 
 
-def _compile_ops(code: str, brackets: Mapping[int, int]) -> tuple[_Op, ...]:
-    """Lower validated source for the native runner, preserving its loop targets."""
+def _compile_ops(
+    code: str,
+    brackets: Mapping[int, int],
+    *,
+    spans: list[tuple[int, int]] | None = None,
+) -> tuple[_Op, ...]:
+    """Lower source, optionally retaining half-open spans for verification."""
     ops: list[_Op] = []
     op_at: dict[int, int] = {}
     ind = 0
     while ind < len(code):
+        start = ind
         char = code[ind]
         if char in "+-":
             change, ind = _net_change(code, ind)
-            if change % 256:
-                ops.append((_ADD, change % 256))
-            continue
-        if char in "><":
-            end = ind + 1
-            while end < len(code) and code[end] == char:
-                end += 1
-            ops.append((_RIGHT if char == ">" else _LEFT, end - ind))
-            ind = end
-            continue
-        if code.startswith(("[-]", "[+]"), ind):
-            ops.append((_CLEAR, 0))
-            ind += len("[-]")
-            continue
-        if code.startswith("[>", ind):
-            change, end = _net_change(code, ind + len("[>"))
-            if end > ind + len("[>") and code.startswith("<-]", end):
-                ops.append((_TRANSFER_RIGHT, change % 256))
-                ind = end + len("<-]")
+            if not change % 256:
                 continue
-        if char in _JUMP_OR_IO:
+            op = (_ADD, change % 256)
+        elif char in "><":
+            ind += 1
+            while ind < len(code) and code[ind] == char:
+                ind += 1
+            op = (_RIGHT if char == ">" else _LEFT, ind - start)
+        elif code.startswith(("[-]", "[+]"), ind):
+            op = (_CLEAR, 0)
+            ind += len("[-]")
+        elif code.startswith("[>", ind) and (
+            (run := _net_change(code, ind + 2))[1] > ind + 2
+            and code.startswith("<-]", run[1])
+        ):
+            change, end = run
+            op = (_TRANSFER_RIGHT, change % 256)
+            ind = end + len("<-]")
+        elif char in _JUMP_OR_IO:
             op_at[ind] = len(ops)
-            ops.append((_JUMP_OR_IO[char], brackets.get(ind, 0)))
-        ind += 1
+            op = (_JUMP_OR_IO[char], brackets.get(ind, 0))
+            ind += 1
+        else:
+            ind += 1
+            continue
+        ops.append(op)
+        if spans is not None:
+            spans.append((start, ind))
     for at, (opcode, target) in enumerate(ops):
         if opcode in (_OPEN, _CLOSE):
             ops[at] = (opcode, op_at[target])
@@ -117,7 +127,7 @@ def _advance_compiled(
         ind = arg
     elif opcode == _CLEAR:
         writes = ((ptr, 0),)
-    elif opcode == _TRANSFER_RIGHT:
+    elif opcode == _TRANSFER_RIGHT and tape[ptr]:
         suffix = int(ptr + 1 == len(tape))
         neighbor = 0 if suffix else tape[ptr + 1]
         writes = ((ptr + 1, (neighbor + tape[ptr] * arg) % 256), (ptr, 0))

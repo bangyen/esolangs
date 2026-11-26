@@ -24,8 +24,8 @@ from esolangs.exceptions import (
     TemplateError,
 )
 from esolangs.operations.boolean_io import (
-    encode_inputs,
-    read_answer,
+    _answer_codec,
+    _read_output_answer,
 )
 from esolangs.operations.prepared import PreparedProgram
 from esolangs.registry import LANGUAGES, resolve
@@ -239,6 +239,12 @@ def _iter_evaluate(
         max_output=max_output,
         max_memory=max_memory,
     )
+    declaration = LANGUAGES[name]
+    encode = (
+        declaration.contract.row_encoder(name)
+        if declaration.backend is not None and not parameterized
+        else None
+    )
     instantiator = esolangs.instantiate
     if settings is not None:
         instantiator = partial(instantiator, settings=settings)
@@ -251,9 +257,7 @@ def _iter_evaluate(
                 assert isinstance(program, TemplateArtifact)
                 return instantiator(name, program, bits), ""
             # A language with no generator reads no stdin at all.
-            return program, (
-                encode_inputs(name, bits) if LANGUAGES[name].backend is not None else ""
-            )
+            return program, (encode(bits) if encode is not None else "")
 
         try:
             source, stdin = _prepare(prepare_row, deadline, isolated=isolated)
@@ -343,6 +347,8 @@ def _row_answerer(
     io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
 ) -> _RowAnswerer:
     """Return the call that turns one row's source, stdin and bound into its bit."""
+    contract = LANGUAGES[name].contract
+    values, pattern = _answer_codec(name, contract)
     if not terminating:
         from tests.support.execution import run_observed
 
@@ -396,11 +402,12 @@ def _row_answerer(
                     max_output=max_output,
                     max_memory=max_memory,
                 )
-            return read_answer(name, result.output)
+            return _read_output_answer(
+                name, result.output, values, pattern, contract.note
+            )
 
         return output_answer
     # Derive each bit from its declared halt/diverge order.
-    values = LANGUAGES[name].contract.answer_values
     diverges_is = str(values.index("diverges"))
     halts_is = str(values.index("halts"))
 

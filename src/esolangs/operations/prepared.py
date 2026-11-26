@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 from esolangs.artifacts import BooleanEvaluation, ProgramArtifact
 from esolangs.debugger import Debugger
@@ -33,6 +34,18 @@ class PreparedProgram(_PreparedRuntime):
     Native runners retain their own compiled representations and caches.
     The public artifact retains compressed source and its export limits.
     """
+
+    _evaluate_row: (
+        Callable[
+            [
+                list[int] | tuple[int, ...],
+                ExecutionLimits | None,
+                _PreparedRuntime | None,
+            ],
+            BooleanEvaluation,
+        ]
+        | None
+    ) = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Validate source and retain its machine preparation."""
@@ -80,15 +93,18 @@ class PreparedProgram(_PreparedRuntime):
         limits: ExecutionLimits | None = None,
     ) -> BooleanEvaluation:
         """Evaluate a generated stdin row against the retained preparation."""
-        from esolangs.operations.evaluation import evaluate_artifact
+        from esolangs.exceptions import ArgumentError
+        from esolangs.operations.evaluation import _prepare_evaluator
 
-        return evaluate_artifact(
-            self._runnable_artifact,
-            bits,
-            limits=limits,
-            catalog=self.catalog,
-            prepared=self,
-        )
+        if limits is not None and not _has_backing_type(limits, ExecutionLimits):
+            raise ArgumentError("limits must be ExecutionLimits or None")
+        evaluator = getattr(self, "_evaluate_row", None)
+        if evaluator is None:
+            evaluator = _prepare_evaluator(
+                self._runnable_artifact, catalog=self.catalog
+            )
+            object.__setattr__(self, "_evaluate_row", evaluator)
+        return evaluator(bits, limits, self)
 
     def run(
         self,

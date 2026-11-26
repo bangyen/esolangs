@@ -1,5 +1,7 @@
 """Shared packed subtract-and-branch decoder with constant folding."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 from typing import NamedTuple
 
@@ -171,6 +173,7 @@ def _emit_reads(asm: _Assembler, weights: Sequence[int], *, direct: bool) -> Non
     """Read every input, folding the essential ones into the binary row ``INDEX``."""
     if direct:
         for weight in weights:
+            asm.mark("last_read")
             asm.emit("TMP", "INPUT")
             if not weight:
                 continue
@@ -201,6 +204,7 @@ def _emit_decode(asm: _Assembler, *, direct: bool) -> _Loads:
     asm.increment("OFFSET")
     asm.branch_positive("COUNT", "select_test", "advance_chunk")
     asm.mark("advance_chunk")
+    asm.mark("load_increment")
     increment = asm.emit(0, "NEGONE")
     asm.add("COUNT", "N")
     asm.clear("OFFSET")
@@ -208,6 +212,7 @@ def _emit_decode(asm: _Assembler, *, direct: bool) -> _Loads:
 
     asm.mark("selected")
     asm.clear("TABLE")
+    asm.mark("chunk_load")
     chunk = asm.emit("TABLE", "CHUNK0")
     asm.copy("SHIFT", "OFFSET")
     asm.increment("SHIFT")
@@ -242,6 +247,32 @@ def _emit_decode(asm: _Assembler, *, direct: bool) -> _Loads:
     return _Loads(increment, chunk)
 
 
+class DirectLayout(NamedTuple):
+    """Absolute locations used by the direct packed decoder and its space proof."""
+
+    cells: dict[str, int]
+    chunks: int
+    reader: int
+    decoder: int
+    chunk_load: int
+    load_increment: int
+    last_instruction: int
+
+    @classmethod
+    def at(cls, asm: _Assembler, names: list[str], base: int) -> DirectLayout:
+        """Resolve assembler labels and named cells into absolute addresses."""
+        addresses = {name: base + i for i, name in enumerate(names)}
+        return cls(
+            addresses,
+            base + len(names),
+            3 * asm.labels["last_read"],
+            3 * asm.labels["select_test"],
+            3 * asm.labels["chunk_load"],
+            3 * asm.labels["load_increment"],
+            3 * (len(asm.instructions) - 1),
+        )
+
+
 def _direct_layout(
     asm: _Assembler, cells: list[str], data_count: int
 ) -> tuple[list[int], dict[str, int], int]:
@@ -251,9 +282,9 @@ def _direct_layout(
     count and base are returned -- naming and addressing 2**n/n chunks
     cost ~0.3 GB at n = 26 for a purely arithmetic layout.
     """
-    base = 3 * len(asm.instructions)
-    address = {name: base + i for i, name in enumerate(cells)}
-    chunk_base = base + len(cells)
+    regions = DirectLayout.at(asm, cells, 3 * len(asm.instructions))
+    address = regions.cells
+    chunk_base = regions.chunks
     memory = [0] * (chunk_base + data_count)
 
     def operand(value: int | str) -> int:
@@ -313,3 +344,34 @@ def _patch_loads(memory: list[int], loads: _Loads, *, direct: bool) -> None:
     source = 0 if direct else 1
     destination = 1 - source
     memory[3 * loads.increment + destination] = 3 * loads.chunk + source
+
+
+def read_direct_layout(cells: list[int], inputs: int) -> DirectLayout:
+    """Recover reader choices, then check the assembled operands against the image."""
+    names = list(_cell_values(1, direct=True))
+    base = cells[1] - names.index("TMP")
+    if not 0 < base <= len(cells) - len(names) or base % 3:
+        raise ValueError("invalid packed data address")
+    pos48 = base + names.index("POS48")
+    reads = [pc for pc in range(0, base, 3) if cells[pc] == -1]
+    if len(reads) != inputs:
+        raise ValueError("invalid packed reader count")
+    weights = [int(cells[pc + 3] == pos48) for pc in reads]
+    m = sum(weights)
+    if not m:
+        raise ValueError("packed decoder reads no index bits")
+    asm = _Assembler()
+    _emit_reads(asm, weights, direct=True)
+    loads = _emit_decode(asm, direct=True)
+    regions = DirectLayout.at(asm, names, base)
+    if base != regions.last_instruction + 3:
+        raise ValueError("packed instructions do not end at the data region")
+    expected, addresses, chunks = _direct_layout(asm, names, 0)
+    _patch_loads(expected, loads, direct=True)
+    for name, value in _cell_values(m, direct=True).items():
+        expected[addresses[name]] = value
+    if cells[:chunks] != expected or len(cells) - chunks != ((1 << m) + m - 1) // m:
+        raise ValueError(
+            "packed image disagrees with its labelled instructions or data addresses"
+        )
+    return regions

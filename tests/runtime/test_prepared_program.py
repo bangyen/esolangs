@@ -968,3 +968,18 @@ def test_an_execution_budget_outlasts_the_default_total() -> None:
         api.prepare(source).run(limits=limits)
     assert e.value.bound == "execution_timeout"
     assert e.value.partial_output == "\x01"
+
+
+def test_prepared_rows_bind_the_codec_once_and_start_with_fresh_io():
+    from esolangs.operations import evaluation
+
+    language = esolangs.Language(REFERENCE)
+    prepared = language.prepare(language.generate("0110"))
+    with patch.object(
+        evaluation, "_answer_codec", wraps=evaluation._answer_codec
+    ) as bind:
+        for bits in ((0, 1), (1, 1), (0, 1)):
+            result = prepared.evaluate(bits)
+            assert result.answer == str(bits[0] ^ bits[1])
+            assert result.observation.input_reads == 2
+    bind.assert_called_once()

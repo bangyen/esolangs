@@ -1,6 +1,7 @@
 """Boolean I/O contracts, independent of example programs and documentation."""
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -46,11 +47,19 @@ class BooleanContract:
 
     def encode_row(self, name: str, bits: tuple[int, ...] | list[int]) -> str:
         """Encode one validated row for this contract."""
+        return self.row_encoder(name)(bits)
+
+    def row_encoder(self, name: str) -> Callable[[tuple[int, ...] | list[int]], str]:
+        """Validate the framing once and bind it for subsequent checked rows."""
         shape = self.input_shape
         if shape in ("row_index", "row_number"):
-            # A row number counts from one, for an input that must be positive.
-            row = int("".join("01"[bit] for bit in bits), 2)
-            return format_integer(row + (shape == "row_number")) + "\n"
+            offset = int(shape == "row_number")
+
+            def number(bits: tuple[int, ...] | list[int]) -> str:
+                row = int("".join("01"[bit] for bit in bits), 2)
+                return format_integer(row + offset) + "\n"
+
+            return number
         if shape not in ("line_per_bit", "char_stream", "char_stream_cyclic"):
             raise ProgramError(f"{name} has an invalid input shape")
         zero, one = symbol_pair(name, self.alphabet, "input encoding")
@@ -79,10 +88,14 @@ class BooleanContract:
                 f"{name} has an invalid input encoding. "
                 "The two bit lines match after CRLF decoding."
             )
-        digits = [one if bit else zero for bit in bits]
-        if stream:
-            return "".join(digits)
-        return "".join(f"{digit}\n" for digit in digits)
+        if not stream:
+            zero += "\n"
+            one += "\n"
+
+        def encode(bits: tuple[int, ...] | list[int]) -> str:
+            return "".join([one if bit else zero for bit in bits])
+
+        return encode
 
     def input_frame(self, arity: int | None) -> RecordFrame | None:
         """Return the read boundary for one arity-tagged record."""
