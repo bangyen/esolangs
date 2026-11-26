@@ -103,3 +103,46 @@ def test_delegation_exposes_an_immutable_state() -> None:
     assert isinstance(before, tuple)
     assert before != machine.state
     assert before == (0, 0, (0,))
+
+
+def test_output_eof_retries_the_same_instruction():
+    class RefusesOnce(ScriptedIO):
+        def print_char(self, value):
+            if not self.getvalue():
+                raise EOFError("output closed")
+            super().print_char(value)
+
+    io = RefusesOnce("")
+    machine = _Machine(_source("+."), io)
+    machine.step()
+    before = machine.state
+    with pytest.raises(EOFError, match="output closed"):
+        machine.step()
+    assert machine.state == before
+    io.print_str("ready")
+    machine.step()
+    assert machine.halted
+    assert io.getvalue() == "ready\x01"
+
+
+def test_only_generated_zero_runs_skip_the_decode_scan(monkeypatch):
+    from esolangs.compressed import CompressedText
+
+    run = CompressedText.repeated("0", 108)
+    imported = CompressedText(run.data)
+    spaced = CompressedText.from_chunks(("0 " * 108,))
+    illegal = CompressedText.repeated("x", 108)
+    scanned = []
+    chunks = CompressedText.chunks
+
+    def watched(source):
+        scanned.append(source)
+        yield from chunks(source)
+
+    monkeypatch.setattr(CompressedText, "chunks", watched)
+    assert decode(run) == ",."
+    assert not scanned
+    assert decode(imported) == decode(spaced) == ",."
+    with pytest.raises(ValueError, match="only zeros and whitespace"):
+        decode(illegal)
+    assert scanned == [imported, spaced, illegal]

@@ -21,8 +21,7 @@ from typing import Any
 
 from esolangs.compressed import CompressedText
 from esolangs.languages.brainfuck.interpreter import _Machine as _BFMachine
-from esolangs.languages.brainfuck.interpreter import _State as _BFState
-from esolangs.languages.brainfuck.interpreter import _written
+from esolangs.languages.unary import COMMANDS
 from esolangs.languages.unary.lifecycle import CAPABILITIES
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
@@ -35,14 +34,9 @@ from esolangs.runtime.io import IO
 from esolangs.runtime.source_hints import syntax_error
 
 
-def _at_eof(state: _BFState) -> _BFState:
-    """Return the comma successor with Unary's zero EOF value."""
-    ind, ptr, tape = state
-    return ind + 1, ptr, _written(tape, ptr, 0)
-
-
-def decode(code: str | CompressedText) -> str:
-    """Return decoded Brainfuck, rejecting nonzero symbols and partial triples."""
+def _zero_count(code: str | CompressedText) -> int:
+    if type(code) is CompressedText and code._repeated_character == "0":  # noqa: SLF001
+        return len(code)
     count = 0
     chunks = code.chunks() if isinstance(code, CompressedText) else (code,)
     for chunk in chunks:
@@ -52,6 +46,12 @@ def decode(code: str | CompressedText) -> str:
                 "write only 0 characters, with optional whitespace",
             )
         count += chunk.count("0")
+    return count
+
+
+def decode(code: str | CompressedText) -> str:
+    """Return decoded Brainfuck, rejecting nonzero symbols and partial triples."""
+    count = _zero_count(code)
     if not count:
         return ""
     bits = count.bit_length() - 1
@@ -63,9 +63,7 @@ def decode(code: str | CompressedText) -> str:
                 "leading 1 contains complete three-bit commands"
             ),
         )
-    return "".join(
-        "><+-.,[]"[(count >> shift) & 7] for shift in range(bits - 3, -1, -3)
-    )
+    return "".join(COMMANDS[(count >> shift) & 7] for shift in range(bits - 3, -1, -3))
 
 
 class _Machine(_BFMachine):
@@ -77,13 +75,6 @@ class _Machine(_BFMachine):
 
     def __init__(self, code: str | CompressedText | BracketProgram, io: IO) -> None:
         super().__init__(code if isinstance(code, BracketProgram) else decode(code), io)
-
-    def step(self) -> None:
-        try:
-            super().step()
-        except EOFError:
-            # Only comma reads input; it has no jump and replaces the cell.
-            self.state = _at_eof(self.state)
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:

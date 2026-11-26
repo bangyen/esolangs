@@ -123,6 +123,10 @@ class CompressedText:
     _has_newline: bool = field(init=False, repr=False, compare=False)
     _tail: str = field(init=False, repr=False, compare=False)
 
+    _repeated_character: str | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+
     def __post_init__(self) -> None:
         """Validate the stream and measure its expanded characters."""
         if not _has_backing_type(self.data, bytes):
@@ -155,6 +159,7 @@ class CompressedText:
         ):
             raise ValueError("compressed text pickle requires measured line metadata")
         vars(self).update(attributes)
+        object.__setattr__(self, "_repeated_character", None)
         for name, value in slots.items():
             object.__setattr__(self, name, value)
 
@@ -265,6 +270,7 @@ class CompressedText:
         *,
         has_newline: bool,
         tail: str,
+        repeated_character: str | None = None,
     ) -> CompressedText:
         """Build from a stream already known valid and ``size`` characters long.
 
@@ -277,6 +283,7 @@ class CompressedText:
         object.__setattr__(text, "_size", size)
         object.__setattr__(text, "_has_newline", has_newline)
         object.__setattr__(text, "_tail", tail)
+        object.__setattr__(text, "_repeated_character", repeated_character)
         return text
 
     def _is_multiline(self) -> bool:
@@ -313,6 +320,7 @@ class CompressedText:
             combined,
             has_newline=self._has_newline,
             tail=self._tail,
+            repeated_character=self._repeated_character,
         )
 
     @classmethod
@@ -338,10 +346,14 @@ class CompressedText:
         if limits is not None:
             _check_work(limits, count)
         block = str.__str__(character) * _BLOCK
-        return cls.from_chunks(
+        source = cls.from_chunks(
             (block[: min(_BLOCK, count - start)] for start in range(0, count, _BLOCK)),
             limits=limits,
         )
+
+        if cls is CompressedText:
+            object.__setattr__(source, "_repeated_character", str.__str__(character))
+        return source
 
     def __len__(self) -> int:
         """Return expanded characters."""

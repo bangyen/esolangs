@@ -114,6 +114,8 @@ class _Program(BracketProgram):
 class _Machine:
     """A Brainfuck run: one immutable ``_State``, rebound per step."""
 
+    eof_is_a_value = False
+
     def __init__(self, code: str | BracketProgram, io: IO) -> None:
         if isinstance(code, BracketProgram):
             self.code, self.brackets = code.source, code.brackets
@@ -185,7 +187,13 @@ class _Machine:
         elif char == ",":
             # ``input_char`` is a whole code point.  Unreduced, ``,.`` echoed
             # an emoji while ``,+.`` printed ``\x01``.  CVNC does the same.
-            state = (ind, ptr, _written(tape, ptr, self.io.input_char() % 256))
+            try:
+                value = self.io.input_char()
+            except EOFError:
+                if not self.eof_is_a_value:
+                    raise
+                value = 0
+            state = (ind, ptr, _written(tape, ptr, value % 256))
         self.state = _advance(state, self.code, self.brackets)
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:

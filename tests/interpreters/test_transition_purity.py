@@ -20,9 +20,7 @@ from esolangs.vm import make_vm
 from tests.support.samples import SAMPLES
 
 pytestmark = pytest.mark.medium
-_CORE_NAMES = frozenset(
-    {"_advance", "_iterate", "_generation", "_at_eof", "_tick", "_rewrite"}
-)
+_CORE_NAMES = frozenset({"_advance", "_iterate", "_generation", "_tick", "_rewrite"})
 _MEMOS = frozenset({"_digest", "_sorted", "__dict__", "__weakref__"})
 
 

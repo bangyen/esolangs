@@ -7,11 +7,17 @@ import pytest
 
 import esolangs
 from esolangs.languages.brainfuck.interpreter import _Machine as BFMachine
-from esolangs.languages.unary.generator import _decoded, unary
+from esolangs.languages.unary.generator import _emit, unary
 from esolangs.languages.unary.interpreter import _Machine, decode
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
 from tests.support.generator_support import evaluate_generated
+
+
+def _decoded(table: str) -> str:
+    chunks = []
+    _emit(table, len(table).bit_length() - 1, chunks.append)
+    return "".join(chunks)
 
 
 def _answer(machine: BFMachine | _Machine) -> tuple[str, int]:
@@ -34,8 +40,9 @@ def test_generated_sources_execute_every_row(table: str) -> None:
     if table == "01":
         from esolangs.languages.unary import generator
 
-        encode = generator._zeros
-        with patch.object(generator, "_zeros", side_effect=lambda _: encode(",+[]")):
+        with patch.object(
+            generator, "_emit", side_effect=lambda _t, _n, emit: emit(",+[]")
+        ):
             assert evaluate_generated("Unary", table) == "10"
     source = unary(table)
     assert decode(source) == _decoded(table)
@@ -131,9 +138,7 @@ def test_bound_generation_plan_reports_table_specific_support():
     language = Language("Unary")
     plan = language.plan_generation("0000")
     assert callable(plan)
-    with patch(
-        "esolangs.languages.unary.generator._decoded", side_effect=AssertionError
-    ):
+    with patch("esolangs.languages.unary.generator._emit", side_effect=AssertionError):
         supported = plan()
         assert plan() is supported
     assert isinstance(supported, ProgramArtifact)
@@ -142,3 +147,17 @@ def test_bound_generation_plan_reports_table_specific_support():
     refused = language.plan_generation("0110")
     assert isinstance(refused, GeneratorCapError)
     assert "generation-work cap" in str(refused)
+
+
+def test_cap_crossing_stops_before_building_the_residual_tree():
+    from esolangs.languages.unary import generator
+
+    with patch.object(
+        generator, "_decision_body", wraps=generator._decision_body
+    ) as body:
+        for table in ("01101001", "0110"):
+            with pytest.raises(esolangs.GeneratorCapError, match="generation-work cap"):
+                unary(table)
+        # Three reads and their moves cross the cap; two reach the tree.
+        assert body.call_count == 1
+        assert body.call_args.args[:2] == ("0110", 2)
