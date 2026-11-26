@@ -365,8 +365,7 @@ class _Machine:
         boundary = self._rejected_input.snapshot(
             (*cursor, grid, _values(stack), string, done, self.io.progress())
         )
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def branching_snapshot(self) -> _State:
         """Acquire a branch root or replay the fault of an already rejected read."""

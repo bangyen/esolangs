@@ -181,8 +181,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = (self.text, self.halted, self.rendered)
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def step(self) -> None:
         """Rewrite once; the step that finds no rule prints and halts."""

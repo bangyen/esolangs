@@ -383,8 +383,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         boundary = (*self.state, self.io.progress())
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Count logical fields; ended records END, not falling off the code."""

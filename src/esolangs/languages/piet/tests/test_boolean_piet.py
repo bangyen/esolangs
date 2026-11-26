@@ -300,7 +300,9 @@ def test_compact_folds_execute_without_growing() -> None:
         for encoded in range(2 ** (2**inputs)):
             table = f"{encoded:0{2**inputs}b}"
             default = generate(table)
-            old = _balanced_plan(_bounded_operations(table), default, compact=False)
+            operations = _bounded_operations(table)
+            cells = sum(operation.size for operation in operations)
+            old = _balanced_plan(operations, cells, score(default)[0], compact=False)
             ceiling = min(old.score(), score(default))[1]
             image = esolangs.generate("Piet", table, balance=True).source
             assert score(image)[1] <= ceiling

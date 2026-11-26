@@ -205,10 +205,9 @@ def _tight_plan(operations: list[_Operation], columns: int, stop: int) -> _Plan:
 
 
 def _balanced_plan(
-    operations: list[_Operation], default: Raster, *, compact: bool
+    operations: list[_Operation], cells: int, default_side: int, *, compact: bool
 ) -> _Plan:
     """Balance the strip and all bounded-block row-fit layouts."""
-    cells = sum(operation.size for operation in operations)
     pitch = 3 if compact else 4
     target = max(_MIN_COLUMNS, isqrt(pitch * cells - 1) + 7)
 
@@ -218,7 +217,7 @@ def _balanced_plan(
     # One row is narrower than its columns, so the strip is its own choice.
     strip = 4 * cells + 64
     selected = min(fit(target, target + 1), fit(strip, strip + 1), key=_Plan.score)
-    side = min(selected.score(), _raster_score(default))[0]
+    side = min(selected.score()[0], default_side)
     # Past one row, width is at least W-1, so a tie needs W <= side+1.  A
     # row holds at most W cells and is a pixel tall, so W >= cells/side.
     lower = max(_MIN_COLUMNS, cells // side)
@@ -241,9 +240,10 @@ def balance(
     # 279358 (-13.60%); black codels 212010 -> 165729. n=3: 62663 -> 56465.
     if operations is None:
         operations = _bounded_operations(table)
-    old = _balanced_plan(operations, default, compact=False)
-    compact = _balanced_plan(operations, default, compact=True)
+    cells = sum(operation.size for operation in operations)
     default_score = _raster_score(default)
+    old = _balanced_plan(operations, cells, default_score[0], compact=False)
+    compact = _balanced_plan(operations, cells, default_score[0], compact=True)
     old_score = min(old.score(), default_score)
     selected = old
     if _improves(compact.score(), old_score):

@@ -463,8 +463,7 @@ class _Machine:
         boundary = (*self.state, self.io.progress())
         if self._digits:
             return (*boundary, "".join(self._digits))
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def _read(self, kind: str) -> int:
         """Serve ``[>>, v]`` (0 at EOF) or ``[>>. v]`` (digits to a non-digit)."""

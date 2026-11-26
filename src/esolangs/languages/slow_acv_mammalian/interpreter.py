@@ -311,8 +311,7 @@ class _Machine:
             self.io.progress(),
             self._halted_by_command,
         )
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     @property
     def _state(self) -> _State:

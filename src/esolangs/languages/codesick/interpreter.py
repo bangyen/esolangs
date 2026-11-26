@@ -218,8 +218,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = (self.pc, frozenset(self.memory.items()), self.io.progress())
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def step(self) -> None:
         """Run one instruction."""
