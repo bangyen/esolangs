@@ -905,8 +905,7 @@ def _check_png_owner(
 def _check_retained_settings(
     saved: Any, requested: Any, owner: str | None, *, catalog: Catalog | None
 ) -> None:
-    from esolangs.portable import _decode_settings_choices
-    from esolangs.settings import _settings_for
+    from esolangs.settings import _decode_settings_choices, _settings_for
 
     if owner is None:
         raise ValueError("stored PNG settings need a language to apply to")

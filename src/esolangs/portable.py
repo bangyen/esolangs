@@ -50,7 +50,7 @@ from esolangs.runtime.source_hints import (
 )
 from esolangs.settings import (
     DialectSettings,
-    _settings_record,
+    _decode_settings,
     dialect_options,
     effective_settings,
 )
@@ -312,49 +312,6 @@ def to_json(
     except UnicodeEncodeError as error:
         raise ProgramError(f"program is not valid UTF-8 text: {error}") from error
     return record_dumps(document, sort_keys=True)
-
-
-def _decode_settings(
-    value: Any,
-    language: str | None,
-    *,
-    catalog: Catalog,
-    checked_settings: DialectSettings | None = None,
-) -> DialectSettings | None:
-    """Restore saved choices against a schema without calling its dialect."""
-    if value is None:
-        return None
-    choices = _decode_settings_choices(value)
-    if language is None:
-        raise ValueError("settings need a language to apply to")
-    if (
-        checked_settings is not None
-        and checked_settings._schema.language == language  # noqa: SLF001
-        and all(type(item) in (int, str) for item in choices.values())
-        and choices == DialectSettings.options(checked_settings)
-    ):
-        return checked_settings
-    return _settings_record(catalog.resolve(language), choices, catalog=catalog)
-
-
-def _decode_settings_choices(value: Any) -> dict[str, Any]:
-    """Decode settings payloads without binding or invoking a dialect."""
-    if not isinstance(value, dict):
-        raise ValueError("settings must be an object or null")
-    choices: dict[str, Any] = {}
-    for key, saved in value.items():
-        if type(saved) is int:
-            raise ValueError("integer settings need a hexadecimal string")
-        item = saved
-        if isinstance(item, dict):
-            if set(item) != {"integer"} or not isinstance(item["integer"], str):
-                raise ValueError("integer settings need a hexadecimal string")
-            literal = item["integer"]
-            if not literal.startswith(("0x", "-0x")):
-                raise ValueError("integer settings need a hexadecimal string")
-            item = int(literal, 16)
-        choices[key] = item
-    return choices
 
 
 def _load_png(

@@ -5,7 +5,6 @@ from dataclasses import replace
 from functools import cache
 from typing import cast
 
-from esolangs._bindings import check_setters, validate_spans
 from esolangs._dialect import DialectSchema, Scalar
 from esolangs.artifacts import (
     Artifact,
@@ -17,11 +16,10 @@ from esolangs.artifacts import (
 from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import (
     ArgumentError,
-    EsolangError,
-    GeneratorCapError,
     ProgramError,
     TemplateError,
 )
+from esolangs.generation._template_replay import TemplateProbes, matches_template
 from esolangs.generation.helpers import _validate_truth_table, check_table_text
 from esolangs.generation.requests import (
     BalanceRequest,
@@ -30,23 +28,22 @@ from esolangs.generation.requests import (
     Options,
     call_backend,
 )
-from esolangs.generation.template import TemplateLayout, layout_fragments
+from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import (
     TokenWrapper,
     _layout_compressed,
     balance_character_slots,
     balance_program,
+    can_balance_template,
+    can_wrap_template,
     wrap_character_slots,
-    wrap_chars,
     wrap_program,
 )
 from esolangs.raster import Raster
 from esolangs.registry import (
     SourceKind,
     render_template,
-    template_setters,
 )
-from esolangs.registry._backend import Generator
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._validate import (
     _has_backing_type,
@@ -167,47 +164,6 @@ def _generation_settings(
     return settings
 
 
-class _TemplateProbes:
-    """Reuse successful backend results within one checked instantiation."""
-
-    def __init__(self) -> None:
-        self._sources: dict[GenerationRequest, tuple[Generator, GeneratedProgram]] = {}
-        self.bindings: dict[tuple[str, int], TemplateBindings] = {}
-
-    def generate(self, hook: Generator, request: GenerationRequest) -> GeneratedProgram:
-        saved = self._sources.get(request)
-        if saved is None or saved[0] is not hook:
-            saved = hook, call_backend(hook, request)
-            self._sources[request] = saved
-        return saved[1]
-
-    def matches_bindings(
-        self,
-        supplied: TemplateBindings,
-        text: str,
-        *,
-        char: str,
-        language_id: str,
-        catalog: Catalog,
-    ) -> bool:
-        inputs = len(supplied.setters)
-        key = text, inputs
-        checked = self.bindings.get(key)
-        if checked is None:
-            try:
-                expected = check_setters(
-                    template_setters(language_id, text, inputs, catalog=catalog)
-                )
-            except EsolangError:
-                raise
-            except ValueError:
-                # A setter extractor can reject a caller-supplied source layout.
-                return False
-            checked = TemplateBindings(char=char, setters=expected)
-            self.bindings[key] = checked
-        return supplied.setters == checked.setters
-
-
 def _generate(
     resolved: str,
     truth_table: str,
@@ -218,7 +174,7 @@ def _generate(
     balance: bool = False,
     scale: int | None = None,
     catalog: Catalog,
-    probes: _TemplateProbes | None = None,
+    probes: TemplateProbes | None = None,
 ) -> Artifact:
     """Render with validated dialect choices, including during layout probes."""
     lang = catalog.languages[resolved]
@@ -298,7 +254,7 @@ def _generate(
         generation_width = request.width
         if width is not None and not laid_out and backend.wrap is not None:
             generated = _check_reflow_layout(generated)
-            if not _can_wrap_template(generated, backend.wrap):
+            if not can_wrap_template(generated, backend.wrap):
                 raise ProgramError(f"{resolved} requires a slot-aware wrapper")
             if isinstance(backend.wrap, TokenWrapper):
                 generated = call_backend(
@@ -365,7 +321,7 @@ def _structured_template(
     settings: DialectSettings | None,
     catalog: Catalog,
     *,
-    probes: _TemplateProbes | None = None,
+    probes: TemplateProbes | None = None,
     generation_width: int | None = None,
 ) -> TemplateArtifact:
     """Preserve the backend's slot positions alongside its rendered source."""
@@ -427,7 +383,7 @@ def _generate_balanced(
     settings: DialectSettings | None,
     *,
     catalog: Catalog,
-    probes: _TemplateProbes | None = None,
+    probes: TemplateProbes | None = None,
 ) -> Artifact:
     """Return ``generate(..., balance=True)``: the default, rebuilt squarest."""
     default = _generate(
@@ -519,33 +475,6 @@ def _generate_balanced(
     )
 
 
-def _character_slots(layout: TemplateLayout) -> bool:
-    """Whether character folding can preserve every input slot."""
-    return "\n" not in layout.source and all(
-        end == start + 1 for start, end in layout.spans
-    )
-
-
-def _can_wrap_template(
-    layout: TemplateLayout, wrapper: Callable[[str, int], str] | None
-) -> bool:
-    """Whether the wrapper can lay out this template's slots."""
-    return isinstance(wrapper, TokenWrapper) or (
-        wrapper is wrap_chars and _character_slots(layout)
-    )
-
-
-def _can_balance_template(
-    layout: TemplateLayout, wrapper: Callable[[str, int], str] | None
-) -> bool:
-    """Whether default balancing can reflow a single line with input slots."""
-    return (
-        bool(layout.spans)
-        and "\n" not in layout.source
-        and _can_wrap_template(layout, wrapper)
-    )
-
-
 def _balance_template(
     template: TemplateArtifact,
     name: str,
@@ -554,7 +483,7 @@ def _balance_template(
 ) -> TemplateArtifact:
     """Balance source by moving positional slots with a slot-aware wrapper."""
     layout = TemplateLayout(template.source, template.spans)
-    if not _can_balance_template(layout, wrapper):
+    if not can_balance_template(layout, wrapper):
         raise ProgramError(f"{name} requires a slot-aware balancer")
     if isinstance(wrapper, TokenWrapper):
         balanced = call_backend(
@@ -565,60 +494,6 @@ def _balance_template(
     if not _has_backing_type(balanced, TemplateLayout):
         raise ProgramError(f"{name}'s template wrapper did not return slots")
     return replace(template, source=balanced.source, spans=balanced.spans)
-
-
-def _template_text(template: TemplateArtifact, char: str) -> str | None:
-    """Put the stored slots in the generator's spelling for comparison."""
-    if template.bindings.char == char:
-        return template.source
-    spans = template.spans
-    text = layout_fragments(
-        TemplateLayout(template.source, spans).fragments(), char=char
-    ).source
-    try:
-        validate_spans(text, char, template.bindings.setters, spans)
-    except ValueError:
-        return None
-    return text
-
-
-def _same_generated_template(
-    rendered: Artifact, template: TemplateArtifact, text: str
-) -> bool:
-    return (
-        isinstance(rendered, TemplateArtifact)
-        and text == rendered.source
-        and template.spans == rendered.spans
-        and template.bindings.setters == rendered.bindings.setters
-    )
-
-
-def _check_source_layout(
-    matcher: Callable[[str, str, Callable[[int], str]], bool],
-    text: str,
-    candidate: str,
-    layout: Callable[[int], str],
-    name: str,
-) -> bool:
-    matches: object = call_backend(matcher, text, candidate, layout)
-    if type(matches) is not bool:
-        raise ProgramError(f"{name}'s layout matcher did not return a boolean")
-    return matches
-
-
-def _render_checked_width(
-    render: Callable[[int], Artifact], width: int | None, retained: int | None
-) -> Artifact | None:
-    declared = width if width is not None else retained
-    if declared is None:
-        return None
-    try:
-        return render(declared)
-    except (ArgumentError, GeneratorCapError):
-        # A replacement catalog may no longer render a saved width.
-        if width is not None:
-            raise
-        return None
 
 
 def _is_template_for(
@@ -637,9 +512,7 @@ def _is_template_for(
     """
     options = {} if settings is None else DialectSettings.options(settings)
     settings = _generation_settings(name, options, settings, catalog=catalog)
-    backend = catalog.languages[name].backend
-    retained = template.generation_width if width is None else None
-    probes = _TemplateProbes()
+    probes = TemplateProbes()
 
     @cache
     def render(width: int | None = None, *, balance: bool = False) -> Artifact:
@@ -654,82 +527,9 @@ def _is_template_for(
             probes=probes,
         )
 
-    try:
-        canonical = render()
-        default_available = True
-    except GeneratorCapError:
-        fallback_width = width if width is not None else retained
-        if fallback_width is None or backend is None or not backend.layout_width:
-            raise
-        canonical = render(fallback_width)
-        default_available = False
-    if not isinstance(canonical, TemplateArtifact):
-        return False
-    bindings = canonical.bindings
-    if len(template.bindings.setters) != bindings.inputs:
-        return False
-    text = _template_text(template, bindings.char)
-    if text is None or not probes.matches_bindings(
-        template.bindings,
-        text,
-        char=bindings.char,
-        language_id=catalog.languages[name].id,
-        catalog=catalog,
-    ):
-        return False
-    plain = canonical.source
-    if not default_available:
-        return _same_generated_template(canonical, template, text)
-    if text == plain:
-        return True
-    assert backend is not None  # _generate above refuses absent backends
-    canonical_layout = TemplateLayout(plain, canonical.spans)
-    width_aware = backend.layout_width or _can_wrap_template(
-        canonical_layout, backend.wrap
+    return matches_template(
+        template, name, width=width, catalog=catalog, probes=probes, render=render
     )
-
-    def layout(width: int) -> str:
-        source = render(width).source
-        if not isinstance(source, str):
-            raise TemplateError("template layouts must return text")
-        return source
-
-    candidates = [plain]
-    sized = _render_checked_width(render, width, retained) if width_aware else None
-    if isinstance(sized, TemplateArtifact):
-        if _same_generated_template(sized, template, text):
-            return True
-        candidates.append(sized.source)
-
-    def matches_balance() -> bool:
-        if (
-            not backend.balances_natively
-            and backend.balance is None
-            and (
-                backend.wrap_balance is not None
-                or not _can_balance_template(canonical_layout, backend.wrap)
-            )
-        ):
-            return False
-        try:
-            balanced = render(balance=True)
-        except GeneratorCapError:
-            return False
-        return _same_generated_template(balanced, template, text)
-
-    matcher = backend.same_layout
-    if matcher is not None:
-        try:
-            if any(
-                _check_source_layout(matcher, text, candidate, layout, name)
-                for candidate in candidates
-            ):
-                return True
-        except (ArgumentError, GeneratorCapError):
-            if matches_balance():
-                return True
-            raise
-    return matches_balance()
 
 
 def _stdin_template_error(name: str) -> TemplateError:

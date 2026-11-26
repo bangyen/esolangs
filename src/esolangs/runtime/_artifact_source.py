@@ -34,6 +34,7 @@ from esolangs.runtime.source_hints import (
 from esolangs.settings import (
     DialectSettings,
     _check_dialect_conflicts,
+    _decode_settings,
     _merge_settings,
     dialect_options,
     effective_settings,
@@ -123,8 +124,6 @@ def read_png_metadata(
     checked_settings: DialectSettings | None = None,
 ) -> tuple[DialectSettings | None, int | None, int | None]:
     """Validate native claims before opening the image or calling its dialect."""
-    from esolangs.portable import _decode_settings
-
     if catalog.languages[name].runtime.source_kind is not SourceKind.RASTER:
         raise _text_raster_error(name, "a PNG")
     check_raster_gzip(name, data)

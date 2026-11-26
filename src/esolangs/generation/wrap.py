@@ -15,6 +15,7 @@ Language-owned wrappers preserve their own token and term boundaries;
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from math import isqrt
 from typing import TYPE_CHECKING
@@ -140,6 +141,33 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
 def wrap_chars(program: str, width: int) -> str:
     """Wrap a program whose every character is its own token."""
     return "\n".join(program[i : i + width] for i in range(0, len(program), width))
+
+
+def _character_slots(layout: TemplateLayout) -> bool:
+    """Whether character folding can preserve every input slot."""
+    return "\n" not in layout.source and all(
+        end == start + 1 for start, end in layout.spans
+    )
+
+
+def can_wrap_template(
+    layout: TemplateLayout, wrapper: Callable[[str, int], str] | None
+) -> bool:
+    """Whether the wrapper can lay out this template's slots."""
+    return isinstance(wrapper, TokenWrapper) or (
+        wrapper is wrap_chars and _character_slots(layout)
+    )
+
+
+def can_balance_template(
+    layout: TemplateLayout, wrapper: Callable[[str, int], str] | None
+) -> bool:
+    """Whether default balancing can reflow a single line with input slots."""
+    return (
+        bool(layout.spans)
+        and "\n" not in layout.source
+        and can_wrap_template(layout, wrapper)
+    )
 
 
 def wrap_character_slots(layout: TemplateLayout, width: int) -> TemplateLayout:

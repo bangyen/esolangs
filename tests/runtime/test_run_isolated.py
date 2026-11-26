@@ -17,9 +17,10 @@ import pytest
 import esolangs
 import esolangs.operations.execution as _execution_operations
 from esolangs.results import ExecutionResult
-from esolangs.runtime._isolated import _request_wire, _worker
+from esolangs.runtime._isolated import _worker
 from esolangs.runtime._json import worker_dumps, worker_object
 from esolangs.runtime._lifecycle import HALTED_REPORT
+from esolangs.runtime._request_wire import encode_request
 from esolangs.runtime._result_wire import encode_result
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
@@ -793,7 +794,7 @@ def test_capped_worker_splits_and_truncates_a_single_large_write(
         output.print_str("λ" * 10_000)
         return output.getvalue()
 
-    payload = _request_wire(REFERENCE, "", "", max_output=8193)
+    payload = encode_request(REFERENCE, "", "", max_output=8193)
     monkeypatch.setattr(_execution_operations, "_execute_invocation", dump)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     _worker()
@@ -1063,7 +1064,7 @@ def test_worker_startup_reports_the_first_expired_deadline(
 )
 def test_raster_transport_preserves_every_pixel(rows, monkeypatch) -> None:
     from esolangs.runtime import _isolated, _raster_wire
-    from esolangs.runtime._isolated import _raster_rows, _raster_transport
+    from esolangs.runtime._raster_wire import _raster_rows, _raster_transport
 
     image = esolangs.Raster(rows)
     runs = _raster_transport(image)
@@ -1105,7 +1106,7 @@ def test_worker_executes_compact_raster_pixels(monkeypatch, capsys) -> None:
 
     language = one(source_kind="raster", boolean_generator=True)[0]
     image = esolangs.generate(language, "0110")
-    payload = _request_wire(
+    payload = encode_request(
         language,
         image.source,
         esolangs.encode_inputs(language, [0, 1]),
@@ -1160,7 +1161,7 @@ def test_worker_returns_a_termination_verdict(monkeypatch, capsys) -> None:
     )
 
     program = esolangs.generate(language, "00")
-    request = _request_wire(
+    request = encode_request(
         language,
         program.source,
         esolangs.encode_inputs(language, [0]),

@@ -1,6 +1,6 @@
 """Catalog validation and artifact overrides for scoped dialect choices."""
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from esolangs._dialect import DialectSchema, Scalar
 from esolangs._dialect import DialectSettings as DialectSettings
@@ -20,6 +20,49 @@ def _settings_record(
         name, {}, {}
     )
     return DialectSettings(schema, **choices)
+
+
+def _decode_settings(
+    value: Any,
+    language: str | None,
+    *,
+    catalog: "Catalog",
+    checked_settings: DialectSettings | None = None,
+) -> DialectSettings | None:
+    """Restore saved choices against a schema without calling its dialect."""
+    if value is None:
+        return None
+    choices = _decode_settings_choices(value)
+    if language is None:
+        raise ValueError("settings need a language to apply to")
+    if (
+        checked_settings is not None
+        and checked_settings._schema.language == language  # noqa: SLF001
+        and all(type(item) in (int, str) for item in choices.values())
+        and choices == DialectSettings.options(checked_settings)
+    ):
+        return checked_settings
+    return _settings_record(catalog.resolve(language), choices, catalog=catalog)
+
+
+def _decode_settings_choices(value: Any) -> dict[str, Any]:
+    """Decode settings payloads without binding or invoking a dialect."""
+    if not isinstance(value, dict):
+        raise ValueError("settings must be an object or null")
+    choices: dict[str, Any] = {}
+    for key, saved in value.items():
+        if type(saved) is int:
+            raise ValueError("integer settings need a hexadecimal string")
+        item = saved
+        if isinstance(item, dict):
+            if set(item) != {"integer"} or not isinstance(item["integer"], str):
+                raise ValueError("integer settings need a hexadecimal string")
+            literal = item["integer"]
+            if not literal.startswith(("0x", "-0x")):
+                raise ValueError("integer settings need a hexadecimal string")
+            item = int(literal, 16)
+        choices[key] = item
+    return choices
 
 
 def _settings_for(

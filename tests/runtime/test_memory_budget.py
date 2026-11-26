@@ -10,6 +10,7 @@ import esolangs
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.runtime import _isolated
 from esolangs.runtime._isolated import _worker
+from esolangs.runtime._request_wire import encode_request
 from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _BUDGET, _LINUX
@@ -51,9 +52,7 @@ def test_worker_memory_failure_retains_protocol(
     monkeypatch.setattr(
         sys,
         "stdin",
-        io.StringIO(
-            json.dumps(_isolated._request_wire(REFERENCE, "", "", max_memory=1))
-        ),
+        io.StringIO(json.dumps(encode_request(REFERENCE, "", "", max_memory=1))),
     )
     _worker()
     expected = (
@@ -116,7 +115,7 @@ def test_worker_retains_the_uncapped_memory_failure_evidence(
     monkeypatch.setattr(
         sys,
         "stdin",
-        io.StringIO(json.dumps(_isolated._request_wire(REFERENCE, "+", "A"))),
+        io.StringIO(json.dumps(encode_request(REFERENCE, "+", "A"))),
     )
     _worker()
     with pytest.raises(
@@ -133,9 +132,7 @@ def test_worker_retains_the_uncapped_memory_failure_evidence(
 def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -> None:
     calls = []
     monkeypatch.setattr(_isolated, "_limit_memory", calls.append)
-    request = _isolated._request_wire(
-        REFERENCE, "+.", "", max_memory=_BUDGET, max_steps=2
-    )
+    request = encode_request(REFERENCE, "+.", "", max_memory=_BUDGET, max_steps=2)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
     _worker()
     assert calls == [_BUDGET]

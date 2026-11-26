@@ -15,6 +15,7 @@ from esolangs.results import ExecutionResult
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._lifecycle import BoundaryCycle, Completion, CompletionReport
 from esolangs.runtime._proof import CycleDecision
+from esolangs.runtime._request_wire import encode_request
 from esolangs.runtime._result_wire import (
     _state_from_wire,
     _state_wire,
@@ -662,7 +663,7 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
         _isolated._worker()
         return json.loads(capsys.readouterr().out.splitlines()[-1])["result"]
 
-    request = _isolated._request_wire(REFERENCE, "", "")
+    request = encode_request(REFERENCE, "", "")
     for key in (*request, "obsolete"):
         broken = (
             {**request, "obsolete": None}
@@ -682,13 +683,9 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
         with pytest.raises(ValueError, match="duplicate field"):
             serve(malformed)
     for source in (",.", esolangs.CompressedText.from_chunks((",.",))):
-        valid = _isolated._request_wire(
-            REFERENCE, source, "A", max_steps=2, max_output=1
-        )
+        valid = encode_request(REFERENCE, source, "A", max_steps=2, max_output=1)
         assert serve(valid) == "A"
-    empty = _isolated._request_wire(
-        REFERENCE, esolangs.CompressedText.from_chunks(("",)), ""
-    )
+    empty = encode_request(REFERENCE, esolangs.CompressedText.from_chunks(("",)), "")
     assert serve(empty) == ""
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({**empty, "program": ""})))
     _isolated._worker()
@@ -708,7 +705,7 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
             if lang.backend and not lang.parameterized and predicate(lang)
         )
         name = language.name
-        valid = _isolated._request_wire(
+        valid = encode_request(
             name,
             esolangs.generate(name, "01").source,
             esolangs.encode_inputs(name, [1]),
@@ -786,8 +783,8 @@ def _check_request_serialization(monkeypatch) -> None:
             ("".join(map(chr, range(65, 126))),)
         )
         stdin = ('é\ud800\U000103ff\r\\"' * 64) + "a"
-        plain = _isolated._request_wire(REFERENCE, source, stdin)
-        packed = _isolated._request_wire(REFERENCE, source, stdin, chunked=True)
+        plain = encode_request(REFERENCE, source, stdin)
+        packed = encode_request(REFERENCE, source, stdin, chunked=True)
         parts = _json.worker_request(packed, lambda: False)
         assert isinstance(parts, list)
         assert max(map(len, parts)) <= 128
