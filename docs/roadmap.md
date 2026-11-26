@@ -41,12 +41,13 @@ evidence, not optimization tasks.
     the paused loop.
     Sweep results in `a7b3f7abd:docs/roadmap.md`.
   - *Native decoder:* scratch builds ran from reset on all 131,072 inputs
-    of four tables. Two random tables reached 129,482 and 129,018 correct
-    answers. On the first, both reads and the output slot matched on every
-    row. All 130,614 legal reads printed the stored bit and halted. Of the
-    1,590 misses, 204 read an invalid packed byte and 1,386 read the wrong
-    stored bit. Moving the terminal return one cell earlier freed 42 words
-    to store three bits each. All eight values at each word ran natively.
+    of four tables. The latest layout reached 130,211 and 129,845 correct
+    answers on the two random tables. Both reads and the output slot matched
+    on every row of both tables. All 130,931 legal reads per table printed
+    the stored bit and halted. On the first table, 69 misses read an
+    invalid packed byte and 792 read the wrong stored bit. An earlier
+    one-cell return shift freed 42 words. All eight values at each word
+    ran natively.
     After swapping the highest address trit, 103 groups reread their
     selector to choose among three spill routes. This moved 4,944 primary
     words and preserved every spill address. Two other layouts used a
@@ -57,9 +58,13 @@ evidence, not optimization tasks.
     new destinations in 10,416 runs.
   - *Bank capacity:* six navigation edits freed 153 three-bit words while
     preserving both reads and the output slot on every row. All eight labels
-    worked at every word in 3,672 native runs. With 2,048 bits assigned to
-    each 729-word bank and control words and calibration markers reserved,
-    12 of the 64 banks still fell short by 4,230 bits in total. A separate
+    worked at every word in 3,672 native runs. Shortening initialization
+    freed 871 consecutive cells for decoder code and a 408-word output
+    lookup. Moving the lookup and the final decoder block freed 369 and
+    77 three-bit words, respectively. All eight values at each word
+    passed in 10,704 row executions across the two layouts. With 2,048 bits assigned per 729-word bank and
+    control words and calibration markers reserved, the shortfall fell
+    from 4,230 bits across 12 banks to 2,085 across nine. A separate
     layout moved 24 primary words between banks, kept every spill address,
     and gained three writable bit positions net. All eight labels worked at
     all 24 destinations.
