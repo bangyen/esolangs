@@ -9,7 +9,7 @@ from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
 from esolangs.generation.algebraic import AffineForm, affine_form
 from esolangs.generation.helpers import _validate_truth_table, check_table_text
-from esolangs.generation.projection import essential_inputs
+from esolangs.generation.projection import InputProjection, essential_inputs, read_at
 from esolangs.generation.template import TemplateLayout
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
@@ -75,6 +75,9 @@ class TruthTable:
     _essential: tuple[int, ...] | None = field(
         default=None, init=False, repr=False, compare=False
     )
+    _projection: InputProjection | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
     _affine: AffineForm | Literal[False] | None = field(
         default=False, init=False, repr=False, compare=False
     )
@@ -100,6 +103,18 @@ class TruthTable:
             result = affine_form(self.bits, self.arity)
             object.__setattr__(self, "_affine", result)
         return result
+
+
+def project_inputs(table: TruthTable) -> InputProjection:
+    """Retain the physical read positions when projecting away ignored inputs."""
+    result = table._projection  # noqa: SLF001 - request-local analysis
+    if result is None:
+        kept = table.essential_inputs()
+        result = InputProjection(
+            table.arity, kept, read_at(table.bits, kept, table.arity)
+        )
+        object.__setattr__(table, "_projection", result)
+    return result
 
 
 @dataclass(frozen=True, slots=True)

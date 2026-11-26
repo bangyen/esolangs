@@ -58,6 +58,19 @@ def test_identity_projection_reuses_the_table() -> None:
     assert read_at(table, [0, 0, 2], 3) == "00111111"
 
 
+def test_reversed_rows_across_upper_block_carries() -> None:
+    from random import Random
+
+    from esolangs.generation.projection import read_at
+
+    n = 16
+    table = "".join(Random(1847).choices("01", k=1 << n))
+    projected = read_at(table, tuple(reversed(range(n))), n)
+    assert projected == "".join(
+        table[int(f"{row:016b}"[::-1], 2)] for row in range(1 << n)
+    )
+
+
 def test_contiguous_projection_holds_omitted_bits_at_zero() -> None:
     from esolangs.generation.projection import read_at
 

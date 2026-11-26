@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 # Headings as (dy, dx).  A diagonal jog is one step forward *and* one
@@ -185,7 +186,7 @@ def correction(value: int, known: int) -> str:
     return {1: "+", 0: "", -1: "-"}[value - known]
 
 
-def loader_reads(n: int, kept: list[int]) -> str:
+def loader_reads(n: int, kept: Sequence[int]) -> str:
     """Return the read phase: every input read, the kept ones one cell apart.
 
     Trailing ignored inputs use a spare cell, so the head steps back to the

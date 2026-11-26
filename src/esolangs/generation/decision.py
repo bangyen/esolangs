@@ -1,11 +1,11 @@
 """Ordered decision layers and reduced Shannon diagrams."""
 
-from collections.abc import Callable, Mapping
-from itertools import pairwise
+from collections.abc import Callable, Mapping, Sequence
 from types import MappingProxyType
 from typing import NamedTuple
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.projection import _LEAF_BITS, _parent_row
 
 
 def saturated_residual_levels(n: int) -> int:
@@ -48,23 +48,17 @@ def decision_layers(truth_table: str) -> DecisionLayers:
     """Index subtable children in O(T), ordered by leftmost occurrence.
 
     Constants retain their layers: deciding which reads to omit or drain
-    belongs to the emitter. Only the first copy of each parent is expanded.
+    belongs to the emitter. Only the current occurrence row survives each fold.
     Results are read-only; emitters own labels, reads and layout state.
     """
-    ids = subtree_ids(truth_table)
+    n = _validate_truth_table(truth_table)
+    ids: Sequence[int] = str.encode(truth_table, "ascii").translate(_LEAF_BITS)
     layers = []
-    frontier = [0]
-    for row, under in pairwise(ids):
-        layer: dict[int, tuple[int, int]] = {}
-        following: list[int] = []
-        for block in frontier:
-            node = row[block]
-            if node not in layer:
-                layer[node] = (under[2 * block], under[2 * block + 1])
-                following.extend((2 * block, 2 * block + 1))
-        layers.append(MappingProxyType(layer))
-        frontier = following
-    return DecisionLayers(ids[0][0], tuple(layers))
+    fresh = 2
+    for _ in range(n):
+        ids, names, fresh = _parent_row(ids, fresh, keep_constant_ids=True)
+        layers.append(MappingProxyType({node: pair for pair, node in names.items()}))
+    return DecisionLayers(ids[0], tuple(reversed(layers)))
 
 
 def fold_subtables[V](

@@ -17,23 +17,24 @@ Decisions:
     operations, so the literal "^ \ / | + -" order is not load-bearing.
 """
 
-from esolangs.generation.helpers import _validate_truth_table
-from esolangs.generation.projection import essential_inputs, read_at
-from esolangs.generation.requests import GenerationRequest
+from esolangs.generation.projection import InputProjection
+from esolangs.generation.requests import GenerationRequest, TruthTable, project_inputs
 from esolangs.runtime._program import Program
 from esolangs.runtime.memory import format_integer
 
 
 def q_bal(truth_table: str) -> str:
     """Build a Q-BAL program printing ``truth_table[row]`` for the inputs."""
-    n = _validate_truth_table(truth_table)
-    kept = essential_inputs(truth_table, n)
+    return _emit(project_inputs(TruthTable(truth_table)))
+
+
+def _emit(projection: InputProjection) -> str:
+    n, kept, table = projection
     if not kept:
-        return f"{truth_table[0]}+0\\({'+'.join(['in'] * n)})->out"
-    table = read_at(truth_table, kept, n)
-    weight = {i: 1 << (len(kept) - 1 - slot) for slot, i in enumerate(kept)}
+        return f"{table[0]}+0\\({'+'.join(['in'] * n)})->out"
     terms = [
-        "in" if weight.get(i) == 1 else f"in\\{weight.get(i, 0)}" for i in range(n)
+        "in" if weight == 1 else f"in\\{weight}"
+        for weight in projection.weighted().weights
     ]
     number = format_integer(int(table[::-1], 2))
     return f"{number}/2^({'+'.join(terms)})|2->out"
@@ -41,4 +42,4 @@ def q_bal(truth_table: str) -> str:
 
 def q_bal_request(request: GenerationRequest) -> Program:
     """Emit source through a typed backend request."""
-    return q_bal(request.table)
+    return _emit(project_inputs(request.truth_table))

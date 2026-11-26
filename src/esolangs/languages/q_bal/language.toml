@@ -77,7 +77,7 @@ unit = "characters"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the table as one decimal integer" }
 
 [catalogue]
-folding_constant_local = "essential_inputs"  # no kept input: read, then print the constant
+folding_constant_local = "project_inputs"  # no kept input: read, then print the constant
 
 [ablations]
 version = 1

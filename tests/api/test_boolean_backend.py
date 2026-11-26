@@ -123,6 +123,9 @@ def test_table_analysis_is_lazy_and_keeps_negative_results(bits, monkeypatch):
     affine.assert_not_called()
     assert table.essential_inputs() == (0, 1)
     assert table.essential_inputs() is table.essential_inputs()
+    projection = requests.project_inputs(table)
+    assert projection is requests.project_inputs(table)
+    assert projection == (2, (0, 1), bits)
     form = table.affine()
     assert (form is None) == (bits == "0001")
     assert table.affine() is form

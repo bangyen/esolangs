@@ -72,6 +72,9 @@ def test_dependencies_exhaustive() -> None:
                 form.bias if form is not None and all(form.coefficients) else None
             )
             layers = decision_layers(table)
+            ids = helpers.subtree_ids(table)
+            for depth, layer in enumerate(layers.children):
+                assert list(layer) == list(dict.fromkeys(ids[depth]))
             nodes, root = reduced_diagram(table, n)
             assert len(layers.children) == n
             lookup = projection.input_weights(table, n)

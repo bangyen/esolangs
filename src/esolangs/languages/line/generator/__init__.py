@@ -22,18 +22,17 @@ Size:
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from functools import lru_cache, partial
 from typing import NamedTuple, cast
 
 from esolangs.generation.helpers import _validate_truth_table, permute_truth_table
 from esolangs.generation.projection import (
+    InputProjection,
     ResidualDiagram,
     _residual_ids,
-    essential_inputs,
-    read_at,
 )
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import GenerationRequest, TruthTable, project_inputs
 from esolangs.languages.line.generator.forward import streaming_canvas
 from esolangs.languages.line.generator.layout import (
     Node,
@@ -107,13 +106,11 @@ def _line_tree(
     return head
 
 
-def _inline_boolean(truth_table: str) -> Node:
+def _inline_boolean(projection: InputProjection) -> Node:
     """Read physical inputs on essential-test stems; drain trailing ignores."""
-    n = _validate_truth_table(truth_table)
-    kept = essential_inputs(truth_table, n)
+    n, kept, reduced = projection
     if not kept:
-        return chain(*("i" * n + ">" + "+" * int(truth_table[0]) + "o"))
-    reduced = read_at(truth_table, kept, n)
+        return chain(*("i" * n + ">" + "+" * int(reduced[0]) + "o"))
     levels, children, _ = _residual_ids(reduced, len(kept))
 
     def fork(state: int, depth: int, known: int | None) -> Node:
@@ -138,23 +135,23 @@ def _inline_boolean(truth_table: str) -> Node:
 
 def projected_boolean(truth_table: str, *, reverse: bool = False) -> Node | None:
     """Store only essential inputs, overwriting the next kept slot for ignores."""
-    return next(_projected_booleans(truth_table, (reverse,)), None)
+    return next(
+        _projected_booleans(project_inputs(TruthTable(truth_table)), (reverse,)), None
+    )
 
 
 def _projected_booleans(
-    truth_table: str, orientations: tuple[bool, ...]
+    projection: InputProjection, orientations: tuple[bool, ...]
 ) -> Iterator[Node]:
     """Project the table once before constructing the requested orientations."""
-    n = _validate_truth_table(truth_table)
-    kept = essential_inputs(truth_table, n)
+    n, kept, reduced = projection
     if len(kept) == n:
         return
     if not kept:
-        commands = "i" * n + ">" + "+" * int(truth_table[0]) + "o"
+        commands = "i" * n + ">" + "+" * int(reduced[0]) + "o"
         for _ in orientations:
             yield chain(*commands)
         return
-    reduced = read_at(truth_table, kept, n)
     # The skip scope keys on the original table's arity, not the reduced one.
     for reverse in orientations:
         yield _project_loader(
@@ -162,7 +159,7 @@ def _projected_booleans(
         )
 
 
-def _project_loader(n: int, kept: list[int], node: Node) -> Node:
+def _project_loader(n: int, kept: Sequence[int], node: Node) -> Node:
     for _ in range(2 * len(kept) - 1):
         if node.next is None:
             raise ValueError("projected Line tree has no decision body")
@@ -233,10 +230,10 @@ def _planned_rows(plan: CanvasPlan) -> Rows:
 
 
 @lru_cache(maxsize=8)
-def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
+def _generate(table: TruthTable, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster computing ``truth_table``."""
     _check_unit(unit)
-    n = _validate_truth_table(truth_table)
+    n, truth_table = table.arity, table.bits
 
     def candidate(tree: Node) -> _Candidate:
         if n <= _SMALL_MAX and (drawn := small_tree_canvas(tree, unit=unit)):
@@ -253,10 +250,16 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
     # Inline tests plus projected readers cost at most 3n+2 commands; folds
     # retain 3n+4. See [ablations.inline_level_reads] for the pixel cost.
     best = candidate(
-        line_boolean(truth_table) if n <= _SMALL_MAX else _inline_boolean(truth_table)
+        line_boolean(truth_table)
+        if n <= _SMALL_MAX
+        else _inline_boolean(project_inputs(table))
     )
     # Large inline readers already project; small trees retain their loader.
-    projected = projected_boolean(truth_table) if n <= _SMALL_MAX else None
+    projected = (
+        next(_projected_booleans(project_inputs(table), (False,)), None)
+        if n <= _SMALL_MAX
+        else None
+    )
     if projected is not None:
         other = candidate(projected)
         if other.area < best.area:
@@ -271,7 +274,7 @@ def _generate(truth_table: str, unit: int = _BOOLEAN_UNIT) -> Raster:
 
 def line(truth_table: str, *, scale: int = 1, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Return a Line raster enlarged by an integer pixel factor."""
-    return _generate(truth_table, unit).upscaled(scale)
+    return _generate(TruthTable(truth_table), unit).upscaled(scale)
 
 
 class _Score(NamedTuple):
@@ -315,12 +318,12 @@ def _best_choice(
     return min(choices, key=lambda choice: choice.score)
 
 
-def _balanced_choice(truth_table: str, *, small: bool, unit: int) -> _Choice:
+def _balanced_choice(table: TruthTable, *, small: bool, unit: int) -> _Choice:
     """Most balanced compact tree over the previous and projected trees."""
-    n = _validate_truth_table(truth_table)
+    n, truth_table = table.arity, table.bits
     plans = [_line_plan(truth_table, n, reverse=reverse) for reverse in (False, True)]
     previous = [_line_tree(*plan, skip=n <= _SMALL_MAX) for plan in plans]
-    nodes = [*previous, *_projected_booleans(truth_table, (False, True))]
+    nodes = [*previous, *_projected_booleans(project_inputs(table), (False, True))]
     preceding = _best_choice(nodes, tight=False, small=small, unit=unit)
     tight = _best_choice(nodes, small=small, unit=unit)
     chosen = _ceilinged_choice(preceding, tight)
@@ -348,11 +351,13 @@ def _ceilinged_choice(preceding: _Choice, chosen: _Choice) -> _Choice:
 
 def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> Raster:
     """Preserve balanced feasibility layouts, considering the default raster."""
+    return _balance(TruthTable(truth_table), default, unit)
+
+
+def _balance(table: TruthTable, default: Raster, unit: int) -> Raster:
     _check_unit(unit)
-    small = _validate_truth_table(truth_table) <= _SMALL_MAX
-    score, selected, canvas, tight = _balanced_choice(
-        truth_table, small=small, unit=unit
-    )
+    small = table.arity <= _SMALL_MAX
+    score, selected, canvas, tight = _balanced_choice(table, small=small, unit=unit)
     width = canvas.width if canvas is not None else score.tiebreak
     if default._payload is not None and (  # noqa: SLF001 - generator-owned graph
         not small or _has_goto(cast("Node | None", default._payload))  # noqa: SLF001
@@ -377,9 +382,6 @@ def balance(truth_table: str, default: Raster, *, unit: int = _BOOLEAN_UNIT) -> 
 
 def line_request(request: GenerationRequest) -> Program:
     """Emit source through the declared generation request interface."""
-    return line(request.table)
-
-
-def line_balance_request(request: BalanceRequest) -> Program:
-    """Lay out source through the declared balance request interface."""
-    return balance(request.table, request.raster_source())
+    table = request.truth_table
+    default = _generate(table, _BOOLEAN_UNIT)
+    return _balance(table, default, _BOOLEAN_UNIT) if request.balance else default

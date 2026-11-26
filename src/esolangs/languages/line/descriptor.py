@@ -13,7 +13,7 @@ from esolangs.runtime._definition import (
 
 
 def _backend() -> BackendDefinition:
-    from esolangs.generation.requests import BalanceRequest, GenerationRequest
+    from esolangs.generation.requests import GenerationRequest
     from esolangs.registry._backend import BooleanBackend, SourceLayout
     from esolangs.registry._operations import OperationRef
     from esolangs.runtime._program import Program
@@ -23,9 +23,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.line.generator", "line_request"
         ),
         layout=SourceLayout(
-            balance=OperationRef[BalanceRequest, Program](
-                "esolangs.languages.line.generator", "line_balance_request"
-            ),
+            layout_balance=True,
             no_wrap="tree geometry fixes the width; balance chooses orientation",
         ),
     )
