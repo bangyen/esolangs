@@ -34,8 +34,7 @@ from esolangs.languages.piet.generator.operations import (
     _ROLL,
     _SUBTRACT,
     _candidates,
-    _literal_product,
-    _majority_count,
+    _linear_candidates,
     _next_colour,
     _Operation,
     _operations,
@@ -64,8 +63,15 @@ class _ProgramPlan:
         return essential, read_at(self.table, essential, self.inputs)
 
     @cached_property
+    def linear(self) -> list[list[_Operation]]:
+        essential, reduced = self.projection
+        return _linear_candidates(reduced, essential, self.inputs) if essential else []
+
+    @cached_property
     def candidates(self) -> list[list[_Operation]]:
-        return _candidates(self.table, self.inputs, projection=self.projection)
+        return _candidates(
+            self.table, self.inputs, projection=self.projection, linear=self.linear
+        )
 
     @cached_property
     def bounded(self) -> list[_Operation]:
@@ -165,14 +171,7 @@ def _render_default(plan: _ProgramPlan) -> Raster:
     # The worst-command bound crosses at m=4: 96 -> 68.
     # At m=3, 00011111 actually loses39 ->56.
     # This command-admitted rule can enlarge individual tables.
-    if (
-        len(essential) < 4
-        or any(
-            _literal_product(reduced, essential, inputs, summed=summed)
-            for summed in (False, True)
-        )
-        or _majority_count(reduced, essential, inputs) is not None
-    ):
+    if len(essential) < 4 or plan.linear:
         return _smallest(plan.table, plan=plan)
     complement = reduced.translate(str.maketrans("01", "10"))
     operations = min(

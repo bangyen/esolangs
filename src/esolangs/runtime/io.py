@@ -420,6 +420,11 @@ class _BufferedOutput:
 
     accepted: int | None = None
 
+    def snapshot(self, boundary: tuple[object, ...]) -> tuple[object, ...]:
+        """Keep the accepted prefix in the cycle key until the write commits."""
+        accepted = self.accepted
+        return boundary if accepted is None else (*boundary, accepted)
+
     def write(
         self, io: IO, text: str, *, first: Callable[[], None] | None = None
     ) -> None:

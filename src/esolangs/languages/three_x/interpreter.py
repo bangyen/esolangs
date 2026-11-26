@@ -222,8 +222,7 @@ class _Machine:
         # ?(!?)! can revisit this state while consuming 1 1 0; the input
         # cursor separates the repeat from the later zero that ends the loop.
         boundary = self._rejected.snapshot((*self.state, self.io.progress()))
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def step(self) -> None:
         """Execute one command, advancing (or jumping) the cursor."""

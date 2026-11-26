@@ -281,8 +281,7 @@ class _Machine:
                 self._draws,
             )
         )
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     # The all-random-outcomes search.  ``_Core`` holds ``var`` as a dict,
     # which a search cannot key on, so the branching state carries it as

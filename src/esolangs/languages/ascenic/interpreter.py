@@ -215,8 +215,7 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         boundary = self._input_retry.snapshot((*self.state, self.io.progress()))
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def branching_snapshot(self) -> tuple[object, ...]:
         """Acquire a branch root or replay an already rejected read."""

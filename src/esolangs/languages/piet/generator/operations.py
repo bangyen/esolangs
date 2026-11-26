@@ -116,11 +116,27 @@ def _majority_count(
     return operations
 
 
+def _linear_candidates(
+    table: str, essential: list[int], inputs: int
+) -> list[list[_Operation]]:
+    """Prefer literal products over a majority count, when either applies."""
+    direct = [
+        found
+        for summed in (False, True)
+        if (found := _literal_product(table, essential, inputs, summed=summed))
+    ]
+    if direct:
+        return direct
+    majority = _majority_count(table, essential, inputs)
+    return [] if majority is None else [majority]
+
+
 def _candidates(
     truth_table: str,
     inputs: int,
     *,
     projection: tuple[list[int], str] | None = None,
+    linear: list[list[_Operation]] | None = None,
 ) -> list[list[_Operation]]:
     """Return literal products, a majority count, or the plain lookup.
 
@@ -143,15 +159,10 @@ def _candidates(
         truth_table = read_at(truth_table, essential, inputs)
     else:
         essential, truth_table = projection
-    direct = [
-        found
-        for summed in (False, True)
-        if (found := _literal_product(truth_table, essential, inputs, summed=summed))
-    ]
-    if direct:
-        return direct
-    if (majority := _majority_count(truth_table, essential, inputs)) is not None:
-        return [majority]
+    if linear is None:
+        linear = _linear_candidates(truth_table, essential, inputs)
+    if linear:
+        return linear
     # An entry is 1 codel for a 1 and 2 for a 0: the complemented table is
     # also stored, with a ``not`` on the selected entry.
     complement = "".join("10"[int(bit)] for bit in truth_table)

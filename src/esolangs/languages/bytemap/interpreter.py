@@ -285,8 +285,7 @@ class _Machine:
                 self.io.progress(),
             )
         )
-        accepted = self._writer.accepted
-        return boundary if accepted is None else (*boundary, accepted)
+        return self._writer.snapshot(boundary)
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture the pointer, the written cells and the input cursor."""
