@@ -25,9 +25,10 @@ from math import isqrt
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import symmetric_outputs
 from esolangs.generation.projection import essential_inputs, read_at
+from esolangs.generation.reflow import balance_program
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
-from esolangs.generation.wrap import balance_program, balance_score
+from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
 
 #: A string, ``'`` and its character, or a digit run is one unit: a break

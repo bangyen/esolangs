@@ -10,6 +10,7 @@ import pytest
 import esolangs
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.generation.examples import BooleanExample
+from esolangs.generation.reflow import wrap_program
 from esolangs.generation.requests import BalanceRequest
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import (
@@ -17,7 +18,6 @@ from esolangs.generation.wrap import (
     _span,
     wrap_chars,
     wrap_grid,
-    wrap_program,
     wrap_space_delimited,
     wrap_tokens,
 )

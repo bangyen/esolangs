@@ -22,9 +22,10 @@ from typing import TYPE_CHECKING, Any, cast
 from esolangs._bindings import TEMPLATE_CHAR, Setters, fill_runs
 from esolangs.artifacts import ProgramArtifact, TemplateArtifact
 from esolangs.compressed import CompressedText
+from esolangs.generation.reflow import wrap_program
 from esolangs.generation.requests import GenerationRequest, Options
 from esolangs.generation.template import TemplateLayout
-from esolangs.generation.wrap import DEFAULT_WIDTH, wrap_program
+from esolangs.generation.wrap import DEFAULT_WIDTH
 from esolangs.raster import Raster
 from esolangs.registry import (
     LanguageDeclaration,

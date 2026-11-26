@@ -4,12 +4,11 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import ArgumentError
+from esolangs.generation.reflow import balance_program, wrap_program
 from esolangs.generation.wrap import (
-    balance_program,
     balance_score,
     wrap_chars,
     wrap_grid,
-    wrap_program,
     wrap_space_delimited,
 )
 from esolangs.registry import LANGUAGES, SourceKind

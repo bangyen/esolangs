@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.generation.wrap import balance_program, balance_score, wrap_program
+from esolangs.generation.reflow import balance_program, wrap_program
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.decleq import generator as boolean
 from esolangs.languages.decleq.generator import (
     _CodeBuilder,

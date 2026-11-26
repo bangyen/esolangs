@@ -11,9 +11,10 @@ from math import isqrt
 from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.generation.lookup import constant_output
 from esolangs.generation.projection import essential_inputs, read_at
+from esolangs.generation.reflow import wrap_program
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
-from esolangs.generation.wrap import balance_score, wrap_program
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.taglate.interpreter import _PREFIX, _SUFFIX, percent_encode
 from esolangs.runtime._program import Program
 

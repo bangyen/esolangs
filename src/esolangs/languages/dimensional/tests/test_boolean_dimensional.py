@@ -8,9 +8,7 @@ import pytest
 import esolangs
 from esolangs import run
 from esolangs.generation.projection import input_weights
-from esolangs.generation.wrap import (
-    wrap_program,
-)
+from esolangs.generation.reflow import wrap_program
 from esolangs.languages.dimensional import generator as boolean
 from esolangs.languages.dimensional.generator import _packed, dimensional
 from esolangs.languages.dimensional.interpreter import _Machine

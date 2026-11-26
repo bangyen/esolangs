@@ -6,14 +6,7 @@ from functools import partial
 from typing import cast
 
 import esolangs.runtime._execution as _execution_runtime
-from esolangs._cycles import (
-    _BranchingUnavailableError,
-    _DrawDependentHaltError,
-    _halt_or_cycle_result,
-    _ProofBudgetExhaustedError,
-    _ProofSnapshotUnavailableError,
-    _unwrap,
-)
+from esolangs._cycles import _DrawDependentHaltError, _halt_or_cycle_result, _unwrap
 from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.exceptions import (
     EsolangError,
@@ -23,6 +16,11 @@ from esolangs.exceptions import (
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
+from esolangs.runtime._branch_search import (
+    _BranchingUnavailableError,
+    _ProofBudgetExhaustedError,
+    _ProofSnapshotUnavailableError,
+)
 from esolangs.runtime._drive import _check_snapshot_hash
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._prepared import _PreparedRuntime

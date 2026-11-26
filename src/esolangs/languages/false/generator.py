@@ -27,14 +27,10 @@ from typing import NamedTuple
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
 from esolangs.generation.projection import essential_inputs, read_at
+from esolangs.generation.reflow import wrap_program
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import (
-    _FALSE_COMMAND,
-    _join_tokens,
-    balance_score,
-    wrap_program,
-)
+from esolangs.generation.wrap import _FALSE_COMMAND, _join_tokens, balance_score
 from esolangs.runtime._program import Program
 
 #: ``'0`` and ``'1`` differ in their low bit, so ``1&`` is the bit and ``?``

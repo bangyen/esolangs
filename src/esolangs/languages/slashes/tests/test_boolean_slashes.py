@@ -11,7 +11,8 @@ import pytest
 import esolangs
 from esolangs.cli import main
 from esolangs.exceptions import TemplateError
-from esolangs.generation.wrap import balance_score, wrap_program
+from esolangs.generation.reflow import wrap_program
+from esolangs.generation.wrap import balance_score
 from esolangs.languages.slashes import generator as boolean
 from esolangs.languages.slashes import interpreter
 from esolangs.languages.slashes.tests.template_shape import _is_unfilled_template

@@ -11,7 +11,7 @@ import pytest
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
 from esolangs.exceptions import ArgumentError, ProgramError
-from esolangs.raster import Raster, png
+from esolangs.raster import Raster, _png_chunks, png
 from esolangs.raster.scale import detect_scale, normalize
 from esolangs.registry import LANGUAGES
 from esolangs.runtime._artifact_source import read_png_artifact
@@ -456,7 +456,7 @@ def test_critical_chunks_are_unique_and_ordered() -> None:
     from tests.runtime.raster.test_png import _chunk
 
     image = png.write_grey([bytearray([0])])
-    header, payload, trailer = [_chunk(k, b) for k, b in png._chunks(image)]
+    header, payload, trailer = [_chunk(k, b) for k, b in _png_chunks._chunks(image)]
     auxiliary = _chunk(b"aUNG", b"")
     empty_idat = _chunk(b"IDAT", b"")
     cases = (
@@ -468,7 +468,7 @@ def test_critical_chunks_are_unique_and_ordered() -> None:
     )
     for chunks, message in cases:
         with pytest.raises(esolangs.ProgramError, match=message):
-            esolangs.Raster.from_png(png._SIGNATURE + b"".join(chunks))
+            esolangs.Raster.from_png(_png_chunks._SIGNATURE + b"".join(chunks))
     control = b"\x1b[2J"
     chunk = _chunk(control, b"x")
     for invalid, message in (
@@ -478,10 +478,12 @@ def test_critical_chunks_are_unique_and_ordered() -> None:
         (chunk[:-4] + bytes(4), r"invalid \x1b[2J chunk CRC"),
     ):
         with pytest.raises(esolangs.ProgramError) as failure:
-            esolangs.Raster.from_png(png._SIGNATURE + header + payload + invalid)
+            esolangs.Raster.from_png(
+                _png_chunks._SIGNATURE + header + payload + invalid
+            )
         assert str(failure.value) == f"not a readable PNG: {message}"
     assert esolangs.Raster.from_png(
-        png._SIGNATURE + header + empty_idat + payload + auxiliary + trailer
+        _png_chunks._SIGNATURE + header + empty_idat + payload + auxiliary + trailer
     ) == esolangs.Raster.from_png(image)
 
 

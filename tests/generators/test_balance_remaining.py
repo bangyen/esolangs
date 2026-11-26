@@ -6,8 +6,9 @@ import pytest
 
 import esolangs
 from esolangs.generation import wrap as _wrap
+from esolangs.generation.reflow import wrap_program
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import balance_score, wrap_chars, wrap_program
+from esolangs.generation.wrap import balance_score, wrap_chars
 from esolangs.registry import LANGUAGES, SourceKind
 from esolangs.registry._certification import load as load_certification
 from tests.support.evaluation import _evaluate

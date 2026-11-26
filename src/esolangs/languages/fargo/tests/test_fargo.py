@@ -8,12 +8,12 @@ from operator import and_, or_, xor
 import pytest
 
 from esolangs.exceptions import HaltError
+from esolangs.languages.fargo._parse import _is_literal, _parse_program
 from esolangs.languages.fargo.interpreter import (
+    _BUILTINS,
     _advance,
     _Frame,
-    _is_literal,
     _Machine,
-    _parse_program,
     _State,
     run,
 )
@@ -135,7 +135,7 @@ class TestSyntax:
 
     def test_a_token_may_end_in_a_colon(self) -> None:
         """The raw mark is a *prefix*; a trailing colon is part of the name."""
-        defs, _ = _parse_program("f: x | x 0\nf: 1\n$\n")
+        defs, _ = _parse_program("f: x | x 0\nf: 1\n$\n", _BUILTINS)
         assert list(defs) == ["f:"]
         assert run_program("f: x | x 0\n% 0 f: 1\n$") == "1"
 
@@ -145,14 +145,14 @@ class TestSyntax:
         assert not _is_literal("")
         assert _is_literal("101")
         # a definition named ``2`` therefore parses as a definition
-        defs, _ = _parse_program("2 x | x 0\n$\n")
+        defs, _ = _parse_program("2 x | x 0\n$\n", _BUILTINS)
         assert list(defs) == ["2"]
 
     def test_definition_splits_arguments_from_code(self) -> None:
         # ``^`` is a builtin, so it starts the code and ``one`` takes no
         # arguments; ``dbl x > x`` takes one, since ``>`` is the first
         # defined name after it.
-        defs, calls = _parse_program("dbl x > x\n% 1 dbl 1\n$\n")
+        defs, calls = _parse_program("dbl x > x\n% 1 dbl 1\n$\n", _BUILTINS)
         assert defs["dbl"].params == ("x",)
         assert defs["dbl"].code == (">", "x")
         assert calls == [("%", "1", "dbl", "1"), ("$",)]
@@ -164,7 +164,7 @@ class TestSyntax:
         assert run_program("pick x y & x y\n% 0 pick 1 0\n$") == "0"
 
     def test_a_builtin_first_leaves_no_parameters(self) -> None:
-        defs, _ = _parse_program("pick & x y\n$\n")
+        defs, _ = _parse_program("pick & x y\n$\n", _BUILTINS)
         assert defs["pick"].params == ()
         assert defs["pick"].code == ("&", "x", "y")
 
@@ -176,7 +176,7 @@ class TestSyntax:
 
     def test_a_bare_colon_is_the_builtin_not_a_parameter(self) -> None:
         """``:`` names the conditional, so it starts the code."""
-        defs, _ = _parse_program("count n : n count < n\n$\n")
+        defs, _ = _parse_program("count n : n count < n\n$\n", _BUILTINS)
         assert defs["count"].params == ("n",)
         assert defs["count"].code == (":", "n", "count", "<", "n")
 
@@ -191,7 +191,7 @@ class TestSyntax:
 
     def test_a_self_call_takes_its_own_arity(self) -> None:
         """A recursive name is sized from the definition being parsed."""
-        defs, _ = _parse_program("loop n | n loop n\n$\n")
+        defs, _ = _parse_program("loop n | n loop n\n$\n", _BUILTINS)
         assert defs["loop"].params == ("n",)
         # Accepted: ``|`` owes 2, ``n`` and the self-call supply them.
         run_program("loop n | n loop n\n$\n")
@@ -199,7 +199,7 @@ class TestSyntax:
     def test_a_repeated_parameter_name_starts_the_code(self) -> None:
         # ``x`` is already a defined name by its second appearance, so it
         # begins the code rather than declaring a second parameter.
-        defs, _ = _parse_program("f x x\n$\n")
+        defs, _ = _parse_program("f x x\n$\n", _BUILTINS)
         assert defs["f"].params == ("x",)
         assert defs["f"].code == ("x",)
 
@@ -259,7 +259,7 @@ class TestWikiExamples:
 
     def test_redefinition_is_unreachable_rather_than_rejected(self) -> None:
         """The wiki calls it an error; the grammar makes it unwritable."""
-        defs, calls = _parse_program("f | 1 0\nf | 0 0\n$\n")
+        defs, calls = _parse_program("f | 1 0\nf | 0 0\n$\n", _BUILTINS)
         assert list(defs) == ["f"]
         assert calls == [("f", "|", "0", "0"), ("$",)]
 

@@ -16,7 +16,7 @@ from esolangs.outcomes import (
     _track_acquisition_failures,
 )
 from esolangs.raster import Raster
-from esolangs.raster.png import _SIGNATURE as _PNG_SIGNATURE
+from esolangs.raster._png_chunks import _SIGNATURE as _PNG_SIGNATURE
 from esolangs.runtime._definition import SourceLoader
 from esolangs.runtime._files import (
     _path_directory,

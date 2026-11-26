@@ -32,12 +32,10 @@ from math import isqrt
 from esolangs.generation.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.generation.lookup import change_points, constant_output
 from esolangs.generation.projection import input_weights
+from esolangs.generation.reflow import wrap_program
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
-from esolangs.generation.wrap import (
-    _DIMENSIONAL_COMMAND,
-    wrap_program,
-)
+from esolangs.generation.wrap import _DIMENSIONAL_COMMAND
 from esolangs.runtime._program import Program
 
 __all__ = ["dimensional"]

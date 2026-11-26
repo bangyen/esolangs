@@ -18,7 +18,7 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
-from esolangs.raster import Raster, lazy_raster, png
+from esolangs.raster import Raster, _png_chunks, lazy_raster, png
 from esolangs.registry import CATALOG, LANGUAGES, SourceKind
 from esolangs.runtime._artifact_source import check_program
 from tests.support.dialect_support import integer_setting
@@ -433,7 +433,7 @@ def test_a_malformed_png_is_a_program_error(language: str, tmp_path: Path) -> No
 
     raster = Raster((((7, 31, 53),),))
     encoded = raster.to_png()
-    chunks = dict(png._chunks(encoded))
+    chunks = dict(_png_chunks._chunks(encoded))
     header, compressed = chunks[b"IHDR"], chunks[b"IDAT"]
 
     def encode_chunk(kind: bytes, body: bytes) -> bytes:

@@ -8,13 +8,8 @@ from types import MappingProxyType
 
 import esolangs
 from esolangs.debugger import make_debugger
-from esolangs.languages.fargo.interpreter import (
-    _Def,
-    _Frame,
-    _Func,
-    _Machine,
-    _State,
-)
+from esolangs.languages.fargo._parse import _Def
+from esolangs.languages.fargo.interpreter import _Frame, _Func, _Machine, _State
 from esolangs.results import Completion, CompletionReport
 from esolangs.runtime._vm_adapter import _capture_observation, _capture_workspace
 from esolangs.runtime.io import ScriptedIO

@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs.raster import png
+from esolangs.raster import _png_chunks, png
 from esolangs.runtime._artifact_source import read_png_artifact
 from tests.support.pick import one
 from tests.support.reference import REFERENCE
@@ -83,7 +83,7 @@ def _encode(
 
     ihdr = struct.pack(">IIBBBBB", width, height, depth, colour, 0, 0, 0)
     return (
-        png._SIGNATURE
+        _png_chunks._SIGNATURE
         + _chunk(b"IHDR", ihdr)
         + _chunk(b"IDAT", zlib.compress(b"".join(rows)))
         + _chunk(b"IEND", b"")
@@ -148,7 +148,7 @@ def test_palette_is_resolved_through_plte() -> None:
 
     # Index 0 -> white, index 1 -> black: the fixtures' own palette.
     blob = (
-        png._SIGNATURE
+        _png_chunks._SIGNATURE
         + _chunk(
             b"IHDR",
             struct.pack(">IIBBBBB", 2, 1, 1, png._PALETTE, 0, 0, 0),
@@ -217,7 +217,7 @@ def _adam7_encode(pixels: list[list[int]], width: int, height: int) -> bytes:
     ihdr = struct.pack(">IIBBBBB", width, height, 8, png._GREY, 0, 0, 1)
 
     return (
-        png._SIGNATURE
+        _png_chunks._SIGNATURE
         + _chunk(b"IHDR", ihdr)
         + _chunk(b"IDAT", zlib.compress(bytes(raw)))
         + _chunk(b"IEND", b"")
@@ -291,7 +291,7 @@ def test_rgb_rejects_a_palette_without_entries() -> None:
 
 def test_rgb_rejects_an_index_outside_the_palette() -> None:
     blob = (
-        png._SIGNATURE
+        _png_chunks._SIGNATURE
         + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))
         + _chunk(b"PLTE", bytes([255, 255, 255]))
         + _chunk(b"IDAT", zlib.compress(bytes([0, 1])))
@@ -307,7 +307,7 @@ def test_rejects_a_malformed_palette_length() -> None:
 
     def blob(plte: bytes) -> bytes:
         return (
-            png._SIGNATURE
+            _png_chunks._SIGNATURE
             + _chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, png._PALETTE, 0, 0, 0))
             + _chunk(b"PLTE", plte)
             + _chunk(b"IDAT", zlib.compress(bytes([0, 0])))
@@ -505,7 +505,7 @@ def test_png_allows_exact_hard_limit_and_keeps_pillow_warning(
 def test_png_rejects_missing_compressed_checksum() -> None:
     blob = _encode([bytes(4)], 1, 1, colour=2)
     chunks = bytearray(blob[:8])
-    for kind, body in png._chunks(blob):
+    for kind, body in _png_chunks._chunks(blob):
         chunks.extend(_chunk(kind, body[:-1] if kind == b"IDAT" else body))
     with pytest.raises(ValueError, match="truncated PNG compressed stream"):
         png.read_rgb(bytes(chunks))
@@ -523,11 +523,11 @@ def test_png_final_idat_may_have_unused_bytes() -> None:
     image = png.write_grey([bytearray([0])])
     data = b"".join(
         _chunk(kind, body + b"\x00extra" if kind == b"IDAT" else body)
-        for kind, body in png._chunks(image)
+        for kind, body in _png_chunks._chunks(image)
     )
-    assert esolangs.Raster.from_png(png._SIGNATURE + data) == esolangs.Raster.from_png(
-        image
-    )
+    assert esolangs.Raster.from_png(
+        _png_chunks._SIGNATURE + data
+    ) == esolangs.Raster.from_png(image)
 
 
 @pytest.mark.parametrize("language", one(source_kind="raster"))
@@ -711,10 +711,10 @@ _REFUSED = {
         _encode([bytes([0, 0])], 1, 1, colour=5),
         "colour type 5",
     ),
-    "rejects_a_missing_header": (png.read_rgb, png._SIGNATURE, "no IHDR"),
+    "rejects_a_missing_header": (png.read_rgb, _png_chunks._SIGNATURE, "no IHDR"),
     "rejects_a_truncated_chunk": (
         png.read_rgb,
-        png._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x",
+        _png_chunks._SIGNATURE + struct.pack(">I", 4) + b"IHDR" + b"x",
         "truncated IHDR",
     ),
     # A filter byte outside 0-4 is corruption, not something to guess at.

@@ -80,7 +80,8 @@ def test_mod255_projected_chain_runs_nonadjacent_input_coordinates(
 def test_mod255_ignored_inputs_keep_reads_and_the_smaller_candidate(
     inputs, io_modulus, kind
 ) -> None:
-    from esolangs.generation.wrap import balance_program, balance_score
+    from esolangs.generation.reflow import balance_program
+    from esolangs.generation.wrap import balance_score
     from esolangs.languages.slow_acv_mammalian.generator import _unprojected_255
 
     used = {"first": [0], "last": [inputs - 1], "ends": [0, inputs - 1]}[kind]

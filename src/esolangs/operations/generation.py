@@ -21,6 +21,7 @@ from esolangs.exceptions import (
 )
 from esolangs.generation._template_replay import TemplateProbes, matches_template
 from esolangs.generation.helpers import _validate_truth_table, check_table_text
+from esolangs.generation.reflow import _layout_compressed, balance_program, wrap_program
 from esolangs.generation.requests import (
     BalanceRequest,
     GeneratedProgram,
@@ -31,13 +32,10 @@ from esolangs.generation.requests import (
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.wrap import (
     TokenWrapper,
-    _layout_compressed,
     balance_character_slots,
-    balance_program,
     can_balance_template,
     can_wrap_template,
     wrap_character_slots,
-    wrap_program,
 )
 from esolangs.raster import Raster
 from esolangs.registry import (

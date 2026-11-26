@@ -19,6 +19,7 @@ from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_
 from esolangs.runtime.source_hints import syntax_error
 
 from . import png
+from ._png_chunks import _backing_bytes
 
 Pixel = tuple[int, int, int]
 Rows = tuple[tuple[Pixel, ...], ...]
@@ -310,7 +311,7 @@ class Raster:
         :class:`~esolangs.exceptions.ProgramError`; data that is not
         bytes-like is an :class:`~esolangs.exceptions.ArgumentError`.
         """
-        payload = png._backing_bytes(data)  # noqa: SLF001
+        payload = _backing_bytes(data)
         try:
             decoded = png._rgb_rows(payload)  # noqa: SLF001
             # Inside the guard too: a 0x0 image decodes cleanly and then
