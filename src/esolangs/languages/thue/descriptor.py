@@ -45,7 +45,7 @@ LANGUAGE = LanguageDeclaration(
             "a Thue program needs a '::=' line with nothing but whitespace on "
             "either side, to separate its rules from its starting state"
         ),
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="Thue draws which rewrite to make, by spec, and the "

@@ -47,7 +47,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="register_based",
         empty_program="REFRACTRAN needs an initial integer",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",

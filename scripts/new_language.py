@@ -124,7 +124,7 @@ from esolangs.runtime._definition import RuntimeSpec
 LANGUAGE = LanguageDeclaration(
     "{name}", RuntimeSpec(
         "{slug}", category="{category}",
-        machine_preparation="prepare_machine", completion_entrypoint="_execute",
+        machine_preparation="prepare_machine",
         capabilities=MachineCapabilities(
             completion=Completion.HALTED, debug=DebugSpec(ip="ind")
         ),
@@ -145,7 +145,7 @@ from esolangs.runtime._definition import RuntimeSpec
 LANGUAGE = LanguageDeclaration(
     "{name}", RuntimeSpec(
         "{slug}", category="{category}",
-        machine_preparation="prepare_machine", completion_entrypoint="_execute",
+        machine_preparation="prepare_machine",
         capabilities=MachineCapabilities(
             completion=Completion.HALTED, debug=DebugSpec(ip="ind")
         ),
@@ -278,7 +278,7 @@ def _unregistered(name: str, slug: str) -> list[Gap]:
             descriptor,
             f'declare LANGUAGE = Language("{name}", '
             f'runtime=RuntimeSpec("{slug}", ...)) with explicit '
-            "machine_preparation, completion_entrypoint and capabilities; "
+            "machine_preparation and capabilities; "
             "add a BooleanBackend with an OperationRef entrypoint for a generator, "
             "source_policy=LineSourcePolicy() only when run() takes source lines, "
             "and the Boolean I/O contract; "

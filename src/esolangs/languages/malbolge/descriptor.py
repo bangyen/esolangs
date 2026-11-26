@@ -79,7 +79,7 @@ LANGUAGE = LanguageDeclaration(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         eof="an exhausted read is the value 59048, not an error",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="the answer is one character and is printed with no newline",

@@ -634,21 +634,21 @@ def test_prepared_input_binding_and_read_share_deadline(monkeypatch) -> None:
     prepared = esolangs.Language(REFERENCE).prepare(",.")
     stdin = StringIO("A")
     timeline = [monotonic()]
-    resolve = _prepared.runtime_hook
+    bind_frame = _prepared._artifact_input_frame
 
-    def delayed_runner(*args):
+    def delayed_frame(*args):
         timeline[0] += 2
-        return resolve(*args)
+        return bind_frame(*args)
 
     monkeypatch.setattr(_acquire, "monotonic", lambda: timeline[0])
-    monkeypatch.setattr(_prepared, "runtime_hook", delayed_runner)
+    monkeypatch.setattr(_prepared, "_artifact_input_frame", delayed_frame)
     outcome = prepared.execute(
         stdin=stdin, limits=esolangs.ExecutionLimits(preparation_timeout=1)
     )
     assert outcome.bound == "preparation_timeout"
     assert stdin.tell() == 0
 
-    monkeypatch.setattr(_prepared, "runtime_hook", resolve)
+    monkeypatch.setattr(_prepared, "_artifact_input_frame", bind_frame)
     decode = _input._decode_input
 
     def delayed_decode(raw):

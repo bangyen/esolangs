@@ -11,6 +11,7 @@ class InputSlot:
     """An input represented by two equal-width substitutions."""
 
     width: int
+    pair: tuple[str, str] | None = None
 
     def __len__(self) -> int:
         """Return the rendered width."""
@@ -27,13 +28,19 @@ class TemplateLayout:
 
     source: str
     spans: Spans
+    setters: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        """Keep authored substitutions aligned with their slots."""
+        if self.setters and len(self.setters) != len(self.spans):
+            raise ValueError("a layout must supply substitutions for every slot")
 
     def fragments(self) -> Iterator[TemplateToken]:
         """Recover literal fragments and slots using their known positions."""
         position = 0
-        for start, end in self.spans:
+        for i, (start, end) in enumerate(self.spans):
             yield self.source[position:start]
-            yield InputSlot(end - start)
+            yield InputSlot(end - start, self.setters[i] if self.setters else None)
             position = end
         yield self.source[position:]
 
@@ -53,12 +60,12 @@ class TemplateLayout:
                 (start - offset, stop - offset)
                 for start, stop in self.spans[first:last]
             )
-            yield TemplateLayout(text, spans)
+            yield TemplateLayout(text, spans, self.setters[first:last])
             first, offset = last, end
         # A terminal newline or empty source can leave a slot on an empty line.
         trailing = tuple((0, 0) for span in self.spans[first:] if span == (size, size))
         if trailing:
-            yield TemplateLayout("", trailing)
+            yield TemplateLayout("", trailing, self.setters[first:])
 
     def tokens(self) -> Iterator[TemplateToken]:
         """Split only the literal fragments on whitespace."""
@@ -75,16 +82,19 @@ def layout_fragments(
     """Render literal fragments and record the positions of their input slots."""
     fragments: list[str] = []
     spans: list[tuple[int, int]] = []
+    setters = []
     offset = 0
     for part in parts:
         end = offset + len(part)
         if isinstance(part, InputSlot):
+            if part.pair is not None:
+                setters.append(part.pair)
             spans.append((offset, end))
             fragments.append(char * len(part))
         else:
             fragments.append(part)
         offset = end
-    return TemplateLayout("".join(fragments), tuple(spans))
+    return TemplateLayout("".join(fragments), tuple(spans), tuple(setters))
 
 
 def layout_tokens(
@@ -97,6 +107,7 @@ def layout_tokens(
     """Wrap whole tokens and record slot positions as source is written."""
     fragments: list[str] = []
     spans: list[tuple[int, int]] = []
+    setters = []
     offset = column = 0
     gap = len(separator)
     for token in tokens:
@@ -107,10 +118,12 @@ def layout_tokens(
             offset += 1 if wrap else gap
             column = 0 if wrap else column + gap
         if isinstance(token, InputSlot):
+            if token.pair is not None:
+                setters.append(token.pair)
             spans.append((offset, offset + size))
             fragments.append(char * size)
         else:
             fragments.append(token)
         column += size
         offset += size
-    return TemplateLayout("".join(fragments), tuple(spans))
+    return TemplateLayout("".join(fragments), tuple(spans), tuple(setters))

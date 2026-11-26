@@ -38,6 +38,6 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="stack_based",
         eof="an exhausted ',' is the spec's -1, an exhausted ';' its 0",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

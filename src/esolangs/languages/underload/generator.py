@@ -133,16 +133,18 @@ def underload(truth_table: str, width: int | None = None) -> str:
 def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if (bit := constant_output(truth_table)) is not None:
-        layout = layout_fragments((f"({bit})", *(InputSlot(3),) * n, "!" * n + "S"))
+        layout = layout_fragments(
+            (f"({bit})", *(InputSlot(3, ("(0)", "(1)")),) * n, "!" * n + "S")
+        )
     elif width is not None and width < 5:
         # The node runs the chosen selector; neither fill needs padding.
-        selectors = ("()(~)", InputSlot(1), "(!)*") * n
+        selectors = ("()(~)", InputSlot(1, _BIT_PAIR), "(!)*") * n
         layout = layout_fragments(
             (_PREFIX, *selectors, _shared(truth_table, short=True))
         )
     else:
         layout = layout_fragments(
-            (*(InputSlot(len(PAIR[0])),) * n, _shared(truth_table))
+            (*(InputSlot(len(PAIR[0]), PAIR),) * n, _shared(truth_table))
         )
     return layout if width is None else _WRAPPER.wrap_template(layout, width)
 

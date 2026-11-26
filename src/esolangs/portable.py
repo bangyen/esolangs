@@ -12,6 +12,7 @@ from esolangs.artifacts import (
     ProgramArtifact,
     TemplateArtifact,
     TemplateBindings,
+    bind_catalog,
 )
 from esolangs.compressed import (
     CompressedText,
@@ -353,7 +354,7 @@ def from_json(
         source_for(name, artifact.source, catalog=catalog, preserve_compression=True)
         if kind != "png":
             dialect_options(name, artifact.settings, catalog=catalog)
-        return artifact
+        return bind_catalog(artifact, catalog)
     except (ValueError, TypeError, RecursionError) as error:
         if _is_acquisition_failure(error):
             raise

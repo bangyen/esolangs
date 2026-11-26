@@ -2,7 +2,7 @@
 
 from functools import cache
 
-from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact, bind_catalog
 from esolangs.exceptions import ArgumentError, TemplateError
 from esolangs.generation._template_replay import TemplateProbes, matches_template
 from esolangs.generation.helpers import check_table_text
@@ -202,4 +202,4 @@ def _fill_checked_template(
         or filled.language != name
     ):
         filled = ProgramArtifact(program, name, settings=settings)
-    return filled
+    return bind_catalog(filled, catalog)

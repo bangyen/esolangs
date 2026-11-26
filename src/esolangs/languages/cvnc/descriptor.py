@@ -35,7 +35,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="other",
         empty_program="program is empty",
-    ),
+    ).with_native_plan(),
     # The parentheses mark optional slots; the language is written as one word.
     id="cvnc",
     backend=DeferredBackend(_backend),

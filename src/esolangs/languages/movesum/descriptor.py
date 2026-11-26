@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         category="tape_based",
         eof="a read at EOF is 0",
         empty_program="Movesum program is empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     example=Example(expected="0 0"),
 )

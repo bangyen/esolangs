@@ -17,8 +17,9 @@ from esolangs.generation.helpers import (
 )
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
+from esolangs.languages.retrograde.descriptor import PAIR
 
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, PAIR)
 
 
 def _moves(source: str) -> str:

@@ -35,7 +35,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="stack_based",
         eof="a short input is a shorter string; a missing bit is not 1, so reads 0",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

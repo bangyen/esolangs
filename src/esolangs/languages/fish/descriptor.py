@@ -41,7 +41,7 @@ LANGUAGE = LanguageDeclaration(
         source_policy=LineSourcePolicy(),
         eof="an exhausted 'i' is the spec's -1",
         empty_program="Fish program cannot be empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

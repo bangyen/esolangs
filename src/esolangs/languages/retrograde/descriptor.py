@@ -38,7 +38,7 @@ LANGUAGE = LanguageDeclaration(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         category="tape_based",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",

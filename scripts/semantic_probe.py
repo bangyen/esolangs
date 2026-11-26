@@ -7,6 +7,7 @@ import io
 import json
 import os
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +62,21 @@ def inject(name: str, result: Results) -> None:
 
     target.__init__ = broken
     entry = lang.runtime.completion_entrypoint
+    if entry is None:
+        hook = lang.runtime.machine_preparation
+        prepare = getattr(module, hook)
+
+        def faulty_plan(*args: Any, **kwargs: Any) -> Any:
+            plan = prepare(*args, **kwargs)
+
+            def run(port: IO) -> Any:
+                corrupt((port,), {})
+                return plan.run(port)
+
+            return replace(plan, run=run)
+
+        setattr(module, hook, faulty_plan)
+        return
     execute = getattr(module, entry)
 
     def native(*args: Any, **kwargs: Any) -> Any:

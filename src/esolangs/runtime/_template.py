@@ -33,10 +33,9 @@ Decisions:
 from collections.abc import Mapping
 from typing import Any
 
-from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import script_main
-from esolangs.runtime._lifecycle import Completion, CompletionReport
-from esolangs.runtime._machine import MachineFactory
+from esolangs.runtime._lifecycle import Completion
+from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime.io import IO
 
@@ -127,9 +126,7 @@ class _Machine:
             self.io.print_char(out)
 
 
-def prepare_machine(
-    source: RunnerProgram, options: Mapping[str, Any]
-) -> MachineFactory:
+def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
     """Bind text; each IO port receives fresh machine state."""
     if not isinstance(source, str):
         raise TypeError("machines require text source")
@@ -139,17 +136,12 @@ def prepare_machine(
     def build(io: IO) -> _Machine:
         return _Machine(source, io)
 
-    return build
-
-
-def _execute(code: str, io: IO) -> CompletionReport:
-    machine = _Machine(code, io)
-    return drive(machine, policy=Completion.HALTED)
+    return RuntimePlan.driven(build, policy=Completion.HALTED)
 
 
 def run(code: str, io: IO) -> None:
     """Run ``code`` to completion on ``io``."""
-    _execute(code, io)
+    prepare_machine(code, {}).run(io)
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="stack_based",
         eof="an exhausted '^' is the spec's -1",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

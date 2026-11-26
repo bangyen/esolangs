@@ -50,7 +50,7 @@ LANGUAGE = LanguageDeclaration(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         category="stack_based",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(),
 )

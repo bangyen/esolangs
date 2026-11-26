@@ -40,6 +40,6 @@ LANGUAGE = LanguageDeclaration(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         empty_program="image contains no ink",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

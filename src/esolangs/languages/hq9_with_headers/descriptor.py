@@ -38,6 +38,6 @@ LANGUAGE = LanguageDeclaration(
         empty_program=(
             "HQ9+ with headers: line 1: the source must start with '==== HEADER ===='"
         ),
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

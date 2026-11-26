@@ -60,7 +60,7 @@ LANGUAGE = LanguageDeclaration(
         random=True,
         source_policy=LineSourcePolicy(),
         empty_program="Befunge program cannot be empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     # ``.`` writes the digit and a trailing space, so the committed
     # answer carries it and the sweep strips it.

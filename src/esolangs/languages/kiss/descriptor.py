@@ -35,7 +35,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="other",
         empty_program="a Kiss program needs at least one combinator",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(input_shape="char_stream"),
 )

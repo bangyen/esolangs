@@ -47,7 +47,7 @@ LANGUAGE = LanguageDeclaration(
         dialect_schema=DialectSchema(
             "ROTfuck", {"rotation": ROTATIONS}, {"rotation": "backward"}
         ),
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

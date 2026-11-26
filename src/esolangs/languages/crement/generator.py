@@ -32,10 +32,9 @@ from math import isqrt
 from esolangs._bindings import TEMPLATE_CHAR
 from esolangs.generation.decision import reduced_diagram
 from esolangs.generation.grid import grid_width
-from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.lookup import constant_output, symmetric_outputs
-from esolangs.generation.projection import essential_inputs, read_at
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.projection import read_at
+from esolangs.generation.requests import BalanceRequest, GenerationRequest, TruthTable
 from esolangs.generation.template import (
     InputSlot,
     TemplateLayout,
@@ -63,8 +62,8 @@ PAIR = ("+J 0 0", "+J 0 1")
 
 type _Instruction = tuple[str, str, TemplateToken]
 type _Line = _Instruction | InputSlot
-_FULL_TESTER = InputSlot(len(PAIR[0]))
-_DATA_TESTER = InputSlot(1)
+_FULL_TESTER = InputSlot(len(PAIR[0]), PAIR)
+_DATA_TESTER = InputSlot(1, ("0", "1"))
 
 
 def crement_setters(template: str, n: int) -> tuple[tuple[str, str], ...]:
@@ -79,16 +78,16 @@ def crement(truth_table: str, width: int | None = None) -> str:
     input order. Preset testers fill only data; below six columns, other
     templates use that field form too.
     """
-    return _layout(truth_table, width).source
+    return _layout(TruthTable(truth_table), width).source
 
 
-def _layout(truth_table: str, width: int | None) -> TemplateLayout:
-    n = _validate_truth_table(truth_table)
+def _layout(table: TruthTable, width: int | None) -> TemplateLayout:
+    truth_table, n = table.bits, table.arity
     lines: list[_Line]
     if (constant := constant_output(truth_table)) is not None:
         target = 0 if constant == "1" else n + 1
         lines = [("+J", str(target), "1"), *[_FULL_TESTER] * n]
-    elif _preset_family(truth_table, n):
+    elif _preset_family(table):
         lines = _preset_template(truth_table, n)
     else:
         lines = _shared_template(truth_table, n)
@@ -145,13 +144,13 @@ def _short_operand(source: str, here: int) -> str:
     return min((source, str(value), _rel(offset)), key=len)
 
 
-def _preset_family(table: str, n: int) -> bool:
+def _preset_family(table: TruthTable) -> bool:
     """Recognize parity and thresholds over the inputs the table retains."""
-    essential = essential_inputs(table, n)
+    essential = table.essential_inputs()
     kept = len(essential)
     if kept < 2:
         return kept == 1
-    symmetric = symmetric_outputs(read_at(table, essential, n), kept)
+    symmetric = symmetric_outputs(read_at(table.bits, essential, table.arity), kept)
     if symmetric is None:
         return False
     changes = [a != b for a, b in pairwise(symmetric)]
@@ -275,11 +274,13 @@ def _packed(default: str) -> Iterator[str]:
 
 def crement_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return _layout(request.table, request.width)
+    return _layout(request.truth_table, request.width)
 
 
 def crement_balance_request(request: BalanceRequest) -> TemplateLayout:
     """Pack instructions without moving their source offsets."""
     if not isinstance(request.source, TemplateLayout):
         raise TypeError("Crement balancing needs a rendered template with slots")
-    return TemplateLayout(_balance(request.source.source), request.source.spans)
+    return TemplateLayout(
+        _balance(request.source.source), request.source.spans, request.source.setters
+    )

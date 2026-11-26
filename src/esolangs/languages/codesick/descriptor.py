@@ -36,7 +36,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="other",
         eof="the whole input is read once to replace every `in`; no read meets EOF",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(frame_stdin=True, input_shape="char_stream"),
 )

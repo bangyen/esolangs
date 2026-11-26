@@ -51,7 +51,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="register_based",
         empty_program="a FRACTRAN program needs a starting value",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",

@@ -35,6 +35,6 @@ LANGUAGE = LanguageDeclaration(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         empty_program="no instructions",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

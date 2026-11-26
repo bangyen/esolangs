@@ -38,7 +38,7 @@ LANGUAGE = LanguageDeclaration(
         category="queue_based",
         eof="every input is enqueued first, so a short input is a shorter queue",
         empty_program="a program with no command loops forever",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(frame_stdin=True),
 )

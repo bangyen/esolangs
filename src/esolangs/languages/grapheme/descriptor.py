@@ -47,7 +47,7 @@ LANGUAGE = LanguageDeclaration(
             {"integer_conversion": INTEGER_CONVERSIONS},
             {"integer_conversion": "between_letters"},
         ),
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     # Each input line is normalized with ord(line[0]) - 65 and then zero is
     # mapped to 1; the second step is what makes 'A' a 1 -- ord('A') - 65 is

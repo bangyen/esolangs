@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         category="program_based",
         # The wiki cat's only clean exit is a ``readto`` that gets no line.
         eof="an exhausted readto empties the block",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="send terminates each line, so the answer ends in a newline",

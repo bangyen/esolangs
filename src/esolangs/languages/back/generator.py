@@ -55,6 +55,7 @@ from esolangs.generation.template import (
     layout_tokens,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.back.descriptor import PAIR
 
 _Node = tuple[int, int]
 _Grid = dict[tuple[int, int], TemplateToken]
@@ -65,7 +66,7 @@ _SubtreeIds = tuple[tuple[int, ...], ...]
 #: Both are one grid cell, so a run is the exact width of its program.
 #: Pair leaves act on the input bit already held in the answer cell.
 _PAIR_FINISHERS = {"01": "*", "10": "-*", "00": "+-*", "11": "+--*"}
-_BACK_INPUT = InputSlot(1)
+_BACK_INPUT = InputSlot(1, PAIR)
 #: Subtrees this short stay combs; taller ones fold (25-28 cells per leaf).
 _FOLD_BASE = 5
 #: Comb bases the balance race folds at (inclusive); the default fold uses 5.
@@ -98,7 +99,7 @@ def _render(rows: list[dict[int, TemplateToken]]) -> TemplateLayout:
         spans.extend((offset + column, offset + column + 1) for column in sorted(slots))
         lines.append("".join(line))
         offset += len(line) + 1
-    return TemplateLayout("\n".join(lines), tuple(spans))
+    return TemplateLayout("\n".join(lines), tuple(spans), (PAIR,) * len(spans))
 
 
 def _place_load(grid: _Grid, units: list[TemplateToken], height: int) -> None:

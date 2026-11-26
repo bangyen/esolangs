@@ -15,7 +15,7 @@ from esolangs.generation.wrap import (
     can_wrap_template,
     wrap_character_slots,
 )
-from esolangs.registry import render_template
+from esolangs.registry import render_template, template_char
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._validate import _has_backing_type
 from esolangs.settings import DialectSettings
@@ -43,7 +43,14 @@ def _structured_template(
         probes = None
     key = text, inputs
     bindings = probes.bindings.get(key) if probes is not None else None
-    if bindings is None:
+    if layout.setters:
+        char = template_char(language_id, catalog=catalog)
+        if char is None:
+            raise TemplateError(f"{name} has no template declaration")
+        bindings = TemplateBindings(char=char, setters=layout.setters)
+        if bindings.inputs != inputs:
+            raise ProgramError(f"{name}'s template must bind all {inputs} inputs")
+    elif bindings is None:
         text, char, pairs = call_backend(
             render_template, language_id, text, inputs, catalog=catalog
         )
@@ -81,7 +88,7 @@ def _check_reflow_layout(layout: TemplateLayout) -> TemplateLayout:
             position = end
     except ValueError as error:
         raise TemplateError(str(error)) from error
-    return TemplateLayout(layout.source, tuple(spans))
+    return TemplateLayout(layout.source, tuple(spans), layout.setters)
 
 
 def _wrap_template_layout(

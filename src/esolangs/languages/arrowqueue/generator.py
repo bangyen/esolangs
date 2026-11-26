@@ -48,13 +48,14 @@ from esolangs.generation.template import (
     layout_fragments,
 )
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.arrowqueue.descriptor import PAIR
 
 #: Each input's cell: ``~`` pushes a down heading, ``.`` nothing.
 
 _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 
 
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, PAIR)
 type _Row = Sequence[TemplateToken]
 _STAGE: list[_Row] = ["  *+*", (*"   ~", _INPUT), "   ~", "  **", " *~*", " *  *"]
 
@@ -353,7 +354,7 @@ def _render_strips(strips: list[list[_Block]]) -> TemplateLayout:
             (offset + column, offset + column + 1) for column in slots.get(row, ())
         )
         offset += len(line) + 1
-    return TemplateLayout("\n".join(rendered), tuple(spans))
+    return TemplateLayout("\n".join(rendered), tuple(spans), (PAIR,) * len(spans))
 
 
 def _folds(

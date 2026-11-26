@@ -9,6 +9,8 @@ from esolangs.registry._language import (
 from esolangs.runtime._capabilities import DebugSpec, MachineCapabilities
 from esolangs.runtime._definition import RuntimeSpec
 
+PAIR = ("0", "1")
+
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import GenerationRequest
@@ -22,7 +24,7 @@ def _backend() -> BackendDefinition:
             "esolangs.languages.trml.generator", "trml_request"
         ),
         wrap=wrap_chars,
-        template=TemplateSpec(pair=("0", "1"), char="@"),
+        template=TemplateSpec(pair=PAIR, char="@"),
     )
 
 
@@ -36,7 +38,7 @@ LANGUAGE = LanguageDeclaration(
         machine_preparation="prepare_machine",
         completion_entrypoint="complete",
         capabilities=MachineCapabilities(debug=DebugSpec(views=("text",))),
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     example=Example(),
 )

@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         source_policy=LineSourcePolicy(),
         eof="resolves its inputs while laying the grid",
-    ),
+    ).with_native_plan(),
     example=Example(slow_build=True),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(

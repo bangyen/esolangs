@@ -40,6 +40,7 @@ from esolangs.generation.template import (
 )
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score, wrap_character_slots
+from esolangs.languages.slashes.descriptor import PAIR
 
 #: Binary to unary, most significant bit first: the row as that many ``*``.
 _UNARY = "/b/a*//*a/a**//a//"
@@ -56,7 +57,7 @@ _DECODE = "/>qA/C//>qB/D//qA///qB///C/0//D/1/"
 _IGNORE = "/Xa///Xb//"
 
 
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, PAIR)
 
 
 def _sweeps(bits: str) -> int:
@@ -122,6 +123,7 @@ def slashes_balance_request(request: BalanceRequest) -> TemplateLayout:
             (start + len(_NEWLINES), end + len(_NEWLINES))
             for start, end in layout.spans
         ),
+        layout.setters,
     )
     folded = wrap_character_slots(prefixed, balanced_token_width(list(prefixed.source)))
     return min(layout, folded, key=lambda candidate: balance_score(candidate.source))

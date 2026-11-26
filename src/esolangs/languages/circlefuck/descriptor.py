@@ -38,7 +38,7 @@ LANGUAGE = LanguageDeclaration(
         category="tape_based",
         eof="its input command is a no-op at EOF, as the spec says",
         empty_program="Circlefuck program cannot be empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

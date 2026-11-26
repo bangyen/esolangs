@@ -36,7 +36,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="other",
         eof="an exhausted Input or InputNumber sends nothing, as the spec says",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(input_shape="char_stream"),
 )

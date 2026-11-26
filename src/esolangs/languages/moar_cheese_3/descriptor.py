@@ -43,7 +43,7 @@ LANGUAGE = LanguageDeclaration(
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="Inputs are embedded as n or y; the final queue is the answer.",

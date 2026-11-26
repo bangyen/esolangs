@@ -66,7 +66,7 @@ LANGUAGE = LanguageDeclaration(
         eof="it raises its own error before the read is reached",
         underfed_raises=True,
         empty_program="empty program",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

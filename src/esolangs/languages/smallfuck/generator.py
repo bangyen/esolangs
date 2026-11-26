@@ -22,14 +22,13 @@ from collections.abc import Callable
 from functools import cache, partial
 from itertools import pairwise
 
-from esolangs.generation.algebraic import affine_form
 from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
     move_text,
 )
 from esolangs.generation.lookup import constant_output
-from esolangs.generation.requests import BalanceRequest, GenerationRequest
+from esolangs.generation.requests import BalanceRequest, GenerationRequest, TruthTable
 from esolangs.generation.shared_block import (
     FoldedTree,
     RepeatedSpans,
@@ -41,19 +40,20 @@ from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragm
 from esolangs.generation.wrap import TokenWrapper, balance_score
 from esolangs.languages.smallfuck._tree import _INPUT, BAND, PAIR, _smallfuck_tree
 
-_NARROW_INPUT = InputSlot(1)
+_NARROW_INPUT = InputSlot(1, ("x", "*"))
 _WRAPPER = TokenWrapper(r"[\s\S]")
 
 
 def smallfuck(truth_table: str, width: int | None = None) -> str:
     """Return a Smallfuck template whose final tape cell 2 is the answer."""
-    return _layout(truth_table, width).source
+    return _layout(TruthTable(truth_table), width).source
 
 
-def _layout(truth_table: str, width: int | None) -> TemplateLayout:
+def _layout(table: TruthTable, width: int | None) -> TemplateLayout:
+    truth_table = table.bits
     analyze = cache(partial(FoldedTree.build, include_single=True))
     natural = in_input_order(truth_table, partial(_smallfuck_ordered, analyze=analyze))
-    n = _validate_truth_table(truth_table)
+    n = table.arity
     # A chain of ifs is cheap and an else is not, so AND-like tables beat their
     # OR-like duals; the reversed table behind a prologue that flips every
     # input cell once (the setters stay as they are) reaches the cheap polarity.
@@ -61,7 +61,7 @@ def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     flipped = "".join("10"[int(bit)] for bit in truth_table)
     twins = [
         in_input_order(
-            table[::-1] if negate else table,
+            polarity[::-1] if negate else polarity,
             partial(
                 _smallfuck_ordered,
                 analyze=analyze,
@@ -69,7 +69,7 @@ def _layout(truth_table: str, width: int | None) -> TemplateLayout:
                 complement=complement,
             ),
         )
-        for table, complement in ((truth_table, False), (flipped, True))
+        for polarity, complement in ((truth_table, False), (flipped, True))
         for negate in (False, True)
         if negate or complement
     ]
@@ -77,7 +77,7 @@ def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     if n >= 3 and constant_output(truth_table) == "1":
         # Cell 2 is outside the input walk: set it before walking away.
         natural = layout_fragments((">>*<<", *(_INPUT,) * n))
-    if (form := affine_form(truth_table, n)) is not None and any(form.coefficients):
+    if (form := table.affine()) is not None and any(form.coefficients):
         natural = min(
             natural,
             _xor_chain(n, form.bias, form.coefficients),
@@ -223,7 +223,7 @@ def _same_layout(template: str, plain: str, _layout: object) -> bool:
 
 def smallfuck_request(request: GenerationRequest) -> TemplateLayout:
     """Emit source through the declared generation request interface."""
-    return _layout(request.table, request.width)
+    return _layout(request.truth_table, request.width)
 
 
 def smallfuck_balance_request(request: BalanceRequest) -> TemplateLayout:

@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="program_based",
         eof="the input is the initial string, so an empty input is the empty string",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         frame_stdin=True,

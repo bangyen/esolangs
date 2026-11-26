@@ -18,6 +18,7 @@ from esolangs.generation.template import (
     TemplateToken,
     layout_fragments,
 )
+from esolangs.languages.trml.descriptor import PAIR
 
 _HEADER = (
     "0;1;N;C(b)(r);D(b)(r);P(a)(b);Z(r)(t);"
@@ -32,7 +33,7 @@ def _fragments(table: str) -> Iterator[TemplateToken]:
     yield _HEADER + "Z"
     for slot in range(arity):
         yield "C" if slot in selected else "D"
-        yield InputSlot(1)
+        yield InputSlot(1, PAIR)
     yield "N"
     if len(used) != arity:
         table = read_at(table, used, arity)

@@ -44,10 +44,11 @@ from esolangs.generation.template import (
     TemplateToken,
     layout_fragments,
 )
+from esolangs.languages.a_painter_ant.descriptor import PAIR
 
 __all__ = ["a_painter_ant"]
 
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, PAIR)
 
 
 def a_painter_ant(truth_table: str) -> str:

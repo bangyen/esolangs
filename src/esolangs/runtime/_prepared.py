@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from functools import cache, partial
+from functools import partial
 from types import FunctionType, ModuleType
 from typing import TYPE_CHECKING, Any, Self, cast
 
@@ -49,32 +49,11 @@ if TYPE_CHECKING:
     from esolangs.runtime._definition import RuntimeSpec
 
 
-type _RuntimeHooks = tuple[str | None, str, str]
-
-
-def _plan_hooks(runtime: RuntimeSpec) -> _RuntimeHooks:
-    return (
-        runtime.interpreter,
-        runtime.machine_preparation,
-        runtime.completion_entrypoint,
-    )
-
-
-@cache
-def _installed_plan_hooks() -> dict[_RuntimeHooks, RuntimeSpec]:
-    """Recognize the installed hook pairs whose native paths share a plan."""
-    from esolangs.registry._table import LANGUAGES
-
-    return {
-        _plan_hooks(runtime): runtime
-        for declaration in LANGUAGES.values()
-        if (runtime := declaration.runtime).interpreter is not None
-    }
-
-
 def _runtime_reads_stdin(runtime: RuntimeSpec) -> bool:
     """Keep stdin available to custom hooks that may change input behavior."""
-    return runtime.reads_stdin or _plan_hooks(runtime) not in _installed_plan_hooks()
+    if runtime.completion_entrypoint is None:
+        return runtime.reads_stdin
+    return runtime.reads_stdin or not runtime.uses_native_plan
 
 
 def _scoped_dialect_defaults(
@@ -83,8 +62,10 @@ def _scoped_dialect_defaults(
     schema = runtime.dialect_schema
     if schema is None:
         return {}
-    installed = _installed_plan_hooks().get(_plan_hooks(runtime))
-    if installed is None:
+    if runtime.completion_entrypoint is None:
+        return schema.defaults
+    plan = runtime.native_plan
+    if plan is None or not runtime.uses_native_plan:
         runner = vars(module).get(str.__str__(runtime.completion_entrypoint))
         if type(runner) is not FunctionType:
             return {}
@@ -94,7 +75,7 @@ def _scoped_dialect_defaults(
         # A native runner receives source and IO positionally.
         names = code.co_varnames[start : end + code.co_kwonlyargcount]
         return {key: value for key, value in schema.defaults.items() if key in names}
-    original = installed.dialect_schema
+    original = plan.schema
     if original is None or original is schema:
         return {}
     # Only keys already consumed by this interpreter belong in its options.
@@ -260,15 +241,22 @@ class _PreparedRuntime:
         io_factory: Callable[[InputSource], ScriptedIO] = ScriptedIO,
     ) -> ExecutionOutcome:
         runtime = self.catalog.languages[self.language].runtime
-        runner = runtime_hook(
-            self._module, self.language, runtime.completion_entrypoint
-        )
         plan = self._plan
-        # A scoped hook can override either half of the installed runtime.
-        # The machine's parse plan must not replace that declared native runner.
-        if plan is not None and _plan_hooks(runtime) not in _installed_plan_hooks():
+        if runtime.completion_entrypoint is None:
+            factory = self._factory(seed=seed, reproducible=False)
+            if not isinstance(factory, RuntimePlan):
+                raise InterpreterLimitError(
+                    f"{self.language}'s preparation hook must return a RuntimePlan"
+                )
+            plan = factory
+        elif not runtime.uses_native_plan:
+            # A legacy catalog may override just the standalone runner.
             plan = None
         if plan is None:
+            assert runtime.completion_entrypoint is not None
+            runner = runtime_hook(
+                self._module, self.language, runtime.completion_entrypoint
+            )
             code, options = self._call(seed=seed)
             if options:
                 runner = partial(runner, **options)

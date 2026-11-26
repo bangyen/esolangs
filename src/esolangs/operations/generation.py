@@ -8,6 +8,7 @@ from esolangs.artifacts import (
     Artifact,
     ProgramArtifact,
     TemplateArtifact,
+    bind_catalog,
 )
 from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import (
@@ -20,7 +21,7 @@ from esolangs.generation._template_layout import (
     _wrap_template_layout,
 )
 from esolangs.generation._template_replay import TemplateProbes
-from esolangs.generation.helpers import _validate_truth_table, check_table_text
+from esolangs.generation.helpers import check_table_text
 from esolangs.generation.reflow import _layout_compressed, balance_program, wrap_program
 from esolangs.generation.requests import (
     BalanceRequest,
@@ -100,7 +101,7 @@ def generate(
     catalog = get_catalog(catalog)
     options = dialect_options(language, settings, catalog=catalog)
     resolved = catalog.resolve(language)
-    return _generate_checked(
+    artifact = _generate_checked(
         resolved,
         truth_table,
         options,
@@ -110,6 +111,7 @@ def generate(
         scale=scale,
         catalog=catalog,
     )
+    return bind_catalog(artifact, catalog)
 
 
 def _generate_checked(
@@ -220,9 +222,6 @@ def _generate(
             resolved, truth_table, options, settings, catalog=catalog, probes=probes
         )
     width = check_width(width)
-    inputs = _validate_truth_table(truth_table)
-    backend.check_arity(resolved, inputs)
-    fn = backend.generate
     laid_out = balance or (width is not None and backend.layout_width)
     request = GenerationRequest(
         truth_table,
@@ -230,6 +229,9 @@ def _generate(
         _backend_options(schema, options),
         balance=balance,
     )
+    inputs = request.truth_table.arity
+    backend.check_arity(resolved, inputs)
+    fn = backend.generate
     generated = (
         call_backend(fn, request) if probes is None else probes.generate(fn, request)
     )
@@ -358,7 +360,9 @@ def _generate_balanced(
     if balancer is not None:
         balance_source: GeneratedProgram = source
         if isinstance(default, TemplateArtifact):
-            balance_source = TemplateLayout(default.source, default.spans)
+            balance_source = TemplateLayout(
+                default.source, default.spans, default.bindings.setters
+            )
         text = call_backend(
             balancer,
             BalanceRequest(truth_table, balance_source, choices),

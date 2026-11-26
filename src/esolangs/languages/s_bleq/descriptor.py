@@ -35,7 +35,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="tape_based",
         eof="a failed read leaves the cell alone and the program runs on",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

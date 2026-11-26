@@ -10,7 +10,7 @@ from esolangs.generation.template import (
 )
 from esolangs.generation.wrap import wrap_space_delimited
 
-_EXPONENT = InputSlot(1)
+_EXPONENT = InputSlot(1, ("0", "1"))
 
 
 def fraction_template(
@@ -34,4 +34,6 @@ def wrap_fractions(layout: TemplateLayout, width: int | None) -> TemplateLayout:
     """Replace separators in a single-space layout, preserving slot offsets."""
     if width is None:
         return layout
-    return TemplateLayout(wrap_space_delimited(layout.source, width), layout.spans)
+    return TemplateLayout(
+        wrap_space_delimited(layout.source, width), layout.spans, layout.setters
+    )

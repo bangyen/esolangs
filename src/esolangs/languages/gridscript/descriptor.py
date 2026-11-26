@@ -36,6 +36,6 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         empty_program="cannot parse ''",
         eof="INPUT stores NULL, as the specification says it should",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

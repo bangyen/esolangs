@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         random=True,
         eof="the whole input is read once as the initial stack; no read meets EOF",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         frame_stdin=True,

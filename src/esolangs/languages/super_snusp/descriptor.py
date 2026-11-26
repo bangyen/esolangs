@@ -40,7 +40,7 @@ LANGUAGE = LanguageDeclaration(
         random=True,
         source_policy=LineSourcePolicy(),
         empty_program="Super SNUSP program cannot be empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

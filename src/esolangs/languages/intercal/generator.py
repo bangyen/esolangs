@@ -84,7 +84,7 @@ _ZERO, _ONE = _Expr("constant", 0), _Expr("constant", 1)
 _STATEMENT_OVERHEAD = 2
 
 
-_INPUT = InputSlot(2)
+_INPUT = InputSlot(2, descriptor.PAIR)
 type _Statement = str | tuple[str, InputSlot]
 
 
@@ -134,7 +134,9 @@ def balance_intercal(default: TemplateLayout) -> TemplateLayout:
         width = max(1, round(root * scale))
         wrapped = _wrap_layout(default, width)
         candidates.append(
-            TemplateLayout(_pack_rows(wrapped.source, width), wrapped.spans)
+            TemplateLayout(
+                _pack_rows(wrapped.source, width), wrapped.spans, wrapped.setters
+            )
         )
     return min(candidates, key=lambda candidate: balance_score(candidate.source))
 

@@ -36,7 +36,7 @@ LANGUAGE = LanguageDeclaration(
         category="other",
         eof="an exhausted '@' hands its argument v, the spec's branch",
         empty_program="an Unlambda program cannot be empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

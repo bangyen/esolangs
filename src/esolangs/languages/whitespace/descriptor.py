@@ -35,6 +35,6 @@ LANGUAGE = LanguageDeclaration(
         category="stack_based",
         machine_preparation="prepare_machine",
         empty_program="Whitespace program is empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

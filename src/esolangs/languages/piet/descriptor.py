@@ -42,7 +42,7 @@ LANGUAGE = LanguageDeclaration(
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
         eof="an exhausted input command is ignored, as the spec requires",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="the committed example is drawn at 80 pixels per codel; "

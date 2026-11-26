@@ -36,7 +36,7 @@ LANGUAGE = LanguageDeclaration(
         category="other",
         eof="the stream past the input string is 0 bits",
         empty_program="a Hot program needs at least one combinator",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(input_shape="char_stream"),
 )

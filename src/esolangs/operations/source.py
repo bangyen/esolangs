@@ -2,7 +2,7 @@
 
 from os import PathLike
 
-from esolangs.artifacts import ProgramArtifact
+from esolangs.artifacts import ProgramArtifact, bind_catalog
 from esolangs.exceptions import EsolangError, ProgramError
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._artifact_source import read_source_artifact
@@ -43,7 +43,7 @@ def from_source(
     retained = effective_settings(name, source, settings, catalog=catalog)
     artifact = ProgramArtifact(source, name, settings=retained)
     source_for(name, artifact.source, catalog=catalog, preserve_compression=True)
-    return artifact
+    return bind_catalog(artifact, catalog)
 
 
 def from_file(
@@ -81,7 +81,7 @@ def from_file(
         raise
     except OSError as error:
         raise source_read_error("the program", error) from error
-    return read_source_artifact(
+    artifact = read_source_artifact(
         name,
         source,
         settings=settings,
@@ -89,3 +89,4 @@ def from_file(
         normalize=normalize,
         preserve_compression=True,
     )
+    return bind_catalog(artifact, catalog)

@@ -39,7 +39,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         source_policy=LineSourcePolicy(),
         empty_program="Clockwise program cannot be empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         frame_stdin=True,

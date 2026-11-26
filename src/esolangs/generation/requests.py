@@ -1,11 +1,14 @@
 """Typed requests crossing the generator/backend boundary."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from esolangs._dialect import Scalar
 from esolangs.compressed import CompressedText, _freeze_compressed
 from esolangs.exceptions import ArgumentError, EsolangError, ProgramError
+from esolangs.generation.algebraic import AffineForm, affine_form
+from esolangs.generation.helpers import _validate_truth_table, check_table_text
+from esolangs.generation.projection import essential_inputs
 from esolangs.generation.template import TemplateLayout
 from esolangs.raster import Raster
 from esolangs.runtime._program import Program
@@ -53,6 +56,28 @@ class Options:
 
 
 @dataclass(frozen=True, slots=True)
+class TruthTable:
+    """Validated output bits in row order and their input arity."""
+
+    bits: str
+    arity: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Freeze validated output bits and their arity."""
+        bits = check_table_text(self.bits)
+        object.__setattr__(self, "bits", bits)
+        object.__setattr__(self, "arity", _validate_truth_table(bits))
+
+    def essential_inputs(self) -> list[int]:
+        """Return the positions that can change the output."""
+        return essential_inputs(self.bits, self.arity)
+
+    def affine(self) -> AffineForm | None:
+        """Return the affine form in input order when one exists."""
+        return affine_form(self.bits, self.arity)
+
+
+@dataclass(frozen=True, slots=True)
 class GenerationRequest:
     """A validated table, layout request and complete dialect choices."""
 
@@ -60,6 +85,13 @@ class GenerationRequest:
     width: int | None = None
     options: Options = Options()
     balance: bool = False
+    truth_table: TruthTable = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        """Expose the same validated bits to text-based backends."""
+        value = TruthTable(self.table)
+        object.__setattr__(self, "table", value.bits)
+        object.__setattr__(self, "truth_table", value)
 
     def __repr__(self) -> str:
         """Represent the request even when its integer width exceeds the digit cap."""

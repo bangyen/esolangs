@@ -39,7 +39,7 @@ LANGUAGE = LanguageDeclaration(
         source_policy=LineSourcePolicy(),
         eof="an exhausted '◇' sends the spec's empty transfer",
         empty_program="thisthat needs at least one start node",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

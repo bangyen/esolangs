@@ -9,6 +9,8 @@ from esolangs.registry._language import (
 )
 from esolangs.runtime._definition import RuntimeSpec, TextSourcePolicy
 
+PAIR = ("a", "b")
+
 
 def _backend() -> BackendDefinition:
     from esolangs.generation.requests import BalanceRequest, GenerationRequest
@@ -27,7 +29,7 @@ def _backend() -> BackendDefinition:
         balance=OperationRef[BalanceRequest, TemplateLayout](
             "esolangs.languages.slashes.generator", "slashes_balance_request"
         ),
-        template=TemplateSpec(pair=("a", "b")),
+        template=TemplateSpec(pair=PAIR),
     )
 
 
@@ -41,7 +43,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="program_based",
         source_policy=TextSourcePolicy(),
-    ),
+    ).with_native_plan(),
     id="slashes",
     aliases=("Slashalash",),
     backend=DeferredBackend(_backend),

@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="other",
         empty_program="Object disoriented program defines no 'main' class",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

@@ -41,7 +41,7 @@ LANGUAGE = LanguageDeclaration(
         category="grid_based",
         machine_preparation="prepare_machine",
         capabilities=CAPABILITIES,
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_mode="dump",

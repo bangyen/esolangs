@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="stack_based",
         eof="a read at EOF halts the run",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(input_shape="char_stream"),
 )

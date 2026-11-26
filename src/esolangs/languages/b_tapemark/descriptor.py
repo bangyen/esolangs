@@ -48,7 +48,7 @@ LANGUAGE = LanguageDeclaration(
             "B-tapemark", {"swap_marker": SWAP_MARKERS}, {"swap_marker": "new"}
         ),
         empty_program="B-tapemark program needs exactly one start marker",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

@@ -38,9 +38,10 @@ from esolangs.generation.template import (
     TemplateToken,
     layout_fragments,
 )
+from esolangs.languages.stisp.descriptor import PAIR
 
 #: Each input is one atom, ``0`` or ``1``, inside its frame.
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, PAIR)
 #: The drain: under a leaf every remaining frame rewrites to the leaf.
 _DRAIN = "c->s[x]=c;"
 #: Native list-head selectors precede the variable-head drain.

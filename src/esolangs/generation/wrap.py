@@ -167,7 +167,7 @@ def wrap_character_slots(layout: TemplateLayout, width: int) -> TemplateLayout:
         for start, _ in layout.spans
         for offset in (start + start // width,)
     )
-    return TemplateLayout(wrap_chars(layout.source, width), spans)
+    return TemplateLayout(wrap_chars(layout.source, width), spans, layout.setters)
 
 
 def balance_character_slots(layout: TemplateLayout) -> TemplateLayout:

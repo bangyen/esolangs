@@ -36,7 +36,7 @@ LANGUAGE = LanguageDeclaration(
         category="stack_based",
         # Every run pushes its input bit, and the spec's EOF bit is ``=``.
         eof="an exhausted read pushes the spec's '=' bit",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

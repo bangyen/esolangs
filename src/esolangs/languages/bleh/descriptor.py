@@ -39,7 +39,7 @@ LANGUAGE = LanguageDeclaration(
         eof="an exhausted io::next() is the empty bitstring",
         underfed_raises=True,
         empty_program="a Bleh program needs a main function",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(input_shape="char_stream"),
 )

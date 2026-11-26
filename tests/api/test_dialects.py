@@ -467,6 +467,20 @@ def test_scoped_runtime_defaults_reach_native_and_prepared_execution() -> None:
         assert calls == ["forward"]
 
 
+def test_preparation_plan_owns_native_defaults_and_fresh_machine_state() -> None:
+    from dataclasses import replace
+
+    name = one_where(lambda info: "rotation" in info.dialect_settings)[0]
+    declaration = LANGUAGES[name]
+    runtime = replace(declaration.runtime, completion_entrypoint=None)
+    scope = esolangs.Catalog([replace(declaration, runtime=runtime)]).bind(name)
+    settings = scope.settings(rotation="forward")
+    prepared = scope.prepare("+,", settings=settings)
+    for _ in range(2):
+        assert prepared.run().output == complete_vm(prepared.make_vm()) == "\x01"
+    assert scope.run("+,", settings=settings).output == "\x01"
+
+
 def test_custom_runtime_defaults_follow_declared_runner_keywords(monkeypatch) -> None:
     from dataclasses import replace
 

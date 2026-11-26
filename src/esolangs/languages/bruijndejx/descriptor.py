@@ -36,7 +36,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         eof="? continues with its third argument",
         empty_program="a program needs a declaration to run",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

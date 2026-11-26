@@ -131,7 +131,6 @@ def test_native_prepared_runs_apply_the_declared_hooks(monkeypatch, hook) -> Non
     from esolangs.runtime._execution import interpreter_module
     from esolangs.runtime._lifecycle import HALTED_REPORT
     from esolangs.runtime._machine import RuntimePlan
-    from esolangs.runtime._prepared import _installed_plan_hooks
 
     api = esolangs.Language(REFERENCE)
     declaration = api.catalog.languages[api.name]
@@ -163,11 +162,7 @@ def test_native_prepared_runs_apply_the_declared_hooks(monkeypatch, hook) -> Non
         == "A"
     )
     monkeypatch.setattr(_table, "CATALOG", catalog)
-    _installed_plan_hooks.cache_clear()
-    try:
-        assert esolangs.prepare(api.name, artifact).run(stdin="A") == result
-    finally:
-        _installed_plan_hooks.cache_clear()
+    assert esolangs.prepare(api.name, artifact).run(stdin="A") == result
 
 
 def test_preparation_requires_a_callable_factory(monkeypatch) -> None:

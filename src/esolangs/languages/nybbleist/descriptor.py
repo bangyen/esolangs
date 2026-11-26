@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=MachineCapabilities(
             debug=DebugSpec(ip="ip", ip_shape="opaque", memory="memory", stack="stack"),
         ),
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

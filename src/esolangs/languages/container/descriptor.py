@@ -37,7 +37,7 @@ LANGUAGE = LanguageDeclaration(
         source_policy=LineSourcePolicy(),
         # Wiki: the empty container sets IN "with EOF returning 0".
         eof="an exhausted read sets IN to the spec's 0",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="Container prints the answer; module.run returns the EXIT code.",

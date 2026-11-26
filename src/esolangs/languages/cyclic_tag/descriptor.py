@@ -41,7 +41,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="queue_based",
         empty_program="Cyclic tag requires productions,queue using bits and semicolons",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="Inputs fill the initial queue; the final deleted bit is the answer.",

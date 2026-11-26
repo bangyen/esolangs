@@ -28,8 +28,9 @@ from esolangs.generation.template import (
     TemplateLayout,
     layout_fragments,
 )
+from esolangs.languages.cyclic_tag.descriptor import PAIR
 
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, PAIR)
 
 
 def cyclic_tag(truth_table: str) -> str:

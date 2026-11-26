@@ -35,6 +35,6 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="stack_based",
         empty_program="Shakespeare line 1: empty play",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

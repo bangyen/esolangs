@@ -48,8 +48,8 @@ BITDEQUE_PAIR = ("PUSH INVERT", "INVERT PUSH")
 _BITDEQUE_SHORT_PAIR = ("POP  ", "EJECT")
 _PRELUDE_LEN = 5
 #: One setter run: a token of template text, two commands once filled.
-_SETTER = InputSlot(len(BITDEQUE_PAIR[0]))
-_SHORT_SETTER = InputSlot(5)
+_SETTER = InputSlot(len(BITDEQUE_PAIR[0]), BITDEQUE_PAIR)
+_SHORT_SETTER = InputSlot(5, _BITDEQUE_SHORT_PAIR)
 _SHORT_BLOCK = 15
 
 

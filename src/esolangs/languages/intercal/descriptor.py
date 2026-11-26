@@ -50,7 +50,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         random=True,
         empty_program="INTERCAL program is insufficiently or excessively polite (E099)",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         answer_pattern=r"(?s)^(_\n|I)\n$",

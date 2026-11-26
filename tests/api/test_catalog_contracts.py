@@ -572,7 +572,7 @@ def test_template_with_an_unregistered_owner_raises_template_error() -> None:
     document = scoped.to_json(template)
     restored = scoped.from_json(document)
     assert restored == template
-    assert scoped.evaluate(restored, [1]).answer == "1"
+    assert restored.evaluate([1]).answer == "1"
     receiver = esolangs.Catalog([replace(local, backend=None)]).bind(local.name)
     expected = r"Private\x1b[2J\ntemplate does not support input templates"
     for transfer, prefix in (
@@ -589,8 +589,11 @@ def test_program_artifact_evaluation_can_select_a_scoped_contract() -> None:
     swapped = replace(original.contract, answer_values=("1", "0"))
     scoped = esolangs.Catalog([replace(original, contract=swapped)]).bind(REFERENCE)
     program = scoped.generate("01")
-    assert program.evaluate([1]).answer == "1"
-    result = program.evaluate([1], catalog=scoped.catalog)
+    assert (
+        program.evaluate([1], catalog=esolangs.Language(REFERENCE).catalog).answer
+        == "1"
+    )
+    result = program.evaluate([1])
     assert result == scoped.evaluate(program, [1])
     assert result.answer == "0"
 

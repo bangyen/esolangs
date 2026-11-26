@@ -38,8 +38,9 @@ from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.moar_cheese_3.descriptor import PAIR
 
-_SLOT = InputSlot(1)
+_SLOT = InputSlot(1, PAIR)
 #: Names the doubling dequeues may use: none of the fixed ones, ``$`` or
 #: a parenthesis.
 _POOL = [
@@ -152,5 +153,5 @@ def moar_cheese_3_balance_request(request: BalanceRequest) -> TemplateLayout:
         for a, b in zip([-1, *breaks], [*breaks, len(source)], strict=True)
     ]
     width = balanced_token_width(words, " ")
-    folded = TemplateLayout(_fold(source, breaks, width), layout.spans)
+    folded = TemplateLayout(_fold(source, breaks, width), layout.spans, layout.setters)
     return min(layout, folded, key=lambda candidate: balance_score(candidate.source))

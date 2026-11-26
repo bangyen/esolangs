@@ -38,6 +38,6 @@ LANGUAGE = LanguageDeclaration(
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
 )

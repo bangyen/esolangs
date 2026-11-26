@@ -85,7 +85,8 @@ Bound a run with `limits=esolangs.ExecutionLimits(...)`:
 The row includes an execution observation and, for termination answers,
 a halt or divergence proof. A deadline raises `ExecutionTimeoutError`; `max_steps`, `max_output` or `max_memory` raises `ExecutionCapError`. Both are `ExecutionBudgetError`s.
 Generated artifacts expose `.source` and templates expose `.fill(bits)`.
-For a custom catalog, use `Language.evaluate(artifact, bits)`.
+Artifacts generated or loaded through a custom catalog use that catalog for
+`.evaluate(bits)`. Portable JSON takes its catalog from the loader.
 The [2.0 migration guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#compatibility) covers the changed return
 types and migrating 1.x source/output callers.
 

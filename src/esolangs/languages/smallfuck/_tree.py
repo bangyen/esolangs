@@ -17,7 +17,7 @@ from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragm
 
 # Each input cell is fresh; zero needs no clear and one needs one flip.
 PAIR = ("x>>>", "*>>>")
-_INPUT = InputSlot(len(PAIR[0]))
+_INPUT = InputSlot(len(PAIR[0]), PAIR)
 
 
 #: Five-level bands leave three top result cells free for Davio coefficients.

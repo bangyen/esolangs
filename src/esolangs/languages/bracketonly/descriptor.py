@@ -40,7 +40,7 @@ LANGUAGE = LanguageDeclaration(
             eof_is_a_value=False,
             debug=DebugSpec(ip="ip", memory="_debug_memory", memory_at="memory_at"),
         ),
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(input_shape="char_stream"),
 )

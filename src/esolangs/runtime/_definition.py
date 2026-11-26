@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 from enum import StrEnum
 from reprlib import recursive_repr
 from types import FunctionType
@@ -115,6 +115,16 @@ def _check_validator_defaults(
             )
 
 
+@dataclass(frozen=True, slots=True)
+class _NativePlan:
+    """The execution hooks and schema supported by the same prepared source."""
+
+    interpreter: str | None
+    prepare: str
+    execute: str
+    schema: DialectSchema | None
+
+
 @dataclass(frozen=True)
 class RuntimeSpec:
     """Interpreter, source representation and language-defined runtime choices."""
@@ -135,13 +145,39 @@ class RuntimeSpec:
     #: Error raised when the specification rejects an empty program.
     empty_program: str = ""
     category: str = "other"
-    #: Native entry point returning a CompletionReport.
-    completion_entrypoint: str = field(kw_only=True)
+    #: Optional standalone runner for runtimes with separate legacy hooks.
+    completion_entrypoint: str | None = field(default=None, kw_only=True)
     #: Typed preparation hook in the interpreter module.
     machine_preparation: str = field(kw_only=True)
 
     #: Explicit machine traits and optional debug surface.
     capabilities: MachineCapabilities = field(kw_only=True)
+
+    native_plan: _NativePlan | None = field(default=None, kw_only=True, repr=False)
+
+    def with_native_plan(self) -> RuntimeSpec:
+        """Declare that preparation also implements this standalone runner."""
+        if self.completion_entrypoint is None:
+            raise ValueError("a paired plan needs a standalone runner")
+        return replace(
+            self,
+            native_plan=_NativePlan(
+                self.interpreter,
+                self.machine_preparation,
+                self.completion_entrypoint,
+                self.dialect_schema,
+            ),
+        )
+
+    @property
+    def uses_native_plan(self) -> bool:
+        """Whether the original pair of execution hooks is still selected."""
+        plan = self.native_plan
+        return plan is not None and (
+            plan.interpreter == self.interpreter
+            and plan.prepare == self.machine_preparation
+            and plan.execute == self.completion_entrypoint
+        )
 
     @recursive_repr()
     def __repr__(self) -> str:
@@ -163,6 +199,8 @@ class RuntimeSpec:
             raise TypeError("runtime capabilities must be declared")
         for name in ("machine_preparation", "completion_entrypoint"):
             value = getattr(self, name)
+            if name == "completion_entrypoint" and value is None:
+                continue
             if (
                 not issubclass(type(value), str)
                 or not (identifier := str.__str__(value)).isidentifier()

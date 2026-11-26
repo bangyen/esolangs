@@ -40,7 +40,7 @@ LANGUAGE = LanguageDeclaration(
         # how its generated programs terminate at all.
         eof="reads to exhaustion, so EOF is the halt",
         empty_program="Suffolk program cannot be empty",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         frame_stdin=True,

@@ -30,11 +30,11 @@ from esolangs.generation.template import (
 #: Stage the bit on the tree stack (``0`` or backtick), ``=`` moves it to the
 #: input stack. Each slot has the same width as the bit instruction.
 PAIR = ("0=", "`=")
-_EVAL_INPUT = InputSlot(len(PAIR[0]))
+_EVAL_INPUT = InputSlot(len(PAIR[0]), PAIR)
 
 #: The two-stack build stages each bit on both stacks (``^`` copies it).
 DUAL_PAIR = ("0^=", "`^=")
-_DUAL_INPUT = InputSlot(len(DUAL_PAIR[0]))
+_DUAL_INPUT = InputSlot(len(DUAL_PAIR[0]), DUAL_PAIR)
 _DUAL_SELECT = "~;~?~"
 
 
@@ -54,7 +54,7 @@ def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
     if truth_table.count(truth_table[0]) == len(truth_table):
         answer = "0." if truth_table[0] == "0" else "`."
-        return layout_fragments((*(InputSlot(1),) * n, answer))
+        return layout_fragments((*(InputSlot(1, ("0", "`")),) * n, answer))
     table = permute_truth_table(truth_table, tuple(reversed(range(n))))
     used = essential_inputs(table, n)
     # With carried orientation, the two-stack saving is R/2-runs-2n-1.

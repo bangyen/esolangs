@@ -42,7 +42,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="register_based",
         empty_program="a Blindfolded Arithmetic program needs at least one instruction",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="row_number",

@@ -55,7 +55,7 @@ def test_scaffold_creates_source_generator_and_tests() -> None:
     assert second.snapshot() == retained
     assert second_io.getvalue() == ""
     native_io = ScriptedIO()
-    report = implementation[runtime.completion_entrypoint]("+.", native_io)
+    report = factory.run(native_io)
     assert runtime.capabilities.accepts_native(report.kind)
     assert native_io.getvalue() == first_io.getvalue()
     assert new_language.PLACEHOLDER in stub

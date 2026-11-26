@@ -39,7 +39,7 @@ LANGUAGE = LanguageDeclaration(
         source_policy=LineSourcePolicy(),
         eof="reads at input nodes, including the constant skip chain",
         empty_program="Flowchart program has no '( )' start node",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

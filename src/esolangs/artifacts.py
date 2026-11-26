@@ -111,8 +111,19 @@ def _restore_artifact_slots(artifact: Artifact, state: list[object]) -> None:
         object.__setattr__(artifact, item.name, value)
 
 
+class _CatalogOwner:
+    """Live evaluation scope. Portable and pickle records carry source data only."""
+
+    __slots__ = ("_catalog",)
+
+    def _evaluation_catalog(
+        self, catalog: esolangs.Catalog | None
+    ) -> esolangs.Catalog | None:
+        return catalog if catalog is not None else getattr(self, "_catalog", None)
+
+
 @dataclass(frozen=True, slots=True)
-class ProgramArtifact[Source: Program]:
+class ProgramArtifact[Source: Program](_CatalogOwner):
     """Runnable source with its language and retained dialect choices."""
 
     source: Source
@@ -167,10 +178,12 @@ class ProgramArtifact[Source: Program]:
         limits: ExecutionLimits | None = None,
         catalog: esolangs.Catalog | None = None,
     ) -> BooleanEvaluation:
-        """Run a Boolean row in the supplied or installed catalog."""
+        """Run a Boolean row in its owning catalog or an explicit override."""
         from esolangs.operations.evaluation import evaluate_artifact
 
-        return evaluate_artifact(self, bits, limits=limits, catalog=catalog)
+        return evaluate_artifact(
+            self, bits, limits=limits, catalog=self._evaluation_catalog(catalog)
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,7 +251,7 @@ def _freeze_span(span: tuple[int, int]) -> tuple[int, int]:
 
 
 @dataclass(frozen=True, slots=True)
-class TemplateArtifact:
+class TemplateArtifact(_CatalogOwner):
     """Text with explicit input bindings; never runnable source.
 
     The generation width, when present, identifies the layout to check.
@@ -316,10 +329,12 @@ class TemplateArtifact:
         limits: ExecutionLimits | None = None,
         catalog: esolangs.Catalog | None = None,
     ) -> BooleanEvaluation:
-        """Run a Boolean row in the supplied or installed catalog."""
+        """Run a Boolean row in its owning catalog or an explicit override."""
         from esolangs.operations.evaluation import evaluate_artifact
 
-        return evaluate_artifact(self, bits, limits=limits, catalog=catalog)
+        return evaluate_artifact(
+            self, bits, limits=limits, catalog=self._evaluation_catalog(catalog)
+        )
 
     def fill(self, bits: list[int] | tuple[int, ...]) -> ProgramArtifact[str]:
         """Bind inputs without rescanning the immutable template's runs.
@@ -330,11 +345,19 @@ class TemplateArtifact:
         inputs = len(self.bindings.setters)
         bits = check_bits(bits, "bits", allow_empty=inputs == 0)
         check_bit_count(bits, inputs, f"{self.language} template")
-        return ProgramArtifact(
+        filled = ProgramArtifact(
             fill_spans(self.source, self.bindings.setters, bits, self.spans),
             self.language,
             settings=self.settings,
         )
+        catalog = self._evaluation_catalog(None)
+        return filled if catalog is None else bind_catalog(filled, catalog)
 
 
 type Artifact = ProgramArtifact[Program] | TemplateArtifact
+
+
+def bind_catalog[T: _CatalogOwner](artifact: T, catalog: esolangs.Catalog) -> T:
+    """Attach the live catalog to a freshly constructed artifact."""
+    object.__setattr__(artifact, "_catalog", catalog)
+    return artifact

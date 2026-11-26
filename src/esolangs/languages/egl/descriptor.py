@@ -38,7 +38,7 @@ LANGUAGE = LanguageDeclaration(
         capabilities=CAPABILITIES,
         category="grid_based",
         empty_program="EGL program must begin with 'width,height:'",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

@@ -33,10 +33,11 @@ from esolangs.generation.template import (
     TemplateToken,
     layout_fragments,
 )
+from esolangs.languages.home_row.descriptor import HOME_ROW_PAIR
 
 __all__ = ["home_row"]
 
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, HOME_ROW_PAIR)
 
 
 _CONSTANT_SETUP = "aaaaaalsfaaaaaaaaffffl"

@@ -46,7 +46,7 @@ LANGUAGE = LanguageDeclaration(
             {"guard_binding": DEFAULT_GUARD_BINDING},
         ),
         machine_preparation="prepare_machine",
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         input_shape="char_stream",

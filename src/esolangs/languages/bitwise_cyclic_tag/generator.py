@@ -28,8 +28,9 @@ from esolangs.generation.template import (
     TemplateLayout,
     layout_fragments,
 )
+from esolangs.languages.bitwise_cyclic_tag.descriptor import PAIR
 
-_INPUT = InputSlot(1)
+_INPUT = InputSlot(1, PAIR)
 
 #: The constant bit held behind the inputs, read after every walk zero.
 _SENTINEL = "1"

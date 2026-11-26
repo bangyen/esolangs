@@ -51,7 +51,7 @@ LANGUAGE = LanguageDeclaration(
         machine_preparation="prepare_machine",
         completion_entrypoint="_execute",
         capabilities=CAPABILITIES,
-    ),
+    ).with_native_plan(),
     backend=DeferredBackend(_backend),
     contract=BooleanContract(
         note="Smallfuck defines no I/O; this implementation prints final cell 2",
