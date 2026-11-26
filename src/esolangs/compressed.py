@@ -18,8 +18,8 @@ from esolangs.runtime._files import (
     StreamReadTimeoutError,
     _time_remaining,
     destination_path,
-    write_staged,
 )
+from esolangs.runtime._publish import write_staged
 from esolangs.runtime._validate import _argument_repr, _has_backing_type, check_width
 from esolangs.runtime.memory import repr_value
 from esolangs.runtime.source_hints import display_label, syntax_error

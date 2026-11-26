@@ -21,7 +21,7 @@ from esolangs.languages.alight.interpreter._parse import (
 from esolangs.runtime._state import WorkspaceVariant
 
 if TYPE_CHECKING:
-    from esolangs.languages.alight.interpreter._machine import _Walker
+    from esolangs.languages.alight.interpreter._walker import _Walker
 
 
 class _Graph:

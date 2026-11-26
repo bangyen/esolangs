@@ -19,7 +19,8 @@ from esolangs.exceptions import (
 from esolangs.raster import Raster, png
 from esolangs.registry._catalog import Catalog
 from esolangs.runtime._definition import SourceKind
-from esolangs.runtime._files import destination_path, reserve_staged
+from esolangs.runtime._files import destination_path
+from esolangs.runtime._publish import reserve_staged
 from esolangs.runtime._source import (
     ProgramSource,
     anchor_program_source,

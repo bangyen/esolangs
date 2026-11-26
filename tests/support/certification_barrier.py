@@ -51,7 +51,7 @@ def guarded_worker(*, expected: int = 1) -> Iterator[None]:
     def guarded(command: list[str], **kwargs: Any) -> subprocess.Popen[str]:
         assert command[1:3] == ["-P", "-c"], command
         assert command[-1].endswith(
-            "from esolangs.runtime._isolated import _worker; "
+            "from esolangs.runtime._worker_main import _worker; "
             f"sys.setrecursionlimit({getrecursionlimit()}); _worker()"
         )
         launched.append(command)

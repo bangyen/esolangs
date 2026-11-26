@@ -20,6 +20,7 @@ from esolangs.runtime._proof import CycleDecision
 from esolangs.runtime._request_wire import encode_request
 from esolangs.runtime._result_wire import decode_result, encode_decision, encode_result
 from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
+from esolangs.runtime._worker_main import _worker
 from esolangs.vm import make_vm
 from tests.support.execution import run_observed
 from tests.support.reference import REFERENCE
@@ -648,7 +649,6 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
     import sys
 
     from esolangs.registry import SourceKind
-    from esolangs.runtime import _isolated
 
     _check_request_serialization(monkeypatch)
     _check_raster_acquisition_deadline(monkeypatch)
@@ -656,7 +656,7 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
     def serve(value):
         document = json.dumps(value) if isinstance(value, dict) else value
         monkeypatch.setattr(sys, "stdin", io.StringIO(document))
-        _isolated._worker()
+        _worker()
         return json.loads(capsys.readouterr().out.splitlines()[-1])["result"]
 
     request = encode_request(REFERENCE, "", "")
@@ -684,7 +684,7 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
     empty = encode_request(REFERENCE, esolangs.CompressedText.from_chunks(("",)), "")
     assert serve(empty) == ""
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({**empty, "program": ""})))
-    _isolated._worker()
+    _worker()
     reply = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert reply["error"] == "ProgramError"
     assert reply["execution"] is None

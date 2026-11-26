@@ -13,13 +13,14 @@ from esolangs.debugger import make_vm
 from esolangs.generation.anf import anf_coefficients
 from esolangs.generation.helpers import in_input_order
 from esolangs.generation.lookup import constant_output
+from esolangs.languages.smallfuck import _tree
 from esolangs.languages.smallfuck import generator as boolean
+from esolangs.languages.smallfuck._tree import _smallfuck_tree
 from esolangs.languages.smallfuck.generator import (
     BAND,
     PAIR,
     _paired_roots,
     _smallfuck_ordered,
-    _smallfuck_tree,
     smallfuck,
 )
 from esolangs.languages.smallfuck.interpreter import run
@@ -360,14 +361,15 @@ def test_davio_weights_use_spare_band_cells(
     for row in range(0, 1 << n, max(1, (1 << n) // 16)):
         assert run_filled(run, template, [PAIR] * n, row, n) == table[row]
 
-    assert boolean.anf_coefficients is anf_coefficients
-    assert boolean.constant_output is constant_output
-    for name, broken, table, row, expected in (
-        ("anf_coefficients", lambda _: (0,) * 4, "0001", 3, "1"),
-        ("constant_output", lambda _: "1", "00000010", 0, "0"),
+    assert _tree.anf_coefficients is anf_coefficients
+    assert _tree.constant_output is boolean.constant_output is constant_output
+    for modules, name, broken, table, row, expected in (
+        ((_tree,), "anf_coefficients", lambda _: (0,) * 4, "0001", 3, "1"),
+        ((_tree, boolean), "constant_output", lambda _: "1", "00000010", 0, "0"),
     ):
         with monkeypatch.context() as fault:
-            fault.setattr(boolean, name, broken)
+            for module in modules:
+                fault.setattr(module, name, broken)
             n = len(table).bit_length() - 1
             assert run_filled(run, smallfuck(table), [PAIR] * n, row, n) != expected
 

@@ -20,7 +20,7 @@ from esolangs.generation.template import InputSlot, TemplateLayout, layout_token
 from esolangs.generation.wrap import TokenWrapper, wrap_chars
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.registry._backend import BooleanBackend, TemplateSpec
-from esolangs.runtime._files import _ANCHORED_STAGING
+from esolangs.runtime._publish import _ANCHORED_STAGING
 from tests.support.evaluation import _evaluate
 from tests.support.pick import languages, one, one_where
 from tests.support.reference import REFERENCE

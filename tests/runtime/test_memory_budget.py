@@ -8,9 +8,9 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
-from esolangs.runtime import _isolated
-from esolangs.runtime._isolated import _worker
+from esolangs.runtime import _worker_main
 from esolangs.runtime._request_wire import encode_request
+from esolangs.runtime._worker_main import _worker
 from tests.support.cli_support import call_both
 from tests.support.reference import REFERENCE
 from tests.support.vm_support import _BUDGET, _LINUX
@@ -48,7 +48,7 @@ def test_worker_memory_failure_retains_protocol(
     def reject(_limit: int) -> None:
         raise error("limit unavailable")
 
-    monkeypatch.setattr(_isolated, "_limit_memory", reject)
+    monkeypatch.setattr(_worker_main, "_limit_memory", reject)
     monkeypatch.setattr(
         sys,
         "stdin",
@@ -87,7 +87,7 @@ def test_memory_ceiling_preserves_inherited_hard_limit(
 ) -> None:
     from types import SimpleNamespace
 
-    from esolangs.runtime._isolated import _limit_memory
+    from esolangs.runtime._worker_main import _limit_memory
 
     calls = []
     resource = SimpleNamespace(
@@ -131,7 +131,7 @@ def test_worker_retains_the_uncapped_memory_failure_evidence(
 
 def test_successful_worker_budget_retains_output_protocol(monkeypatch, capsys) -> None:
     calls = []
-    monkeypatch.setattr(_isolated, "_limit_memory", calls.append)
+    monkeypatch.setattr(_worker_main, "_limit_memory", calls.append)
     request = encode_request(REFERENCE, "+.", "", max_memory=_BUDGET, max_steps=2)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(request)))
     _worker()

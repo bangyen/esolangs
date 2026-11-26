@@ -17,11 +17,11 @@ import pytest
 import esolangs
 import esolangs.operations.execution as _execution_operations
 from esolangs.results import ExecutionResult
-from esolangs.runtime._isolated import _worker
 from esolangs.runtime._json import worker_dumps, worker_object
 from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._request_wire import encode_request
 from esolangs.runtime._result_wire import encode_result
+from esolangs.runtime._worker_main import _worker
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
 from tests.support.reference import REFERENCE

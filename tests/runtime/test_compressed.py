@@ -11,8 +11,9 @@ import pytest
 
 import esolangs
 from esolangs.compressed import CompressedText
-from esolangs.runtime import _files
-from esolangs.runtime._files import explicit_path, write_staged
+from esolangs.runtime import _files, _publish
+from esolangs.runtime._files import explicit_path
+from esolangs.runtime._publish import write_staged
 from esolangs.runtime._source import text_source
 from scripts.source_units import source_units
 from tests.support.reference import REFERENCE
@@ -93,8 +94,8 @@ def test_compressed_writers_publish_only_after_success(
             assert file.read() == program.to_gzip()
         raise PermissionError("replacement refused")
 
-    for anchored in dict.fromkeys((_files._ANCHORED_STAGING, False)):
-        monkeypatch.setattr(_files, "_ANCHORED_STAGING", anchored)
+    for anchored in dict.fromkeys((_publish._ANCHORED_STAGING, False)):
+        monkeypatch.setattr(_publish, "_ANCHORED_STAGING", anchored)
         destination.write_bytes(b"existing file")
         with monkeypatch.context() as patch:
             patch.setattr(os, "replace", refuse_replace)
