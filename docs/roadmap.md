@@ -108,11 +108,14 @@ evidence, not optimization tasks.
     368 independently selectable bits, all 64 banks reached their
     2,048-bit target with the control cells from both traces reserved.
     The decoder still addressed 1,745 row positions outside that writable
-    set. Reassigning 4,160 spill rows reduced that count to 1,648. The
-    two tables answered 130,317 and 130,302 rows correctly. A separate
-    layout reached two previously unused low address values. Counting
-    only reached low values reduced the shortfall from 317 bits to 94,
-    but left 1,795 rows outside independently writable storage.
+    set. Reassigning 4,160 spill rows reduced that count to 1,648.
+    A second layout moved 4,608 spill rows and reached two previously
+    unused low address values. Its navigation could read 57 words with
+    any of their eight labels, freeing 159 row positions. After assigning
+    marker bits across all banks, 1,604 positions still lacked independent
+    storage. With capacity counted only at reached low address values,
+    the two layouts fell 317 and 85 bits short, respectively. The second
+    answered 130,360 and 130,336 of 131,072 rows correctly.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
