@@ -41,6 +41,7 @@ from string import ascii_letters
 
 from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import _validate_truth_table
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -74,8 +75,8 @@ def _name(index: int) -> str:
 def smu(truth_table: str) -> str:
     """Return a Smu program printing ``truth_table``'s row for its input bytes."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
-        bit = int(truth_table[0])
+    if (digit_value := constant_output(truth_table)) is not None:
+        bit = int(digit_value)
         delimiter = _DELIMS["W"] if n > 5 else ""
         close = "W" if n > 5 else ")m"
         return (

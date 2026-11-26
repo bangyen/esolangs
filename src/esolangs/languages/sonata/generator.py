@@ -33,7 +33,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.lookup import constant_output, symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -68,14 +68,14 @@ def _name(k: int) -> str:
 def sonata(truth_table: str) -> str:
     """Build a Sonata program whose final string ends in ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         if n >= _MASK_FROM:
-            return _masked_program(n, [], truth_table[0])
+            return _masked_program(n, [], bit)
         # Only n=2 can match the two-character result again: guard its first bit.
         if n == 2:
-            return "".join(f"{bit}^a->={truth_table[0]}\n" for bit in "01")
+            return "".join(f"{guard}^a->={bit}\n" for guard in "01")
         bits = "".join("^" + _name(k) for k in range(n))
-        return f"{bits}->={truth_table[0]}\n"
+        return f"{bits}->={bit}\n"
     essential = essential_inputs(truth_table, n)
     table = read_at(truth_table, essential, n)
     if n >= _MASK_FROM:

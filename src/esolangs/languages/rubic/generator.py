@@ -30,6 +30,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -48,7 +49,7 @@ _TABLE: dict[str, tuple[str, ...]] = {
 def rubic(truth_table: str) -> str:
     """Build a Rubic program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         # One backwards pass executes all reads; read values cannot change its count.
         return " ".join(
             [
@@ -56,7 +57,7 @@ def rubic(truth_table: str) -> str:
                 *_TABLE["read"][:3],
                 *["!"] * n,
                 ")",
-                *_TABLE["print" + truth_table[0]],
+                *_TABLE["print" + bit],
             ]
         )
     ids = subtree_ids(truth_table)

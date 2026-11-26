@@ -24,7 +24,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
-from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.lookup import constant_output, symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -50,11 +50,11 @@ _READ_BASE = 17  # input i is read at ``_READ_BASE + i``
 def decleq(truth_table: str) -> str:
     """Return a Decleq program for a binary, MSB-first ``2**n`` truth table."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         digit, scratch, zero, end = 3 * n + 6, 3 * n + 7, 3 * n + 8, 3 * n + 9
         cells = [v for i in range(n) for v in (-1, scratch, 3 * i + 3)]
         # Full triples keep I/O fall-through and jump-to-c readings identical.
-        cells += [-2, digit, 3 * n + 3, zero, zero, end, 48 + int(truth_table[0]), 0, 0]
+        cells += [-2, digit, 3 * n + 3, zero, zero, end, 48 + int(bit), 0, 0]
         return _finish(cells, digit)
     essential = essential_inputs(truth_table, n)
     # Routing only essential inputs drops ignored levels. All inputs are read;

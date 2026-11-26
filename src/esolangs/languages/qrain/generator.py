@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     in_input_order,
     move_text,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import repeated_block, repeated_blocks
 from esolangs.generation.shared_flag import FlagDialect, flag_tree_body
@@ -110,8 +111,8 @@ def _qrain_ordered(table: str, perm: tuple[int, ...]) -> str:
 def qrain(truth_table: str) -> str:
     """Return a Qrain program for an MSB-first truth table."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
-        low = "+" if truth_table[0] == "1" else "++-"
+    if (bit := constant_output(truth_table)) is not None:
+        low = "+" if bit == "1" else "++-"
         return ",>" + "," * (n - 1) + ">" + low + ".<<-."
     return in_input_order(truth_table, _qrain_ordered)
 

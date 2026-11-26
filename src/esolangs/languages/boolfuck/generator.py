@@ -48,7 +48,7 @@ from esolangs.generation.helpers import (
     move_text,
     subtree_ids,
 )
-from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.lookup import constant_output, symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_block import ContinuationCost as _Cost
 from esolangs.generation.shared_flag import flag_tree_body
@@ -379,10 +379,10 @@ def normal_gates(table: str) -> str | None:
 def boolfuck(truth_table: str) -> str:
     """Return a native Boolfuck program for an MSB-first truth table."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         # Eight reads clear each unary counter cell: ASCII digits end with bit zero.
         reads = "+>" * n + "<" * n + "[,,,,,,,,>]" if n >= 3 else "," * (8 * n)
-        flip = "+" if truth_table[0] == "1" else ""
+        flip = "+" if bit == "1" else ""
         return reads + flip + ";" + flip + ";;;+;;+;;"
     programs = [_boolfuck_tree(truth_table)]
     programs.extend(

@@ -55,7 +55,10 @@ def test_public_candidate_computes_every_small_table(n) -> None:
 def test_shared_parity_uses_direct_jumps_at_sixteen_inputs() -> None:
     from tests.generators.generator_sections import named_table
 
-    for query, rule in (("hoisted_tree", "parity"), ("packed_decoder", "random 1847")):
+    for query, rule in (
+        ("hoisted_tree", "parity"),
+        ("_packed_nonconstant", "random 1847"),
+    ):
         assert_analysis_complement(
             "Subleq", query, named_table(10, rule), rows=(0, 1, 1023)
         )

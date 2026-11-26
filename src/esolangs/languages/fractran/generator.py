@@ -24,6 +24,7 @@ from esolangs.generation.fraction_templates import fraction_template, wrap_fract
 from esolangs.generation.helpers import (
     _validate_truth_table,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import TemplateLayout
 from esolangs.generation.token_balance import balanced_token_width
@@ -155,8 +156,8 @@ def fractran(truth_table: str, width: int | None = None) -> str:
 
 def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
-        bit = int(truth_table[0])
+    if (digit_value := constant_output(truth_table)) is not None:
+        bit = int(digit_value)
         inputs = _primes(n + bit)[bit:]
         layout = fraction_template(
             inputs, [f"1/{prime}" for prime in inputs], root="2" if bit else ""

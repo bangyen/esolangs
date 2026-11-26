@@ -208,7 +208,7 @@ def _program(
         # [ablations.constant_table_audit_20261101]: one scratch block, inert tail.
         program = "readto a\n" * n + f"send z\nz;\n{truth_table[0]}\nz;\na;\na;"
     elif len(truth_table) <= 16:
-        program = _inject_ordered(truth_table)
+        program = _inject_ordered(truth_table, n)
     else:
         lookup = input_weights(truth_table, n)
         program = _inject_halving(lookup)
@@ -282,10 +282,8 @@ def _inject_halving(lookup: WeightedLookup) -> str:
     return "\n".join([*lines, *_data(names, projected)])
 
 
-def _inject_ordered(truth_table: str) -> str:
+def _inject_ordered(truth_table: str, n: int) -> str:
     """Emit the input-order Inject program; see :func:`inject`."""
-    n = _validate_truth_table(truth_table)
-
     names = _Names(n)
     body = [f"readto {names.inputs[d]}" for d in range(n)]
     body += _tree(truth_table, 0, n, names)

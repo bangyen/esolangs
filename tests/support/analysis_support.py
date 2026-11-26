@@ -20,7 +20,7 @@ from esolangs.generation.helpers import (
     symmetric_lookup,
 )
 from esolangs.generation.lookup import prefix_counts, symmetric_outputs
-from esolangs.generation.packed_decoder import packed_decoder
+from esolangs.generation.packed_decoder import _packed_nonconstant, packed_decoder
 from esolangs.generation.shared_flag import flag_tree_body
 from esolangs.registry import LANGUAGES
 from esolangs.registry._operations import OperationRef
@@ -50,6 +50,7 @@ def assert_analysis_complement(
         "hoisted_tree": hoisted_tree,
         "_sbleq_hoisted": hoisted_tree,
         "packed_decoder": packed_decoder,
+        "_packed_nonconstant": _packed_nonconstant,
         "affine_form": affine_form,
         "parity_bias": parity_bias,
         "decision_layers": decision_layers,

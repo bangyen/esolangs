@@ -41,7 +41,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.lookup import constant_output, symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.languages.rotfuck.dialect import (
     ROTFUCK_CYCLES,
@@ -375,15 +375,10 @@ def _program(truth_table: str, *, rotation: str = "backward") -> str:
     cycle = ROTFUCK_CYCLES[validate_rotation(rotation)]
     n = _validate_truth_table(truth_table)
 
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         out = _Builder(cycle)
         # Fresh cells hold the counter and ASCII 48=6*8; raw reads share cell zero.
-        text = (
-            "," * n
-            + ">++++++[>++++++++<-]>"
-            + ("+" if truth_table[0] == "1" else "")
-            + "."
-        )
+        text = "," * n + ">++++++[>++++++++<-]>" + ("+" if bit == "1" else "") + "."
         out.emit(_parse(text))
         return out.text()
     # Ignored inputs are still read but do not enter the index.

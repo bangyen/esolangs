@@ -29,6 +29,7 @@ from itertools import count, product
 from string import ascii_letters, digits
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -49,14 +50,14 @@ def _names() -> Iterator[str]:
 def object_disoriented(truth_table: str) -> str:
     """Build an Object disoriented program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         # The third MSB-first bit of either ASCII input digit is one.
         reads = "iicit" + "i" * (8 * n - 3)
         return (
             "dmain."
             + reads
             + "ozozototozozoz"
-            + ("ot" if truth_table[0] == "1" else "oz")
+            + ("ot" if bit == "1" else "oz")
             + "rzzz"
         )
     ids = subtree_ids(truth_table)

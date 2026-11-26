@@ -8,6 +8,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.lookup import constant_output
 
 
 def _sbleq_constant(inputs: int, bit: str, *, direct: bool = False) -> str:
@@ -86,8 +87,12 @@ def packed_decoder(
     won only parity at n=12 (direct), by 7.4%; it was removed.
     """
     total = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _sbleq_constant(total, truth_table[0], direct=direct)
+    if (bit := constant_output(truth_table)) is not None:
+        return _sbleq_constant(total, bit, direct=direct)
+    return _packed_nonconstant(truth_table, total, direct=direct)
+
+
+def _packed_nonconstant(truth_table: str, total: int, *, direct: bool) -> str:
     weights, projected = input_weights(truth_table, total)
     if any(weights):
         truth_table = projected

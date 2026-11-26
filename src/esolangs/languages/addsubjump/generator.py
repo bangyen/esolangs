@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     input_weights,
     stored_inputs,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -109,11 +110,11 @@ def _memory(
 def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program for ``truth_table`` (length ``2**n``, MSB first)."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         scratch = 4 * (n + 1)
         # Cell zero holds the positive scratch address: reads subtract into scratch.
         cells = [v for i in range(n) for v in (scratch, -1, 4 * (i + 1), 0)]
-        cells += [-1, scratch + 1, -8, 0, 0, 48 + int(truth_table[0])]
+        cells += [-1, scratch + 1, -8, 0, 0, 48 + int(bit)]
         return " ".join(map(str, cells))
     # Sharing still wins low-arity and simple tables; the packed reader
     # wins random tables once its fixed decoder overhead is amortized.

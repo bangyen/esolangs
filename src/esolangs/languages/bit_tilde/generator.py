@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -63,9 +64,9 @@ def bit_tilde(truth_table: str) -> str:
 def _program(truth_table: str) -> str:
     """Build the planted lookup, or the XOR window for an affine table."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         # Reads share one window; the untouched next window holds the answer.
-        flips = [2, 3] + ([7] if truth_table[0] == "1" else [])
+        flips = [2, 3] + ([7] if bit == "1" else [])
         return ")" * n + ">" * 8 + _plant(flips) + "<" * max(flips) + "("
     lookup = _lookup(truth_table, n)
     if (form := affine_form(truth_table, n)) is None:

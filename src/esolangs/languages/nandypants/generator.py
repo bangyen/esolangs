@@ -25,6 +25,7 @@ Decisions:
 from heapq import heapify, heappop, heappush
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -94,8 +95,7 @@ def _chain_order(
 def nandypants(truth_table: str) -> str:
     """Build a Nandypants program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
-        bit = truth_table[0]
+    if (bit := constant_output(truth_table)) is not None:
         # Reads leave a at zero; v makes the current b a NAND toggle partner.
         prefix, tail = ("v^", _PRINT[bit][1:]) if bit == "1" else ("v", _PRINT[bit][2:])
         return "/" * (8 * n) + prefix + tail

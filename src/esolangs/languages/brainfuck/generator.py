@@ -33,6 +33,7 @@ from esolangs.generation.helpers import (
     in_input_order,
     move_text,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.shared_flag import flag_tree_body, shared_flag_tree
 from esolangs.runtime._program import Program
@@ -45,14 +46,9 @@ _RIGHT, _LEFT = ">", "<"
 def brainfuck(truth_table: str) -> str:
     """Return a compact program, consuming every input unconditionally."""
     n = _validate_truth_table(truth_table)
-    if n >= 2 and truth_table == truth_table[0] * len(truth_table):
+    if n >= 2 and (bit := constant_output(truth_table)) is not None:
         # Three cells fit from n=2; clearing the one-input byte costs 99 commands.
-        return (
-            "," * n
-            + ">++++++[>++++++++<-]>"
-            + ("+" if truth_table[0] == "1" else "")
-            + "."
-        )
+        return "," * n + ">++++++[>++++++++<-]>" + ("+" if bit == "1" else "") + "."
     tree = min(
         in_input_order(truth_table, _bf_ordered),
         in_input_order(truth_table.translate(_COMPLEMENT), _flipped_ordered),

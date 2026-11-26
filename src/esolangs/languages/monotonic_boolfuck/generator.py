@@ -22,6 +22,7 @@ Size:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -41,8 +42,8 @@ def _consume(inputs: int) -> str:
 def monotonic_boolfuck(truth_table: str) -> str:
     """Build a Monotonic Boolfuck program printing ``truth_table[row]``."""
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
-        bit = int(truth_table[0])
+    if (digit_value := constant_output(truth_table)) is not None:
+        bit = int(digit_value)
         if n == 1:
             tail = ">" + _LEAF[0] if not bit else _LEAF[1][1:]
             return "1" + "," * 8 + tail

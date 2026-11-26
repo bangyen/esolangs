@@ -34,6 +34,7 @@ from esolangs.generation.helpers import (
     read_at,
     subtree_ids,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
@@ -419,8 +420,8 @@ def thisthat(truth_table: str, width: int | None = None) -> str:
     See ``[ablations.transit_strip_coalescing]`` for the executed corpus.
     """
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
-        program = _constant_diagram(n, truth_table[0], n + 3)
+    if (bit := constant_output(truth_table)) is not None:
+        program = _constant_diagram(n, bit, n + 3)
         return (
             _rotate_tree(program)
             if width and 0 < width < grid_width(program)
@@ -675,12 +676,12 @@ def _balance(truth_table: str, default: str | None = None) -> str:
     down one column at a time (127 tables through n=11).
     """
     n = _validate_truth_table(truth_table)
-    if truth_table == truth_table[0] * len(truth_table):
+    if (bit := constant_output(truth_table)) is not None:
         if default is None:
-            default = _constant_diagram(n, truth_table[0], n + 3)
+            default = _constant_diagram(n, bit, n + 3)
         return min(
             default,
-            _constant_diagram(n, truth_table[0], isqrt(n + 2) + 1),
+            _constant_diagram(n, bit, isqrt(n + 2) + 1),
             key=balance_score,
         )
     plan = _DiagramPlan(truth_table, n)
