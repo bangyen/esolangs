@@ -18,6 +18,23 @@ if TYPE_CHECKING:
     from esolangs.runtime._vm_protocol import _BranchingStepMachine, _SteppableMachine
 
 
+class _ProofBudgetExhaustedError(TimeoutError):
+    """The detector reached its command or branching state limit."""
+
+
+class _ProofSnapshotUnavailableError(TypeError):
+    """The supplied VM cannot provide exact command-boundary state."""
+
+
+def _proof_traits(adapter: object) -> tuple[str | None, bool]:
+    """Return the adapter's language and whether it can draw."""
+    from esolangs.runtime._vm_adapter import _DelegatingVM
+
+    if isinstance(adapter, _DelegatingVM):
+        return adapter.language, adapter._random  # noqa: SLF001
+    return None, False
+
+
 _UNCHECKED_OWNER = object()
 
 

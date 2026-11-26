@@ -16,6 +16,9 @@ from esolangs.runtime._proof_runtime import (
     _branch_halt_fault,
     _check_branch_halt,
     _checked_branch_result,
+    _proof_traits,
+    _ProofBudgetExhaustedError,
+    _ProofSnapshotUnavailableError,
     _read_branch_root,
 )
 from esolangs.runtime._validate import _has_backing_type
@@ -25,14 +28,6 @@ from esolangs.runtime.source_hints import with_hint
 
 class _BranchingUnavailableError(TypeError):
     """A declared random machine cannot provide branch evidence."""
-
-
-class _ProofBudgetExhaustedError(TimeoutError):
-    """The detector reached its command or branching state limit."""
-
-
-class _ProofSnapshotUnavailableError(TypeError):
-    """The supplied VM cannot provide exact command-boundary state."""
 
 
 def _unforkable_branch() -> TimeoutError:
@@ -57,14 +52,6 @@ def _branch_budget(limit: int, *, evidence: bool) -> TimeoutError:
         ),
         "increase the branching state limit if feasible; the result remains undecided",
     )
-
-
-def _proof_runtime(adapter: object) -> tuple[str | None, bool]:
-    from esolangs.runtime._vm_adapter import _DelegatingVM
-
-    if isinstance(adapter, _DelegatingVM):
-        return adapter.language, adapter._random  # noqa: SLF001
-    return None, False
 
 
 def _bounded_branch_sequence(result: object, limit: int) -> tuple[Hashable, ...] | None:
@@ -108,7 +95,7 @@ def _branch_search(
     hooks, capture = _branch_callbacks(
         machine, check_receiver, _bounded_branch_sequence
     )
-    language, _ = _proof_runtime(adapter)
+    language, _ = _proof_traits(adapter)
     pending = deque([root])
     exceeded = False
     # Collecting for Boolean readers cost Caballo 11.5-11.6% at n=2/3.

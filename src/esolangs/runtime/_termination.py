@@ -16,11 +16,7 @@ from esolangs.exceptions import (
 )
 from esolangs.registry._catalog import Catalog
 from esolangs.results import ExecutionResult
-from esolangs.runtime._branch_search import (
-    _BranchingUnavailableError,
-    _ProofBudgetExhaustedError,
-    _ProofSnapshotUnavailableError,
-)
+from esolangs.runtime._branch_search import _BranchingUnavailableError
 from esolangs.runtime._drive import _check_snapshot_hash
 from esolangs.runtime._input import InputSource
 from esolangs.runtime._prepared import _PreparedRuntime
@@ -31,7 +27,11 @@ from esolangs.runtime._proof import (
     checked_decision,
     checked_termination,
 )
-from esolangs.runtime._proof_runtime import _branch_snapshot
+from esolangs.runtime._proof_runtime import (
+    _branch_snapshot,
+    _ProofBudgetExhaustedError,
+    _ProofSnapshotUnavailableError,
+)
 from esolangs.runtime._vm_adapter import _capture_observation, _record_vm_fault
 from esolangs.runtime._vm_protocol import VM, _BranchingStepMachine
 from esolangs.runtime.io import ScriptedIO

@@ -10,7 +10,8 @@ over 2,542 candidates.
 from collections.abc import Iterator
 from itertools import pairwise
 
-from esolangs.languages.streetcode.generator import _KERB, _SILL, _WALLS
+from esolangs.languages.streetcode._folding import _WALLS
+from esolangs.languages.streetcode.generator import _KERB, _SILL
 from esolangs.languages.streetcode.interpreter.geometry import (
     _NO_LATCHES,
     _drive,

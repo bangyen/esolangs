@@ -18,7 +18,7 @@ import pytest
 
 import esolangs
 import esolangs.runtime._execution as _execution_runtime
-from esolangs.raster import Raster, _png_chunks, lazy_raster, png
+from esolangs.raster import Raster, _png_chunks, _png_validation, lazy_raster, png
 from esolangs.registry import CATALOG, LANGUAGES, SourceKind
 from esolangs.runtime._artifact_source import check_program
 from tests.support.dialect_support import integer_setting
@@ -648,7 +648,9 @@ def test_plain_png_has_no_source_metadata() -> None:
         with stream_read_deadline(deadline):
             shape = (256, 512, 8)
             assert (
-                png._inflate_checked(payload + b"unused", len(samples), *shape)
+                _png_validation._inflate_checked(
+                    payload + b"unused", len(samples), *shape
+                )
                 == samples
             )
             for stream, needed, message in (
@@ -658,7 +660,7 @@ def test_plain_png_has_no_source_metadata() -> None:
                 (payload, 65_537, "IDAT holds 65538 bytes"),
             ):
                 with pytest.raises(ValueError, match=message) as failure:
-                    png._inflate_checked(stream, needed, *shape)
+                    _png_validation._inflate_checked(stream, needed, *shape)
                 diagnostics.append((str(failure.value), failure.value.__notes__))
         errors.append(diagnostics)
     assert errors[0] == errors[1]

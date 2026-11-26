@@ -13,6 +13,7 @@ import pytest
 import esolangs
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.streetcode import generator as boolean
+from esolangs.languages.streetcode._folding import _streetcode_fold
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
@@ -322,7 +323,7 @@ def test_the_oracle_rejects_a_bend_read_as_a_junction() -> None:
     with pytest.raises(Exception, match="read past the end of input"):
         run(fold.splitlines(), io)
     # The same target, folded with a gap and wide margins, drives alike.
-    sound, origin = generator._streetcode_fold(flat, 30, east=True)
+    sound, origin = _streetcode_fold(flat, 30, east=True)
     assert drives_alike(reference, sound, origin)
 
 
@@ -342,7 +343,7 @@ def _assert_every_fold_drives_alike(n: int, tables: int, step: int) -> None:
         span = max(map(len, flat.splitlines()))
         for target in range(8, span + 1, step):
             for east in (False, True):
-                fold, origin = generator._streetcode_fold(flat, target, east=east)
+                fold, origin = _streetcode_fold(flat, target, east=east)
                 assert drives_alike(reference, fold, origin), (n, target, east)
 
 

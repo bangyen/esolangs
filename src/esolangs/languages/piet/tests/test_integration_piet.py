@@ -14,7 +14,7 @@ import pytest
 import esolangs
 from esolangs import Raster, run
 from esolangs.exceptions import TemplateError
-from esolangs.raster import png
+from esolangs.raster import _png_validation, png
 from esolangs.registry import CATALOG, INTERPRETERS, LANGUAGES
 from esolangs.runtime._artifact_source import check_program
 from tests.support.evaluation import _evaluate
@@ -161,7 +161,7 @@ def _check_png_acquisition_timeout(path, monkeypatch) -> None:
     stdin = BytesIO(api.encode_inputs([1]).encode())
     paused, resume = Event(), Event()
     threads, opens = [], []
-    inflate = png._inflate_checked
+    inflate = _png_validation._inflate_checked
     pillow = png._require_image()
     image_open = pillow.open
 
@@ -177,7 +177,7 @@ def _check_png_acquisition_timeout(path, monkeypatch) -> None:
         return image_open(*args, **options)
 
     with monkeypatch.context() as edit, ThreadPoolExecutor() as callers:
-        edit.setattr(png, "_inflate_checked", pause_inflate)
+        edit.setattr(_png_validation, "_inflate_checked", pause_inflate)
         edit.setattr(pillow, "open", observe_open)
         pending = callers.submit(
             api.execute,
@@ -212,7 +212,7 @@ def _check_png_acquisition_timeout(path, monkeypatch) -> None:
 def _check_inflate_block_timeout(path, monkeypatch) -> None:
     from esolangs.runtime import _files
 
-    original = png.zlib.decompressobj
+    original = _png_validation.zlib.decompressobj
     blocks = []
 
     class TimedDecoder:
@@ -228,7 +228,7 @@ def _check_inflate_block_timeout(path, monkeypatch) -> None:
             return getattr(self.decoder, name)
 
     with monkeypatch.context() as edit:
-        edit.setattr(png.zlib, "decompressobj", TimedDecoder)
+        edit.setattr(_png_validation.zlib, "decompressobj", TimedDecoder)
         edit.setattr(_files, "monotonic", lambda: 2.0 if blocks else 0.0)
         with (
             _files.stream_read_deadline(1),
