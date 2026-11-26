@@ -14,10 +14,10 @@ from esolangs import exceptions
 from esolangs.outcomes import ExecutionOutcome, _failed_outcome
 from esolangs.runtime._acquire import preparation_expired
 from esolangs.runtime._failure_wire import _error_from_wire
-from esolangs.runtime._json import worker_loads
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._result_wire import decode_result, decode_termination
 from esolangs.runtime._wait import wait_slice
+from esolangs.runtime._worker_json import worker_loads
 
 type _WorkerResponse = ExecutionOutcome | TerminationResult
 

@@ -249,8 +249,8 @@ def test_worker_retains_shared_terms_in_a_reachable_cycle() -> None:
     from dataclasses import replace
 
     from esolangs import Catalog, ExecutionLimits, Language
-    from esolangs.runtime._json import worker_dumps
     from esolangs.runtime._result_wire import encode_decision
+    from esolangs.runtime._worker_json import worker_dumps
 
     api = Language("Unlambda")
     record = api.catalog.languages[api.name]
@@ -479,7 +479,6 @@ def test_deep_snapshots_preserve_identity_execution_and_cycle_boundaries() -> No
 
     from esolangs._cycles import _halt_or_cycle_result
     from esolangs.results import ExecutionResult
-    from esolangs.runtime._json import worker_dumps, worker_loads
     from esolangs.runtime._proof import TerminationResult
     from esolangs.runtime._result_wire import (
         decode_decision,
@@ -487,6 +486,7 @@ def test_deep_snapshots_preserve_identity_execution_and_cycle_boundaries() -> No
         encode_decision,
         encode_result,
     )
+    from esolangs.runtime._worker_json import worker_dumps, worker_loads
 
     def same_typed(left, right):
         pending = [(left, right)]

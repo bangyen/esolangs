@@ -5,8 +5,8 @@ from io import StringIO
 from typing import NamedTuple
 
 from esolangs.results import Completion, CompletionReport
-from esolangs.runtime._json import worker_dumps, worker_loads
 from esolangs.runtime._snapshot_wire import _state_from_wire, _state_wire
+from esolangs.runtime._worker_json import worker_dumps, worker_loads
 
 from . import full_oracle as engine
 

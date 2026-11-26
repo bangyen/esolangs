@@ -9,9 +9,10 @@ from typing import Any, TextIO, cast
 from esolangs.compressed import CompressedText
 from esolangs.raster import Raster
 from esolangs.registry._catalog import Catalog
-from esolangs.runtime._json import _WorkerBase64, canonical_integer, worker_loads
+from esolangs.runtime._json import canonical_integer
 from esolangs.runtime._program import Program
 from esolangs.runtime._raster_wire import _raster_transport
+from esolangs.runtime._worker_json import _WorkerBase64, worker_loads
 from esolangs.settings import DialectSettings, dialect_options
 
 _REQUEST_FIELDS = frozenset(

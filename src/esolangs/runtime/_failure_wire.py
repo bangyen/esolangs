@@ -4,8 +4,8 @@ from typing import Any
 
 from esolangs import exceptions
 from esolangs.runtime._error_causes import decode_cause, encode_cause
-from esolangs.runtime._json import worker_dumps
 from esolangs.runtime._result_wire import _counter, decode_result, encode_result
+from esolangs.runtime._worker_json import worker_dumps
 
 #: The worker's output-cap message, which also tells the parent the cap hit.
 _OUTPUT_LIMIT = "isolated output limit exceeded"

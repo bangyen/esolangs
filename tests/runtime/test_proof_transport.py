@@ -11,7 +11,6 @@ from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import ExecutionResult
 from esolangs.runtime._isolated import termination_result_isolated
-from esolangs.runtime._json import worker_dumps
 from esolangs.runtime._lifecycle import BoundaryCycle
 from esolangs.runtime._proof import BranchProof, CycleDecision
 from esolangs.runtime._result_wire import (
@@ -21,6 +20,7 @@ from esolangs.runtime._result_wire import (
 )
 from esolangs.runtime._snapshot_wire import _state_wire
 from esolangs.runtime._vm_adapter import _capture_observation
+from esolangs.runtime._worker_json import worker_dumps
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
 from tests.support.certification_barrier import guarded_worker

@@ -17,10 +17,10 @@ import pytest
 import esolangs
 import esolangs.operations.execution as _execution_operations
 from esolangs.results import ExecutionResult
-from esolangs.runtime._json import worker_dumps, worker_object
 from esolangs.runtime._lifecycle import HALTED_REPORT
 from esolangs.runtime._request_wire import encode_request
 from esolangs.runtime._result_wire import encode_result
+from esolangs.runtime._worker_json import worker_dumps, worker_object
 from esolangs.runtime._worker_main import _worker
 from tests.support.generator_support import evaluate_generated, verify_generated
 from tests.support.pick import one
@@ -387,7 +387,7 @@ def test_decode_missing_result_and_notes() -> None:
 
     from unittest.mock import patch
 
-    from esolangs.runtime._json import worker_loads
+    from esolangs.runtime._worker_json import worker_loads
 
     for packet in (
         {"plain": [0, -0.0, True, None, "λ"]},
@@ -405,7 +405,7 @@ def test_decode_missing_result_and_notes() -> None:
         calls.append(tuple(key for key, _ in pairs))
         return worker_object(pairs)
 
-    with patch("esolangs.runtime._json.worker_object", counted):
+    with patch("esolangs.runtime._worker_json.worker_object", counted):
         assert worker_loads(worker_dumps(literal)) == literal
     assert calls == [("$python_text",), ("$python_object",)]
     deep = literal

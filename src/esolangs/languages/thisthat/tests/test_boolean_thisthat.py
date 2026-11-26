@@ -369,9 +369,11 @@ def test_shared_residual_buses_execute_within_ledger(monkeypatch) -> None:
         assert generator._diagram(table, width) == plain
         assert len(calls) == 2
 
-    assert generator.decision_layers is decision_layers
+    from esolangs.languages.thisthat import _shared
+
+    assert _shared.decision_layers is decision_layers
     monkeypatch.setattr(
-        generator,
+        _shared,
         "decision_layers",
         lambda table: decision_layers(table.translate(str.maketrans("01", "10"))),
     )

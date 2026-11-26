@@ -22,13 +22,13 @@ from esolangs.runtime._failure_wire import (
     _failure_text,
 )
 from esolangs.runtime._input import InputSource
-from esolangs.runtime._json import worker_dumps
 from esolangs.runtime._raster_wire import _raster_rows
 from esolangs.runtime._request_wire import read_request
 from esolangs.runtime._result_wire import (
     encode_decision,
     encode_result,
 )
+from esolangs.runtime._worker_json import worker_dumps
 from esolangs.settings import _settings_for
 
 

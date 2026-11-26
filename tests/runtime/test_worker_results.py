@@ -89,7 +89,7 @@ def test_snapshot_definitions_preserve_aliases_and_distinct_nodes(
 ) -> None:
     from typing import NamedTuple
 
-    from esolangs.runtime._json import worker_dumps, worker_loads
+    from esolangs.runtime._worker_json import worker_dumps, worker_loads
 
     first = (8,)
     second = tuple(iter(first))
@@ -324,7 +324,7 @@ def test_immutable_cycle_state_survives_json(interpreter_only_samples):
             del changed[key]
         refuses(broken, "snapshot record")
 
-    from esolangs.runtime._json import worker_dumps, worker_loads
+    from esolangs.runtime._worker_json import worker_dumps, worker_loads
 
     for malformed in (
         {"bytes": "AA"},
@@ -444,7 +444,7 @@ def test_worker_refuses_partial_counters_and_wrong_periodic_steps() -> None:
 
 def test_large_worker_counters_keep_completion_proof_and_failure() -> None:
     from esolangs.runtime._failure_wire import _failure_wire
-    from esolangs.runtime._json import worker_dumps
+    from esolangs.runtime._worker_json import worker_dumps
 
     count = 1 << 18000
     cycle = BoundaryCycle((count,), count - 1, count, 1)
@@ -486,7 +486,7 @@ def test_large_worker_counters_keep_completion_proof_and_failure() -> None:
 
 
 def test_worker_integer_tag_is_lossless_and_canonical() -> None:
-    from esolangs.runtime._json import worker_dumps, worker_loads
+    from esolangs.runtime._worker_json import worker_dumps, worker_loads
 
     number = 1 << 18000
     literal = {"$python_integer": hex(number)}
@@ -770,39 +770,39 @@ def test_worker_requires_the_complete_request(monkeypatch, capsys):
 def _check_request_serialization(monkeypatch) -> None:
     from time import monotonic
 
-    from esolangs.runtime import _isolated, _json
+    from esolangs.runtime import _isolated, _worker_json
 
     with monkeypatch.context() as patch:
-        patch.setattr(_json, "_WORKER_TEXT_BLOCK", 8)
-        patch.setattr(_json, "_WORKER_REQUEST_BLOCK", 128)
+        patch.setattr(_worker_json, "_WORKER_TEXT_BLOCK", 8)
+        patch.setattr(_worker_json, "_WORKER_REQUEST_BLOCK", 128)
         source = esolangs.CompressedText.from_chunks(
             ("".join(map(chr, range(65, 126))),)
         )
         stdin = ('é\ud800\U000103ff\r\\"' * 64) + "a"
         plain = encode_request(REFERENCE, source, stdin)
         packed = encode_request(REFERENCE, source, stdin, chunked=True)
-        parts = _json.worker_request(packed, lambda: False)
+        parts = _worker_json.worker_request(packed, lambda: False)
         assert isinstance(parts, list)
         assert max(map(len, parts)) <= 128
-        assert "".join(parts) == _json.worker_dumps(plain)
-        assert _json.worker_loads("".join(parts)) == plain
+        assert "".join(parts) == _worker_json.worker_dumps(plain)
+        assert _worker_json.worker_loads("".join(parts)) == plain
 
         chunks = []
-        encode = _json.b64encode
+        encode = _worker_json.b64encode
 
         def stop_after_base64(block):
             chunks.append(block)
             return encode(block)
 
-        patch.setattr(_json, "b64encode", stop_after_base64)
-        assert _json.worker_request(packed, lambda: bool(chunks)) is None
+        patch.setattr(_worker_json, "b64encode", stop_after_base64)
+        assert _worker_json.worker_request(packed, lambda: bool(chunks)) is None
         assert chunks == [source.to_gzip()[:24]]
 
     with monkeypatch.context() as patch:
         payload = "é" * 64
         clock = [monotonic()]
         chunks = []
-        dumps = _json.json.dumps
+        dumps = _worker_json.json.dumps
 
         def stop_after_escape(value):
             if isinstance(value, str) and value.startswith("é"):
@@ -813,8 +813,8 @@ def _check_request_serialization(monkeypatch) -> None:
         def no_launch(*_args, **_kwargs):
             pytest.fail("expired request serialization launched a worker")
 
-        patch.setattr(_json, "_WORKER_TEXT_BLOCK", 8)
-        patch.setattr(_json.json, "dumps", stop_after_escape)
+        patch.setattr(_worker_json, "_WORKER_TEXT_BLOCK", 8)
+        patch.setattr(_worker_json.json, "dumps", stop_after_escape)
         patch.setattr(_isolated, "monotonic", lambda: clock[0])
         patch.setattr(_isolated, "_launch", no_launch)
         outcome = esolangs.execute(
@@ -1009,7 +1009,7 @@ def test_worker_error_requires_explicit_unavailable_observation_and_options():
 
 def _check_worker_explicit_causes() -> None:
     from esolangs.runtime._failure_wire import _failure_wire
-    from esolangs.runtime._json import worker_dumps
+    from esolangs.runtime._worker_json import worker_dumps
 
     causes = (
         ValueError(1),

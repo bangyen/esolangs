@@ -9,8 +9,8 @@ import esolangs
 from esolangs.debugger import make_debugger
 from esolangs.registry import LANGUAGES
 from esolangs.results import Completion, CompletionReport, ExecutionResult
-from esolangs.runtime._json import worker_dumps
 from esolangs.runtime._result_wire import encode_result
+from esolangs.runtime._worker_json import worker_dumps
 from esolangs.runtime.io import ScriptedIO
 from tests.support.certification_barrier import guarded_worker
 from tests.support.execution import run_observed

@@ -7,7 +7,8 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.languages.grapheme.interpreter import _advance, _Machine, run
+from esolangs.languages.grapheme._transition import _advance
+from esolangs.languages.grapheme.interpreter import _Machine, run
 from esolangs.languages.grapheme.interpreter import _Machine as Grapheme
 from esolangs.languages.grapheme.tests.oracle_checks import check_raw_grapheme
 from esolangs.runtime.io import ScriptedIO

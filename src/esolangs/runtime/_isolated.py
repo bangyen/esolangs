@@ -22,7 +22,6 @@ from esolangs.runtime._execution import (
 )
 from esolangs.runtime._files import stream_read_deadline
 from esolangs.runtime._input import InputSource, check_input, read_input
-from esolangs.runtime._json import worker_request
 from esolangs.runtime._program import Program
 from esolangs.runtime._proof import TerminationResult
 from esolangs.runtime._request_wire import encode_request
@@ -35,6 +34,7 @@ from esolangs.runtime._validate import (
     check_timeout,
     check_whole,
 )
+from esolangs.runtime._worker_json import worker_request
 from esolangs.runtime._worker_pipe import communicate
 from esolangs.runtime._worker_response import (
     _bounded_output,
