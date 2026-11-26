@@ -186,7 +186,7 @@ def _generate_checked(
 ) -> Artifact:
     """Generate after explicit choices have been validated once."""
     settings = _generation_settings(resolved, options, settings, catalog=catalog)
-    return _generate(
+    artifact = _generate(
         resolved,
         truth_table,
         options,
@@ -196,6 +196,9 @@ def _generate_checked(
         scale=scale,
         catalog=catalog,
     )
+    if isinstance(artifact, TemplateArtifact):
+        return replace(artifact, generation_width=width, generation_balance=balance)
+    return artifact
 
 
 def _generation_settings(

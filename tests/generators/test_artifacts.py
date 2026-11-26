@@ -71,6 +71,13 @@ def _check_template_width_pickle(template: esolangs.TemplateArtifact) -> None:
             restored = pickle.loads(pickle.dumps(artifact))
             assert restored == artifact
             assert restored.generation_width == artifact.generation_width
+            assert restored.generation_balance == artifact.generation_balance
+        old_state = base.__getstate__()
+        del old_state["generation_balance"]
+        older = pickle.loads(pickle.dumps(FormerOrder(type(base), old_state)))
+        assert older == base
+        assert older.generation_width == base.generation_width
+        assert older.generation_balance is None
         with pytest.raises(ValueError, match="requires all named fields"):
             pickle.loads(
                 pickle.dumps(
@@ -753,3 +760,49 @@ def _check_materialized_export_after_parent_rename(
             destination.unlink()
             parent.rmdir()
             moved.rename(parent)
+
+
+def test_recorded_balance_replays_once_and_checks_slot_positions():
+    original = LANGUAGES[REFERENCE]
+    calls = []
+
+    def emit(request):
+        calls.append(request.balance)
+        return layout_tokens(
+            ["+" * 48 + ("\n" if request.balance else ""), InputSlot(0), "."],
+            separator="",
+        )
+
+    backend = replace(
+        original.backend,
+        entrypoint=emit,
+        layout_balance=True,
+        template=TemplateSpec(pair=("", "")),
+    )
+    api = esolangs.Catalog([replace(original, backend=backend)]).bind(REFERENCE)
+    document = api.to_json(api.generate("00", balance=True))
+    restored = api.from_json(document)
+    assert restored.generation_balance is True
+    calls.clear()
+    assert api.run(api.instantiate(restored, [1], truth_table="00")).output == "0"
+    assert calls == [True]
+    damaged = replace(restored, spans=((48, 48),))
+    calls.clear()
+    with pytest.raises(esolangs.TemplateError, match="not the template"):
+        api.instantiate(damaged, [1], truth_table="00")
+    assert calls == [True]
+    older = json.loads(document)
+    del older["generation_balance"]
+    legacy = api.from_json(json.dumps(older))
+    calls.clear()
+    assert api.run(api.instantiate(legacy, [0], truth_table="00")).output == "0"
+    assert calls == [False, True]
+
+
+@pytest.mark.parametrize("source", ["", "+\n"])
+def test_template_layout_keeps_eof_slots_on_an_empty_line(source: str) -> None:
+    layout = layout_tokens([source, InputSlot(0)], separator="")
+    assert tuple(layout.lines()) == (
+        *TemplateLayout(source, ()).lines(),
+        TemplateLayout("", ((0, 0),)),
+    )

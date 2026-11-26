@@ -13,7 +13,7 @@ from esolangs import vm
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import ExecutionTimeoutError
 from esolangs.registry import LANGUAGES
-from esolangs.runtime._drive import drive, drive_periodic, finalize
+from esolangs.runtime._drive import drive, drive_periodic, drive_until_repeat, finalize
 from esolangs.runtime._execution import interpreter_module
 from esolangs.runtime._lifecycle import (
     HALTED_REPORT,
@@ -431,3 +431,20 @@ def test_every_runtime_declares_preparation_and_capabilities():
         for field in ("machine_preparation", "completion_entrypoint"):
             with pytest.raises(ValueError, match="declared entry point"):
                 replace(runtime, **{field: ""})
+
+
+def test_exact_repeat_retains_the_first_step_after_a_long_prefix():
+    class Machine:
+        halted = False
+        position = 0
+
+        def snapshot(self):
+            return (self.position,)
+
+        def step(self):
+            self.position = self.position + 1 if self.position < 4102 else 4096
+
+    machine = Machine()
+    cycle = drive_until_repeat(machine).cycle
+    assert cycle == BoundaryCycle((4096,), 4096, 4103, 1)
+    assert machine.position == 4096

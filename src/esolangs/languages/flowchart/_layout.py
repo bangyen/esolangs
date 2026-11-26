@@ -38,10 +38,12 @@ def _reads(level: int) -> int:
     return 1 if level == 0 else 8
 
 
-type _InputPlan = tuple[str, list[int], int]
+type _InputPlan = tuple[str, tuple[int, ...], int]
 
 
-def _plan(truth_table: str, *, used: list[int] | None = None) -> _InputPlan:
+def _plan(
+    truth_table: str, *, used: list[int] | tuple[int, ...] | None = None
+) -> _InputPlan:
     """Return the essential-input table, the ``/ /`` count per switch, the tail.
 
     The tail is the ``/ /`` count owed after the last switch.  An ignored
@@ -52,8 +54,8 @@ def _plan(truth_table: str, *, used: list[int] | None = None) -> _InputPlan:
     if used is None:
         used = essential_inputs(truth_table, n)
     if not used:
-        return truth_table, [_reads(level) for level in range(n)], 0
-    costs = [8 * used[0] + 1] + [8 * (b - a) for a, b in pairwise(used)]
+        return truth_table, tuple(_reads(level) for level in range(n)), 0
+    costs = (8 * used[0] + 1, *(8 * (b - a) for a, b in pairwise(used)))
     return read_at(truth_table, used, n), costs, 8 * (n - 1 - used[-1])
 
 

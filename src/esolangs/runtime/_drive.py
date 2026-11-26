@@ -132,8 +132,7 @@ def drive_until_repeat(
 ) -> CompletionReport:
     """Run to a halt or the first exact repeat without taking a dump step."""
     take_step = machine.step if step is None else step
-    seen: set[Hashable] = set()
-    history: list[Hashable] = []
+    first_seen: dict[Hashable, int] = {}
     snapshot: Callable[[], Hashable] | None
     while True:
         halted = machine.halted
@@ -151,16 +150,14 @@ def drive_until_repeat(
             )
         state = snapshot()
         try:
-            repeated = state in seen
-            if not repeated:
-                seen.add(state)
+            step_number = len(first_seen)
+            first = first_seen.setdefault(state, step_number)
         except TypeError:
             _check_snapshot_hash(state, InterpreterLimitError)
             raise
-        if repeated:
-            cycle = _repeat_evidence(state, history.index(state), len(history), 1)
+        if first != step_number:
+            cycle = _repeat_evidence(state, first, step_number, 1)
             return CompletionReport(Completion.PERIODIC, cycle)
-        history.append(state)
         take_step()
 
 

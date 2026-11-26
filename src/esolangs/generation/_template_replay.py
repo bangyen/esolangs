@@ -135,6 +135,43 @@ def matches_template(
     render: _Render,
 ) -> bool:
     """Match retained slots and layout against the cached renderings."""
+    if template.generation_balance is not None and (
+        width is None or width == template.generation_width
+    ):
+        try:
+            rendered = render(
+                template.generation_width, balance=template.generation_balance
+            )
+        except (ArgumentError, GeneratorCapError):
+            if width is not None or template.generation_width is None:
+                raise
+            return False
+        if not isinstance(rendered, TemplateArtifact):
+            return False
+        text = _template_text(template, rendered.bindings.char)
+        if text is None:
+            return False
+        if text == rendered.source:
+            return _same_generated_template(rendered, template, text)
+        # Edited templates can still use a backend-declared equivalent layout.
+        backend = catalog.languages[name].backend
+        if backend is None or backend.layout.same_layout is None:
+            return False
+    return _match_candidate_layouts(
+        template, name, width=width, catalog=catalog, probes=probes, render=render
+    )
+
+
+def _match_candidate_layouts(
+    template: TemplateArtifact,
+    name: str,
+    *,
+    width: int | None,
+    catalog: Catalog,
+    probes: TemplateProbes,
+    render: _Render,
+) -> bool:
+    """Try compatible layouts for older records or an explicit width override."""
     backend = catalog.languages[name].backend
     retained = template.generation_width if width is None else None
     try:

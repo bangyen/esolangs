@@ -8,6 +8,7 @@ from esolangs.generation.helpers import subtree_ids
 from esolangs.languages.flowchart._layout import (
     _answer_column,
     _folded_walk,
+    _InputPlan,
     _paint,
     _plan,
     _set,
@@ -75,8 +76,10 @@ class _Role(Enum):
 class _Stacked:
     """Painter state for the stacked layout; ``cursor`` is ``(row, locked)``."""
 
-    def __init__(self, truth_table: str, *, share: bool) -> None:
-        self.truth_table, self.costs, self.tail = _plan(truth_table)
+    def __init__(
+        self, truth_table: str, *, share: bool, plan: _InputPlan | None = None
+    ) -> None:
+        self.truth_table, self.costs, self.tail = plan or _plan(truth_table)
         # Columns 0..n-1 are the corridors, one per depth; the tree itself
         # sits on ``spine``, far enough east that the answer's ``(( ))``
         # clears them.
@@ -248,7 +251,7 @@ class _Stacked:
 
 
 def _flowchart_stacked(
-    truth_table: str, *, share: bool = False
+    truth_table: str, *, share: bool = False, plan: _InputPlan | None = None
 ) -> dict[tuple[int, int], str]:
     """Paint the tree with its subtrees stacked rather than side by side.
 
@@ -270,7 +273,7 @@ def _flowchart_stacked(
     later way down the bus starts below the entry row, so the rails must run
     down to the copy; running up to it would cross that bus.
     """
-    painter = _Stacked(truth_table, share=share)
+    painter = _Stacked(truth_table, share=share, plan=plan)
     _folded_walk(
         len(painter.truth_table),
         painter.is_constant,

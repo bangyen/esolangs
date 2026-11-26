@@ -39,6 +39,7 @@ class TestFlowchart:
         assert boolean.flowchart(table) == _flowchart_deque(table)
 
         if table == "0110":
+            from esolangs.generation import requests
             from esolangs.generation.helpers import constant_span_test
             from esolangs.generation.projection import essential_inputs, read_at
 
@@ -46,7 +47,7 @@ class TestFlowchart:
             assert boolean.essential_inputs is essential_inputs
             assert _layout.read_at is read_at
             for module, query, damaged_query, expected in (
-                (boolean, "essential_inputs", lambda _table, _n: [], "0000"),
+                (requests, "essential_inputs", lambda _table, _n: [], "0000"),
                 (
                     _layout,
                     "read_at",
@@ -402,3 +403,25 @@ def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None
     tall = _flowchart_render(_flowchart_cells(table))
     assert balance_score(program)[0] * 3 <= balance_score(tall)[0] * 2
     assert _evaluate("Flowchart", program, inputs=len(table).bit_length() - 1) == table
+
+
+def test_width_candidates_share_one_input_analysis(monkeypatch):
+    from esolangs.generation import requests
+
+    calls = []
+    analyze = requests.essential_inputs
+
+    def counted(bits, arity):
+        calls.append((bits, arity))
+        return analyze(bits, arity)
+
+    def unexpected(*_args):
+        raise AssertionError("layout recalculated its input projection")
+
+    monkeypatch.setattr(requests, "essential_inputs", counted)
+    monkeypatch.setattr(_layout, "essential_inputs", unexpected)
+    table = "00111100"
+    program = boolean.flowchart(table, width=1)
+    assert calls == [(table, 3)]
+    for row, expected in enumerate(table):
+        assert run_flowchart(program, list(f"{row:03b}")) == expected

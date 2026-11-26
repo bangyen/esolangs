@@ -29,7 +29,6 @@ from itertools import chain
 
 from esolangs.generation.grid import grid_area, grid_width, narrowest_grid
 from esolangs.generation.helpers import (
-    _validate_truth_table,
     constant_span_test,
 )
 from esolangs.generation.lookup import constant_output
@@ -46,7 +45,6 @@ from esolangs.languages.flowchart._layout import (
     _set,
 )
 from esolangs.languages.flowchart._stacked import _flowchart_stacked
-from esolangs.runtime._program import Program
 
 # Leaf column pitch: 5-cell ``(( ))`` plus 1 gutter.
 _FLOWCHART_PITCH = 6
@@ -318,7 +316,7 @@ class _BandPainter(_TreePainter):
 class _TopPainter(_TreePainter):
     """The top ``k`` levels of a banded drawing, one leaf per band."""
 
-    def __init__(self, costs: list[int]) -> None:
+    def __init__(self, costs: tuple[int, ...]) -> None:
         size = 1 << len(costs)
         super().__init__(
             "0" * size,
@@ -439,19 +437,20 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n``, MSB first.
     Constants read a straight skip chain and print once.
     """
-    _validate_truth_table(truth_table)
-    if width is None:
-        return _flowchart_deque(truth_table)
-    flat = _flowchart_render(_flowchart_cells(truth_table))
+    return flowchart_request(GenerationRequest(truth_table, width))
+
+
+def _draw(truth_table: str, width: int, plan: _InputPlan) -> str:
+    flat = _flowchart_render(_flowchart_cells(truth_table, plan=plan))
     if grid_width(flat) <= width:
         return flat
-    stacked = _flowchart_render(_flowchart_stacked(truth_table))
+    stacked = _flowchart_render(_flowchart_stacked(truth_table, plan=plan))
     best = narrowest_grid(flat, stacked)
     if best is not stacked:
         return best
     # Drawing repeats once costs rail columns, so it needs room and a gain
     # in both characters and the rectangle.
-    shared = _flowchart_render(_flowchart_stacked(truth_table, share=True))
+    shared = _flowchart_render(_flowchart_stacked(truth_table, share=True, plan=plan))
     fits = grid_width(shared) <= width
     if fits and len(shared) < len(stacked) and grid_area(shared) < grid_area(stacked):
         return shared
@@ -467,7 +466,12 @@ def _deque_depth(levels: int) -> int:
     return max(1, (levels + 1) // 2)
 
 
-def _flowchart_deque(truth_table: str, *, plan: _InputPlan | None = None) -> str:
+def _flowchart_deque(
+    truth_table: str,
+    *,
+    plan: _InputPlan | None = None,
+    used: tuple[int, ...] | None = None,
+) -> str:
     r"""Address one preloaded answer by walking the deque cursor to it.
 
     A deque holds ``2 ** k`` entries, ``k = ceil(m / 2)`` for ``m`` essential
@@ -484,8 +488,8 @@ def _flowchart_deque(truth_table: str, *, plan: _InputPlan | None = None) -> str
     """
     n = len(truth_table).bit_length() - 1
     if plan is None:
-        used = essential_inputs(truth_table, n)
-        plan = _plan(truth_table, used=used) if used else None
+        positions = essential_inputs(truth_table, n) if used is None else used
+        plan = _plan(truth_table, used=positions) if positions else None
     elif constant_output(truth_table) is not None:
         plan = None
     if plan is None:
@@ -578,7 +582,7 @@ def _banded_candidates(table: str, *, plan: _InputPlan | None = None) -> list[st
     return [_banded(table, split, 3, plan=plan)] if split > 0 else []
 
 
-def _balance(table: str) -> str:
+def _balance(table: str, *, plan: _InputPlan | None = None) -> str:
     """Return the squarest of the default, banded and trees snaked over columns.
 
     Candidates are the flat tree folded over 1, 3 or 5 columns per chain
@@ -593,7 +597,8 @@ def _balance(table: str) -> str:
     constant-input deque never beat the flat tree: 0 wins of ~1.5k tables at
     n=1..12 (exhaustive to n=3).
     """
-    plan = _plan(table)
+    if plan is None:
+        plan = _plan(table)
     default = _flowchart_deque(table, plan=plan)
     constant = constant_span_test(plan[0])
     folded = (
@@ -618,8 +623,11 @@ def _balance(table: str) -> str:
     )
 
 
-def flowchart_request(request: GenerationRequest) -> Program:
+def flowchart_request(request: GenerationRequest) -> str:
     """Emit source through the declared generation request interface."""
+    used = request.truth_table.essential_inputs()
     if request.balance:
-        return _balance(request.table)
-    return flowchart(request.table, request.width)
+        return _balance(request.table, plan=_plan(request.table, used=used))
+    if request.width is None:
+        return _flowchart_deque(request.table, used=used)
+    return _draw(request.table, request.width, _plan(request.table, used=used))

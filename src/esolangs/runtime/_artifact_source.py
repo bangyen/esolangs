@@ -192,6 +192,7 @@ def read_artifact(
                 settings=settings,
                 spans=program.spans,
                 generation_width=program.generation_width,
+                generation_balance=program.generation_balance,
             )
         return ProgramArtifact(
             source,

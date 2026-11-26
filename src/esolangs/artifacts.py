@@ -254,7 +254,8 @@ def _freeze_span(span: tuple[int, int]) -> tuple[int, int]:
 class TemplateArtifact(_CatalogOwner):
     """Text with explicit input bindings; never runnable source.
 
-    The generation width, when present, identifies the layout to check.
+    Generated templates retain the requested width and balance. Older records
+    may have only a width or no layout metadata.
     """
 
     source: str
@@ -265,6 +266,19 @@ class TemplateArtifact(_CatalogOwner):
     generation_width: int | None = field(
         default=None, kw_only=True, repr=False, compare=False
     )
+
+    generation_balance: bool | None = field(
+        default=None, kw_only=True, repr=False, compare=False
+    )
+
+    def _check_layout(self) -> None:
+        width = check_width(self.generation_width)
+        balance = self.generation_balance
+        if balance is not None and type(balance) is not bool:
+            raise TemplateError("generation_balance must be True, False or None")
+        if balance and width is not None:
+            raise TemplateError("balanced templates cannot have a generation width")
+        object.__setattr__(self, "generation_width", width)
 
     def __init_subclass__(cls, **kwargs: object) -> None:
         """Use named pickle state for frozen slotted dataclass subclasses."""
@@ -305,8 +319,7 @@ class TemplateArtifact(_CatalogOwner):
         except (TypeError, ValueError) as error:
             raise TemplateError(str(error)) from error
 
-        width = check_width(self.generation_width)
-        object.__setattr__(self, "generation_width", width)
+        self._check_layout()
 
     def __getstate__(self) -> dict[str, object]:
         """Store template fields by name."""
@@ -314,13 +327,15 @@ class TemplateArtifact(_CatalogOwner):
 
     def __setstate__(self, state: dict[str, object]) -> None:
         """Restore exactly the fields of the template being unpickled."""
+        if isinstance(state, dict) and "generation_balance" not in state:
+            state = {**state, "generation_balance": None}
         if not isinstance(state, dict) or state.keys() != {
             item.name for item in fields(self)
         }:
             raise ValueError("template pickle requires all named fields")
         for name, value in state.items():
             object.__setattr__(self, name, value)
-        object.__setattr__(self, "generation_width", check_width(self.generation_width))
+        self._check_layout()
 
     def evaluate(
         self,

@@ -227,6 +227,7 @@ def test_ordered_template_setters_round_trip(language: str, tmp_path: Path) -> N
         template.bindings,
         settings=template.settings,
         spans=template.spans,
+        generation_balance=template.generation_balance,
     )
     assert api.to_json(customized) == document
     restored = api.from_json(api.to_json(customized))
@@ -822,17 +823,10 @@ def test_checked_portable_instantiation_refuses_unbalanced_mismatch() -> None:
     declared = replace(declaration, backend=replace(backend, balance=fail))
     configured = esolangs.Catalog([declared]).bind(REFERENCE)
     with pytest.raises(esolangs.ProgramError) as refused:
-        configured.instantiate(edited, [1], truth_table="01")
+        configured.instantiate(
+            replace(edited, generation_balance=None), [1], truth_table="01"
+        )
     assert refused.value is fault
-
-
-@pytest.mark.parametrize("source", ["", "+\n"])
-def test_template_layout_keeps_eof_slots_on_an_empty_line(source: str) -> None:
-    layout = layout_tokens([source, InputSlot(0)], separator="")
-    assert tuple(layout.lines()) == (
-        *TemplateLayout(source, ()).lines(),
-        TemplateLayout("", ((0, 0),)),
-    )
 
 
 def _check_width_provider_reuse() -> None:
@@ -871,12 +865,9 @@ def _check_width_provider_reuse() -> None:
             extracted.clear()
             filled = api.instantiate(restored, [bit], width=width, truth_table="01")
             assert [request.width for request in requests] == (
-                [None, 8] if layout_width else [None]
+                [8] if layout_width else [None]
             )
-            assert extracted == [
-                (_identity_layout().source, 1),
-                (restored.source, 1),
-            ]
+            assert extracted == [(restored.source, 1)]
             assert api.run(filled).output == str(bit)
 
         altered = replace(
@@ -887,7 +878,9 @@ def _check_width_provider_reuse() -> None:
         extracted.clear()
         with pytest.raises(esolangs.TemplateError, match="not the template"):
             api.instantiate(altered, [0], width=8, truth_table="01")
-        assert [request.width for request in requests] == [None]
+        assert [request.width for request in requests] == (
+            [8] if layout_width else [None]
+        )
 
 
 def test_checked_portable_instantiation_uses_the_requested_native_width() -> None:
@@ -919,7 +912,9 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
     assert max(map(len, restored.source.splitlines())) == 7
     pickled = pickle.loads(pickle.dumps(restored))
     assert pickled == restored
-    legacy = api.from_json(api.to_json(replace(restored, generation_width=None)))
+    legacy = api.from_json(
+        api.to_json(replace(restored, generation_width=None, generation_balance=None))
+    )
     assert legacy.generation_width is None
     for bit in (0, 1):
         for candidate in (record, restored, pickled):
@@ -1003,7 +998,7 @@ def test_checked_portable_instantiation_uses_the_requested_native_width() -> Non
     )
     with pytest.raises(esolangs.GeneratorCapError) as caught:
         esolangs.Catalog([custom]).bind(REFERENCE).instantiate(
-            changed, [0], truth_table="01"
+            replace(changed, generation_balance=None), [0], truth_table="01"
         )
     assert caught.value is cap
 

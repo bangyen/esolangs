@@ -105,3 +105,27 @@ def test_arity_refusal_does_not_load_the_entrypoint() -> None:
 def test_arity_caps_are_positive_integers(cap) -> None:
     with pytest.raises(ValueError, match="max_inputs must be a positive integer"):
         BooleanBackend(str, max_inputs=cap)
+
+
+@pytest.mark.parametrize("bits", ["0110", "0001"])
+def test_table_analysis_is_lazy_and_keeps_negative_results(bits, monkeypatch):
+    from unittest.mock import Mock
+
+    from esolangs.generation import requests
+
+    inputs = Mock(wraps=requests.essential_inputs)
+    affine = Mock(wraps=requests.affine_form)
+    monkeypatch.setattr(requests, "essential_inputs", inputs)
+    monkeypatch.setattr(requests, "affine_form", affine)
+    table = requests.GenerationRequest(bits).truth_table
+    initial_hash = hash(table)
+    inputs.assert_not_called()
+    affine.assert_not_called()
+    assert table.essential_inputs() == (0, 1)
+    assert table.essential_inputs() is table.essential_inputs()
+    form = table.affine()
+    assert (form is None) == (bits == "0001")
+    assert table.affine() is form
+    inputs.assert_called_once_with(bits, 2)
+    affine.assert_called_once_with(bits, 2)
+    assert hash(table) == initial_hash

@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Literal
 
 from esolangs._dialect import Scalar
 from esolangs.compressed import CompressedText, _freeze_compressed
@@ -61,6 +62,12 @@ class TruthTable:
 
     bits: str
     arity: int = field(init=False)
+    _essential: tuple[int, ...] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+    _affine: AffineForm | Literal[False] | None = field(
+        default=False, init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         """Freeze validated output bits and their arity."""
@@ -68,13 +75,21 @@ class TruthTable:
         object.__setattr__(self, "bits", bits)
         object.__setattr__(self, "arity", _validate_truth_table(bits))
 
-    def essential_inputs(self) -> list[int]:
+    def essential_inputs(self) -> tuple[int, ...]:
         """Return the positions that can change the output."""
-        return essential_inputs(self.bits, self.arity)
+        result = self._essential
+        if result is None:
+            result = tuple(essential_inputs(self.bits, self.arity))
+            object.__setattr__(self, "_essential", result)
+        return result
 
     def affine(self) -> AffineForm | None:
         """Return the affine form in input order when one exists."""
-        return affine_form(self.bits, self.arity)
+        result = self._affine
+        if result is False:
+            result = affine_form(self.bits, self.arity)
+            object.__setattr__(self, "_affine", result)
+        return result
 
 
 @dataclass(frozen=True, slots=True)

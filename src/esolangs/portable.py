@@ -106,6 +106,8 @@ def to_json(
             setters=template.bindings.setters,
             spans=template.spans,
         )
+        if template.generation_balance is not None:
+            document["generation_balance"] = template.generation_balance
         if template.generation_width is not None:
             document["generation_width"] = template.generation_width
     else:
@@ -242,6 +244,8 @@ def _load_template(
         raise ValueError("template char must be one character")
     _require_template_capability(name, catalog=catalog)
     width = positive_metadata_field(value, "generation_width")
+    if "generation_balance" in value and type(value["generation_balance"]) is not bool:
+        raise ValueError("generation_balance must be boolean")
     pairs = value["setters"]
     if not isinstance(pairs, list) or any(
         not isinstance(pair, list)
@@ -266,6 +270,7 @@ def _load_template(
         settings=settings,
         spans=spans,
         generation_width=width,
+        generation_balance=value.get("generation_balance"),
     )
 
 
@@ -321,6 +326,8 @@ def from_json(
             fields.add("scale")
         if kind == "template":
             fields |= {"char", "setters", "spans"}
+            if "generation_balance" in value:
+                fields.add("generation_balance")
             if "generation_width" in value:
                 fields.add("generation_width")
         elif "input_arity" in value:
