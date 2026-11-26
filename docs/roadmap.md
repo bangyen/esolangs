@@ -70,6 +70,9 @@ evidence, not optimization tasks.
     per 729-word bank and control words and calibration markers reserved.
     Both reads and the output slot matched on all 131,072 rows of each
     random table. This layout answered 129,805 and 129,560 rows correctly.
+    Moving all three output routines into startup memory freed 261 more
+    three-bit words. All eight labels worked at every word in 6,264 native
+    runs. The displaced startup code raised the shortfall to 3,869 bits.
     A separate layout moved 24 primary words between
     banks, kept every spill address, and gained three writable bit positions
     net. All eight labels worked at
