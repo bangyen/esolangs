@@ -32,6 +32,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
@@ -90,9 +91,9 @@ def slashes(truth_table: str) -> str:
 
 def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
+    if (bit := constant_output(truth_table)) is not None:
         # The a/b pattern is parsed but cannot match the literal digit.
-        return layout_fragments(("/", *(_INPUT,) * n, "//" + truth_table[0]))
+        return layout_fragments(("/", *(_INPUT,) * n, "//" + bit))
     weights, bits = input_weights(truth_table, n)
     table = "".join("qA" if bit == "0" else "qB" for bit in bits)
     prefix = _IGNORE if 0 in weights else ""

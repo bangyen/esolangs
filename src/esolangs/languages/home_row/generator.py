@@ -28,6 +28,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
@@ -76,13 +77,13 @@ def _layout(truth_table: str) -> TemplateLayout:
 def _program(truth_table: str, *, negated: bool = False) -> list[TemplateToken]:
     """Build a lookup (``negated``: weights on ``s``, cell -1) or a literal."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
+    if (bit := constant_output(truth_table)) is not None:
         # On zero, s/a decrements then restores; j/a skips the increment.
         # Every setter thus leaves the scratch cell zero, without an index gate.
         return [
             _CONSTANT_SETUP,
             *(_INPUT, "a") * n,
-            "f" + "a" * int(truth_table[0]) + "k",
+            "f" + "a" * int(bit) + "k",
         ]
     # The leaf chain is up to 2**(n-1) leaves, so dropping an ignored input
     # halves the program; its gate stays with weight zero, so nothing moves

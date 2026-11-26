@@ -40,7 +40,7 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_lookup,
 )
-from esolangs.generation.lookup import packed_cells
+from esolangs.generation.lookup import constant_output, packed_cells
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.runtime._program import Program
@@ -49,8 +49,8 @@ from esolangs.runtime._program import Program
 def fish(truth_table: str, width: int | None = None) -> str:
     """Return a Fish lookup grid; lookup folds need three columns; parity uses one."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _constant(n, truth_table[0], width)
+    if (bit := constant_output(truth_table)) is not None:
+        return _constant(n, bit, width)
     # A one-column parity program fits any width; at n=10 it is 24 cells
     # against the lookup's 2,050 (default) and 3,435 (width 3).
     bias = parity_bias(truth_table)
@@ -292,8 +292,7 @@ def balance_fish(truth_table: str, default: str | None = None) -> str:
     unpacked folds are reserved for coordinates beyond binary64 precision.
     """
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        bit = truth_table[0]
+    if (bit := constant_output(truth_table)) is not None:
         if default is None:
             default = _constant(n, bit, None)
         # W = 2*ceil(L/(W-2)); the crossing is 1+sqrt(1+2L).

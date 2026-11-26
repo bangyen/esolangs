@@ -20,6 +20,7 @@ Decisions:
 """
 
 from esolangs.generation.helpers import _validate_truth_table, subtree_ids
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -36,13 +37,13 @@ _NINETY_SEVEN = _ZERO_BYTE + ":+1+"
 def pilas(truth_table: str) -> str:
     """Build a Pilas program printing ``truth_table[row]`` for the inputs."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
+    if (bit := constant_output(truth_table)) is not None:
         # ASCII 0/1 is nonzero, so {} discards a byte. Retention costs six bits.
         # Reserve 14 plus pointer/input widths within the unchanged 3n+24 bound.
         keep = min(
             n, max(0, (3 * n + 10 - (3 * n + 10).bit_length() - n.bit_length()) // 6)
         )
-        bump = "1+" if truth_table[0] == "1" else ""
+        bump = "1+" if bit == "1" else ""
         return "," * keep + ",{}" * (n - keep) + _ZERO_BYTE + bump + ".\n0{0}"
     ids = subtree_ids(truth_table)
     parts: list[str] = []

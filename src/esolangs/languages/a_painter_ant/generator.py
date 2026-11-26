@@ -38,7 +38,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.lookup import near_unanimity
+from esolangs.generation.lookup import constant_output, near_unanimity
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
@@ -60,10 +60,10 @@ def a_painter_ant(truth_table: str) -> str:
 def _program(truth_table: str) -> TemplateLayout:
     """Build the indexed corridor or a constant origin with input resets."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
+    if (bit := constant_output(truth_table)) is not None:
         # n enters black north; N stays put. S returns to the white origin
         # in both cases, so the next setter sees the same two neighbours.
-        end = "p" if truth_table[0] == "0" else ""
+        end = "p" if bit == "0" else ""
         return layout_fragments(("P", *((_INPUT, "S") * n), end))
     # An ignored input walks no ``E``: the corridor is the essential inputs'.
     weights, table = input_weights(truth_table, n)

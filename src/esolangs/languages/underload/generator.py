@@ -40,6 +40,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     reflected_table,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.template import InputSlot, TemplateLayout, layout_fragments
 from esolangs.generation.wrap import TokenWrapper
@@ -134,10 +135,8 @@ def underload(truth_table: str, width: int | None = None) -> str:
 
 def _layout(truth_table: str, width: int | None) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        layout = layout_fragments(
-            (f"({truth_table[0]})", *(InputSlot(3),) * n, "!" * n + "S")
-        )
+    if (bit := constant_output(truth_table)) is not None:
+        layout = layout_fragments((f"({bit})", *(InputSlot(3),) * n, "!" * n + "S"))
     elif width is not None and width < 5:
         # The node runs the chosen selector; neither fill needs padding.
         selectors = ("()(~)", InputSlot(1), "(!)*") * n

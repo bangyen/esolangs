@@ -23,6 +23,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
@@ -40,8 +41,8 @@ def cyclic_tag(truth_table: str) -> str:
 
 def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return layout_fragments((",", *(_INPUT,) * n, truth_table[0]))
+    if (bit := constant_output(truth_table)) is not None:
+        return layout_fragments((",", *(_INPUT,) * n, bit))
     # An ignored input's rule is empty: its symbol is deleted unread.
     weights, table = input_weights(truth_table, n)
     rules = ["0" * weight for weight in weights]

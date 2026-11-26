@@ -25,6 +25,7 @@ from esolangs.generation.helpers import (
     subtree_ids,
     symmetric_lookup,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -92,8 +93,8 @@ def bfstack(truth_table: str) -> str:
     when the race against the plain build is dropped.
     """
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _constant_leaf(n, truth_table[0])[:-1]
+    if (bit := constant_output(truth_table)) is not None:
+        return _constant_leaf(n, bit)[:-1]
     projected = input_weights(truth_table, n)
     symmetric = symmetric_lookup(projected)
     if symmetric is None or len(symmetric.table) > (1 << _BLOCK_INPUTS):

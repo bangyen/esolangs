@@ -17,6 +17,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     in_input_order,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.packed_decoder import (
     _sbleq_constant,
     packed_decoder,
@@ -36,8 +37,8 @@ def s_bleq(truth_table: str) -> str:
     targets. Constants consume all inputs before printing.
     """
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _sbleq_constant(n, truth_table[0])
+    if (bit := constant_output(truth_table)) is not None:
+        return _sbleq_constant(n, bit)
     if len(truth_table) <= _TREE_ROWS:
         return _tree(truth_table)
     packed = packed_decoder(truth_table)

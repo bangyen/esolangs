@@ -21,7 +21,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
-from esolangs.generation.lookup import symmetric_outputs
+from esolangs.generation.lookup import constant_output, symmetric_outputs
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
@@ -65,9 +65,9 @@ def _reads(n: int) -> str:
 def circlefuck(truth_table: str) -> str:
     """Return a Circlefuck program computing ``truth_table`` (MSB first)."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
+    if (bit := constant_output(truth_table)) is not None:
         # Reads rewrite cell zero; the final < wraps to the literal after @.
-        return "," * n + "<.@" + truth_table[0]
+        return "," * n + "<.@" + bit
     essential = essential_inputs(truth_table, n)
     width = len(essential)
     cells = max(1, -(-width // _DIGIT_BITS))

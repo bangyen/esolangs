@@ -34,7 +34,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.lookup import change_points
+from esolangs.generation.lookup import change_points, constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import balanced_token_width
 from esolangs.generation.wrap import (
@@ -74,12 +74,12 @@ def dimensional(truth_table: str, width: int | None = None) -> str:
 def _program(truth_table: str, width: int | None = None) -> str:
     """Build an indexed lookup or read into scratch and print a fresh literal."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
+    if (bit := constant_output(truth_table)) is not None:
         if width == 1 and n <= 2:
             # A character literal cannot fit the existing one-column layouts.
-            tail = "[-]" + "+" * (_ASCII_ZERO + int(truth_table[0])) + "."
+            tail = "[-]" + "+" * (_ASCII_ZERO + int(bit)) + "."
         else:
-            tail = f":{truth_table[0]}."
+            tail = f":{bit}."
         constant = "d" * n + tail
         return wrap_program(constant, "dimensional", width)
     if width == 1 and n <= 2:

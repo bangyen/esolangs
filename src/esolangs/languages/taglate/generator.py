@@ -14,6 +14,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score, wrap_program
@@ -120,8 +121,8 @@ def _taglate_raw(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    if len(set(truth_table)) == 1:
-        return truth_table[0] + "\n" + "h" * n + "i"
+    if (bit := constant_output(truth_table)) is not None:
+        return bit + "\n" + "h" * n + "i"
     used = essential_inputs(truth_table, n)
     kept = len(used)
     table = read_at(truth_table, used, n) if kept < n else truth_table

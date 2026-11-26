@@ -21,6 +21,7 @@ from esolangs.generation.helpers import (
     input_weights,
     symmetric_lookup,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import BalanceRequest, GenerationRequest
 from esolangs.generation.wrap import balance_score, balance_width
 from esolangs.runtime._program import Program
@@ -29,8 +30,8 @@ from esolangs.runtime._program import Program
 def egl(truth_table: str, width: int | None = None) -> str:
     """Build an EGL program computing ``truth_table``; ``width`` wraps it."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return _wrap("2,1:" + "x" * n + ">" + "+" * int(truth_table[0]) + "=", width)
+    if (bit := constant_output(truth_table)) is not None:
+        return _wrap("2,1:" + "x" * n + ">" + "+" * int(bit) + "=", width)
     projected = input_weights(truth_table, n)
     builds = (projected, symmetric_lookup(projected))
     # A symmetric table walks one cell a 1 over m + 1 entries

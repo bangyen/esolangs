@@ -13,6 +13,7 @@ Size:
 
 from esolangs.generation.branch_decoder import hoisted_tree
 from esolangs.generation.helpers import _validate_truth_table, in_input_order
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.packed_decoder import packed_decoder
 from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
@@ -22,7 +23,7 @@ def subleq(truth_table: str) -> str:
     """Compare shared trees with packed decoders; constants read and print."""
     _validate_truth_table(truth_table)
     packed = packed_decoder(truth_table, direct=True)
-    if len(set(truth_table)) == 1:
+    if constant_output(truth_table) is not None:
         return packed
     return min(packed, in_input_order(truth_table, _subleq_shared), key=len)
 

@@ -36,6 +36,7 @@ from esolangs.generation.helpers import (
     grid_width,
     input_weights,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import balance_score
 from esolangs.languages.b_tapemark.dialect import (
@@ -273,8 +274,7 @@ def _program(
 ) -> str:
     validate_swap_marker(swap_marker)
     depth = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        answer = truth_table[0]
+    if (answer := constant_output(truth_table)) is not None:
         horizontal = ">" + "-|" * (depth - 1) + "-" + answer + "!"
         if width is None or len(horizontal) <= width:
             return horizontal

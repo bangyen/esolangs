@@ -43,6 +43,7 @@ from esolangs.generation.helpers import (
     essential_inputs,
     read_at,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.wrap import wrap_tokens
 from esolangs.runtime._program import Program
@@ -167,8 +168,8 @@ def _lookup(n: int, essential: list[int], *, mirror: bool = False) -> list[str]:
 def blindfolded_arithmetic(truth_table: str) -> str:
     """Build a program printing ``truth_table[row]`` for input ``row + 1``."""
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
-        return "i=i-i;i=i/a" if truth_table[0] == "0" else "i=i/i;i=i/a"
+    if (bit := constant_output(truth_table)) is not None:
+        return "i=i-i;i=i/a" if bit == "0" else "i=i/i;i=i/a"
     # At n=3 the larger constant setup grows parity by one instruction;
     # n=4 ties, and the independently judged saving tends to 25%.
     if n >= 4 and parity_bias(truth_table) is not None:

@@ -28,7 +28,7 @@ from esolangs.generation.helpers import (
     _validate_truth_table,
     input_weights,
 )
-from esolangs.generation.lookup import packed_cells
+from esolangs.generation.lookup import constant_output, packed_cells
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.token_balance import CELL_ASPECT
 from esolangs.generation.wrap import balance_score
@@ -103,8 +103,8 @@ def befunge(truth_table: str, width: int | None = None) -> str:
     """Return a Befunge grid; narrow requests use the layout's column floor."""
     n = _validate_truth_table(truth_table)
     _check_cap(n)
-    if len(set(truth_table)) == 1:
-        return _constant(n, truth_table[0], width)
+    if (bit := constant_output(truth_table)) is not None:
+        return _constant(n, bit, width)
     return _Lookup(truth_table, n).render(width)
 
 
@@ -333,8 +333,7 @@ def balance_befunge(truth_table: str, default: str | None = None) -> str:
     n = _validate_truth_table(truth_table)
     count = 1 << n
     _check_cap(n)
-    if len(set(truth_table)) == 1:
-        bit = truth_table[0]
+    if (bit := constant_output(truth_table)) is not None:
         if default is None:
             default = _constant(n, bit, None)
         length = 2 * n + 3

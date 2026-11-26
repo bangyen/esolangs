@@ -30,6 +30,7 @@ from esolangs.generation.decision import decision_layers
 from esolangs.generation.helpers import (
     _validate_truth_table,
 )
+from esolangs.generation.lookup import constant_output
 from esolangs.generation.requests import GenerationRequest
 from esolangs.generation.template import (
     InputSlot,
@@ -54,11 +55,11 @@ def stisp(truth_table: str) -> str:
 
 def _layout(truth_table: str) -> TemplateLayout:
     n = _validate_truth_table(truth_table)
-    if len(set(truth_table)) == 1:
+    if (bit := constant_output(truth_table)) is not None:
         head: tuple[TemplateToken, ...] = (_INPUT,)
         if n > 1:
             head = ("(", *(_INPUT, " ") * (n - 1), _INPUT, ")")
-        return layout_fragments((f"x->s[]={truth_table[0]};", *head, "->s[]"))
+        return layout_fragments((f"x->s[]={bit};", *head, "->s[]"))
     diagram = decision_layers(truth_table)
     nodes = {
         node: pair
