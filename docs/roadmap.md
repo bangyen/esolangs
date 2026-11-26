@@ -47,11 +47,14 @@ evidence, not optimization tasks.
     1,669 misses, 204 read an invalid packed byte and 1,465 read the wrong
     stored bit. Moving the terminal return one cell earlier freed 42 words
     to store three bits each. All eight values at each word ran natively.
-    A selector can swap the highest address trit between 1 and 2 for
-    74 groups of 64 primary words. Switching all 74 moved 3,552 words
-    and preserved both reads and the output slot on every input. A separate
-    layout moved 448 primary words by reassigning 3,008 spill bits. All
-    eight values worked at 434 of the new destinations in 10,416 runs.
+    After swapping the highest address trit, 103 groups reread their
+    selector to choose among three spill routes. This moved 4,944 primary
+    words and preserved every spill address. Two other layouts used a
+    second selector. The same 64 groups kept 3,072 primary moves and
+    reassigned all 4,096 of their spill bits. Both layouts reached 131,072
+    distinct bit positions. A separate layout moved 448 primary words by
+    reassigning 3,008 spill bits. All eight values worked at 434 of the
+    new destinations in 10,416 runs.
   - *Storage shared with the decoder:* 93 words in the jump workspace
     stored three answer bits each. In the same layout, 63 fixed instructions
     encoded three bits each through selectable markers. All eight values
