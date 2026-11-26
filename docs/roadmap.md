@@ -128,9 +128,12 @@ evidence, not optimization tasks.
     Shortening the digit printer by seven instructions let all three output
     routines fit between addresses 4,457 and 4,680. With their final helper
     at 5,565, the layout freed 168 formerly reserved words. All eight values
-    passed across their 483 row positions in 3,864 executions per table. The two tables
-    answered 131,024 and 131,017 of 131,072 rows correctly. Independent
-    storage is still missing for 110 primary positions and five spill positions.
+    passed across their 483 row positions in 3,864 executions per table.
+    Moving a fixed address calculation into startup shortened the decoder by
+    26 instructions. All eight values passed at 15 freed words in 344 row
+    executions per table. Both tables printed one digit and halted on all
+    131,072 inputs, with 33 and 41 wrong answers. The independent storage gap
+    fell from 115 to 83 positions (78 primary and five spill).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
