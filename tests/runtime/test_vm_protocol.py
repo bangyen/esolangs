@@ -10,10 +10,10 @@ import pytest
 import esolangs
 import esolangs.debugger as debugger_api
 from esolangs import vm as vm_module
-from esolangs._cycles import _climbs_forever
 from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.registry import INTERPRETERS
 from esolangs.runtime._execution import interpreter_module
+from esolangs.runtime._growth import _climbs_forever
 from esolangs.runtime._lifecycle import Completion
 from esolangs.runtime._vm_protocol import VM
 from esolangs.vm import complete_vm, make_vm, run_until_halt

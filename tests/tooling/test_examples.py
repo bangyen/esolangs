@@ -7,11 +7,12 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs._cycles import _FramedMachine, _TapeMachine
+from esolangs._cycles import _FramedMachine
 from esolangs.compressed import CompressedText
 from esolangs.generation.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.raster import Raster
 from esolangs.registry import LANGUAGES, canonical_id, resolve
+from esolangs.runtime._growth import _TapeMachine
 from esolangs.runtime._vm_protocol import _BranchingStepMachine
 from esolangs.vm import (
     make_vm,

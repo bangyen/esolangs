@@ -8,6 +8,8 @@ import pytest
 from esolangs import ExecutionLimits, ExecutionResult, InputExhaustedError, Language
 from esolangs.debugger import Debugger, make_debugger
 from esolangs.exceptions import HaltError, InterpreterLimitError
+from esolangs.languages.painfuck._transition import _advance as _advance_sparse
+from esolangs.languages.painfuck._transition import _get, _put
 from esolangs.languages.painfuck.interpreter import _Machine as Painfuck
 from esolangs.languages.painfuck.interpreter import prepare_machine
 from esolangs.runtime._state import WorkspaceVariant
@@ -29,7 +31,6 @@ from tests.support.vm_support import assert_random_steps_reproduce
 
 _interpreter = importlib.import_module("esolangs.languages.painfuck.interpreter")
 run = _interpreter.run
-_put = _interpreter._put
 
 
 def _set(tape: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
@@ -43,7 +44,7 @@ def _advance(state, prog, n, reads, coins):
     cells = (tuple(i for i, _ in kept), tuple(v for _, v in kept))
     span = (-origin, len(tape) - 1 - origin)
     sparse = (cells, loop, ptr - origin, ind, rep, span)
-    (cells, loop, pos, ind, rep, span), effects = _interpreter._advance(
+    (cells, loop, pos, ind, rep, span), effects = _advance_sparse(
         sparse, prog, n, reads, coins
     )
     dense = _interpreter._dense(cells, span)
@@ -722,9 +723,7 @@ def test_branching_limit_admits_exactly_its_outcomes() -> None:
     assert pending != initial
     outcomes = machine.branching_successors(pending, 64)
     assert outcomes is not None
-    assert {_interpreter._get(state[0], 0) for state in outcomes} == set(
-        range(0, 13, 2)
-    )
+    assert {_get(state[0], 0) for state in outcomes} == set(range(0, 13, 2))
     assert machine.branching_snapshot() == pending
     assert coins.draws == 2  # Analysis used only the remembered first draw.
     machine.step()

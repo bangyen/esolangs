@@ -431,7 +431,7 @@ def _generation_bits(
     inputs = _validate_truth_table(table)
     if bits is None:
         _fail("gzip export requires text; rasters use PNG")
-    from esolangs.operations.generation import (
+    from esolangs.operations.instantiation import (
         _check_template_bits,
         _raster_template_error,
         _stdin_template_error,
@@ -449,7 +449,8 @@ def _generation_bits(
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    from esolangs.operations.generation import _fill_checked_template, _generate_checked
+    from esolangs.operations.generation import _generate_checked
+    from esolangs.operations.instantiation import _fill_checked_template
     from esolangs.settings import DialectSettings
 
     value_options = _VALUE_OPTIONS["generate"] - {"--set"}

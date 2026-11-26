@@ -70,7 +70,7 @@ _LAZY = {
     "from_file": "esolangs.operations.source",
     "from_source": "esolangs.operations.source",
     "generate": "esolangs.operations.generation",
-    "instantiate": "esolangs.operations.generation",
+    "instantiate": "esolangs.operations.instantiation",
     "to_json": "esolangs.portable",
     "from_json": "esolangs.portable",
     "to_file": "esolangs.portable",
@@ -92,7 +92,7 @@ if TYPE_CHECKING:
     from esolangs.operations.execution import prepare as prepare
     from esolangs.operations.execution import run as run
     from esolangs.operations.generation import generate as generate
-    from esolangs.operations.generation import instantiate as instantiate
+    from esolangs.operations.instantiation import instantiate as instantiate
     from esolangs.operations.prepared import PreparedProgram as PreparedProgram
     from esolangs.operations.source import from_file as from_file
     from esolangs.operations.source import from_source as from_source

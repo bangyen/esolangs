@@ -7,12 +7,13 @@ import pytest
 
 import esolangs
 from esolangs.generation.wrap import balance_score
+from esolangs.languages.flowchart import _layout, _stacked
 from esolangs.languages.flowchart import generator as boolean
+from esolangs.languages.flowchart._stacked import _flowchart_stacked
 from esolangs.languages.flowchart.generator import (
     _flowchart_cells,
     _flowchart_deque,
     _flowchart_render,
-    _flowchart_stacked,
 )
 from esolangs.runtime.io import IO, ScriptedIO
 from tests.generators.boolean_runners import _runner
@@ -43,10 +44,11 @@ class TestFlowchart:
 
             assert boolean.constant_span_test is constant_span_test
             assert boolean.essential_inputs is essential_inputs
-            assert boolean.read_at is read_at
-            for query, damaged_query, expected in (
-                ("essential_inputs", lambda _table, _n: [], "0000"),
+            assert _layout.read_at is read_at
+            for module, query, damaged_query, expected in (
+                (boolean, "essential_inputs", lambda _table, _n: [], "0000"),
                 (
+                    _layout,
                     "read_at",
                     lambda table, used, n: read_at(table, used, n).translate(
                         str.maketrans("01", "10")
@@ -54,13 +56,14 @@ class TestFlowchart:
                     "1001",
                 ),
                 (
+                    boolean,
                     "constant_span_test",
                     lambda _table: lambda _lo, _hi: True,
                     "0000",
                 ),
             ):
                 with monkeypatch.context() as patch:
-                    patch.setattr(boolean, query, damaged_query)
+                    patch.setattr(module, query, damaged_query)
                     damaged = (
                         _flowchart_render(_flowchart_cells(table))
                         if query == "constant_span_test"
@@ -281,10 +284,10 @@ def test_a_shared_drawing_has_an_exact_size(monkeypatch) -> None:
 
     from esolangs.generation.helpers import subtree_ids
 
-    assert boolean.subtree_ids is subtree_ids
-    assert not hasattr(boolean._Stacked("0001", share=True), "constant")
+    assert _stacked.subtree_ids is subtree_ids
+    assert not hasattr(_stacked._Stacked("0001", share=True), "constant")
     monkeypatch.setattr(
-        boolean,
+        _stacked,
         "subtree_ids",
         lambda table: [[0] * len(layer) for layer in subtree_ids(table)],
     )
@@ -377,7 +380,8 @@ def test_balance_of_parity_n8_is_banded() -> None:
 @pytest.mark.parametrize("table", ["0001", "0110", "01101001", "00010111", "11101000"])
 def test_balanced_tree_folds_and_still_computes(table: str, monkeypatch) -> None:
     """Snaking chains beats the tall tree's side by a third and keeps the table."""
-    from esolangs.languages.flowchart.generator import _ANSWER, _snake
+    from esolangs.languages.flowchart._layout import _ANSWER
+    from esolangs.languages.flowchart.generator import _snake
 
     shapes = set()
     padded_reads = []
