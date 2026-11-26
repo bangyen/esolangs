@@ -252,6 +252,7 @@ Functions:
 - `esolangs.generate` -- return an immutable program or template computing `truth_table`
 - `esolangs.instantiate` -- fill a parameterized generator's template with `bits`
 - `esolangs.list_languages` -- return the supported language names, sorted
+- `esolangs.plan_generation` -- return a reusable build function or the cap that prevents construction
 - `esolangs.prepare` -- load reusable source; each run or VM owns fresh IO, state and randomness
 - `esolangs.read_answer` -- return the answer bit, `"0"` or `"1"`, a program's `output` carries
 - `esolangs.run` -- execute `program` and return output, input usage and completion evidence

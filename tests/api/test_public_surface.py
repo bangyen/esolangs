@@ -69,6 +69,7 @@ class TestPackageSurface:
             "generate",
             "instantiate",
             "list_languages",
+            "plan_generation",
             "prepare",
             "read_answer",
             "run",

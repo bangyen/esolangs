@@ -363,3 +363,31 @@ def prepare_machine(code, options):
         before, after, programs, rounds=2, runtime=_runtime()
     )
     assert new_rate == pytest.approx(old_rate)
+
+
+@pytest.mark.medium
+def test_cli_detects_shared_helper_mutation(tmp_path, monkeypatch, capsys):
+    import esolangs.runtime.io as runtime_io
+
+    helper = Path(runtime_io.__file__)
+    mutant = tmp_path / helper.name
+    mutant.write_text(
+        helper.read_text().replace(
+            "return self._buffer.getvalue()",
+            'return "mutated" + self._buffer.getvalue()',
+        )
+    )
+    monkeypatch.setattr(tracediff, "corpus", lambda *_: [("+.", "")])
+    assert (
+        tracediff.main(
+            [
+                REFERENCE,
+                "--mutant",
+                str(mutant),
+                "--mutant-target",
+                str(helper.relative_to(tracediff.ROOT / "src")),
+            ]
+        )
+        == 0
+    )
+    assert "control: mutant differs on 1" in capsys.readouterr().out

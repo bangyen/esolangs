@@ -41,7 +41,7 @@ def _functions() -> dict[str, Callable[..., object]]:
     }
 
 
-def _invalid_generated_source() -> None:
+def _invalid_generated_source(operation: str = "generate") -> None:
     from dataclasses import replace
 
     from esolangs.registry._backend import BooleanBackend
@@ -52,7 +52,7 @@ def _invalid_generated_source() -> None:
     scoped = esolangs.Catalog([amended]).bind(R)
     with pytest.raises(x.TruthTableError):
         scoped.generate("1")
-    scoped.generate("01")
+    getattr(scoped, operation)("01")
 
 
 def _invalid_input_encoding() -> str:
@@ -338,6 +338,30 @@ TRIGGERS: list[tuple[str, type[Exception], Callable[[], object], _Setup | None]]
         "generate",
         x.ArgumentError,
         lambda: esolangs.generate(_first("no generator"), "01"),
+        None,
+    ),
+    (
+        "plan_generation",
+        x.UnknownLanguageError,
+        lambda: esolangs.plan_generation("Nolang", "01"),
+        None,
+    ),
+    (
+        "plan_generation",
+        x.ArgumentError,
+        lambda: esolangs.plan_generation(R, "01", scale=2),
+        None,
+    ),
+    (
+        "plan_generation",
+        x.TruthTableError,
+        lambda: esolangs.plan_generation(R, "012"),
+        None,
+    ),
+    (
+        "plan_generation",
+        x.ProgramError,
+        lambda: _invalid_generated_source("plan_generation"),
         None,
     ),
     ("generate", x.GeneratorCapError, _over_cap, None),

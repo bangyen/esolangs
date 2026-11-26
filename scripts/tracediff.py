@@ -19,12 +19,16 @@ on a new copy more than 10% slower (CONTRIBUTING.md's bar).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib
 import importlib.util
 import itertools
+import json
 import math
+import os
 import random
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -110,43 +114,6 @@ def _load(path: Path, name: str) -> ModuleType:
     return module
 
 
-def _source_path(module: str, ref: str) -> tuple[Path, str]:
-    """Return the interpreter's file and the name to load other copies under.
-
-    A package's old ``__init__`` is loaded inside the package, so its relative
-    imports reach the current submodules: sound only when it alone changed.
-    """
-    path = Path(importlib.import_module(module).__file__ or "")
-    if path.name != "__init__.py":
-        return path, "tracediff"
-    changed = subprocess.run(
-        ["git", "diff", "--name-only", ref, "--", path.parent.relative_to(ROOT)],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.split()
-    others = [name for name in changed if not name.endswith("/__init__.py")]
-    if others:
-        raise SystemExit(f"{module} changed beyond __init__.py: {others}")
-    return path, f"{module}.tracediff"
-
-
-def _revision(path: Path, ref: str, scratch: Path) -> Path:
-    """Write ``path`` as it is at git ``ref`` into ``scratch``."""
-    relative = path.relative_to(ROOT).as_posix()
-    text = subprocess.run(
-        ["git", "show", f"{ref}:{relative}"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    copy = scratch / f"old_{path.name}"
-    copy.write_text(text, encoding="utf-8")
-    return copy
-
-
 def _error(error: BaseException) -> Event:
     return (type(error).__name__, str(error), tuple(getattr(error, "__notes__", ())))
 
@@ -179,7 +146,7 @@ def _repr(value: object) -> str:
 
 
 _SLOTS: dict[type, tuple[str, ...]] = {}
-_NAN_TAG = object()
+_NAN_TAG = "tracediff.nan"
 
 
 def _slots(cls: type) -> tuple[str, ...]:
@@ -359,14 +326,15 @@ def corpus(name: str, count: int = RANDOM_PROGRAMS, max_n: int = 3) -> list[Prog
             for example in tomllib.loads(path.read_text()).get("examples", [])
         )
     if language.backend is not None:
-        parameterized = esolangs.describe(name).parameterized
+        bound = esolangs.Language(name)
+        parameterized = bound.describe().parameterized
         for n in range(1, max_n + 1):
             for table in map("".join, itertools.product("01", repeat=1 << n)):
                 for width in (None, 8) if n < 3 else (None,):
-                    try:
-                        program = esolangs.generate(name, table, width=width)
-                    except GeneratorCapError:
-                        continue  # Unary's n=3 programs are too long to build
+                    plan = bound.plan_generation(table, width=width)
+                    if isinstance(plan, GeneratorCapError):
+                        continue
+                    program = plan()
                     for row in range(1 << n):
                         bits = [int(c) for c in f"{row:0{n}b}"]
                         # Kept as generated: a raster or compressed program
@@ -460,6 +428,57 @@ def speeds(
     return steps / old_best, steps / new_best
 
 
+def _worker(name: str, request: Path, mode: str) -> None:
+    """Execute one shared corpus using only this process's interpreter tree."""
+    rows, views, repetitions = json.loads(request.read_text())
+    programs = [
+        (esolangs.from_json(name, source) if artifact else source, stdin)
+        for artifact, source, stdin in rows
+    ]
+    runtime = LANGUAGES[name].runtime
+    module = importlib.import_module(INTERPRETERS[name])
+    _preparation(module, runtime)
+    if mode in {"calibrate", "speed"}:
+        counts, repeats = repetitions
+        work = list(zip(programs, counts, strict=True))
+        if mode == "calibrate":
+            lap = _lap(module, work, runtime=runtime)
+            print(max(1, math.ceil(0.2 / max(lap, 1e-6))))
+            return
+        work *= repeats
+        _lap(module, work, runtime=runtime)
+        fastest = min(_lap(module, work, runtime=runtime) for _ in range(5))
+        print(json.dumps(sum(counts) * repeats / fastest))
+        return
+    for program in programs:
+        events = trace(module, program, frozenset(views), runtime=runtime)
+        memo: dict[int, object] = {}
+        fields = (repr(_plain(event, memo)) for event in events)
+        if mode == "detail":
+            print(json.dumps(list(fields)))
+        else:
+            digest = hashlib.sha256()
+            for field in fields:
+                data = field.encode("utf-8", "surrogatepass")
+                digest.update(len(data).to_bytes(8))
+                digest.update(data)
+            print(json.dumps((digest.hexdigest(), len(events), _halts(events))))
+
+
+def _run_worker(src: Path, name: str, request: Path, mode: str) -> list[Any]:
+    result = subprocess.run(
+        [sys.executable, __file__, "--worker", name, str(request), mode],
+        env=dict(os.environ, PYTHONPATH=str(src), PYTHONHASHSEED="0"),
+        cwd=src.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode:
+        raise SystemExit(result.stderr)
+    return [json.loads(line) for line in result.stdout.splitlines()]
+
+
 def main(argv: list[str] | None = None) -> int:
     """Print the first differences and the counts; return the exit status."""
     parser = argparse.ArgumentParser(
@@ -475,44 +494,92 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--random", type=int, default=RANDOM_PROGRAMS)
     parser.add_argument("--speed", action="store_true", help="also compare steps/s")
+    parser.add_argument(
+        "--mutant-target",
+        type=Path,
+        help="module path within src replaced by the mutant",
+    )
     args = parser.parse_args(argv)
     try:
         name = resolve(args.language)
     except ValueError as exc:
         parser.error(str(exc))
     ignored = frozenset(filter(None, args.ignore_views.split(",")))
-    runtime = LANGUAGES[name].runtime
-    new = importlib.import_module(INTERPRETERS[name])
-    path, prefix = _source_path(INTERPRETERS[name], args.old)
-    with tempfile.TemporaryDirectory() as scratch:
-        old = _load(_revision(path, args.old, Path(scratch)), f"{prefix}_old")
-    _preparation(old, runtime)
-    _preparation(new, runtime)
+    checkout = importlib.import_module("scripts.gendiff").checkout_source
+
     programs = corpus(name, args.random)
-    found = differences(old, new, programs, ignored, runtime=runtime)
-    for (code, stdin), step, before, after in found[:3]:
-        print(f"DIFF {code!r:.60} stdin={stdin[:20]!r} at step {step}")
-        print(f"  {args.old}: {before!r:.300}")
-        print(f"  new: {after!r:.300}")
-    # A diff over programs that all fail at once proves nothing: say so.
-    halting = sum(_halts(trace(new, p, ignored, runtime=runtime)) for p in programs)
-    print(
-        f"{name}: {len(programs)} programs ({halting} halt cleanly), "
-        f"{len(found)} differ from {args.old}"
-    )
-    failed = bool(found)
-    if args.speed:
-        was, now = speeds(old, new, programs, runtime=runtime)
-        change = now / was - 1
-        print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
-        failed |= change < -SLOWDOWN
-    if args.mutant is not None:
-        mutant = _load(args.mutant, f"{prefix}_mutant")
-        caught = len(differences(old, mutant, programs, ignored, runtime=runtime))
-        print(f"control: mutant differs on {caught}")
-        failed |= not caught
+    rows = [
+        (False, code, stdin)
+        if isinstance(code, str)
+        else (True, esolangs.to_json(name, code), stdin)
+        for code, stdin in programs
+    ]
+    with tempfile.TemporaryDirectory() as directory:
+        scratch = Path(directory)
+        old = checkout(args.old, scratch / "old")
+        new = ROOT / "src"
+        request = scratch / "corpus.json"
+        request.write_text(json.dumps((rows, sorted(ignored), [])))
+        before = _run_worker(old, name, request, "trace")
+        after = _run_worker(new, name, request, "trace")
+        changes = [
+            i
+            for i, (first, second) in enumerate(zip(before, after, strict=True))
+            if first != second
+        ]
+        halting = sum(row[2] for row in after)
+        print(
+            f"{name}: {len(rows)} programs ({halting} halt cleanly), "
+            f"{len(changes)} differ from {args.old}"
+        )
+        failed = bool(changes)
+        if args.mutant is not None:
+            target = args.mutant_target or Path(
+                importlib.import_module(INTERPRETERS[name]).__file__ or ""
+            ).relative_to(new)
+            mutated = scratch / "mutant" / "src"
+            shutil.copytree(new, mutated, ignore=shutil.ignore_patterns("__pycache__"))
+            if target.is_absolute() or ".." in target.parts:
+                parser.error("--mutant-target must be relative to src")
+            shutil.copyfile(args.mutant, mutated / target)
+            controls = _run_worker(mutated, name, request, "trace")
+            caught = sum(a != b for a, b in zip(after, controls, strict=True))
+            print(f"control: mutant differs on {caught}")
+            failed |= not caught
+        if changes:
+            sample = changes[:3]
+            request.write_text(
+                json.dumps(([rows[i] for i in sample], sorted(ignored), []))
+            )
+            left = _run_worker(old, name, request, "detail")
+            right = _run_worker(new, name, request, "detail")
+            for index, first, second in zip(sample, left, right, strict=True):
+                for step, (x, y) in enumerate(itertools.zip_longest(first, second)):
+                    if x != y:
+                        print(
+                            f"DIFF program {index} at step {step}: "
+                            f"{str(x)[:300]} -> {str(y)[:300]}"
+                        )
+                        break
+        if args.speed:
+            longest = sorted(
+                range(len(after)), key=lambda i: after[i][1], reverse=True
+            )[:40]
+            selected = [rows[i] for i in longest]
+            counts = [after[i][1] for i in longest]
+            request.write_text(json.dumps((selected, [], (counts, 1))))
+            (repeats,) = _run_worker(new, name, request, "calibrate")
+            request.write_text(json.dumps((selected, [], (counts, repeats))))
+            (was,) = _run_worker(old, name, request, "speed")
+            (now,) = _run_worker(new, name, request, "speed")
+            change = now / was - 1
+            print(f"speed: {was:,.0f} -> {now:,.0f} steps/s ({change:+.0%})")
+            failed |= change < -SLOWDOWN
     return int(failed)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if sys.argv[1:2] == ["--worker"]:
+        _worker(sys.argv[2], Path(sys.argv[3]), sys.argv[4])
+    else:
+        raise SystemExit(main())

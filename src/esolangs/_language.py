@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from os import PathLike
 
@@ -9,6 +10,7 @@ import esolangs
 from esolangs._dialect import Scalar
 from esolangs.artifacts import Artifact, BooleanEvaluation, ProgramArtifact
 from esolangs.debugger import Debugger, make_debugger, make_vm
+from esolangs.exceptions import GeneratorCapError
 from esolangs.limits import ExecutionLimits
 from esolangs.operations.prepared import PreparedProgram
 from esolangs.outcomes import ExecutionOutcome
@@ -27,8 +29,8 @@ class Language:
     """Bind a canonical language name to one immutable catalog.
 
     Every module-level function taking a language is a method here, the
-    :mod:`esolangs.debugger` factories included; ``settings`` is the one
-    addition.
+    :mod:`esolangs.debugger` factories included. Bound languages also validate dialect
+    settings and plan generation for a specific table.
     """
 
     name: str
@@ -141,6 +143,30 @@ class Language:
         """
         return esolangs.prepare(
             self.name, program, settings=settings, scale=scale, catalog=self.catalog
+        )
+
+    def plan_generation(
+        self,
+        truth_table: str,
+        *,
+        width: int | None = None,
+        balance: bool = False,
+        scale: int | None = None,
+        settings: DialectSettings | None = None,
+    ) -> Callable[[], Artifact] | GeneratorCapError:
+        """Return a reusable build function or this table's construction limit.
+
+        Planning performs generation once, including layout and compression.
+        Invalid requests still raise their usual errors.
+        """
+        return esolangs.plan_generation(
+            self.name,
+            truth_table,
+            width=width,
+            balance=balance,
+            scale=scale,
+            settings=settings,
+            catalog=self.catalog,
         )
 
     def generate(

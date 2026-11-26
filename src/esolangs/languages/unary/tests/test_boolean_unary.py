@@ -123,3 +123,22 @@ def test_constant_one_cycles_after_every_input(n: int) -> None:
         io = ScriptedIO(stdin + "Q")
         assert _answer(_Machine(source, io)) == ("1", n)
         assert io.input_char() == ord("Q")
+
+
+def test_bound_generation_plan_reports_table_specific_support():
+    from esolangs import GeneratorCapError, Language, ProgramArtifact
+
+    language = Language("Unary")
+    plan = language.plan_generation("0000")
+    assert callable(plan)
+    with patch(
+        "esolangs.languages.unary.generator._decoded", side_effect=AssertionError
+    ):
+        supported = plan()
+        assert plan() is supported
+    assert isinstance(supported, ProgramArtifact)
+    for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):
+        assert language.evaluate(supported, bits).answer == "0"
+    refused = language.plan_generation("0110")
+    assert isinstance(refused, GeneratorCapError)
+    assert "generation-work cap" in str(refused)

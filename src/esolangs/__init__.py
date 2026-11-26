@@ -2,7 +2,8 @@
 
 Public operations split by who supplies the program:
 
-* Generator-made: ``generate`` returns a program artifact or template;
+* Generator-made: ``plan_generation`` returns a reusable build function or a cap;
+  ``generate`` returns a program artifact or template;
   ``instantiate`` fills a template into a runnable artifact;
   ``evaluate`` executes one Boolean row.
 * Caller-supplied: ``run`` returns output, input consumption and completion
@@ -70,6 +71,7 @@ _LAZY = {
     "from_file": "esolangs.operations.source",
     "from_source": "esolangs.operations.source",
     "generate": "esolangs.operations.generation",
+    "plan_generation": "esolangs.operations.generation",
     "instantiate": "esolangs.operations.instantiation",
     "to_json": "esolangs.portable",
     "from_json": "esolangs.portable",
@@ -93,6 +95,7 @@ if TYPE_CHECKING:
     from esolangs.operations.execution import run as run
     from esolangs.operations.export import to_file as to_file
     from esolangs.operations.generation import generate as generate
+    from esolangs.operations.generation import plan_generation as plan_generation
     from esolangs.operations.instantiation import instantiate as instantiate
     from esolangs.operations.prepared import PreparedProgram as PreparedProgram
     from esolangs.operations.source import from_file as from_file
@@ -177,6 +180,7 @@ __all__ = [
     "generate",
     "instantiate",
     "list_languages",
+    "plan_generation",
     "prepare",
     "read_answer",
     "run",

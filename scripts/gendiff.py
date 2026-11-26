@@ -73,7 +73,7 @@ def _dump(src: Path, name: str, max_n: int) -> tuple[Outputs, float]:
     return dumped["outputs"], dumped["seconds"]
 
 
-def _checkout(ref: str, scratch: Path) -> Path:
+def checkout_source(ref: str, scratch: Path) -> Path:
     """Write ``src`` as it is at git ``ref`` into ``scratch``; return it."""
     scratch.mkdir(parents=True)
     archive = scratch / "src.tar"
@@ -130,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
     with tempfile.TemporaryDirectory() as scratch:
-        old_src = _checkout(args.old, Path(scratch) / "old")
+        old_src = checkout_source(args.old, Path(scratch) / "old")
         old, old_time = _dump(old_src, name, args.max_n)
         new, new_time = _dump(ROOT / "src", name, args.max_n)
         found = sorted(differences(old, new))

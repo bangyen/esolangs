@@ -78,6 +78,7 @@ PUBLIC_MEMBERS = {
         "encode_inputs",
         "evaluate",
         "generate",
+        "plan_generation",
         "instantiate",
         "from_json",
         "name",
@@ -119,6 +120,7 @@ PUBLIC_MEMBERS = {
     },
     esolangs.DialectSchema: {"language", "choices", "defaults", "validate"},
     debugger_api.Debugger: {
+        "read_cell",
         "break_at",
         "break_on_cell",
         "break_on_output",

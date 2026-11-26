@@ -674,3 +674,20 @@ class TestPointerFallback:
         assert dbg.ptr == 0
         dbg.step()
         assert dbg.ptr == 1
+
+
+def test_nested_watch_uses_wrapper_indexed_view():
+    class Sparse(debugger_api.Debugger):
+        @property
+        def memory(self):
+            raise AssertionError("materialized sparse memory")
+
+        def read_cell(self, index):
+            return 42 if index == 10**9 else None
+
+    sparse = Sparse(debugger_api.make_vm(REFERENCE, "+"))
+    outer = debugger_api.Debugger(debugger_api.Debugger(sparse))
+    history = outer.watch_cell(10**9)
+    outer.step()
+    assert history == [42]
+    assert outer.read_cell(10**9 + 1) is None

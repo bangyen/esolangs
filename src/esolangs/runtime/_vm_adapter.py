@@ -320,8 +320,15 @@ class _DelegatingVM:
             return cells
         return []
 
-    def _memory_reader(self) -> Callable[[int], int | None] | None:
-        return cast("Callable[[int], int | None] | None", self._view("memory_at", None))
+    def read_cell(self, index: int) -> int | None:
+        """Read a declared indexed view without copying its store."""
+        index = check_whole(index, "index")
+        if getattr_static(self, "memory") is _DelegatingVM.memory:
+            reader = self._view("memory_at", None)
+            if reader is not None:
+                return cast("int | None", reader(index))
+        memory = self.memory
+        return memory[index] if index < len(memory) else None
 
     @property
     def ptr(self) -> int | None:

@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Hashable, Sequence
 from inspect import getattr_static
 from types import MethodType
-from typing import get_args
+from typing import cast, get_args
 
 from esolangs.exceptions import ArgumentError
 from esolangs.registry._catalog import Catalog
@@ -60,22 +60,11 @@ def _value_at[T](
 
 
 def _cell_reader(vm: VM) -> Callable[[int], int | None]:
-    """Use an indexed view only through wrappers that preserve native memory."""
-    if isinstance(vm, Debugger) and getattr_static(vm, "memory") is Debugger.memory:
-        tail = _receiver_tail(vm)
-        if tail is not None and all(
-            isinstance(link, Debugger)
-            and getattr_static(link, "memory") is Debugger.memory
-            for link in tail[:-1]
-        ):
-            vm = tail[-1]
-    if (
-        isinstance(vm, _DelegatingVM)
-        and getattr_static(vm, "memory") is _DelegatingVM.memory
-    ):
-        reader = vm._memory_reader()  # noqa: SLF001
-        if reader is not None:
-            return reader
+    """Prefer the receiver's indexed view, including on custom VMs."""
+    if getattr_static(vm, "read_cell", None) is not None:
+        reader = getattr(vm, "read_cell")  # noqa: B009 - optional VM capability
+        if callable(reader):
+            return cast("Callable[[int], int | None]", reader)
     memory = vm.memory
     return lambda index: _value_at(memory, index)
 
@@ -152,6 +141,13 @@ class Debugger(_ExecutionController):
     def views(self) -> tuple[tuple[str, str], ...]:
         """The wrapped VM's machine-specific named state."""
         return self.vm.views
+
+    def read_cell(self, index: int) -> int | None:
+        """Return the visible cell, or None outside the store."""
+        index = check_whole(index, "index")
+        if getattr_static(self, "memory") is not Debugger.memory:
+            return _value_at(self.memory, index)
+        return _cell_reader(self.vm)(index)
 
     @property
     def memory(self) -> list[int]:

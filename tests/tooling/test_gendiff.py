@@ -46,7 +46,7 @@ def test_an_unchanged_tree_matches_and_a_mutant_is_caught(
             ignore=shutil.ignore_patterns("__pycache__"),
         )
 
-    monkeypatch.setattr(gendiff, "_checkout", snapshot)
+    monkeypatch.setattr(gendiff, "checkout_source", snapshot)
     module = importlib.import_module(LANGUAGES[REFERENCE].backend.generate.__module__)
     mutant = tmp_path / "mutant.py"
     mutant.write_text(Path(module.__file__ or "").read_text() + _MUTATION)
