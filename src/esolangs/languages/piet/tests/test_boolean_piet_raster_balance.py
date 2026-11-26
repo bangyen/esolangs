@@ -129,7 +129,7 @@ def test_white_bridge_lanes_execute_exhaustively(
 def test_white_bridge_turn_colors_and_halt_execute(table: str) -> None:
     from esolangs.languages.piet.generator.balance import _balanced_plan
     from esolangs.languages.piet.generator.packing import pack
-    from esolangs.languages.piet.interpreter import BLACK, WHITE
+    from esolangs.runtime.codels import BLACK, WHITE
 
     operations = _bounded_operations(table)
     default = esolangs.generate("Piet", table).source

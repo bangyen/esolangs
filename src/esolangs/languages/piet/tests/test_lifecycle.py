@@ -26,13 +26,15 @@ def _echo() -> Raster:
 def test_factory_shares_rows_with_private_stack_and_read_count():
     factory = interpreter.prepare_machine(_echo(), {})
     first, second = factory(ScriptedIO("A")), factory(ScriptedIO("B"))
-    assert first.rows is second.rows
-    assert first._program_key is second._program_key
+    assert first.image is second.image
+    assert "key" not in vars(first.image)
     before = second.snapshot()
+    assert first.snapshot()[6] is before[6]
+    loaded = Raster.from_png(_echo().to_png())
+    assert interpreter._Machine(loaded, ScriptedIO("B")).snapshot() == before
     first.step()
     saved = first.workspace_snapshot()
     retained = {saved}
-    first._program_key = ()
     first.snapshot = lambda: ("unrelated cycle key",)
     assert first.workspace_snapshot() == saved
     assert saved in retained

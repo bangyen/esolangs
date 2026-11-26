@@ -108,7 +108,8 @@ def test_white_slide_executes_no_transition() -> None:
 
 
 def test_white_slide_crosses_more_than_one_codel() -> None:
-    from esolangs.languages.piet.interpreter import _colour, slide
+    from esolangs.languages.piet.interpreter import _colour
+    from esolangs.runtime.codels import slide
 
     program = raster((WHITE, WHITE, LIGHT_RED))
     assert slide(program.rows, (0, 0), 0, -1, _colour) == ((2, 0), 0, -1)
@@ -124,7 +125,8 @@ def test_nonstandard_colour_is_white() -> None:
 
 
 def test_white_turns_at_a_restriction() -> None:
-    from esolangs.languages.piet.interpreter import _colour, slide
+    from esolangs.languages.piet.interpreter import _colour
+    from esolangs.runtime.codels import slide
 
     program = raster(
         (LIGHT_RED, WHITE, BLACK),
@@ -134,7 +136,8 @@ def test_white_turns_at_a_restriction() -> None:
 
 
 def test_enclosed_white_terminates() -> None:
-    from esolangs.languages.piet.interpreter import _colour, slide
+    from esolangs.languages.piet.interpreter import _colour
+    from esolangs.runtime.codels import slide
 
     program = raster(
         (BLACK, BLACK, BLACK),
@@ -158,10 +161,10 @@ def test_white_start_with_no_exit_terminates() -> None:
 def test_white_start_and_trapped_slide_terminate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import esolangs.languages.piet.interpreter as piet
+    from esolangs.languages.piet import _geometry
 
     slides = iter([((1, 0), 0, -1), None])
-    monkeypatch.setattr(piet, "slide", lambda *_args: next(slides))
+    monkeypatch.setattr(_geometry, "slide", lambda *_args: next(slides))
     assert execute(raster((WHITE, LIGHT_RED))) == ""
 
 
@@ -243,17 +246,20 @@ def test_halted_transition_preserves_state() -> None:
     from esolangs.languages.piet.interpreter import _advance
 
     state = ((0, 0), 0, -1, (3, 5), True)
-    assert _advance(state, ((BLACK,),)) == (state, None)
+    assert _advance(state, (None, 0, -1, 0, None)) == (state, None)
     # A lone black codel halts either way; red -> dark red would push.
-    assert _advance(state, ((RED, DARK_RED),)) == (state, None)
+    assert _advance(state, ((1, 0), 0, -1, 1, (0, 1))) == (state, None)
 
 
 def test_switch_flips_the_codel_chooser_by_parity() -> None:
+    from esolangs.languages.piet._geometry import Image
     from esolangs.languages.piet.interpreter import _advance
 
-    rows = ((RED, LIGHT_CYAN),)  # hue +3, lightness +2: switch
+    image = Image(((RED, LIGHT_CYAN),))  # hue +3, lightness +2: switch
     for top, cc in ((1, 1), (2, -1), (3, 1)):
-        state, _effect = _advance(((0, 0), 0, -1, (top,), False), rows)
+        state, _effect = _advance(
+            ((0, 0), 0, -1, (top,), False), image.move((0, 0), 0, -1)
+        )
         assert state[2:4] == (cc, ())
 
 
@@ -315,3 +321,58 @@ def test_wiki_looping_counter_draws_its_triangle() -> None:
     machine = _stepped("looping_counter.png", "", 3000)
     lines = machine.io.getvalue().split("\n")[:8]
     assert lines == ["1" * k for k in range(1, 9)]
+
+
+def test_indexed_exits_match_each_direction_and_chooser():
+    from itertools import product
+
+    from esolangs.languages.piet._geometry import Image, colour
+    from esolangs.runtime.codels import exit_step, find_block, leave
+
+    for mask in range(1, 512):
+        rows = tuple(
+            tuple(RED if mask & (1 << (3 * y + x)) else YELLOW for x in range(3))
+            for y in range(3)
+        )
+        image = Image(rows)
+        for y, x in product(range(3), repeat=2):
+            point = x, y
+            if point in image.blocks:
+                continue
+            block = find_block(rows, point, colour)
+            for dp, cc in product(range(4), (-1, 1)):
+                actual = image.move(point, dp, cc)
+                expected = exit_step(rows, block, dp, cc, colour)
+                assert actual[:3] == (
+                    (None, dp, cc) if expected is None else expected[:3]
+                )
+                assert image.blocks[point].exit(point, dp, cc) == leave(block, dp, cc)
+            assert all(image.blocks[p] is image.blocks[point] for p in block)
+            assert image.blocks[point].size == len(block)
+
+
+def test_cached_white_trap_preserves_the_departing_block():
+    from esolangs.languages.piet._geometry import Image
+
+    image = Image(
+        (
+            (BLACK, BLACK, RED, BLACK, BLACK),
+            (BLACK, WHITE, WHITE, WHITE, BLACK),
+            (YELLOW, WHITE, WHITE, WHITE, BLACK),
+            (BLACK, WHITE, WHITE, WHITE, BLACK),
+            (BLACK, BLACK, BLACK, BLACK, BLACK),
+        )
+    )
+    for cc in (-1, 1):
+        for point, dp in [((0, 2), 0), ((2, 0), 1)]:
+            machine = _Machine(image, ScriptedIO(""))
+            machine.state = point, dp, cc, (17,), False
+            machine.step()
+            assert machine.state == (point, dp, cc, (17,), True)
+    # A blocked first direction turns clockwise and flips the chooser.
+    assert image.move((2, 0), 0, 1) == (None, 1, -1, 0, None)
+    assert image.slides == {((1, 2), 0): None, ((2, 1), 1): None}
+    corner = Image(((RED, WHITE, BLACK), (BLACK, YELLOW, BLACK)))
+    for cc in (-1, 1):
+        assert corner.move((0, 0), 0, cc)[:3] == ((1, 1), 1, -cc)
+    assert len(corner.slides) == 1

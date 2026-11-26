@@ -58,40 +58,27 @@ from collections.abc import Callable, Mapping
 from functools import cache
 from typing import Any
 
+from esolangs.languages.piet._geometry import Image as _Image
+from esolangs.languages.piet._geometry import Move
+from esolangs.languages.piet._geometry import colour as _colour
 from esolangs.languages.piet.lifecycle import CAPABILITIES
-from esolangs.raster import Raster, Rows
+from esolangs.raster import Raster
 from esolangs.runtime._drive import drive
 from esolangs.runtime._entry import raster_script_main
 from esolangs.runtime._lifecycle import CompletionReport
 from esolangs.runtime._machine import RuntimePlan
 from esolangs.runtime._program import RunnerProgram
 from esolangs.runtime._state import WorkspaceModel, WorkspaceSnapshot, WorkspaceVariant
-from esolangs.runtime.codels import (
-    BLACK,
-    COLOURS,
-    WHITE,
-    exit_step,
-    find_block,
-    slide,
-)
+from esolangs.runtime.codels import BLACK
 from esolangs.runtime.io import IO, ScriptedIO, _BufferedOutput
 from esolangs.runtime.memory import format_integer, parse_integer
 
 __all__ = ["run"]
 
-Pixel = tuple[int, int, int]
 Point = tuple[int, int]
 
 
 _INTEGER = re.compile(r"[+-]?[0-9]+")
-
-
-_STANDARD = frozenset({*COLOURS, WHITE, BLACK})
-
-
-def _colour(pixel: Pixel) -> Pixel:
-    """Return a standard colour, treating non-standard colours as white."""
-    return pixel if pixel in _STANDARD else WHITE
 
 
 #: ``(current, dp, cc, stack, halted)``: the codel the pointer is in, the
@@ -177,47 +164,17 @@ def _command(
     return stack, turn, flips, effect
 
 
-def _slid(
-    rows: tuple[tuple[Pixel, ...], ...],
-    start: Point,
-    current: Point,
-    dp: int,
-    cc: int,
-    stack: tuple[int, ...],
-) -> _State:
-    """Slide from white ``start``; a slide with no exit halts at ``current``."""
-    slid = slide(rows, start, dp, cc, _colour)
-    if slid is None:
-        return current, dp, cc, stack, True
-    point, dp, cc = slid
-    return point, dp, cc, stack, False
-
-
-def _advance(
-    state: _State, rows: tuple[tuple[Pixel, ...], ...]
-) -> tuple[_State, _Effect]:
-    """Leave the current block for the next one; return the state and its I/O.
-
-    Leaving onto a colour runs the command its change names; onto white,
-    slides across it; with no way out, halts where it is.
-    """
-    current, dp, cc, stack, halted = state
+def _advance(state: _State, move: Move) -> tuple[_State, _Effect]:
+    """Apply one resolved movement and its colour command to private run state."""
+    current, _, _, stack, halted = state
     if halted:
         return state, None
-    colour = _colour(rows[current[1]][current[0]])
-    if colour == WHITE:
-        return _slid(rows, current, current, dp, cc, stack), None
-    block = find_block(rows, current, _colour)
-    exit_ = exit_step(rows, block, dp, cc, _colour)
-    if exit_ is None:
+    target, dp, cc, size, change = move
+    if target is None:
         return (current, dp, cc, stack, True), None
-    target, dp, cc, target_colour = exit_
-    if target_colour == WHITE:
-        return _slid(rows, target, current, dp, cc, stack), None
-    old_hue, old_lightness = COLOURS[colour]
-    new_hue, new_lightness = COLOURS[target_colour]
-    change = ((new_hue - old_hue) % 6, (new_lightness - old_lightness) % 3)
-    stack, turn, flips, effect = _command(change, len(block), stack)
+    if change is None:
+        return (target, dp, cc, stack, False), None
+    stack, turn, flips, effect = _command(change, size, stack)
     cc = -cc if flips % 2 else cc
     return (target, (dp + turn) % 4, cc, stack, False), effect
 
@@ -236,17 +193,8 @@ _WORKSPACE_MODEL = WorkspaceModel(
 )
 
 
-type _Image = tuple[Rows, tuple[int, int, bytes]]
-
-
 def _prepare_raster(program: Raster, scale: int | None) -> _Image:
-    rows = program._normalized(scale)  # noqa: SLF001
-    key = (
-        len(rows[0]),
-        len(rows),
-        bytes(channel for row in rows for pixel in row for channel in pixel),
-    )
-    return rows, key
+    return _Image(program._normalized(scale))  # noqa: SLF001
 
 
 class _Machine:
@@ -307,13 +255,13 @@ class _Machine:
     def __init__(
         self, program: Raster | _Image, io: IO, *, scale: int | None = None
     ) -> None:
-        self.rows, self._program_key = (
+        self.image = (
             _prepare_raster(program, scale) if isinstance(program, Raster) else program
         )
         self.io = io
         self._input_reads = 0
         self._writer = _BufferedOutput()
-        black = _colour(self.rows[0][0]) == BLACK
+        black = _colour(self.image.rows[0][0]) == BLACK
         self.state: _State = ((0, 0), 0, -1, (), black)
 
     @property
@@ -369,7 +317,7 @@ class _Machine:
             self.stack,
             self.io.progress(),
             self.halted,
-            self._program_key,
+            self.image.key,
             self._input_reads,
         )
         accepted = self._writer.accepted
@@ -379,7 +327,10 @@ class _Machine:
         self._input_reads += 1
 
     def step(self) -> None:
-        state, effect = _advance(self.state, self.rows)
+        if self.halted:
+            return
+        move = self.image.move(self.current, self.dp, self.cc)
+        state, effect = _advance(self.state, move)
         current, dp, cc, stack, halted = state
         stack = self.perform_io(
             stack, effect, self.io, self._read_succeeded, self._writer
