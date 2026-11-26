@@ -40,12 +40,15 @@ evidence, not optimization tasks.
     without steering (best steered case: 8–10). Revisit for bulk deposits inside
     the paused loop.
     Sweep results in `a7b3f7abd:docs/roadmap.md`.
-  - *Native decoder:* a scratch build ran from reset on all 131,072 inputs
-    of each of four tables. It returned 128,943 and 128,892 requested
-    answers on the two random tables. On the first, 308 failures read an
-    invalid packed byte and 1,821 read the wrong stored bit. All 130,616
-    valid reads printed the stored bit and halted. The open step is placing
-    arbitrary table bits where startup and decoding can preserve them.
+  - *Native decoder:* scratch builds ran from reset on all 131,072 inputs
+    of four tables. Two random tables reached 129,172 and 128,895 correct
+    answers. On the first, both reads and the output slot matched on every
+    row. All 130,621 legal reads printed the stored bit and halted. Of the
+    1,900 misses, 197 read an invalid packed byte and 1,703 read the wrong
+    stored bit. A separate decoder distinguished two fixed instruction words
+    in different banks. All 101 writable three-bit words in the bank whose
+    marker changed retained all eight values. Placing arbitrary table bits
+    remains open.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
