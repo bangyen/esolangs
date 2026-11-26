@@ -6,7 +6,7 @@ repeatedly.  The wiki (https://esolangs.org/wiki/Line, "Unimplemented")
 leaves much unspecified; the choices here:
 
 * Tape: unbounded both ways, arbitrary-precision ints (no wrap or width
-  is documented), an immutable sparse tape whose pointer may go negative.
+  is documented), a sparse tape whose pointer may go negative.
 * Initial state: all zeros, pointer at 0.
 * ``+``/``-``: by 1, run ``count`` times for a merged run of repeats.
 * ``<``/``>``, ``i``/``o``: per the wiki's wording.
@@ -60,18 +60,24 @@ class _Compiled:
 
     Built once per :class:`lattice.Stroke` so a looping run never
     re-classifies.  ``goto`` is set only for a leaf whose path reconnects,
-    and may be a synthetic resume point (the tail of another stroke's ops,
-    sharing its children) rather than a real stroke.
+    with an instruction offset into the target stroke.
     """
 
     ops: list[OpCall]
     end: tuple[int, int]
     zero: _Compiled | None
     nonzero: _Compiled | None
-    # A leaf's loop-back (see _compile): another node, or a resume point
-    # holding only the ops not yet run at the merge.
-    goto: _Compiled | None = None
+    goto: _Compiled | _Resume | None = None
     positions: tuple[tuple[int, int], ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _Resume:
+    """A stroke suffix retains the continuation bound when its merge was linked."""
+
+    target: _Compiled
+    offset: int
+    goto: _Compiled | _Resume | None
 
 
 class _TreeCompiler:
@@ -80,25 +86,30 @@ class _TreeCompiler:
     ``strokes`` registers every real stroke's geometry for
     :meth:`find_merge`; ``leaves`` collects the strokes with no branch
     children, whose loop-back links are resolved once the whole tree is
-    built; ``resume_cache`` deduplicates synthetic resume nodes so two
-    merges into one leg share a node.
+    built.
     """
 
     def __init__(self, unit: int) -> None:
         self.unit = unit
         self.strokes: list[tuple[_Compiled, list[Vertex], list[OpCall]]] = []
         self.leaves: list[_Compiled] = []
-        self.resume_cache: dict[tuple[int, int], _Compiled] = {}
 
     def compile(self, stroke: Stroke) -> _Compiled:
         """Build the tree, then link each leaf's loop-back, if it has one."""
         root = self.build(stroke)
+        resumes: dict[tuple[int, int], _Resume] = {}
         for leaf in self.leaves:
             match = self.find_merge(leaf.end, exclude=leaf)
             if match is None:
                 continue
-            target, remaining = match
-            leaf.goto = self.resume(target, remaining)
+            target, offset = match
+            if offset:
+                key = id(target), offset
+                if key not in resumes:
+                    resumes[key] = _Resume(target, offset, target.goto)
+                leaf.goto = resumes[key]
+            else:
+                leaf.goto = target
         return root
 
     def build(self, node: Stroke) -> _Compiled:
@@ -124,32 +135,9 @@ class _TreeCompiler:
         self.strokes.append((compiled, node.vertices, ops))
         return compiled
 
-    def resume(self, target: _Compiled, remaining: list[OpCall]) -> _Compiled:
-        """Return the node a merge into ``target`` resumes at.
-
-        The target itself when nothing was skipped; otherwise a synthetic
-        node holding only the ops not yet run, sharing the target's
-        children, cached so merges at the same point share it.
-        """
-        if remaining == target.ops:
-            return target
-        key = id(target), len(remaining)
-        if key not in self.resume_cache:
-            self.resume_cache[key] = _Compiled(
-                ops=remaining,
-                end=target.end,
-                zero=target.zero,
-                nonzero=target.nonzero,
-                goto=target.goto,
-                positions=tuple(
-                    target.positions[target.ops.index(call)] for call in remaining
-                ),
-            )
-        return self.resume_cache[key]
-
     def find_merge(
         self, point: tuple[int, int], exclude: _Compiled
-    ) -> tuple[_Compiled, list[OpCall]] | None:
+    ) -> tuple[_Compiled, int] | None:
         """Find where a leaf ending at ``point`` reconnects, if anywhere.
 
         Tests every other stroke's final vertex, then every straight leg
@@ -164,7 +152,7 @@ class _TreeCompiler:
             if (last.y, last.x) == point:
                 # Its own final vertex is a fork or dead end, never a shared
                 # corner: the common case, a loop-back right at a `?`.
-                return target, []
+                return target, len(ops)
             for i in range(len(vertices) - 1):
                 v0, v1 = vertices[i], vertices[i + 1]
                 # Strictly interior: sibling arms share the fork's corner,
@@ -176,7 +164,9 @@ class _TreeCompiler:
                 t_num = oy * dy + ox * dx
                 t_den = dy * dy + dx * dx
                 if 0 < t_num < t_den:
-                    return target, [c for c in ops if c.index >= i + 1]
+                    return target, next(
+                        (at for at, call in enumerate(ops) if call.index > i), len(ops)
+                    )
         return None
 
 
@@ -186,9 +176,7 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
     Also recovers the loop-back link: every leaf's final vertex is tested by
     ``find_merge`` against every other stroke's final vertex and straight
     legs (exact integer cross/dot product; no tolerance needed).  A match on
-    a stroke's own final vertex resumes at that node; a mid-leg match builds
-    a synthetic node holding the remaining ops.  A stroke never matches its
-    own final vertex.  The whole tree is built before linking, since a target
+    another stroke resumes at the first operation beyond the merge.  A target
     can be defined after the leaf that jumps to it.
     """
     return _TreeCompiler(unit).compile(stroke)
@@ -199,8 +187,7 @@ def compile_program(stroke: Stroke, unit: int | None = None) -> _Compiled:
     return _compile(stroke, stroke.unit if unit is None else unit)
 
 
-type _Tape = tuple[tuple[int, int], ...]
-type _State = tuple[int | None, int, int, _Tape]
+type _Cursor = tuple[int | None, int, int]
 
 
 @dataclass(frozen=True)
@@ -211,6 +198,7 @@ class _Frame:
     zero: int | None
     nonzero: int | None
     goto: int | None
+    offset: int = 0
 
 
 def _index_graph[T](
@@ -229,50 +217,55 @@ def _index_graph[T](
 
 def _freeze_program(root: _Compiled) -> tuple[_Frame, ...]:
     """Return immutable instructions and indexed control links."""
-    nodes, indices = _index_graph(
-        root, lambda node: (node.zero, node.nonzero, node.goto)
-    )
-    return tuple(
-        _Frame(
-            tuple((call.op, call.count) for call in node.ops),
-            node.positions,
-            node.end,
-            indices.get(id(node.zero)),
-            indices.get(id(node.nonzero)),
-            indices.get(id(node.goto)),
+
+    def successors(
+        entry: _Compiled | _Resume,
+    ) -> tuple[_Compiled | _Resume | None, ...]:
+        node = entry.target if isinstance(entry, _Resume) else entry
+        return node.zero, node.nonzero, entry.goto
+
+    first: _Compiled | _Resume = root
+    entries, indices = _index_graph(first, successors)
+    instructions: dict[int, tuple[tuple[str, int], ...]] = {}
+    frames = []
+    for entry in entries:
+        node = entry.target if isinstance(entry, _Resume) else entry
+        offset = entry.offset if isinstance(entry, _Resume) else 0
+        if id(node) not in instructions:
+            instructions[id(node)] = tuple((call.op, call.count) for call in node.ops)
+        frames.append(
+            _Frame(
+                instructions[id(node)],
+                node.positions,
+                node.end,
+                indices.get(id(node.zero)),
+                indices.get(id(node.nonzero)),
+                indices.get(id(entry.goto)),
+                offset,
+            )
         )
-        for node in nodes
-    )
-
-
-def _written(tape: _Tape, pointer: int, value: int) -> _Tape:
-    cells = dict(tape)
-    cells[pointer] = value
-    return tuple(sorted(cells.items()))
+    return tuple(frames)
 
 
 def _advance(
-    state: _State, program: tuple[_Frame, ...], value: int | None = None
-) -> tuple[_State, int | None]:
-    """Return a pure Line transition and optional numeric output."""
-    node, at, pointer, tape = state
+    cursor: _Cursor, program: tuple[_Frame, ...], cell: int, value: int | None = None
+) -> tuple[_Cursor, int | None, int | None]:
+    """Return the next cursor, an optional current-cell write, and output."""
+    node, at, pointer = cursor
     if node is None:
-        return state, None
+        return cursor, None, None
     frame = program[node]
-    cell = dict(tape).get(pointer, 0)
-    if at == len(frame.ops):
+    if frame.offset + at == len(frame.ops):
         if frame.zero is None and frame.nonzero is None:
-            node = frame.goto
-        else:
-            tape = _written(tape, pointer, cell)
-            node = frame.zero if cell == 0 else frame.nonzero
-        return (node, 0, pointer, tape), None
-    op, count = frame.ops[at]
-    output = None
+            return (frame.goto, 0, pointer), None, None
+        node = frame.zero if cell == 0 else frame.nonzero
+        return (node, 0, pointer), cell, None
+    op, count = frame.ops[frame.offset + at]
+    write = output = None
     if op == "+":
-        tape = _written(tape, pointer, cell + count)
+        write = cell + count
     elif op == "-":
-        tape = _written(tape, pointer, cell - count)
+        write = cell - count
     elif op == ">":
         pointer += 1
     elif op == "<":
@@ -283,18 +276,18 @@ def _advance(
                 "input transition requires a value",
                 "supply the input value before applying the input transition",
             )
-        tape = _written(tape, pointer, value)
+        write = value
     elif op == "o":
-        tape = _written(tape, pointer, cell)
+        write = cell
         output = cell
     else:  # pragma: no cover - classification emits only these opcodes
         raise syntax_error(
             f"unknown opcode {op!r}", "use an opcode from the extracted Line program"
         )
-    return (node, at + 1, pointer, tape), output
+    return (node, at + 1, pointer), write, output
 
 
-def _needs_input(program: tuple[_Frame, ...], state: _State) -> bool:
+def _needs_input(program: tuple[_Frame, ...], state: _Cursor) -> bool:
     """Whether the next step reads a number, so the shell must feed one.
 
     Pure: reading the opcode is not evaluating it.  Naming the question
@@ -304,31 +297,27 @@ def _needs_input(program: tuple[_Frame, ...], state: _State) -> bool:
     if node is None:
         return False
     frame = program[node]
-    return at < len(frame.ops) and frame.ops[at][0] == "i"
+    return frame.offset + at < len(frame.ops) and frame.ops[frame.offset + at][0] == "i"
 
 
-def _drive(program: tuple[_Frame, ...], io: IO) -> _Tape:
-    """Shell: step the pure :func:`_advance`, feeding input and writing output.
-
-    The node semantics live in ``_advance`` and are effects-shaped: it takes
-    the input value a read needs and returns the number an ``o`` node writes.
-    This loop only asks that pure question, reads one value from ``io`` when
-    it comes up, hands it over, and writes what comes back.
-    """
-    state: _State = (0, 0, 0, ())
-    node = state[0]
-    while node is not None:
-        value = io.read() if _needs_input(program, state) else None
-        state, output = _advance(state, program, value)
+def _drive(program: tuple[_Frame, ...], io: IO) -> dict[int, int]:
+    """Drive the frames with a private sparse tape."""
+    tape: dict[int, int] = {}
+    cursor: _Cursor = (0, 0, 0)
+    while cursor[0] is not None:
+        pointer = cursor[2]
+        value = io.read() if _needs_input(program, cursor) else None
+        cursor, write, output = _advance(cursor, program, tape.get(pointer, 0), value)
         if output is not None:
             io.write(output)
-        node = state[0]
-    return state[3]
+        if write is not None:
+            tape[pointer] = write
+    return tape
 
 
 def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
-    """Run compiled code with immutable state, returning its final tape."""
-    return dict(_drive(_freeze_program(program), IO() if io is None else io))
+    """Run compiled code, returning its final tape."""
+    return _drive(_freeze_program(program), IO() if io is None else io)
 
 
 def _freeze_node(root: Node) -> tuple[_Frame, ...]:

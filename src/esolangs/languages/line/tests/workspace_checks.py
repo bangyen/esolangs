@@ -35,15 +35,17 @@ def _boundary(machine, frames, row, stdin, witness, held):
     for actual, expected in zip(machine.program, frames, strict=True):
         assert type(actual) is _Frame
         values = (
-            actual.ops,
-            actual.positions,
+            actual.ops[actual.offset :],
+            actual.positions[actual.offset :],
             actual.end,
             actual.zero,
             actual.nonzero,
             actual.goto,
         )
         assert_exact(values, tuple(expected))
-    assert_exact(machine.state, tuple(row["raw"]))
+    assert_exact(
+        (*machine.cursor, tuple(sorted(machine.tape.items()))), tuple(row["raw"])
+    )
     assert_exact(machine.snapshot(), row["cycle"])
     assert_exact(machine.ip, row["ip"])
     assert_exact(machine.memory, row["memory"])

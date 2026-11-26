@@ -35,7 +35,8 @@ def _native(table: str, *, balanced: bool) -> int:
         else int(resource_bounds("Line")["execution"].formula(n, table))
     )
     for row, expected in enumerate(table):
-        machine.state = (0, 0, 0, ())
+        machine.cursor = (0, 0, 0)
+        machine.tape.clear()
         machine.io = _ReadFirstIO(f"{row:0{n}b}")
         steps, written = measure_run(machine, limit=cap)
         assert machine.halted

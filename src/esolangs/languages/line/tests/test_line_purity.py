@@ -25,39 +25,41 @@ FRAMES = (
 
 
 def test_advance_is_pure_and_repeatable() -> None:
-    state = (0, 0, 0, ())
-    first = _advance(state, FRAMES)
-    second = _advance(state, FRAMES)
+    state = (0, 0, 0)
+    first = _advance(state, FRAMES, 0)
+    second = _advance(state, FRAMES, 0)
     # The state handed in is a value, untouched, and same args agree.
-    assert state == (0, 0, 0, ())
+    assert state == (0, 0, 0)
     assert first == second
-    assert first[1] is None
+    assert first == ((0, 1, 0), 1, None)
 
 
 def test_output_is_returned_as_an_effect() -> None:
-    state = (0, 1, 0, ((0, 5),))
-    new_state, output = _advance(state, FRAMES)
+    state = (0, 1, 0)
+    new_state, write, output = _advance(state, FRAMES, 5)
+    assert write == 5
     assert output == 5
     assert new_state[1] == 2
-    assert state == (0, 1, 0, ((0, 5),))
+    assert state == (0, 1, 0)
 
 
 def test_input_arrives_as_a_value() -> None:
-    state = (0, 2, 0, ())
+    state = (0, 2, 0)
     with pytest.raises(ValueError, match="input transition requires a value"):
-        _advance(state, FRAMES)
-    new_state, output = _advance(state, FRAMES, 7)
+        _advance(state, FRAMES, 0)
+    new_state, write, output = _advance(state, FRAMES, 0, 7)
     assert output is None
-    assert dict(new_state[3]) == {0: 7}
-    assert state == (0, 2, 0, ())
+    assert new_state == (0, 3, 0)
+    assert write == 7
+    assert state == (0, 2, 0)
 
 
 def test_the_shell_asks_the_pure_question_before_reading() -> None:
     """``_needs_input`` answers without calling the shell's IO."""
-    assert not _needs_input(FRAMES, (0, 0, 0, ()))
-    assert not _needs_input(FRAMES, (0, 1, 0, ()))
-    assert _needs_input(FRAMES, (0, 2, 0, ()))
-    assert not _needs_input(FRAMES, (None, 0, 0, ()))
+    assert not _needs_input(FRAMES, (0, 0, 0))
+    assert not _needs_input(FRAMES, (0, 1, 0))
+    assert _needs_input(FRAMES, (0, 2, 0))
+    assert not _needs_input(FRAMES, (None, 0, 0))
 
 
 def test_drive_is_the_shell_that_applies_the_effects() -> None:

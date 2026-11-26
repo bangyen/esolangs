@@ -30,20 +30,18 @@ def test_transition_preserves_prior_states_and_requests_output() -> None:
     from esolangs.languages.line.interpreter.simulate import _advance, _Frame
 
     program = (_Frame((("i", 1), ("+", 2), ("o", 1)), (), (0, 0), None, None, None),)
-    initial = (0, 0, 0, ())
-    entered, output = _advance(initial, program, 3)
-    assert output is None
-    assert _advance(initial, program, 3) == (entered, None)
-    changed, _ = _advance(entered, program)
-    emitted, output = _advance(changed, program)
+    initial = (0, 0, 0)
+    entered, write, output = _advance(initial, program, 0, 3)
+    assert (write, output) == (3, None)
+    assert _advance(initial, program, 0, 3) == (entered, write, None)
+    changed, write, _ = _advance(entered, program, write)
+    assert write == 5
+    emitted, _, output = _advance(changed, program, write)
     assert output == 5
-    assert initial == (0, 0, 0, ())
-    assert entered == (0, 1, 0, ((0, 3),))
-    assert changed == (0, 2, 0, ((0, 5),))
-    halted, _ = _advance(emitted, program)
-    assert _advance(halted, program) == (halted, None)
+    halted, _, _ = _advance(emitted, program, write)
+    assert _advance(halted, program, write) == (halted, None, None)
     with pytest.raises(ValueError, match="requires a value"):
-        _advance(initial, program)
+        _advance(initial, program, 0)
 
 
 def test_lattice_probe_length_is_derived_from_unit() -> None:
@@ -410,7 +408,36 @@ def test_two_merges_into_one_leg_share_the_resume_position() -> None:
     assert compiled.nonzero is not None
     assert compiled.zero.goto is not None
     assert compiled.zero.goto is compiled.nonzero.goto
-    assert compiled.zero.goto.positions == ()
+    assert compiled.zero.goto.target is compiled
+    assert compiled.zero.goto.offset == len(compiled.ops)
+
+
+def test_mid_leg_entry_uses_the_original_instruction_coordinates() -> None:
+    from esolangs.languages.line.interpreter import _Machine
+    from esolangs.languages.line.interpreter.extract import OpCall
+    from esolangs.languages.line.interpreter.simulate import (
+        _Compiled,
+        _freeze_program,
+        _Resume,
+        _TreeCompiler,
+    )
+    from esolangs.runtime.io import ScriptedIO
+
+    points = [Vertex(0, x, 2) for x in (0, 10, 20, 30, 40)]
+    ops = [OpCall(op, 1, i) for i, op in enumerate("++o", 1)]
+    target = _Compiled(ops, (0, 40), None, None, positions=((0, 10), (0, 20), (0, 30)))
+    entry = _Compiled([], (0, 15), None, None)
+    compiler = _TreeCompiler(1)
+    compiler.strokes.append((target, points, ops))
+    match = compiler.find_merge(entry.end, entry)
+    assert match is not None
+    entry.goto = _Resume(*match, target.goto)
+    machine = _Machine(_freeze_program(entry), ScriptedIO())
+    for point in ((0, 15), (0, 20), (0, 30), (0, 40)):
+        assert machine.ip == point
+        machine.step()
+    assert machine.halted
+    assert machine.io.getvalue() == "1"
 
 
 @pytest.mark.parametrize(

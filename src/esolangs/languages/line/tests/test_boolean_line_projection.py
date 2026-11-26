@@ -33,7 +33,8 @@ def _execute(table, image, rows, trace=None):
     vm = _Machine(image, ScriptedIO(""))
     peak = 0
     for row in rows:
-        vm.state = (0, 0, 0, ())
+        vm.cursor = (0, 0, 0)
+        vm.tape.clear()
         vm.io = ScriptedIO(" ".join(f"{row:0{n}b}"))
         commands, written = measure_run(vm, limit=5 * n)
         assert vm.halted

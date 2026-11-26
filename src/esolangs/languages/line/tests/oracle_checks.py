@@ -57,7 +57,7 @@ def arithmetic_terminal(example, stdin):
 
 
 def _view(machine):
-    return machine.state[2], machine.state[3]
+    return machine.cursor[2], tuple(sorted(machine.tape.items()))
 
 
 @cache
@@ -101,9 +101,7 @@ def check_raw_line():
         def step(self):
             super().step()
             if self.halted:
-                node, at, pointer, tape = self.state
-                cells = dict(tape)
-                cells[pointer] = cells.get(pointer, 0) + 1
-                self.state = node, at, pointer, tuple(sorted(cells.items()))
+                pointer = self.cursor[2]
+                self.tape[pointer] = self.tape.get(pointer, 0) + 1
 
     reject_faults(_check, _Machine, WrongTape, "addition", "2 3 99")

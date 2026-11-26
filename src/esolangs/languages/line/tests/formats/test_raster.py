@@ -140,7 +140,7 @@ def test_the_graph_walker_matches_the_pixels() -> None:
 def test_the_graph_walker_decrements() -> None:
     """``-`` is the one opcode no generated Line program emits."""
     from esolangs.languages.line.generator.layout import Node
-    from esolangs.languages.line.interpreter import _Machine
+    from esolangs.languages.line.interpreter.simulate import IO, run_node
 
     minus = Node("-")
     minus.next = Node("o")
@@ -148,20 +148,20 @@ def test_the_graph_walker_decrements() -> None:
     start.next = minus
 
     io = ScriptedIO()
-    _Machine.run_node(start, io)
+    run_node(start, IO(read=io.input_num, write=io.print_num))
     assert io.getvalue() == "0"
 
 
 def test_the_graph_walker_steps_over_an_opcode_it_does_not_know() -> None:
     """Characterizing the fall-through: an unknown op advances, silently."""
     from esolangs.languages.line.generator.layout import Node
-    from esolangs.languages.line.interpreter import _Machine
+    from esolangs.languages.line.interpreter.simulate import IO, run_node
 
     start = Node("!")
     start.next = Node("o")
 
     io = ScriptedIO()
-    _Machine.run_node(start, io)
+    run_node(start, IO(read=io.input_num, write=io.print_num))
     assert io.getvalue() == "0"
 
 

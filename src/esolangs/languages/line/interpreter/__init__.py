@@ -26,7 +26,7 @@ Decisions:
 from __future__ import annotations
 
 from collections.abc import Mapping
-from functools import cache, lru_cache, partial
+from functools import cached_property, lru_cache, partial
 from typing import TYPE_CHECKING, Any, cast
 
 from esolangs.raster import Pixel, Raster, Rows
@@ -43,15 +43,13 @@ from .mask import from_grey
 from .simulate import IO as _LINE_IO
 from .simulate import (
     _advance,
+    _Cursor,
     _drive,
     _freeze_node,
     _freeze_program,
     _needs_input,
-    _State,
     compile_program,
 )
-from .simulate import run_compiled as _run_compiled
-from .simulate import run_node as _run_node
 
 if TYPE_CHECKING:
     from esolangs.languages.line.generator.layout import Node
@@ -125,12 +123,7 @@ _WORKSPACE_MODEL = WorkspaceModel(
 
 
 class _Machine:
-    """A Line run: immutable code and state with I/O handled by the shell."""
-
-    @staticmethod
-    def run_node(node: Node, io: IO) -> None:
-        """Execute the graph retained by a generated raster."""
-        _run_node(node, _LINE_IO(read=io.input_num, write=io.print_num))
+    """A Line run with private tape and retryable I/O."""
 
     ip_shape = "grid"
 
@@ -142,26 +135,28 @@ class _Machine:
             if isinstance(program, Raster)
             else program
         )
-        self.state: _State = (0, 0, 0, ())
+        self.cursor: _Cursor = (0, 0, 0)
+        self.tape: dict[int, int] = {}
         self.io = io
         self._writer = _BufferedOutput()
         self._rejected_input = RejectedInput()
 
     @property
     def halted(self) -> bool:
-        return self.state[0] is None
+        return self.cursor[0] is None
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        node, at = self.state[:2]
+        node, at = self.cursor[:2]
         if node is None:
             return None
         frame = self.program[node]
+        at += frame.offset
         return frame.positions[at] if at < len(frame.ops) else frame.end
 
     @property
     def memory(self) -> tuple[int, ...]:
-        tape = dict(self.state[3])
+        tape = self.tape
         return tuple(
             tape.get(i, 0)
             for i in range(min(tape, default=0), max(tape, default=0) + 1)
@@ -169,7 +164,7 @@ class _Machine:
 
     def workspace_snapshot(self) -> WorkspaceSnapshot:
         """Capture logical workspace independently of cycle keys and backing storage."""
-        node, instruction, pointer, tape = self.state
+        node, instruction, pointer = self.cursor
         accepted = self._writer.accepted
         return _WORKSPACE_MODEL.capture(
             node=node,
@@ -177,13 +172,17 @@ class _Machine:
             if accepted
             else instruction,
             pointer=pointer,
-            cells=frozenset((cell, value) for cell, value in tape if value),
+            cells=frozenset(
+                (cell, value) for cell, value in self.tape.items() if value
+            ),
             input_cursor=self._rejected_input.cursor(self.io.progress()),
         )
 
     def snapshot(self) -> tuple[object, ...]:
-        node, at, pointer, tape = self.state
-        cells = tuple((cell, value) for cell, value in tape if value)
+        node, at, pointer = self.cursor
+        cells = tuple(
+            sorted((cell, value) for cell, value in self.tape.items() if value)
+        )
         boundary = self._rejected_input.snapshot(
             (node, at, pointer, cells, self.io.progress())
         )
@@ -195,17 +194,41 @@ class _Machine:
             return
         value = (
             self._rejected_input.read(self.io, self.io.input_num)
-            if _needs_input(self.program, self.state)
+            if _needs_input(self.program, self.cursor)
             else None
         )
-        state, output = _advance(self.state, self.program, value)
+        pointer = self.cursor[2]
+        cursor, write, output = _advance(
+            self.cursor, self.program, self.tape.get(pointer, 0), value
+        )
         if output is not None:
             self._writer.write(
                 self.io,
                 format_integer(output),
                 first=partial(self.io.print_num, output),
             )
-        self.state = state
+        if write is not None:
+            self.tape[pointer] = write
+        self.cursor = cursor
+
+
+class _Program:
+    """Lazily bind native instructions and debugger coordinates to one raster."""
+
+    def __init__(self, source: Raster, scale: int | None) -> None:
+        self.source = source
+        self.scale = scale
+
+    @cached_property
+    def pixels(self) -> tuple[_Frame, ...]:
+        return _freeze_program(_compiled(self.source, self.scale))
+
+    @cached_property
+    def native(self) -> tuple[_Frame, ...]:
+        graph = self.source._payload  # noqa: SLF001 - language-owned payload
+        if graph is not None and self.scale is None:
+            return _freeze_node(cast("Node", graph))
+        return self.pixels
 
 
 def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> RuntimePlan:
@@ -214,38 +237,19 @@ def prepare_machine(source: RunnerProgram, options: Mapping[str, Any]) -> Runtim
         raise TypeError("line machines require raster source")
     if options.keys() - {"scale"}:
         raise TypeError("line machines accept only the scale runtime option")
-    scale = options.get("scale")
-
-    @cache
-    def raster_program() -> tuple[_Frame, ...]:
-        return _freeze_program(_compiled(source, scale))
-
-    @cache
-    def native_program() -> tuple[_Frame, ...]:
-        if source._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
-            return _freeze_node(cast("Node", source._payload))  # noqa: SLF001
-        return raster_program()
-
+    program = _Program(source, options.get("scale"))
     return RuntimePlan(
-        lambda io: _Machine(raster_program(), io),
-        lambda io: _execute(native_program(), io),
+        lambda io: _Machine(program.pixels, io),
+        lambda io: _execute(program, io),
     )
 
 
 def _execute(
-    program: Raster | tuple[_Frame, ...], io: IO, *, scale: int | None = None
+    program: Raster | _Program, io: IO, *, scale: int | None = None
 ) -> CompletionReport:
-    """Execute Line, writing decimal outputs through ``io``."""
-    if not isinstance(program, Raster):
-        _drive(program, _LINE_IO(read=io.input_num, write=io.print_num))
-        return HALTED_REPORT
-    if program._payload is not None and scale is None:  # noqa: SLF001 - language-owned payload
-        _Machine.run_node(cast("Node", program._payload), io)  # noqa: SLF001
-        return HALTED_REPORT
-    _run_compiled(
-        _compiled(program, scale),
-        _LINE_IO(read=io.input_num, write=io.print_num),
-    )
+    if isinstance(program, Raster):
+        program = _Program(program, scale)
+    _drive(program.native, _LINE_IO(read=io.input_num, write=io.print_num))
     return HALTED_REPORT
 
 

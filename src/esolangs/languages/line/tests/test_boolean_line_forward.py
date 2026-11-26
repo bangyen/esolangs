@@ -39,7 +39,8 @@ def _check(table, tmp_path, rows=None, scale=1):
         run_node(graph, IO(read=values.__next__, write=output.append))
         assert output == [int(table[row])]
         values = iter(inputs)
-        state = (0, 0, 0, ())
+        state = (0, 0, 0)
+        tape = {}
         written = WrittenState(
             _WORKSPACE_MODEL.capture(
                 node=0, instruction=0, pointer=0, cells=frozenset(), input_cursor=0
@@ -49,26 +50,33 @@ def _check(table, tmp_path, rows=None, scale=1):
         reads = commands = 0
         while state[0] is not None:
             frame = frames[state[0]]
-            at = state[1]
+            at = frame.offset + state[1]
             value = (
                 next(values)
                 if at < len(frame.ops) and frame.ops[at][0] == "i"
                 else None
             )
             reads += value is not None
-            state, value = _advance(state, frames, value)
+            pointer = state[2]
+            state, write, value = _advance(state, frames, tape.get(pointer, 0), value)
+            if write is not None:
+                tape[pointer] = write
             if value is not None:
                 output.append(value)
             commands += 1
             assert commands <= 5 * n
-            node, at, pointer, tape = state
-            assert all(0 <= cell < n and value in (0, 1) for cell, value in tape)
+            node, at, pointer = state
+            assert all(
+                0 <= cell < n and value in (0, 1) for cell, value in tape.items()
+            )
             written.sample(
                 _WORKSPACE_MODEL.capture(
                     node=node,
                     instruction=at,
                     pointer=pointer,
-                    cells=frozenset((cell, value) for cell, value in tape if value),
+                    cells=frozenset(
+                        (cell, value) for cell, value in tape.items() if value
+                    ),
                     input_cursor=max(0, 2 * reads - 1),
                 )
             )
