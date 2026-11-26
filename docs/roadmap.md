@@ -116,6 +116,14 @@ evidence, not optimization tasks.
     storage. With capacity counted only at reached low address values,
     the two layouts fell 317 and 85 bits short, respectively. The second
     answered 130,360 and 130,336 of 131,072 rows correctly.
+    Moving pointer initialization into the low addresses bypassed ten
+    startup blocks. Shorter pointer walks and a smaller decoder helped
+    free 482 words holding 1,355 row bits. All eight values at each word
+    passed in 10,840 row executions per table. With five output lookup
+    entries repaired, both programs printed one digit and halted on every
+    input. They answered 130,919 and 130,927 rows correctly. Independent
+    storage is still missing for 346 positions, including 211 in banks
+    15 and 24.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
