@@ -4,12 +4,13 @@ XOR-fold each essential ASCII digit and AND-fold each ignored digit to zero.
 OR discards that zero without changing the previous bit. A leading ignored
 digit leaves its explicit zero below the routing bits. The stack routes
 the IP through the tree from the last input to the first. Each leaf writes
-its answer byte and halts. Alternating midpoint splits leave each subtree
-in its own rectangle. The tree area is O(T), and the reader adds O(n√T)
-characters, also O(T). Each cell is placed and rendered once.
+its answer byte and halts. Midpoint splits leave each subtree in its own
+rectangle. The final split enters either leaf immediately. The tree area
+is O(T), and the reader adds O(n√T) characters, also O(T). Each cell is
+placed and rendered once.
 
 Size:
-    O(T) characters, n=4 parity: 6,663 chars.
+    O(T) characters, n=4 parity: 4,487 chars.
 """
 
 from esolangs.generation.helpers import _validate_truth_table
@@ -64,9 +65,10 @@ def bifunge(truth_table: str) -> str:
         reader.extend((_DIGITS[int(table[0])], *_TAIL))
         return _render([reader])
 
-    # End on a vertical split so only rows need room beyond a leaf.
+    # The last split and its two adjacent tails take 2 * _LEAF_LENGTH + 1
+    # rows. One spare row lets each earlier vertical split double the span.
     x_radius = 1 << (n // 2)
-    y_radius = _LEAF_LENGTH << ((n + 1) // 2)
+    y_radius = (_LEAF_LENGTH + 1) << ((n - 1) // 2)
     prefix = len(reader)
     root_y = prefix + y_radius
     grid = [bytearray(2 * x_radius) for _ in range(prefix + 2 * y_radius)]
@@ -87,7 +89,7 @@ def bifunge(truth_table: str) -> str:
             return
         if (n - depth) % 2:
             grid[y][x] = Command.VERTICAL
-            half = ry // 2
+            half = 1 if depth == n - 1 else ry // 2
             place(x, y + half, rx, half, depth + 1, index, 0, 1)
             place(x, y - half, rx, half, depth + 1, index | (1 << depth), 0, -1)
         else:

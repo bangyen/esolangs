@@ -21,7 +21,7 @@ version = 1
 [[evidence.anchors]]
 arity = 4
 rule = "parity"
-size = 6663
+size = 4487
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bifunge.generator:bifunge_request"
@@ -31,23 +31,26 @@ version = 1
 archive_context = {}
 
 [ablations.alternating_tree]
-kind = "measurement"
+kind = "replay"
+baseline_revision = "ce580dde29b84e7d42aba4f01b4b6a10d7af79fd"
 witness = { arity = 4, rule = "parity" }
-source = { value = 6272, unit = "cells" }
+source = { before = 6272, after = 4224, unit = "cells" }
 budget = 30
 band = "fast"
 scale = 1
-audited = 2026-11-15
+audited = 2026-11-27
 construction = "esolangs.languages.bifunge.generator:bifunge_request"
-notes = "Reverse-order routing leaves room for the output tail on only the vertical axis."
+notes = "The last vertical split enters either tail in one step. The same layout covers all nonconstant tables with no extra path or state. On 64 random tables at each of n=7/8 (seed 1847 + arity), grid area fell 39.45%/38.55%. All arity-3 tables total 692088 to 451960 cells and 355584 to 234752 commands."
 
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.bifunge.generator:bifunge_request"
 
 [resource_evidence.execution]
-# Initial east/down walk, then radius minus leaf spacing on each axis, then 17 leaf commands.
-expression = "15n+2*2^⌊n/2⌋+34*2^⌈n/2⌉-1"
+# The input walk reaches the root at distance p+X+Y. Horizontal hops
+# total X-1. Vertical hops and the 17 leaf commands total Y.
+# Adding an essential input decreases p by one and doubles one radius.
+expression = "15n+2*2^⌊n/2⌋+18*2^⌈n/2⌉-1"
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
@@ -56,8 +59,9 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 
 [resource_evidence.workspace]
 # Coordinates and cursor, n+7 stack bits, two partial bytes, heading and halt flag.
-# A leading ignored digit leaves at most the one slot it had under empty-pop semantics.
-expression = "n+bl(2*2^⌊n/2⌋-1)+bl(15n+34*2^⌈n/2⌉-1)+bl(n)+40"
+# With even n, dropping one essential input keeps the same y radius
+# and lengthens the reader by one. The next omission reduces the radius.
+expression = "n+bl(2*2^⌊n/2⌋-1)+bl(15n+18*2^⌈n/2⌉)+bl(n)+40"
 exact = false
 arities = [1, 2, 3, 4]
 first = 1
@@ -66,7 +70,7 @@ description = { growth = "poly n", claim = "at most", template = "{claim} {formu
 
 [resource_evidence.scaling]
 # Each command occupies four text cells. Newlines do not count toward grid area.
-expression = "8*2^⌊n/2⌋*(15n+34*2^⌈n/2⌉)"
+expression = "8*2^⌊n/2⌋*(15n+18*2^⌈n/2⌉)"
 exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
@@ -82,11 +86,11 @@ tests = [
 ]
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }
-"00001100" = { commands_by_row = { "0" = 117, "1" = 117, "2" = 117, "3" = 117, "4" = 117, "5" = 117, "6" = 117, "7" = 117 }, source_units = 2051 }
-"00110110" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }
-"0110" = { commands_by_row = { "0" = 101, "1" = 101, "2" = 101, "3" = 101 }, source_units = 1763 }
-"01101001" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }
-"0110100110010110" = { commands_by_row = { "0" = 203, "1" = 203, "2" = 203, "3" = 203, "4" = 203, "5" = 203, "6" = 203, "7" = 203, "8" = 203, "9" = 203, "10" = 203, "11" = 203, "12" = 203, "13" = 203, "14" = 203, "15" = 203 }, source_units = 6663 }
-"1101001101101101" = { commands_by_row = { "0" = 203, "1" = 203, "2" = 203, "3" = 203, "4" = 203, "5" = 203, "6" = 203, "7" = 203, "8" = 203, "9" = 203, "10" = 203, "11" = 203, "12" = 203, "13" = 203, "14" = 203, "15" = 203 }, source_units = 6663 }
-"11111110" = { commands_by_row = { "0" = 184, "1" = 184, "2" = 184, "3" = 184, "4" = 184, "5" = 184, "6" = 184, "7" = 184 }, source_units = 3257 }
+"00000001" = { commands_by_row = { "0" = 120, "1" = 120, "2" = 120, "3" = 120, "4" = 120, "5" = 120, "6" = 120, "7" = 120 }, source_units = 2105 }
+"00001100" = { commands_by_row = { "0" = 85, "1" = 85, "2" = 85, "3" = 85, "4" = 85, "5" = 85, "6" = 85, "7" = 85 }, source_units = 1475 }
+"00110110" = { commands_by_row = { "0" = 120, "1" = 120, "2" = 120, "3" = 120, "4" = 120, "5" = 120, "6" = 120, "7" = 120 }, source_units = 2105 }
+"0110" = { commands_by_row = { "0" = 69, "1" = 69, "2" = 69, "3" = 69 }, source_units = 1187 }
+"01101001" = { commands_by_row = { "0" = 120, "1" = 120, "2" = 120, "3" = 120, "4" = 120, "5" = 120, "6" = 120, "7" = 120 }, source_units = 2105 }
+"0110100110010110" = { commands_by_row = { "0" = 139, "1" = 139, "2" = 139, "3" = 139, "4" = 139, "5" = 139, "6" = 139, "7" = 139, "8" = 139, "9" = 139, "10" = 139, "11" = 139, "12" = 139, "13" = 139, "14" = 139, "15" = 139 }, source_units = 4487 }
+"1101001101101101" = { commands_by_row = { "0" = 139, "1" = 139, "2" = 139, "3" = 139, "4" = 139, "5" = 139, "6" = 139, "7" = 139, "8" = 139, "9" = 139, "10" = 139, "11" = 139, "12" = 139, "13" = 139, "14" = 139, "15" = 139 }, source_units = 4487 }
+"11111110" = { commands_by_row = { "0" = 120, "1" = 120, "2" = 120, "3" = 120, "4" = 120, "5" = 120, "6" = 120, "7" = 120 }, source_units = 2105 }
