@@ -131,3 +131,27 @@ def test_the_shell_writes_before_the_next_read() -> None:
 
     _drive(program, IO(read=read, write=write))
     assert events == [("write", 0), ("read", None)]
+
+
+def test_merge_into_a_later_leaf_follows_its_loop_back(monkeypatch) -> None:
+    from esolangs.languages.line.interpreter import simulate
+    from esolangs.languages.line.interpreter.extract import OpCall
+
+    def leaf(ops: str, end: tuple[int, int]) -> simulate._Compiled:
+        calls = [OpCall(op, 1, at) for at, op in enumerate(ops)]
+        return simulate._Compiled(
+            calls, end, None, None, positions=tuple((at, 0) for at in range(len(ops)))
+        )
+
+    # Leaf a (linked first) merges mid-leg into leaf b, whose own goto is
+    # linked second.  The suffix once captured b's goto while it was None.
+    root, a, b = leaf("", (0, 0)), leaf("", (1, 0)), leaf("o+", (2, 0))
+    root.zero, root.nonzero = a, b
+    merges = {a.end: (b, 1), b.end: (root, 0)}
+    compiler = simulate._TreeCompiler(1)
+    compiler.leaves = [a, b]
+    monkeypatch.setattr(compiler, "build", lambda _stroke: root)
+    monkeypatch.setattr(compiler, "find_merge", lambda end, **_: merges.get(end))
+    frames = simulate._freeze_program(compiler.compile(None))
+    (suffix,) = [frame for frame in frames if frame.offset]
+    assert suffix.goto == 0

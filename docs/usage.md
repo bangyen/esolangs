@@ -185,7 +185,7 @@ These language-owned plans retain parsed source:
 - Aprknia, Qrain, Smallfuck, Unsquare, Dimensional, FALSE and Home Row: source and jump targets.
 - EGL: validated dimensions, commands and loop targets.
 
-`Language` also binds `instantiate`; use package functions across languages.
+`Language` also binds `instantiate`, which checks the owner and table; `template.fill(bits)` needs no catalog.
 
 `bf.run(program, limits=ExecutionLimits(max_steps=10_000))` returns an
 `ExecutionOutcome`: `completed`, `rejected`, `input_exhausted`, `fault` or `limit`.
@@ -630,7 +630,8 @@ In 3.0, replace `execute(...)` with `run(...)` and a raising `run(...)` with
 `run(...).unwrap()`. Use `language.plan_generation(table)` for a
 `Ready` decision with `.build()` or an `Unsupported` decision with `.reason`
 and `.cap`. Planning constructs the artifact once. Bind dialect defaults with
-`Language(name, dialect=settings)` or `catalog.bind(name, dialect=settings)`.
+`Language(name, dialect=settings)` or `catalog.bind(name, dialect=settings)`;
+an artifact's retained choices override them.
 
 The public API includes the package exports, `__version__`, debugger,
 serialization, planning, and the registry's `Catalog` and `LanguageDeclaration`.

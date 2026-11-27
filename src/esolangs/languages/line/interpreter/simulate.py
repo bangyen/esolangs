@@ -73,11 +73,14 @@ class _Compiled:
 
 @dataclass(frozen=True, slots=True)
 class _Resume:
-    """A stroke suffix retains the continuation bound when its merge was linked."""
+    """A stroke suffix; it continues wherever its target does.
+
+    The target's own ``goto`` is read at freeze time: a leaf linked after
+    the merge into it would otherwise leave the suffix halting.
+    """
 
     target: _Compiled
     offset: int
-    goto: _Compiled | _Resume | None
 
 
 class _TreeCompiler:
@@ -106,7 +109,7 @@ class _TreeCompiler:
             if offset:
                 key = id(target), offset
                 if key not in resumes:
-                    resumes[key] = _Resume(target, offset, target.goto)
+                    resumes[key] = _Resume(target, offset)
                 leaf.goto = resumes[key]
             else:
                 leaf.goto = target
@@ -222,7 +225,7 @@ def _freeze_program(root: _Compiled) -> tuple[_Frame, ...]:
         entry: _Compiled | _Resume,
     ) -> tuple[_Compiled | _Resume | None, ...]:
         node = entry.target if isinstance(entry, _Resume) else entry
-        return node.zero, node.nonzero, entry.goto
+        return node.zero, node.nonzero, node.goto
 
     first: _Compiled | _Resume = root
     entries, indices = _index_graph(first, successors)
@@ -240,7 +243,7 @@ def _freeze_program(root: _Compiled) -> tuple[_Frame, ...]:
                 node.end,
                 indices.get(id(node.zero)),
                 indices.get(id(node.nonzero)),
-                indices.get(id(entry.goto)),
+                indices.get(id(node.goto)),
                 offset,
             )
         )

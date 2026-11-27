@@ -431,7 +431,7 @@ def test_mid_leg_entry_uses_the_original_instruction_coordinates() -> None:
     compiler.strokes.append((target, points, ops))
     match = compiler.find_merge(entry.end, entry)
     assert match is not None
-    entry.goto = _Resume(*match, target.goto)
+    entry.goto = _Resume(*match)
     machine = _Machine(_freeze_program(entry), ScriptedIO())
     for point in ((0, 15), (0, 20), (0, 30), (0, 40)):
         assert machine.ip == point

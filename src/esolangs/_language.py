@@ -7,7 +7,7 @@ from os import PathLike
 
 import esolangs
 from esolangs._dialect import Scalar
-from esolangs.artifacts import Artifact, ProgramArtifact
+from esolangs.artifacts import Artifact, ProgramArtifact, TemplateArtifact
 from esolangs.debugger import Debugger, make_debugger, make_vm
 from esolangs.limits import ExecutionLimits
 from esolangs.operations.prepared import PreparedProgram
@@ -26,7 +26,8 @@ from esolangs.settings import DialectSettings
 class Language:
     """Bind a canonical language name to one immutable catalog.
 
-    Operations inherit the bound dialect unless given explicit settings.
+    The bound dialect is a default: explicit settings replace it, and an
+    artifact's retained choices override it key by key.
     """
 
     name: str
@@ -46,6 +47,26 @@ class Language:
             from esolangs.settings import dialect_options
 
             dialect_options(self.name, self.dialect, catalog=self.catalog)
+
+    def _choices(
+        self, program: object, settings: DialectSettings | None
+    ) -> DialectSettings | None:
+        """Fill choices a same-language artifact did not retain from the dialect."""
+        dialect = self.dialect
+        if settings is not None or dialect is None:
+            return settings
+        retained = (
+            program.settings
+            if isinstance(program, (ProgramArtifact, TemplateArtifact))
+            else None
+        )
+        # Merging dialect under retained choices means effective_settings
+        # never reports a conflict the caller did not spell.
+        if retained is None or retained._schema != dialect._schema:  # noqa: SLF001
+            return dialect
+        from esolangs.settings import _merge_settings
+
+        return _merge_settings(self.name, dialect, retained, catalog=self.catalog)
 
     def settings(self, /, **choices: Scalar) -> DialectSettings:
         """Return overrides validated within this language's dialect schema.
@@ -123,7 +144,7 @@ class Language:
             self.name,
             program,
             path,
-            settings=self.dialect if settings is None else settings,
+            settings=self._choices(program, settings),
             gzip=gzip,
             normalize=normalize,
             catalog=self.catalog,
@@ -141,7 +162,7 @@ class Language:
         return to_json(
             self.name,
             program,
-            settings=self.dialect if settings is None else settings,
+            settings=self._choices(program, settings),
             catalog=self.catalog,
         )
 
@@ -159,7 +180,7 @@ class Language:
         return esolangs.prepare(
             self.name,
             program,
-            settings=self.dialect if settings is None else settings,
+            settings=self._choices(program, settings),
             scale=scale,
             catalog=self.catalog,
         )
@@ -234,7 +255,7 @@ class Language:
             bits,
             width=width,
             truth_table=truth_table,
-            settings=self.dialect if settings is None else settings,
+            settings=self._choices(template, settings),
             catalog=self.catalog,
         )
 
@@ -260,7 +281,7 @@ class Language:
             limits=limits,
             seed=seed,
             isolated=isolated,
-            settings=self.dialect if settings is None else settings,
+            settings=self._choices(program, settings),
             scale=scale,
             catalog=self.catalog,
         )
@@ -283,7 +304,7 @@ class Language:
             program,
             stdin=stdin,
             seed=seed,
-            settings=self.dialect if settings is None else settings,
+            settings=self._choices(program, settings),
             scale=scale,
             catalog=self.catalog,
         )
@@ -306,7 +327,7 @@ class Language:
             program,
             stdin=stdin,
             seed=seed,
-            settings=self.dialect if settings is None else settings,
+            settings=self._choices(program, settings),
             scale=scale,
             catalog=self.catalog,
         )

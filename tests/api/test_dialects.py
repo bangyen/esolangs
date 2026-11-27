@@ -188,6 +188,24 @@ def test_settings_require_the_public_object(command, operation, capsys) -> None:
     ) == esolangs.Language(language).settings(cell_modulus=256)
 
 
+def test_bound_dialect_yields_to_retained_choices() -> None:
+    language = one_where(
+        lambda info: {"cell_modulus", "io_modulus"} <= info.dialect_settings.keys()
+    )[0]
+    plain = esolangs.Language(language)
+    retained = plain.settings(cell_modulus=255)
+    row = plain.generate("0110", settings=retained).bind([0, 1])
+    bound = esolangs.Language(
+        language, dialect=plain.settings(cell_modulus=256, io_modulus=256)
+    )
+    # The dialect contradicted the program's retained choices and raised.
+    assert bound.run(row.program, stdin=row.stdin).unwrap().output == (
+        plain.run(row.program, stdin=row.stdin).unwrap().output
+    )
+    with pytest.raises(esolangs.ProgramError, match="written with cell_modulus="):
+        bound.run(row.program, settings=bound.dialect).unwrap()
+
+
 def test_cli_help_shows_literal_settings_json(capsys) -> None:
     with pytest.raises(SystemExit) as caught:
         call_both(["generate", "--help"], capsys)

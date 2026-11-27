@@ -1,5 +1,6 @@
 """Shared listing and specification contracts."""
 
+import copy
 import json
 import re
 from dataclasses import replace
@@ -621,6 +622,12 @@ def test_program_artifact_evaluation_can_select_a_scoped_contract() -> None:
     result = program.evaluate([1])
     assert result == program.evaluate([1], catalog=scoped.catalog)
     assert result.answer == "0"
+    # The scope survives the copy hooks; only dataclasses.replace has none.
+    clones = [copy.copy(program), copy.deepcopy(program)]
+    if hasattr(copy, "replace"):  # Python 3.13+
+        clones.append(copy.replace(program, input_arity=1))
+    for clone in clones:
+        assert clone.evaluate([1]).answer == "0"
 
 
 #: What a spec must not show: a private name, a raw Sphinx role, a repo path.

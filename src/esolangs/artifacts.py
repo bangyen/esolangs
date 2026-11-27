@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field, fields
+from copy import deepcopy
+from dataclasses import dataclass, field, fields, replace
 from inspect import getattr_static
 from reprlib import recursive_repr
+from typing import Any, Self, cast
 
 import esolangs
 from esolangs._bindings import (
@@ -121,7 +123,11 @@ class BoundRow:
 
 
 class _CatalogOwner:
-    """Live evaluation scope. Portable and pickle records carry source data only."""
+    """Live evaluation scope. Portable and pickle records carry source data only.
+
+    ``copy.copy``, ``copy.deepcopy`` and ``copy.replace`` keep the scope;
+    ``dataclasses.replace`` has no hook and drops it.
+    """
 
     __slots__ = ("_catalog",)
 
@@ -129,6 +135,28 @@ class _CatalogOwner:
         self, catalog: esolangs.registry.Catalog | None
     ) -> esolangs.registry.Catalog | None:
         return catalog if catalog is not None else getattr(self, "_catalog", None)
+
+    def _keep_catalog[T: _CatalogOwner](self, other: T) -> T:
+        catalog = getattr(self, "_catalog", None)
+        return other if catalog is None else bind_catalog(other, catalog)
+
+    def __copy__(self) -> Self:
+        live: Any = self
+        clone = object.__new__(type(self))
+        cast("Any", clone).__setstate__(live.__getstate__())
+        return self._keep_catalog(clone)
+
+    def __deepcopy__(self, memo: dict[int, object]) -> Self:
+        live: Any = self
+        clone = object.__new__(type(self))
+        memo[id(self)] = clone
+        cast("Any", clone).__setstate__(deepcopy(live.__getstate__(), memo))
+        # The catalog is a shared immutable scope, not copied data.
+        return self._keep_catalog(clone)
+
+    def __replace__(self, /, **changes: object) -> Self:
+        replaced: Self = replace(cast("Any", self), **changes)
+        return self._keep_catalog(replaced)
 
 
 @dataclass(frozen=True, slots=True)
@@ -393,6 +421,10 @@ class TemplateArtifact(_CatalogOwner):
 
 
 type Artifact = ProgramArtifact[Program] | TemplateArtifact
+
+# Each dataclass installs its own ``__replace__``; restore the scoped one.
+ProgramArtifact.__replace__ = _CatalogOwner.__replace__  # type: ignore[method-assign]
+TemplateArtifact.__replace__ = _CatalogOwner.__replace__  # type: ignore[method-assign]
 
 
 def bind_catalog[T: _CatalogOwner](
