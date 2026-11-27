@@ -317,6 +317,16 @@ def test_balance_accepts_a_supplied_default() -> None:
             assert balance_score(balanced) <= balance_score(default), table
 
 
+def test_balance_improves_the_supplied_default() -> None:
+    """Shrink the rendered side without changing the truth table."""
+    table = "00001001"
+    default = esolangs.generate("Collatz Multiverse", table).source
+    balanced = boolean.balance_collatz_multiverse(table, default)
+
+    assert balance_score(balanced)[0] < balance_score(default)[0]
+    assert_runner_rows(run_collatz_multiverse, balanced, table)
+
+
 @pytest.mark.parametrize(
     ("table", "width", "size"),
     [
