@@ -12,37 +12,18 @@ from esolangs.runtime._definition import RuntimeSpec
 from esolangs.runtime.source_hints import with_hint
 
 _DIGITS_N = 16
-MAX_INPUTS = _DIGITS_N
-
-
-def input_cap_error(inputs: int) -> GeneratorCapError:
-    """Explain the unconditional store limit and the conditional extension."""
-    storage = (
-        "every row pair owns a cell, and seventeen inputs would need "
-        "65,536 of the store's 59,049"
-    )
-    detail = (
-        "17 inputs require a table that ignores an input or "
-        "is constant on Hamming-weight classes"
-    )
-    if inputs == MAX_INPUTS + 1:
-        detail += ", and this one does neither"
-    return with_hint(
-        GeneratorCapError(
-            f"Malbolge builds at most {_DIGITS_N} inputs for unrestricted tables "
-            f"(got {inputs}): {detail}; {storage}"
-        ),
-        (
-            "use fewer inputs or check another generator's "
-            "limits; width cannot enlarge Malbolge's store"
-        ),
-    )
+MAX_INPUTS = 17
 
 
 def check_arity(inputs: int) -> None:
-    """Refuse beyond the largest arity the store can accommodate."""
-    if inputs > MAX_INPUTS + 1:
-        raise input_cap_error(inputs)
+    """Refuse beyond the packed decoder's seventeen inputs."""
+    if inputs > MAX_INPUTS:
+        raise with_hint(
+            GeneratorCapError(
+                f"Malbolge builds at most {MAX_INPUTS} inputs (got {inputs})"
+            ),
+            "use fewer inputs or check another generator's limits",
+        )
 
 
 def _backend() -> BackendDefinition:
@@ -53,12 +34,8 @@ def _backend() -> BackendDefinition:
     from esolangs.runtime._program import Program
 
     return BooleanBackend(
-        max_inputs=MAX_INPUTS + 1,
+        max_inputs=MAX_INPUTS,
         arity_guard=check_arity,
-        restrictions=(
-            "seventeen inputs only for a table that ignores an input "
-            "or is constant on Hamming-weight classes"
-        ),
         entrypoint=OperationRef[GenerationRequest, Program](
             "esolangs.languages.malbolge.generator", "malbolge_request"
         ),

@@ -12,6 +12,10 @@ from esolangs.languages.malbolge.generator.digits import (
 )
 from esolangs.languages.malbolge.interpreter import _advance, _initial_memory, _op
 
+# Longest path in the union of all packed layouts (verify_decoder.py).
+_PACKED_COMMAND_BOUND = 9_101
+_PACKED_PREFIX = 4_243
+
 
 @cache
 def _full_stub() -> int:
@@ -48,7 +52,8 @@ def _main(program: str) -> tuple[int, int, int]:
         total += 1
         if op == "v":
             return total, writes, 0
-        if op == "i" and d >= _ENTRY:
+        # The packed prefix dispatches through low register 136 at PC 4242.
+        if op == "i" and (d >= _ENTRY or (total == _PACKED_PREFIX and d == 136)):
             return total, writes, 1
         writes += int(op in ("p", "*"))
         state, changed, _ = _advance(state, memory, 48 if op == "/" else None)
@@ -60,6 +65,8 @@ def _main(program: str) -> tuple[int, int, int]:
 def execution_terms(n: int, program: str) -> dict[str, int]:
     """Measure the executed main prefix and bound the answer stub."""
     prefix, _, stub = _main(program)
+    if n == 17 and prefix == _PACKED_PREFIX:
+        return {"E": prefix, "J": _PACKED_COMMAND_BOUND - prefix}
     longest = _longest_stub(n) if n <= _SHORT_MAX else _full_stub()
     return {"E": prefix, "J": longest if stub else 0}
 

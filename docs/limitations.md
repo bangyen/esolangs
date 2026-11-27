@@ -147,23 +147,14 @@ readout set.
   80×25 grid. Finite source space excludes some sixteen-input tables
   ([exceptions and walls](proofs/index.md#exceptions-and-walls)).
 - Unary's current unrolled generator supports [at most nine inputs](#unary).
-- Malbolge supports all tables through sixteen inputs. Positional
-  addressing packs the first inputs three bits per two-trit digit, and
-  the last input selects one of two answers per cell. At seventeen the
-  shipped construction covers tables that ignore an input or are constant
-  on Hamming-weight classes. Named rows of both families execute in the
-  sparse suite. See the [construction summary](proofs/index.md#malbolge-bound).
+- Malbolge supports all tables through seventeen inputs. Through sixteen,
+  positional addressing stores two answers per cell. At seventeen each
+  15-bit prefix owns three bits in one word and one bit in a shared spill
+  word. Counting source programs excludes some eighteen-input tables.
+  [Construction and counting proof](proofs/index.md#malbolge-bound).
 
-Malbolge's seventeen-input construction and impossibility questions both
-remain open. The current two-answer readout would need 65,536 cells in a
-59,049-cell store. The counting proof excludes some eighteen-input tables
-and needs another 46,076 bits of structure to exclude a seventeen-input
-table. A length restriction fails on a ten-input witness whose answer
-depends on cell 58,967. A per-program dependence restriction fails on the
-one-input identity program `'o'*59046 + '/<v'`, where every cell matters.
-A bound over one normal form per table remains open.
+Earlier seventeen-input constructions:
 
-Construction-specific results for seventeen:
 
 - The address-independent window conflict graph has independence number
   8 and chromatic number 12. State conditioning can attain eight clean
@@ -176,14 +167,12 @@ Construction-specific results for seventeen:
   marching approaches hit reachability, layout or measured cost limits.
   Native marching controls establish finite instruction reuse. The
   word-mediated landing variant executes one case at 21 cells per
-  deposited word. A full build must still fit the 9,897-cell complement
-  and pass the parity and per-row checks in the [roadmap](roadmap.md).
+  deposited word. That variant required placement in the 9,897-cell complement.
 - Native scratch controls include arithmetic halving (33 cases on one
   13,368-character program) and a shared two-word `crazy` fold (17 input
   pairs on one 4,428-character program). Mutants failed both controls.
   The reduced LAST-only layout was already 8,432 cells short before the
-  remaining query and selector. General ASCII input, packed addressing
-  and bit selection still need a full composition.
+  remaining query and selector. Those controls tested individual operations.
 - Without `i`/`j`, reset execution keeps `C == D`. A `p` gets its own
   instruction character, and the input pair (49, 48) is unreachable.
   That restricted machine cannot express NOT at any length.
@@ -270,7 +259,8 @@ measurements, witnesses and reopening conditions for the older audits.
   n=28 witness emitted 105,463,455 characters at 3.30 GB peak.
 
 The Malbolge suite executes boundary rows at every arity, all rows at ten,
-and every 128th row at fifteen and sixteen in the weekly run.
+and every 128th row at fifteen and sixteen in the weekly run. At seventeen,
+the sparse suite executes projection, weight-class and packed programs.
 
 ## Curation
 

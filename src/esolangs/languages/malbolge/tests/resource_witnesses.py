@@ -23,13 +23,7 @@ def _malbolge_symmetric(n: int) -> SparseRows:
     answers attained).  The named rows -- row 0, every single-bit
     row, the first row of every weight and the last two rows --
     probe every folded input and the stub's, attain every weight and
-    both answers.  The evidence is about this one weight-class
-    witness only: it supports no scaling or execution claim, nothing
-    about non-symmetric seventeen-input tables, and it does not
-    soften "seventeen is open" -- below seventeen the suites execute
-    every row of every corpus table, here only these named rows run.
-    The witness field names the last row; no formula column is
-    claimed for Malbolge, so it attains nothing.
+    both answers.
     """
     rng = random.Random(17018)
     classes = "".join(rng.choice("01") for _ in range(n + 1))
@@ -59,12 +53,7 @@ def _malbolge_projection(n: int) -> SparseRows:
     both answers and include the step worst (projected row 16, 5,686
     steps, the formula's pinned worst at sixteen); measured on the
     sixteen build they total 100,484 steps, so the lifted 36 rows
-    total 200,968, about 0.9 s of stepping.  The evidence is about
-    this one projection witness only: it supports no scaling or
-    execution claim, nothing about non-projection seventeen-input
-    tables, and it does not soften "seventeen is open" -- below
-    seventeen the suites execute every row of every corpus table,
-    here only these named rows run.
+    total 200,968, about 0.9 s of stepping.
     """
     rng = random.Random(17017)
     for _ in range((1 << (n - 1)) + (1 << n)):
@@ -77,9 +66,12 @@ def _malbolge_projection(n: int) -> SparseRows:
 
 
 def sparse_rows(n: int) -> tuple[SparseRows, ...]:
-    """The two seventeen-input witnesses: projection and weight-class.
-
-    The projection witness follows; the weight-class witness is
-    :func:`_malbolge_symmetric`.  Both are answers-only.
-    """
-    return _malbolge_projection(n), _malbolge_symmetric(n)
+    """Exercise the three seventeen-input constructions on named rows."""
+    packed = random.Random(68002).randbytes(1 << (n - 3))
+    table = "".join(f"{byte:08b}" for byte in packed)
+    rows = (0, 1, 2, 3, 7183, 39951, 82016, 89100, 89101, 89102, 105484, (1 << n) - 1)
+    return (
+        _malbolge_projection(n),
+        _malbolge_symmetric(n),
+        SparseRows(table, rows, 89100),
+    )

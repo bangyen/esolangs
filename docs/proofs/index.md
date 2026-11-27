@@ -16,29 +16,25 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Indexed execution and literal scanning have different costs.
   Controls: `src/esolangs/languages/fractran/tests/proofs/test_fractran_bound.py`
   and `src/esolangs/languages/fractran/tests/proof_fractran.py`.
-- Malbolge: <a id="malbolge-bound"></a> positional addressing reaches
-  sixteen inputs at every arity (seventeen only for a table that ignores
-  an input, built as the sixteen build over its projection, or one
-  constant on Hamming-weight classes, whose first fold group reads
-  four inputs into a popcount digit), and
-  seventeen remains open. Finite source space excludes some eighteen-input
-  tables, so mathematical totality is impossible. The load law allows at most
-  two final rows per answer cell; a one-cell-per-row-pair construction cannot
-  cover seventeen in the 59,049-cell store. This is not a universal seventeen-input
-  obstruction. Table-free memoized planning and one-pass fill are separate:
-  fill is `Theta(T+59049)`, with exactly half a cell assignment per row in the
-  positional build. Prefix sharing over the gadget groups makes the readout
-  map `Theta(T)` at every arity, so generation is `Theta(T+59049)`.
-  A native three-field capture control ran from reset over all 4,096 legal
-  record-and-neighbor glyph combinations at one fixed record address: 59,049
-  characters, 3,187 instruction cells and at most 3,607 steps. It preserved
-  the record and neighbor; seven cases matched Python and C whole states,
-  and an omitted-fold negative control failed. These scratch measurements
-  do not establish an integrated generator. The seventeen-input prefix,
-  native Boolean decoder placement and named source-symbol rules remain
-  unverified; the shipped cap stays sixteen.
-  Controls: `src/esolangs/languages/malbolge/tests/`; archived
-  seventeen-input tools are available at `09ab2fad:scripts/malbolge17/`.
+- Malbolge: <a id="malbolge-bound"></a> every truth table through seventeen
+  inputs has a program. The [source count](#exceptions-and-walls) excludes
+  some eighteen-input tables. Through sixteen, the positional fold stores
+  two answers per cell. At seventeen the first fifteen bits select a primary
+  word. Suffixes `00`, `01` and `10` read its three slots. Suffix `11`
+  replaces one base-nine digit of the address and selects a spill slot.
+  The 131,072 (word, slot) pairs are distinct across 44,608 words.
+  Each column marker maps the eight legal source bytes to eight output
+  triples. Words shared with navigation have fewer legal bytes. The
+  generator intersects seven masks to choose one lookup, printer order
+  and polarity for their requested outputs. The
+  [executable certificate](../../src/esolangs/languages/malbolge/tests/proof_packed_decoder.py)
+  reconstructs the masks from the instruction bytes and checks all
+  8,388,608 assignments. Words 39,391 and 39,394 are chosen jointly.
+  Word 59,036 excludes `j` because pairing it with byte 67 at 29,530
+  halts without output on row 89,100. The packed source occupies all
+  59,049 cells. The [native certificate](../../experiments/malbolge-n17/README.md) checks
+  3,941,771 payload and marker combinations. Its acyclic instruction graph
+  bounds every packed run by 9,101 commands.
 
 - Ascenic: <a id="ascenic-bound"></a> worst-case source is `Theta(T**2)`
   characters for both the language and generator. Arguments rise strictly
@@ -399,7 +395,7 @@ for the level counts. `tests/proofs/test_execution_formulas.py` and
 | Kiss | tree | a node is S over its two halves, which S reads a bit to choose; a node whose halves agree reads it through SS(SKK) | linear: worst 7T-5 characters: 5 a node, 2 a leaf | proved | poly n: worst 4n - 1 rewrites: four a skip level, then a read, the output and the halt | linear: worst 24T + 2bl(n) + 17 bits past n = 1: a root skip holds its half twice |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: worst max(T,3)(12n+32) (n=1..6), 3(11T+52n+3) (n≥7) cells; tree then lookup | proved | linear: worst C*(n+491+X) + (1-C)*(T+296n+682 + min(1,max(0,n-6))*(10T-240n-680)) steps seed 2. C constant, X +x. Other headings add at most 2 | linear: worst 8n+27 (n=5..6), 12T+n+7+2bl(n) (n≥7) bits |
 | Line | tree | small loaded trees and projected inline readers preserve totality and physical input order; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: at most pixels from n=6: Pareto boxes over projected input sets | proved | poly n: at most 5n (n=1..5), 3n+4 (n≥6) commands by default, with balanced layouts retaining the first bound | poly n: at most 2n+1+bl(3n-2)+bl(n-1)+bl(2n-1)+(n·bl(n-1)-2^bl(n-1)+2) bits from n=5 |
-| Malbolge | exception | constants read every input before building ASCII 48/49; finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound)) | linear: worst 13340 (n=1..11), 15260 (n=12..13), 21831 (n=14), 52480 (n=15), 59049 (n≥16) characters | measured | unmeasured: at most E+J commands. E is the executed main line and J bounds the answer stub | poly n: at most B+E+10W+J*(1+10F)+49+bl(n) bits. W prefix writes, F marks a following stub |
+| Malbolge | exception | positional two-answer cells through sixteen inputs; at seventeen, each 15-bit prefix has a three-answer word and one shared spill slot; finite source space excludes some eighteen-input tables ([construction](#malbolge-bound)) | linear: worst 13340 (n=1..11), 15260 (n=12..13), 21831 (n=14), 52480 (n=15), 59049 (n≥16) characters | measured | unmeasured: at most E+J commands. E is the executed main prefix and J bounds the remaining commands | poly n: at most B+E+10W+J*(1+10F)+49+bl(n) bits. W prefix writes, F marks a following stub |
 | moar cheese :3 | parameterized lookup | the essential inputs' table is queued as bytes behind the first input's bit; each dequeued bit defines the bytes to keep one half, and doubling names run each half's dequeues, so the next bit, enqueued behind the table, reaches the front; a symmetric table queues one byte per popcount and each 1 drops the front byte; an ignored input is a bare instruction | linear: at most 4T + 22n + 58 characters | proved | linear: worst 6T + 9n - 3 commands | linear: at most 8T + (2n + 6)bl(n + 14) + 11n + bl(T + 7n + 16) + 52 bits |
 | Modulous | linear lookup | pair literal for asymmetric inputs; O(n)-source symmetric count reader retained; default exact maxima, split literals pay extra pushes/cursor bits | linear: worst 68 (n=1), 6T+28n+21 (n=2..4), 3T+28n+144 (n=5), T/2+48n+157+power2_digits_sum(n-1) (n≥6) characters | proved | linear: worst 4D+7J+P*(2n+3)+(1-D-J-P)*(T+3n+2+min(1,max(0,n-4))*(4-T/2)+min(1,max(0,n-5))*(2T+2n-37)+min(1,n-1)*max(0,S-1)) commands. D, J and P mark the direct, branch and discard readers. S counts literal pushes | linear: worst A*(9+bl(M))+P*(7+bl(2n+3)+bl(2n-1)+bl(n))+(1-A-P)*(13max(0,2-n)+min(1,n-1)*(6T+2-3T*min(1,max(0,n-4))+(n-1)*min(1,max(0,n-5))+bl(max(M,T+3n+2+min(1,max(0,n-4))*(12-T/2)+min(1,max(0,n-5))*(3n+3-T/2)))+bl(2n-1)+bl(n))) bits. A selects the one-input integer reader, P the discard reader and M counts tokens |
 | Monotonic Boolfuck | tree | — | linear: worst 53T/2 - 21 characters past n = 1 | proved | poly n: worst 21n + 13 commands | poly n: at most bl(L) + bl(4n + 2) + 2n·bl(2n) + 25 bits |
@@ -461,7 +457,7 @@ Symbols the formula cells use:
 - **Flowchart:** E = number of exit-memory entries; C = sum of their column bit widths.
 - **Grapheme:** B = bit width of the largest minimal leading-one lift modulo 2^T; D = digits(2^T).
 - **INTERCAL:** S = emitted DO/PLEASE statements, including GIVE UP, independent of wrapping.
-- **Malbolge:** B = the initial memory bits, source cells and fill; E = executed main-prefix commands; J = commands in the longest reachable stub.
+- **Malbolge:** B = the initial memory bits, source cells and fill; E = executed main-prefix commands; J = a bound on commands after the main prefix.
 - **ROTfuck:** E = selected rotation and layout command bound, including raw digit walks and comment or constant loop allowances.
 - **S*bleq:** B = the program cells' bits, a sign one more; A = extra decimal address widths of the packed decoder.
 - **SendStuff:** H = largest residual label id; A = definition characters by layer; J = reference characters by layer.
@@ -496,8 +492,7 @@ Symbols the formula cells use:
   computes at most one table, so some 18-input tables have no Malbolge program;
   no generator can be total under this interpreter's language semantics.  The shipped
   construction is described in the [Malbolge summary](#malbolge-bound),
-  which explains collision-free positional addressing and the limits of
-  spending a cell per row pair.
+  which gives the collision-free packed address map.
 
 The former exception, `%^2^-1`, left with its language. Every row outside
 these exceptions is `Total`, or theoretically total past the resource

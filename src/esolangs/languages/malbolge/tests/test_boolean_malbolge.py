@@ -20,6 +20,10 @@ from esolangs.languages.malbolge.interpreter import (
     prepare_machine,
     run,
 )
+from esolangs.languages.malbolge.proof_formulas import (
+    _PACKED_COMMAND_BOUND,
+    execution_terms,
+)
 from esolangs.languages.malbolge.tests.navigation_checks import check_navigation
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
@@ -193,14 +197,39 @@ def test_digit_builds_sampled(n: int) -> None:
     assert _rows(table, rows) == [table[row] for row in rows]
 
 
-def test_unrestricted_digit_cap_executes_sixteen_inputs() -> None:
-    """Seventeen dense inputs need 65,536 answer cells in a 59,049-cell store."""
-    admitted, refused = construction_boundaries("Malbolge")["unrestricted_digit_cap"]
+@pytest.mark.medium
+def test_unrestricted_cap_executes_seventeen_inputs() -> None:
+    """Exercise both shadow walks, all suffixes and the packed source boundary."""
+    admitted, refused = construction_boundaries("Malbolge")["unrestricted_cap"]
     table = admitted.table()
-    rows = (0, 1, len(table) // 2, len(table) - 1)
+    rows = (0, 1, 2, 3, 82016, 82017, 82018, 89100, 89101, 89102, len(table) - 1)
     assert _rows(table, rows) == [table[row] for row in rows]
-    with pytest.raises(GeneratorCapError, match="does neither"):
+    with pytest.raises(GeneratorCapError, match="at most 17 inputs"):
         boolean.malbolge(refused.table())
+
+
+@pytest.mark.medium
+def test_packed_joint_pointer_counterexample() -> None:
+    """The two individual mutations preserve row 89100; together they halt empty."""
+    reference = random.Random(68002).randbytes(16384)
+    table = "".join(f"{byte:08b}" for byte in reference)
+    program = boolean.malbolge(table)
+    assert len(program) == 59049
+    assert sum(execution_terms(17, program).values()) == _PACKED_COMMAND_BOUND
+    for edits, answer in (
+        ({}, table[89100]),
+        ({29530: 67}, table[89100]),
+        ({59036: 36}, table[89100]),
+        ({29530: 67, 59036: 36}, ""),
+    ):
+        source = bytearray(program, "ascii")
+        for cell, value in edits.items():
+            source[cell] = value
+        io = ScriptedIO(f"{89100:017b}")
+        run(source.decode("ascii"), io)
+        assert io.reads == 17
+        assert not io.past_end
+        assert io.getvalue() == answer
 
 
 @pytest.mark.medium
@@ -223,14 +252,12 @@ def test_seventeen_weight_constant_builds_and_executes() -> None:
     and the two alternating rows, covering every folded input and the stub's.
     """
     classes = "010111111000001011"
-    admitted, refused = construction_boundaries("Malbolge")[
-        "conditional_seventeen_input_cap"
-    ]
+    admitted, refused = construction_boundaries("Malbolge")["symmetric_seventeen"]
     tables = (
         admitted.table(),
         "".join(classes[row.bit_count()] for row in range(1 << admitted.arity)),
     )
-    with pytest.raises(GeneratorCapError, match="at most 16 inputs"):
+    with pytest.raises(GeneratorCapError, match="at most 17 inputs"):
         boolean.malbolge(refused.table())
     rows = sorted(
         {0, 1, 2, (1 << 16) - 1, 1 << 16, 2**17 - 2, 2**17 - 1}

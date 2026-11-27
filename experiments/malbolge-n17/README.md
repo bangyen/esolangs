@@ -1,5 +1,24 @@
 # Malbolge 17-input experiments
 
+The public generator covers all seventeen-input tables. To replay its certificate
+from the repository root, run the following with a C11 compiler on the path.
+
+```sh
+uv run python experiments/malbolge-n17/verify_decoder.py
+```
+
+The [selector proof](../../src/esolangs/languages/malbolge/tests/proof_packed_decoder.py)
+reconstructs the seven group masks from executable bytes and checks every
+assignment. The native check runs all 131,072 inputs from reset. Each column
+marker may vary, and every permitted payload byte must restore its word and
+reach the predicted lookup address. During unrelated pointer reads the checker
+follows all possible operands until the data pointers rejoin. It checks all
+1,312 lookup and printer settings, reusing a suffix execution when every cell
+it reads before writing gives the same result. The union of the instruction
+paths is acyclic, with a longest path of 9,101 commands.
+
+The fixtures below record earlier builds.
+
 ## Exact truth table
 
 `fixture-a.mb` reads 17 ASCII bits, most significant first, prints the

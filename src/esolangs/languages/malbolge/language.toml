@@ -2,16 +2,16 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-unrestricted_digit_cap = { tables = [{ arity = 16, rule = "dense" }, { arity = 17, rule = "dense" }], benchmark = false, test = "test_boolean_malbolge.py::test_unrestricted_digit_cap_executes_sixteen_inputs" }
-conditional_seventeen_input_cap = { tables = [{ arity = 17, rule = "parity" }, { arity = 18, rule = "dense" }], benchmark = false, test = "test_boolean_malbolge.py::test_seventeen_weight_constant_builds_and_executes" }
+unrestricted_cap = { tables = [{ arity = 17, rule = "dense" }, { arity = 18, rule = "dense" }], benchmark = false, test = "test_boolean_malbolge.py::test_unrestricted_cap_executes_seventeen_inputs" }
+symmetric_seventeen = { tables = [{ arity = 17, rule = "parity" }, { arity = 18, rule = "dense" }], benchmark = false, test = "test_boolean_malbolge.py::test_seventeen_weight_constant_builds_and_executes" }
 
 [curation]
 backlinks = 130
 
 [proof_status]
 labels = ["exception"]
-qualification = "constants read every input before building ASCII 48/49; finite source space rules out some 18-input tables; the shipped build folds the first n - 1 inputs into a positional address, three input bits per two-trit digit, so no row collides, and the answer stub reads the last; at seventeen it also builds tables constant on Hamming-weight classes, whose first fold group reads four inputs into a popcount digit; below sixteen the unused reads are held at 0; the cap is sixteen for general tables, and seventeen is open ([summary](#malbolge-bound))"
-definitions = ["B = the initial memory bits, source cells and fill", "E = executed main-prefix commands", "J = commands in the longest reachable stub"]
+qualification = "positional two-answer cells through sixteen inputs; at seventeen, each 15-bit prefix has a three-answer word and one shared spill slot; finite source space excludes some eighteen-input tables ([construction](#malbolge-bound))"
+definitions = ["B = the initial memory bits, source cells and fill", "E = executed main-prefix commands", "J = a bound on commands after the main prefix"]
 
 [proof_status.audit]
 totality = "Exception"
@@ -78,10 +78,19 @@ unit = "chars"
 scale = 1
 construction = "esolangs.languages.malbolge.generator:malbolge_request"
 
+[[evidence.anchors]]
+arity = 17
+rule = "random"
+seed = 68002
+size = 59049
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.malbolge.generator:malbolge_request"
+
 [[evidence.raises]]
 error = "GeneratorCapError"
-when = "past seventeen inputs, or seventeen in neither family."
-table = "n=17 random 1"
+when = "past seventeen inputs."
+table = "n=18 random 1"
 
 [resource_evidence]
 version = 2
@@ -89,8 +98,7 @@ construction = "esolangs.languages.malbolge.generator:malbolge_request"
 corpus = "esolangs.languages.malbolge.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.sparse]
-# The two n=17 witnesses step 407,729 commands across 71 named rows.
-# Generation plus stepping took ~1.9s standalone.
+# Named rows exercise projection, weight classes and the packed decoder.
 provider = "esolangs.languages.malbolge.tests.resource_witnesses:sparse_rows"
 arities = [17]
 bands = { "17" = "medium" }
@@ -102,7 +110,7 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "unmeasured", claim = "at most", template = "{claim} {formula} {unit}. E is the executed main line and J bounds the answer stub" }
+description = { growth = "unmeasured", claim = "at most", template = "{claim} {formula} {unit}. E is the executed main prefix and J bounds the remaining commands" }
 
 [resource_evidence.workspace]
 # Memory includes fill past short source. Each stub step may write one cell.
