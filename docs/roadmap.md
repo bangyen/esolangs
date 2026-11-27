@@ -220,6 +220,12 @@ evidence, not optimization tasks.
     input with 8, 9, 8 and 10 wrong answers, all within those 18 positions.
     Rerouting all 14 pointer reads of word 41,555 also gave an exact
     program for fixture B, verified on all 131,072 inputs.
+    The same word now encodes any three bits. Redirecting two more pointer
+    walks from words 6,903 and 6,904 to 705 and 706 leaves 13 primary
+    inputs. The five newly independent answers are 45,088, 45,090, 50,293,
+    50,294 and 68,724. Ten lookup tables cover all 32,768 assignments to the
+    15 selector bits. Four full tables halted on every input with 5, 4, 5
+    and 7 wrong answers, all inside the 13 positions.
     [Selector coverage check](../experiments/malbolge-n17/README.md#selector-coverage)
     and [runnable fixtures](../experiments/malbolge-n17/README.md#exact-truth-table).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
