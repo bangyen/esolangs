@@ -230,6 +230,12 @@ evidence, not optimization tasks.
     The general gap is 11. Across 49 lookups, every assignment to the 17
     selector bits has an encoding. Four full runs halted on every input
     with 5, 4, 5 and 2 wrong answers, all within those 11 positions.
+    Ending startup at word 29,528 and rerouting the remaining pointer
+    reads freed words 29,529–29,536. Each encoded all eight three-bit
+    answers. The general gap fell to two inputs, 89,102 and 105,484.
+    Fifteen lookups cover all 131,072 selector assignments. Four tables
+    printed a digit and halted on every input with 1, 0, 1 and 1 wrong
+    answers, all at those two positions.
     [Selector coverage check](../experiments/malbolge-n17/README.md#selector-coverage)
     and [runnable fixtures](../experiments/malbolge-n17/README.md#exact-truth-table).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
