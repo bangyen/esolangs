@@ -161,6 +161,12 @@ evidence, not optimization tasks.
     passed 7,680 runs covering all eight values of the five freed words.
     The gap fell to 47 primary positions. Four tables halted on every input
     with 25, 25, 23 and 24 wrong answers, all within those positions.
+    The decoder selects between two output addresses three instructions
+    earlier and uses a 12-instruction printer. Words 41,559, 45,933 and
+    54,681 each regained all eight three-bit values under all four lookup
+    settings (288 runs). The gap fell to 44 primary positions. Four tables
+    halted on every input with 17, 26, 27 and 23 wrong answers, all
+    within those positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
