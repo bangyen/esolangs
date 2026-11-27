@@ -105,5 +105,6 @@ tests = [
 "11111110" = { commands_by_row = { "0" = 222, "1" = 225, "2" = 226, "3" = 229, "4" = 228, "5" = 231, "6" = 232, "7" = 235 }, source_units = 235 }
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

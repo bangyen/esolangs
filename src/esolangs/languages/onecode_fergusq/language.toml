@@ -33,6 +33,7 @@ construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_req
 notes = "A string store lays out sixteen answers and the input constructs one cell address."
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-15
 

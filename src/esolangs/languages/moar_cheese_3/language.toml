@@ -113,5 +113,6 @@ folding_constant_local = "input_weights"  # no essential input: the answer byte 
 "11111110" = { commands_by_row = { "0" = 68, "1" = 68, "2" = 66, "3" = 66, "4" = 64, "5" = 64, "6" = 62, "7" = 62 }, source_units = 149 }
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

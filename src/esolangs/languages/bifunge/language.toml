@@ -7,6 +7,7 @@ folding_constant_local = "input_weights"
 sharing_exempt = "the alternating-axis layout gives each descendant one incoming wire and reserves disjoint rectangles for the branches"
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-16
 

@@ -36,6 +36,7 @@ construction = "esolangs.languages.nybbleist.generator:nybbleist_request"
 notes = "XOR accumulates the essential bits in one register. Deque selection for the same table measured 104 chars."
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-15
 

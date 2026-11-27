@@ -119,5 +119,6 @@ notes = "Shipped (16-bit chunks split onto the buffer, indexed by the inputs): 1
 "11111110" = { commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 19, "7" = 19 }, source_units = 335 }
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

@@ -122,5 +122,6 @@ folding_constant_local = "_PRINT"  # reads every input over its own opcode, prin
 "11111110" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 446 }
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

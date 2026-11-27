@@ -106,5 +106,6 @@ folding_constant_local = "input_weights"  # no essential input: one table cell, 
 "11111110" = { commands_by_row = { "0" = 35, "1" = 33, "2" = 33, "3" = 31, "4" = 33, "5" = 31, "6" = 31, "7" = 29 }, source_units = 60 }
 
 [audits]
+trick_prototype = 2026-11-27
 plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27
