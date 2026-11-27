@@ -26,7 +26,9 @@ The [checker](selector_coverage.py) tries all 131,072 assignments to their
 17 input rows. Each line of [measured masks](selector-masks.txt) describes
 one lookup table. Bit `p` of a column mask records that the program produced
 pattern `p` with all three printer polarities set to zero. Within a group,
-the first row supplies the least significant bit.
+the first row supplies the least significant bit. Input 89,100 exposes a
+pointer dependency outside these masks when words 29,530 and 59,036 vary
+together.
 
 ```sh
 python3 experiments/malbolge-n17/selector_coverage.py
