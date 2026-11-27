@@ -178,6 +178,11 @@ evidence, not optimization tasks.
     the next arithmetic instruction. This leaves 36 primary positions.
     Four tables halted on every input with 16, 20, 23 and 20 wrong
     answers, all within those positions.
+    Choosing words 39,391 and 39,394 together covers inputs 82,016 and
+    82,017 and gives up 82,018, leaving 35 primary positions. All 32
+    assignments to the five covered inputs passed under each of four lookup
+    settings. Four tables printed one digit and halted on all 131,072 inputs
+    each, with 15, 19, 22 and 19 wrong answers inside those 35 positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
