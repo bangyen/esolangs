@@ -150,6 +150,11 @@ evidence, not optimization tasks.
     ordinary-word runs in total. The gap fell to 57 primary positions.
     Four tables halted on every input with 20, 24, 31 and 29 wrong answers,
     all within those 57 positions.
+    Saving the return address in word 170 freed words 29,538–29,541.
+    Each held all eight three-bit values under all eight lookup settings.
+    The gap fell to 52 primary positions. On all 131,072 inputs per table,
+    four tables printed one digit and halted with 22, 24, 26 and 30 wrong
+    answers, all within those 52 positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
