@@ -6,6 +6,7 @@ admitted = 2026-11-15T13:34:00-05:00
 sharing_exempt = "built-in lazy arms are inline expressions; the language has no operation that calls a stored expression"
 
 [audits]
+plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-16
 
 [proof_status]

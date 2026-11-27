@@ -20,16 +20,16 @@ qualification = "five-byte prints paged 128 rows by 16 blocks from column 0; row
 version = 1
 archive_context = {}
 
-[ablations.direct_header_20261117]
+[ablations.direct_header_retired_20261127]
 kind = "measurement"
 witness = { arity = 10, rule = "random", seed = 1847 }
-source = { value = 10847, unit = "chars" }
+source = { value = 11252, unit = "chars" }
 budget = 30
 band = "fast"
 scale = 1
-audited = 2026-11-17
+audited = 2026-11-27
 construction = "esolangs.languages.bytemap.generator:bytemap_request"
-notes = "Shipped (row 0 is page 0's header while the reading code fits 255 cells): 10,847 chars; data slots plus a row-1 return emit 11,252, and 598 against 367 at n=4 parity (16 sampled rows correct each; notes/ablations/bytemap-direct-header.py)."
+notes = "Retired 2026-11-27 (plain-rewrite audit): row 0 as page 0's header while the reading code fit 255 cells emitted 10,847 here and 367 at n=4 parity (now 11,252 and 598). Random saving 19.0% n=7, 11.8% n=8 (200 tables each), 6.8% n=9, 3.6% n=10: declining, under the 20% bar at both n=7 and n=8; balanced 9.3% / 5.5%. The 16-block mid strip stays: removing it costs 34-77% balanced area at n=8..10."
 
 [evidence]
 version = 1
@@ -37,7 +37,7 @@ version = 1
 [[evidence.anchors]]
 arity = 4
 rule = "parity"
-size = 367
+size = 598
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bytemap.generator:bytemap_request"
@@ -46,7 +46,7 @@ construction = "esolangs.languages.bytemap.generator:bytemap_request"
 arity = 10
 rule = "random"
 seed = 1847
-size = 10847
+size = 11252
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bytemap.generator:bytemap_request"
@@ -87,11 +87,11 @@ description = { growth = "poly n", claim = "at most", template = "{claim} {formu
 
 [resource_evidence.scaling]
 # 10 chars a table row; ~530 a 2,048-row page; O(n) reading, worst over
-# 21T/2 at n = 11 (276), the first long row 0.
+# 21T/2 at n = 9 (572); from n = 12 the 0.24T slack outgrows the reading.
 # The tree lies in a box below 2rx by 2ry bytes. Each byte takes two
 # characters, and rx*ry = 48^2*T.
 cases = [
-    { through = 59, expression = "21T/2 + 512" },
+    { through = 59, expression = "21T/2 + 576" },
     { expression = "20000T" },
 ]
 exact = false
@@ -112,14 +112,15 @@ tests = [
 folding_constant_local = "_PRINT"  # reads every input over its own opcode, prints the constant
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }
-"00001100" = { commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 187 }
-"00110110" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }
-"0110" = { commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15 }, source_units = 179 }
-"01101001" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }
-"0110100110010110" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21, "8" = 21, "9" = 21, "10" = 21, "11" = 21, "12" = 21, "13" = 21, "14" = 21, "15" = 21 }, source_units = 367 }
-"1101001101101101" = { commands_by_row = { "0" = 21, "1" = 21, "2" = 21, "3" = 21, "4" = 21, "5" = 21, "6" = 21, "7" = 21, "8" = 21, "9" = 21, "10" = 21, "11" = 21, "12" = 21, "13" = 21, "14" = 21, "15" = 21 }, source_units = 367 }
-"11111110" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18, "4" = 18, "5" = 18, "6" = 18, "7" = 18 }, source_units = 255 }
+"00000001" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 446 }
+"00001100" = { commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 346 }
+"00110110" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 446 }
+"0110" = { commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19 }, source_units = 330 }
+"01101001" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 446 }
+"0110100110010110" = { commands_by_row = { "0" = 25, "1" = 25, "2" = 25, "3" = 25, "4" = 25, "5" = 25, "6" = 25, "7" = 25, "8" = 25, "9" = 25, "10" = 25, "11" = 25, "12" = 25, "13" = 25, "14" = 25, "15" = 25 }, source_units = 598 }
+"1101001101101101" = { commands_by_row = { "0" = 25, "1" = 25, "2" = 25, "3" = 25, "4" = 25, "5" = 25, "6" = 25, "7" = 25, "8" = 25, "9" = 25, "10" = 25, "11" = 25, "12" = 25, "13" = 25, "14" = 25, "15" = 25 }, source_units = 598 }
+"11111110" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 446 }
 
 [audits]
+plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

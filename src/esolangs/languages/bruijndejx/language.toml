@@ -99,4 +99,5 @@ tests = [
 "11111110" = { commands_by_row = { "0" = 29, "1" = 29, "2" = 29, "3" = 29, "4" = 31, "5" = 31, "6" = 33, "7" = 33 }, source_units = 52 }
 
 [audits]
+plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

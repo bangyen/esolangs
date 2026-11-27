@@ -73,12 +73,9 @@ def bruijndejx(truth_table: str) -> str:
         for child in set(children[node]):
             if child >= 2:
                 parents[child] += 1
-    # Bucket by parent count, most-referenced first, for the shortest names.
-    buckets: list[list[int]] = [[] for _ in range(max(parents.values()) + 1)]
-    for node in order:
-        if parents[node] >= 2:
-            buckets[parents[node]].append(node)
-    rank = {node: k for k, node in enumerate(n for b in reversed(buckets) for n in b)}
+    # Names in node order: ranking by parent count saved 0% at n = 7, 8 and
+    # 0.46% at n = 11 (retired 2026-11-27); names stay one letter to n = 10.
+    rank = {node: k for k, node in enumerate(n for n in order if parents[n] >= 2)}
 
     def price(named: dict[int, int]) -> tuple[int, bool, bool]:
         """Return total chars and whether ``Q`` and ``I`` are used."""

@@ -110,4 +110,5 @@ folding_constant_local = "input_weights"  # no essential input: a one-entry tabl
 "11111110" = { commands_by_row = { "0" = 40, "1" = 63, "2" = 63, "3" = 86, "4" = 63, "5" = 86, "6" = 86, "7" = 109 }, source_units = 522 }
 
 [audits]
+plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

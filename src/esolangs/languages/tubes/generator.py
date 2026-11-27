@@ -10,9 +10,7 @@ the cell 1, which takes the merging ``┬`` left.  A weight-0 input is a bare
 ``◇``.  ``╚`` lifts the pointer onto the indexed entry, ``◆`` prints it.
 
 The weights are the essential inputs' binary place values, or 1 each with
-the table by popcount for a symmetric table.  Memory may hold each entry's
-complement instead, so the ``◉`` count is the minority's; a final ``┬``
-then prints ``1 - c``.  The shortest of the four drawings ships.
+the table by popcount for a symmetric table, whichever draws shorter.
 
 Size:
     about 3 cells per lookup entry and 5 per input: O(T) characters;
@@ -29,13 +27,9 @@ from esolangs.generation.requests import GenerationRequest
 from esolangs.runtime._program import Program
 
 
-def _draw(lookup: WeightedLookup, *, invert: bool) -> str:
-    """Draw ``lookup``, storing each entry's complement if ``invert``.
-
-    Rows 1 and 2 are listed right to left.
-    """
-    mark = "0" if invert else "1"
-    top = "▶" + "═".join("◉" * (bit == mark) for bit in reversed(lookup.table)) + "╖"
+def _draw(lookup: WeightedLookup) -> str:
+    """Draw ``lookup``; rows 1 and 2 are listed right to left."""
+    top = "▶" + "═".join("◉" * (bit == "1") for bit in reversed(lookup.table)) + "╖"
     mid, low = ["┘"], [" "]
     for weight in lookup.weights:
         if weight:
@@ -44,10 +38,8 @@ def _draw(lookup: WeightedLookup, *, invert: bool) -> str:
         else:
             mid.append("◇")
             low.append(" ")
-    # A stored complement c prints 1 - c: ``┬`` sends 1 left through three
-    # ``◉`` and 0 down and left along row 2 through one.
-    mid.append("┌┐┬◉◉◉◆▷" if invert else "┌┐◆▷")
-    low.append("┘╚┘◉◆▷" if invert else "┘╚")
+    mid.append("┌┐◆▷")
+    low.append("┘╚")
     right, left = "".join(mid)[::-1], "".join(low)[::-1]
     # Row 1 ends under the ``╖``; pad whichever side starts left of the other.
     shift = len(top) - len(right)
@@ -69,14 +61,7 @@ def tubes(truth_table: str) -> str:
     symmetric = symmetric_lookup(projected)
     if symmetric is not None:
         candidates.append(symmetric)
-    return min(
-        (
-            _draw(lookup, invert=invert)
-            for lookup in candidates
-            for invert in (False, True)
-        ),
-        key=len,
-    )
+    return min(map(_draw, candidates), key=len)
 
 
 def tubes_request(request: GenerationRequest) -> Program:

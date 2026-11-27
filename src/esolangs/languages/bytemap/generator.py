@@ -13,19 +13,17 @@ header 130 rows down. A binary tree with short hop relays covers tables
 whose page counters would exceed the eight-byte header.
 
 Size:
-    O(T): paged tables use at most 21T/2 + 512 chars, 10 a row plus headers and strips.
-    Header and strip rows cost about 530 per 2,048 rows. n=4 parity: 367
-    chars, n=10 random 1847: 10,847 chars. Constant tables: 8n + 10.
+    O(T): paged tables use at most 21T/2 + 576 chars, 10 a row plus headers and strips.
+    Header and strip rows cost about 530 per 2,048 rows. n=4 parity: 598
+    chars, n=10 random 1847: 11,252 chars. Constant tables: 8n + 10.
     The alternating tree uses at most 20,000T characters.
 
 Decisions:
     A jump reaches 255 cells along one row or column, so a command touches
     data only in its own row or column.  The table hangs from column 0 so
-    its rows carry no padding.  When the reading code fits in 255 cells,
-    row 0 is page 0's header and the counters never move; otherwise they
-    ride in data slots copied forward along row 0, then back along row 1.
-    The direct header saves 231 chars at n=4 parity (598 against 367) and
-    405 at n=10 random 1847 (11,252 against 10,847).  No carry crosses a
+    its rows carry no padding.  The counters ride in data slots copied
+    forward along row 0, then back along row 1.  Row 0 is never page 0's
+    header ([ablations.direct_header_retired_20261127]).  No carry crosses a
     byte below 20 essential inputs, where H outgrows one byte, so the
     programs run the same under either byte order (93 rows at n = 12, 14,
     16 under a little-endian interpreter).
@@ -295,25 +293,10 @@ def bytemap(truth_table: str) -> str:
     data += [(jpos + 5 * zero["mid"]) % 256, *ch.to_bytes(k_c, "big")]
     at_data = {"S_mid": 0, "S_lo": 1, "S_H": 2, "dd": 2 + k_c}
     at_data |= {"minus5": 3 + k_c, "cc": 4 + k_c, "CH": 5 + k_c}
-    code = sum(length for length, _ in units + fixups)
-    # Direct: row 0 is page 0's header, so the counters never move.
-    start = b0 + (20 if pages > 1 else k_v)
-    top = 0 if code + 2 + len(data) + start <= 255 else 1
     grid = _Grid()
-    _pages(grid, table, top, rows, blocks, pages, k_v, k_h, offset, jpos)
-    entry = (top, b0 + 8) if pages > 1 else (top, b0 - 2)
+    _pages(grid, table, rows, blocks, pages, k_v, k_h, offset, jpos)
+    entry = (1, b0 + 8) if pages > 1 else (1, b0 - 2)
     lay = _Layout(offset, width, at_data, data, k_v, b0, entry)
-    if top == 0:
-        grid.put((0, 0), [_RIGHT, start])
-        col = start
-        for length, unit in units + fixups:
-            grid.put(
-                (0, col), _emit(lay, (0, col), unit, (0, b0), (0, start + code + 2))
-            )
-            col += length
-        grid.put((0, col), [*_jump((0, col), entry)])
-        grid.put((0, col + 2), data)
-        return grid.render()
     _long(grid, lay, units, fixups)
     return grid.render()
 
@@ -372,7 +355,6 @@ def _long(
 def _pages(
     grid: _Grid,
     table: str,
-    top: int,
     rows: int,
     blocks: int,
     pages: int,
@@ -386,7 +368,7 @@ def _pages(
     stride = rows + 2
     has_mid = blocks > 1
     for page in range(pages):
-        r = top + page * stride
+        r = 1 + page * stride
         grid.put((r, b0 - 2), [_DOWN, 1])
         grid.put((r, b0), [0] * k_v)
         h = b0 + 8

@@ -73,6 +73,7 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} bits; object string and halt flag at step boundaries" }
 
 [audits]
+plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-22
 
 [generator_sizes]

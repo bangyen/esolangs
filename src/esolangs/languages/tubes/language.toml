@@ -22,7 +22,7 @@ tests = [
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "row 0 writes the essential inputs' table (or its complement) into memory, a cell an entry; each essential input's gadget sends a 1 along w double lines, walking the memory pointer left by the input's weight w, and both arms reset the cell to 1 before merging; an ignored input is a bare read"
+qualification = "row 0 writes the essential inputs' table into memory, a cell an entry; each essential input's gadget sends a 1 along w double lines, walking the memory pointer left by the input's weight w, and both arms reset the cell to 1 before merging; an ignored input is a bare read"
 
 [evidence]
 version = 1
@@ -83,9 +83,9 @@ unit = "bits"
 description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-# Three rows by the longer of row 0, at most 3T/2 + 1 with the minority
-# marked, and row 1, at most T + 4n + 8.
-expression = "9T/2 + 12n + 26"
+# Three rows by the longer of row 0, T_k + 1 + ones <= 2T (attained when
+# every entry but one is 1), and row 1, T_k + 3k + n + 4 <= T + 4n + 4.
+expression = "3max(2T, T + 4n + 4)"
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
@@ -106,4 +106,5 @@ folding_constant_local = "input_weights"  # no essential input: one table cell, 
 "11111110" = { commands_by_row = { "0" = 35, "1" = 33, "2" = 33, "3" = 31, "4" = 33, "5" = 31, "6" = 31, "7" = 29 }, source_units = 60 }
 
 [audits]
+plain_rewrite = 2026-11-27
 blind_reimplementation = 2026-11-27

@@ -8,19 +8,19 @@ index in the dataspace by doubling, and ``REMOVE THIS POSITION`` loads that
 chunk.  Each of the (at most four) low inputs then divides it by
 ``1 + bit * (2^w - 1)`` for its weight ``w``, and ``v - 2*floor(v/2)`` leaves
 the answer.  Ignored inputs are read into an unused variable; a constant
-table prints its bit. Packed layouts only race when their index fits a
+table prints its bit. The packed layout is used while its index fits a
 signed INT. Wider tables reduce a binary tree on the buffer using its
 input bits and the identity a + bit*(b-a).
 
 Size:
     Theta(T) text. The packed route uses decimal chunks; tree labels are
     sized by subtree height so their weighted total is linear in T.
-    n=4 parity: 297 chars, n=10 random 1847: 1,097 chars.
+    n=4 parity: 411 chars, n=10 random 1847: 1,097 chars.
 
 Decisions:
-    The chunk width 2^m, m <= 4, is the shortest of the five builds: each
-    low input costs about 38 characters more than a high one, against
-    chunks of fewer digits.
+    Chunks are always the widest that fit, 2^min(k, 4) bits for k kept
+    inputs.  A race over narrower widths saved 27.7% at n=4 but 1.5% at
+    n=7 and 0.1% at n=8 on random tables; it was retired 2026-11-27.
 
     The screening probe's tree of SELECT subroutine calls emits 37,391
     chars at n=8; its buffer lookup (one PUSH per bit) 3,910.  Every
@@ -123,10 +123,7 @@ def gridscript(truth_table: str) -> str:
         if least_low > most_low:
             cmds = _tree(n, kept, table)
         else:
-            cmds = min(
-                (_build(n, kept, table, low) for low in range(least_low, most_low + 1)),
-                key=lambda c: sum(len(cmd) + 7 for cmd in c),  # "(2,1):" and "\n"
-            )
+            cmds = _build(n, kept, table, most_low)
     return "#B.\n@width 2\n@height 1\n(1,1):START\n" + "".join(
         f"(2,1):{c}\n" for c in cmds
     )
