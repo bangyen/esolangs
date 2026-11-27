@@ -191,6 +191,11 @@ evidence, not optimization tasks.
     either answer, leaving 32 primary positions. Four tables printed one
     digit and halted on every input with 13, 12, 15 and 12 wrong answers,
     all within those 32 positions.
+    Output slots 1 and 2 can also print from a third address, 54,673.
+    Sending it through the same pointer path as 45,925 lets the lookup
+    table encode input 103,436, leaving 31 primary positions. Four tables
+    printed one digit and halted on every input with 13, 14, 13 and 18
+    wrong answers, all within those positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
