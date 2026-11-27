@@ -12,7 +12,7 @@ blind_reimplementation = 2026-11-16
 
 [proof_status]
 labels = ["tree"]
-qualification = "a lazy if reads one character before selecting its arm; each leaf prints its digit, and generation writes a fixed fragment per node"
+qualification = "a lazy if selects its arm from the input character modulo two; the tree returns a bit to one output call"
 
 [evidence]
 version = 1
@@ -20,7 +20,7 @@ version = 1
 [[evidence.anchors]]
 arity = 4
 rule = "parity"
-size = 4780
+size = 1932
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.bracketonly.generator:bracketonly_request"
@@ -30,33 +30,39 @@ version = 1
 archive_context = {}
 
 [ablations.lazy_input]
-kind = "measurement"
+kind = "replay"
+baseline_revision = "ce580dde29b84e7d42aba4f01b4b6a10d7af79fd"
 witness = { arity = 4, rule = "parity" }
-source = { value = 4780, unit = "chars" }
+source = { before = 4780, after = 1932, unit = "chars" }
 seed = 0
 budget = 30
 band = "fast"
 scale = 1
-audited = 2026-11-15
+audited = 2026-11-27
 construction = "esolangs.languages.bracketonly.generator:bracketonly_request"
-notes = "Only the selected arm reads input; no array is written by the generated source."
+notes = "One outer numeric output shares the output code. The input digit modulo two selects the lazy arm. Multiplication by zero consumes ignored characters before an addition forwards the bit. The generator keeps one lazy tree and writes no cells. On 64 random tables at each of n=7/8 (seed 1847 + arity), source fell 53.78%/53.86%. Arity-3 totals fell from 379988 to 175196 chars and from 852768 to 536880 commands."
 
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.bracketonly.generator:bracketonly_request"
 
 [resource_evidence.execution]
-# Each frame costs a push, ID resolution and return, besides its selected child frames.
-expression = "135n+102"
+# A call of ID k costs 3(k+1) steps before its arguments. Tests cost 90,
+# equal-arm reads cost 45, and a constant suffix of r reads costs at
+# most 24r+27. The outer output costs 27 and a bare zero leaf costs 6.
+expression = "90n+33"
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "steps"
-description = { growth = "poly n", claim = "worst", template = "{claim} {formula}; 135 per test, then at most 102 for output" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}; all-zero parity visits n tests and a zero leaf" }
 
 [resource_evidence.workspace]
-# At most n+5 frames. Forwarded sums cost bl(49(n+1)) bits. A draining frame holds up to n ASCII digits.
-expression = "(n+5)(n+34+bl(49(n+1)))+6n+bl(n)+1"
+# At most n+4 live frames. Each has a node ID of at most n+5 bits,
+# a four-bit function ID, a child offset, and at most eleven bits of
+# non-input values plus a zero subtotal. One live call holds up to n
+# six-bit ASCII digits. The root and draw counters use one bit each.
+expression = "(n+4)(n+21+bl(max(11,n+1)))+6n+bl(n)+2"
 exact = false
 arities = [1, 2, 3, 4]
 first = 1
@@ -64,13 +70,15 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula}; lazy evaluation frames and the input cursor" }
 
 [resource_evidence.scaling]
-# Internal nodes take 180 characters. A leaf takes 124 or 136 (for one).
-expression = "316T-180"
-exact = false
+# A test costs 120 chars and a final split has one four-char and one
+# eight-char leaf. Pruning costs at most 60 per unary node or 36+32r
+# to drain a constant suffix of r>=1 inputs. The outer output costs 36.
+expression = "126T-84"
+exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}; folding prunes tests and their arms" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}; parity reaches a full tree" }
 
 [semantic_evidence]
 version = 1
@@ -81,11 +89,11 @@ tests = [
 ]
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 282, "1" = 282, "2" = 282, "3" = 282, "4" = 393, "5" = 393, "6" = 498, "7" = 507 }, source_units = 1160 }
-"00001100" = { commands_by_row = { "0" = 282, "1" = 282, "2" = 282, "3" = 282, "4" = 402, "5" = 402, "6" = 393, "7" = 393 }, source_units = 896 }
-"00110110" = { commands_by_row = { "0" = 393, "1" = 393, "2" = 402, "3" = 402, "4" = 498, "5" = 507, "6" = 507, "7" = 498 }, source_units = 1760 }
-"0110" = { commands_by_row = { "0" = 363, "1" = 372, "2" = 372, "3" = 363 }, source_units = 1060 }
-"01101001" = { commands_by_row = { "0" = 498, "1" = 507, "2" = 507, "3" = 498, "4" = 507, "5" = 498, "6" = 498, "7" = 507 }, source_units = 2300 }
-"0110100110010110" = { commands_by_row = { "0" = 633, "1" = 642, "2" = 642, "3" = 633, "4" = 642, "5" = 633, "6" = 633, "7" = 642, "8" = 642, "9" = 633, "10" = 633, "11" = 642, "12" = 633, "13" = 642, "14" = 642, "15" = 633 }, source_units = 4780 }
-"1101001101101101" = { commands_by_row = { "0" = 537, "1" = 537, "2" = 633, "3" = 642, "4" = 528, "5" = 528, "6" = 537, "7" = 537, "8" = 633, "9" = 642, "10" = 642, "11" = 633, "12" = 537, "13" = 537, "14" = 633, "15" = 642 }, source_units = 3712 }
-"11111110" = { commands_by_row = { "0" = 291, "1" = 291, "2" = 291, "3" = 291, "4" = 402, "5" = 402, "6" = 507, "7" = 498 }, source_units = 1184 }
+"00000001" = { commands_by_row = { "0" = 192, "1" = 192, "2" = 192, "3" = 192, "4" = 258, "5" = 258, "6" = 303, "7" = 300 }, source_units = 576 }
+"00001100" = { commands_by_row = { "0" = 192, "1" = 192, "2" = 192, "3" = 192, "4" = 255, "5" = 255, "6" = 258, "7" = 258 }, source_units = 508 }
+"00110110" = { commands_by_row = { "0" = 258, "1" = 258, "2" = 255, "3" = 255, "4" = 303, "5" = 300, "6" = 300, "7" = 303 }, source_units = 792 }
+"0110" = { commands_by_row = { "0" = 213, "1" = 210, "2" = 210, "3" = 213 }, source_units = 420 }
+"01101001" = { commands_by_row = { "0" = 303, "1" = 300, "2" = 300, "3" = 303, "4" = 300, "5" = 303, "6" = 303, "7" = 300 }, source_units = 924 }
+"0110100110010110" = { commands_by_row = { "0" = 393, "1" = 390, "2" = 390, "3" = 393, "4" = 390, "5" = 393, "6" = 393, "7" = 390, "8" = 390, "9" = 393, "10" = 393, "11" = 390, "12" = 393, "13" = 390, "14" = 390, "15" = 393 }, source_units = 1932 }
+"1101001101101101" = { commands_by_row = { "0" = 345, "1" = 345, "2" = 393, "3" = 390, "4" = 348, "5" = 348, "6" = 345, "7" = 345, "8" = 393, "9" = 390, "10" = 390, "11" = 393, "12" = 345, "13" = 345, "14" = 393, "15" = 390 }, source_units = 1664 }
+"11111110" = { commands_by_row = { "0" = 189, "1" = 189, "2" = 189, "3" = 189, "4" = 255, "5" = 255, "6" = 300, "7" = 303 }, source_units = 568 }

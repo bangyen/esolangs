@@ -19,7 +19,7 @@
   "bleh": "linear: worst B-A-P-R characters, n=3..23; at most beyond",
   "blindfolded_arithmetic": "linear: worst 3T + 6\u2308T/3\u2309 + 48n + 47 characters: six an instruction",
   "boolfuck": "linear: worst 162 (n=3), 35T/2+2n\u00b2+12n-23 (n=4..7), 35T/2+2n\u00b2+12n-11 (n=8), 85T/8+2n\u00b2+10n+39 (n\u22659) characters (n=3 attained)",
-  "bracketonly": "linear: at most 316T-180; folding prunes tests and their arms",
+  "bracketonly": "linear: worst 126T-84; parity reaches a full tree",
   "brainfuck": "linear: at most 35T/2 + 55n + 25 characters: the plain tree",
   "brainif": "linear: at most max(28n+770,52N+840+A+2digits(4N+54)) characters: layered DAG before fall-through",
   "bruijndejx": "linear: at most 5T + 23 characters",
