@@ -159,3 +159,87 @@ def test_real_shards_publish_complete_execution_evidence(tmp_path, monkeypatch) 
         timeout=30,
     )
     check(paths, corpus, "not slow", 2)
+
+
+@pytest.mark.medium
+def test_folded_size_case_still_publishes_execution_evidence(tmp_path) -> None:
+    """A size case folded into its workspace pair still counts as executed.
+
+    The proofs conftest folds a size case into the paired workspace case
+    when both are selected; the size node skips instead of disappearing,
+    so the shard manifest's selection and the run's evidence still agree.
+    Run 45922204043 failed the completeness gate on 98 such cases, all
+    deselected at collection time by the fold.
+    """
+    import os
+    from pathlib import Path
+
+    from tests.proofs._witnesses import _WITNESS_BAND
+    from tests.proofs.execution import FORMULAS as EXECUTION_FORMULAS
+    from tests.proofs.test_scaling_formulas import FORMULAS as SCALING
+    from tests.proofs.test_workspace_formulas import (
+        _SLOW_AT_MIN,
+        _first_above_two,
+        _formula_cases,
+    )
+    from tests.proofs.workspace import FORMULAS as WORKSPACE_FORMULAS
+
+    ledgers = (EXECUTION_FORMULAS, WORKSPACE_FORMULAS)
+    workspace = {(param.values[0], param.values[1]) for param in _formula_cases()}
+
+    def folds(name: str, n: int) -> bool:
+        # The hook only pairs cases neither band marks slow nor weekly.
+        if _WITNESS_BAND.get((name, n)) == "weekly":
+            return False
+        if (name, n) in _SLOW_AT_MIN:
+            return False
+        return n <= 2 or any(
+            name in ledger and n == _first_above_two(ledger[name][2])
+            for ledger in ledgers
+        )
+
+    pair = next(
+        (name, n)
+        for name in sorted(SCALING)
+        for n in SCALING[name][2]
+        if (name, n) in workspace and folds(name, n)
+    )
+    size = (
+        "tests/proofs/test_scaling_formulas.py::"
+        f"test_size_formulas_hold[{pair[0]}-{pair[1]}]"
+    )
+    workspace_node = (
+        "tests/proofs/test_workspace_formulas.py::"
+        f"test_execution_and_workspace_formulas_hold[{pair[0]}-{pair[1]}]"
+    )
+    durations = tmp_path / "durations.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-n",
+            "0",
+            "-p",
+            "scripts.ci.shard",
+            "--duration-output",
+            str(durations),
+            size,
+            workspace_node,
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])},
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed, 1 skipped" in result.stdout
+    metadata = json.loads(durations.with_suffix(".json.meta.json").read_text())
+    assert metadata["collected"] == sorted([size, workspace_node])
+    assert metadata["finished"] == metadata["collected"]
+    durations_map = json.loads(durations.read_text())
+    assert set(durations_map) == {size, workspace_node}
+    assert all(seconds > 0 for seconds in durations_map.values())

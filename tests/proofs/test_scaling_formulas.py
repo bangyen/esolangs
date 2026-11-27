@@ -59,7 +59,11 @@ _MEDIUM_FROM = 19
         for n in FORMULAS[name][2]
     ],
 )
-def test_size_formulas_hold(name: str, n: int) -> None:
+def test_size_formulas_hold(
+    name: str, n: int, *, size_folded_into_workspace: bool
+) -> None:
+    if size_folded_into_workspace:
+        pytest.skip(f"size bound for {name} n={n} checked by the paired workspace case")
     reached = False
     for table in _tables(name, n):
         reached |= check_size_bound(name, n, table, esolangs.generate(name, table))

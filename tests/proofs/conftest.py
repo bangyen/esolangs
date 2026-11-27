@@ -6,6 +6,7 @@ import pytest
 
 _PROOFS = Path(__file__).parent
 _CHECK_SIZE = pytest.StashKey[bool]()
+_FOLDED_SIZE = pytest.StashKey[bool]()
 
 
 def _local_cases(
@@ -24,7 +25,12 @@ def _local_cases(
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
-    """Join paired checks after selection, keeping standalone node IDs available."""
+    """Fold paired size checks into the workspace case.
+
+    The size node stays selected and skips at runtime, so shard evidence
+    still counts it executed; removing it instead left the shard manifest
+    expecting a test the run never produced.
+    """
     if config.option.collectonly:
         return
     sizes = _local_cases(items, "test_scaling_formulas.py", "test_size_formulas_hold")
@@ -33,18 +39,19 @@ def pytest_collection_modifyitems(
         "test_workspace_formulas.py",
         "test_execution_and_workspace_formulas_hold",
     )
-    joined = []
     for case, item in sizes.items():
         if case in workspace:
             workspace[case].stash[_CHECK_SIZE] = True
-            joined.append(item)
-    if joined:
-        merged = set(joined)
-        items[:] = [item for item in items if item not in merged]
-        config.hook.pytest_deselected(items=joined)
+            item.stash[_FOLDED_SIZE] = True
 
 
 @pytest.fixture
 def include_size_proof(request: pytest.FixtureRequest) -> bool:
     """Include the size assertion for a paired local case."""
     return request.node.stash.get(_CHECK_SIZE, False)
+
+
+@pytest.fixture
+def size_folded_into_workspace(request: pytest.FixtureRequest) -> bool:
+    """True when the paired workspace case runs this size assertion."""
+    return request.node.stash.get(_FOLDED_SIZE, False)
