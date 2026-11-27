@@ -18,14 +18,9 @@ Decisions:
 """
 
 from esolangs.generation.projection import InputProjection
-from esolangs.generation.requests import GenerationRequest, TruthTable, project_inputs
+from esolangs.generation.requests import GenerationRequest, project_inputs
 from esolangs.runtime._program import Program
 from esolangs.runtime.memory import format_integer
-
-
-def q_bal(truth_table: str) -> str:
-    """Build a Q-BAL program printing ``truth_table[row]`` for the inputs."""
-    return _emit(project_inputs(TruthTable(truth_table)))
 
 
 def _emit(projection: InputProjection) -> str:

@@ -6,12 +6,6 @@
     "arm: for index in count(): -> <exit>",
 ]
 
-# _shared assigns only _Fold or _Split to nodes; render matches both variants.
-# The alphabet-limit guard is tested with isolated high-position metadata.
-"false/generator.py" = [
-    "arm: case _Split(zero, one): -> <exit>",
-]
-
 # count(1) never exhausts. Owned tests exhaust shorter products and skip main.
 "object_disoriented/generator.py" = [
     "arm: for size in count(1): -> <exit>",
@@ -21,9 +15,4 @@
 # prime*value > bound. The list contains least[value], so it never exhausts.
 "refractran/generator.py" = [
     "arm: for prime in primes: -> for value in range(2, bound + 1):",
-]
-
-# bounds yields at least one strip; its final iteration always breaks.
-"streetcode/generator.py" = [
-    "arm: for i, segment in enumerate(segments): -> return canvas, origin",
 ]

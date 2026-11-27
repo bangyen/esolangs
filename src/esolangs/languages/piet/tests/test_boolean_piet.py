@@ -250,6 +250,19 @@ def test_balance_raster_retains_layout() -> None:
     assert balanced.to_png() == default.to_png()
 
 
+def test_balance_request_entrypoint_matches_native_balance() -> None:
+    """The declared balance entrypoint lays out the default raster like generate."""
+    from esolangs.generation.requests import BalanceRequest
+    from esolangs.languages.piet.generator import piet_balance_request
+
+    default = esolangs.generate("Piet", "0110").source
+    assert isinstance(default, esolangs.Raster)
+    balanced = piet_balance_request(BalanceRequest("0110", default))
+    native = esolangs.generate("Piet", "0110", balance=True).source
+    assert balanced.to_png() == native.to_png()
+    assert _evaluate("Piet", Raster.from_png(balanced.to_png()), inputs=2) == "0110"
+
+
 @pytest.mark.medium
 @pytest.mark.parametrize("table", [*TABLES, "10010110", "00000001", "01011010"])
 def test_piet_balance_matches_rendered_width_oracle(table: str) -> None:

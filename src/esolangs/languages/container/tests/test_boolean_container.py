@@ -389,6 +389,26 @@ def test_balance_closed_form_is_never_worse_than_the_swept_one() -> None:
             assert balance_score(new) <= balance_score(old), table
 
 
+def test_balance_returns_a_constant_program_unchanged() -> None:
+    """A constant table's program starts with "T=" and needs no narrowing."""
+    default = esolangs.generate("Container", "0000").source
+    assert boolean.balance_container("0000", default) == default
+
+
+def test_balance_without_a_threshold_matches_the_threshold_call() -> None:
+    """Omitting the threshold rebuilds it from the table."""
+    rng = random.Random(9)
+    for n in (2, 3, 4, 5, 6):
+        for _ in range(6):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            default = esolangs.generate("Container", table).source
+            assert boolean.balance_container(table, default) == (
+                boolean.balance_container(
+                    table, default, threshold=_container_threshold(table)
+                )
+            ), table
+
+
 def test_output_gate_rests_at_two_for_the_smallest_peak() -> None:
     """One input: the leaf peak is 2, so the output gate rests at 2.
 

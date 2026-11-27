@@ -423,8 +423,9 @@ def _balance(table: str) -> str:
 
     @cache
     def pack(width: int, *, share: bool) -> str:
-        if width == compact and share:
-            return normal
+        # No special case at width == compact: _expression_program priced
+        # the expression with _packed_program(expression, compact), so the
+        # packing there already is normal.
         return _packed_program(expression, width, share=share)
 
     packed = []

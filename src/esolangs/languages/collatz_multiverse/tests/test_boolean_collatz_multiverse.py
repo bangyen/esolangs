@@ -306,6 +306,17 @@ def test_balance_scores_the_spellings_without_a_threshold_sweep() -> None:
             assert balance_score(new) <= balance_score(old), table
 
 
+def test_balance_accepts_a_supplied_default() -> None:
+    """Balancing from a supplied default never scores worse than it."""
+    rng = random.Random(4)
+    for n in (1, 2, 3, 4, 5):
+        for _ in range(6):
+            table = format(rng.getrandbits(1 << n), f"0{1 << n}b")
+            default = esolangs.generate("Collatz Multiverse", table).source
+            balanced = boolean.balance_collatz_multiverse(table, default)
+            assert balance_score(balanced) <= balance_score(default), table
+
+
 @pytest.mark.parametrize(
     ("table", "width", "size"),
     [

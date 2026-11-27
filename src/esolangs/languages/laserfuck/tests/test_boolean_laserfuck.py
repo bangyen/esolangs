@@ -473,6 +473,14 @@ def test_vertical_tree_preserves_fitting_public_layouts(width: int) -> None:
             assert run_laserfuck(source, list(f"{row:02b}"), heading) == expected
 
 
+def test_turned_tree_without_a_tree_matches_the_tree_call() -> None:
+    """Omitting the tree builds it from the table."""
+    table = "0110"
+    assert boolean._laserfuck_turned(table) == boolean._laserfuck_turned(
+        table, tree=boolean._laserfuck_tree(table, 2)
+    )
+
+
 @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("10010110", 3)])
 def test_vertical_tree_places_inputs_in_stream_order(table: str, n: int) -> None:
     """A direct vertical-tree build computes its table at every heading.

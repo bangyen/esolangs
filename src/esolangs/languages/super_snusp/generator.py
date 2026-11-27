@@ -252,8 +252,9 @@ def _balance(table: str) -> str:
     balanced = balance_super_snusp(default, plan=plan)
     if plan.floor <= 6:
         return balanced
-    if lookup is None:
-        lookup = _lookup_plan(table, n)
+    # lookup is set here: it is None only when _short_program supplied the
+    # default, whose longest token is the two-digit "48", so its floor is 4.
+    assert lookup is not None
     side = isqrt(CELL_ASPECT * len(default) - 1) + 1
     widths = dict.fromkeys(max(2, side // divisor) for divisor in (2, 4, 8))
     programs = dict.fromkeys(_emit_lookup(lookup, width) for width in widths)

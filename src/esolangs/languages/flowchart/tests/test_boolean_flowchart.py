@@ -451,3 +451,22 @@ def test_deque_proof_landmarks(n: int) -> None:
     check(upper)
     with pytest.raises(AssertionError, match="rail"):
         check(upper.replace("┌", " ┌", 1))
+
+
+def test_render_keeps_a_gap_row_blank() -> None:
+    """A painting with a missing row renders it blank, keeping rows aligned."""
+    assert _flowchart_render({(0, 0): "x", (0, 2): "y"}) == "x\n\ny"
+
+
+def test_balance_without_a_plan_matches_the_planned_call() -> None:
+    """Omitting the plan rebuilds it from the table."""
+    table = "01101001"
+    assert boolean._balance(table) == boolean._balance(table, plan=boolean._plan(table))
+
+
+def test_banded_candidates_without_a_plan_match_the_planned_call() -> None:
+    """Omitting the plan rebuilds it from the table."""
+    table = "".join(str(row.bit_count() & 1) for row in range(256))
+    assert list(boolean._banded_candidates(table)) == list(
+        boolean._banded_candidates(table, plan=boolean._plan(table))
+    )

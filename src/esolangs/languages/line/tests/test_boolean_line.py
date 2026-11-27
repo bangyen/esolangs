@@ -11,7 +11,7 @@ import esolangs
 from esolangs import run
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.layout import Node
-from esolangs.languages.line.generator.render import Canvas, _UNIT, render
+from esolangs.languages.line.generator.render import _UNIT, Canvas, render
 from esolangs.languages.line.generator.small_tree import small_tree_plan
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.languages.line.interpreter.extract import extract
