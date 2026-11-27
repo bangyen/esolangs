@@ -4,11 +4,13 @@ One attachment, run once: ``N/2^(in\w+...+in)|2->out``.  ``N`` is the
 integer whose bit ``r`` is row ``r`` of the table read at the essential
 inputs; each ``in`` pops one input line, weighted by its place in that row,
 so the exponent is the row and ``|2`` keeps the answer bit.  An ignored
-input is read as ``in\0``.  A constant table prints ``b+0\(in+...+in)``.
+input is read as ``in\0``. A constant table prints ``b+0\(in+...+in)``.
+Projected parity uses ``(in+...+in)|2->out``, adding one for its
+complement. Both forms read every input in source order.
 
 Size:
-    Theta(T) text: about 0.3T digits for ``N`` plus O(n^2) for the weights;
-    n=4 parity: 34 chars, n=10 random 1847: 376 chars.
+    Worst-case Theta(T) characters. Parity takes O(n) characters.
+    n=4 parity: 20 chars, n=10 random 1847: 376 chars.
 
 Decisions:
     The screening probe's decision tree (a relative branch ``; + k \ (in != 0)
@@ -17,6 +19,7 @@ Decisions:
     operations, so the literal "^ \ / | + -" order is not load-bearing.
 """
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.projection import InputProjection
 from esolangs.generation.requests import GenerationRequest, project_inputs
 from esolangs.runtime._program import Program
@@ -27,6 +30,12 @@ def _emit(projection: InputProjection) -> str:
     n, kept, table = projection
     if not kept:
         return f"{table[0]}+0\\({'+'.join(['in'] * n)})->out"
+    if (bias := parity_bias(table)) is not None:
+        essential = set(kept)
+        terms = ["in" if i in essential else "in\\0" for i in range(n)]
+        if bias:
+            terms.append("1")
+        return f"({'+'.join(terms)})|2->out"
     terms = [
         "in" if weight == 1 else f"in\\{weight}"
         for weight in projection.weighted().weights
