@@ -1,4 +1,17 @@
-# Malbolge 17-input marker prototype
+# Malbolge 17-input experiments
+
+## Exact truth table
+
+`fixture-a.mb` reads 17 ASCII bits, most significant first, prints the
+corresponding digit from `fixture-a.bits` and halts. All 131,072 inputs
+matched the reference table from reset. Row `r` is bit `7 - r % 8` of
+byte `r // 8`. For example, rows 0 and 1 print `1` and `0`.
+
+```sh
+printf 00000000000000000 | uv run esolangs run Malbolge experiments/malbolge-n17/fixture-a.mb
+```
+
+## Marker prototype
 
 `marker.mb` reads 17 ASCII bits, most significant first. An input ending
 in `10` selects the adjacent marker. The other three endings select the

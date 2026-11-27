@@ -200,7 +200,14 @@ evidence, not optimization tasks.
     through 61,498. All eight assignments passed under every lookup and
     polarity setting. The gap fell to 28 primary positions. Four tables
     halted on every input with 11, 13, 11 and 16 wrong answers, all
-    within those positions.
+    within those positions. Moving a register reset ahead of the jump to
+    24,814 and bypassing two unused register writes freed word 41,554.
+    Inputs 61,473 and 61,474 gained either answer, leaving 26 primary
+    positions. Four tables halted on every input with 11, 12, 11 and 15
+    wrong answers inside those positions. Choosing the lookup and markers
+    for each whole table separately gave exact programs for fixture A and
+    its complement on all 131,072 inputs each.
+    [Runnable fixture and reference bits](../experiments/malbolge-n17/README.md#exact-truth-table).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
