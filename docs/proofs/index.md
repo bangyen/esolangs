@@ -32,9 +32,10 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   8,388,608 assignments. Words 39,391 and 39,394 are chosen jointly.
   Word 59,036 excludes `j` because pairing it with byte 67 at 29,530
   halts without output on row 89,100. The packed source occupies all
-  59,049 cells. The [native certificate](../../experiments/malbolge-n17/README.md) checks
-  3,941,771 payload and marker combinations. Its acyclic instruction graph
-  bounds every packed run by 9,101 commands.
+  59,049 cells. The [native verifier](../../src/esolangs/languages/malbolge/tests/verify_decoder.py)
+  checks 3,941,771 payload and marker combinations. Its acyclic instruction
+  graph bounds every packed run by 9,101 commands. Replay with
+  `uv run python -m esolangs.languages.malbolge.tests.verify_decoder`.
 
 - Ascenic: <a id="ascenic-bound"></a> worst-case source is `Theta(T**2)`
   characters for both the language and generator. Arguments rise strictly

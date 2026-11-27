@@ -12,7 +12,7 @@ from esolangs.languages.malbolge.generator.digits import (
 )
 from esolangs.languages.malbolge.interpreter import _advance, _initial_memory, _op
 
-# Longest path in the union of all packed layouts (verify_decoder.py).
+# Longest path in the union of all packed layouts (tests/verify_decoder.py).
 _PACKED_COMMAND_BOUND = 9_101
 _PACKED_PREFIX = 4_243
 
