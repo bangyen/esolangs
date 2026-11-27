@@ -183,6 +183,10 @@ evidence, not optimization tasks.
     assignments to the five covered inputs passed under each of four lookup
     settings. Four tables printed one digit and halted on all 131,072 inputs
     each, with 15, 19, 22 and 19 wrong answers inside those 35 positions.
+    Independently reversing the digits printed by output slots 1 and 2
+    covers inputs 45,089 and 5,134, leaving 33 primary positions. The four
+    tables halted on every input with 12, 12, 15 and 12 wrong answers,
+    all within those positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
