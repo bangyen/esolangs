@@ -21,7 +21,7 @@ tests = [
 
 [proof_status]
 labels = ["parameterized lookup"]
-qualification = "the essential inputs' table is queued as bytes behind the first input's bit; each dequeued bit defines the bytes to keep one half, and doubling names run each half's dequeues, so the next bit, enqueued behind the table, reaches the front; a symmetric table queues one byte per popcount and each 1 drops the front byte; an ignored input is a bare instruction"
+qualification = "the queue holds pairs of answers; doubling calls count dequeues while each input keeps one half, then the last bit decodes the remaining pair; a symmetric table drops one popcount entry per 1"
 
 [evidence]
 version = 1
@@ -38,7 +38,7 @@ construction = "esolangs.languages.moar_cheese_3.generator:moar_cheese_3_request
 arity = 10
 rule = "random"
 seed = 1847
-size = 4374
+size = 2352
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.moar_cheese_3.generator:moar_cheese_3_request"
@@ -48,27 +48,31 @@ version = 1
 archive_context = {}
 
 [ablations.queued_lookup_20261117]
-kind = "measurement"
+kind = "replay"
+baseline_revision = "ce580dde29b84e7d42aba4f01b4b6a10d7af79fd"
 witness = { arity = 6, rule = "random", seed = 1847 }
-source = { value = 446, unit = "chars" }
+source = { before = 446, after = 352, unit = "chars" }
 budget = 30
 band = "fast"
 scale = 1
-audited = 2026-11-17
+audited = 2026-11-27
 construction = "esolangs.languages.moar_cheese_3.generator:moar_cheese_3_request"
-notes = "Shipped (queued table halved per input): 446 chars; the screening probe's dispatch tree emits 846 with its 6 input slots (64/64 rows correct under this interpreter; notes/ablations/mc_probe_compare.py)."
+notes = "The four packed symbols replace individual answers. Shared keep and drop definitions are applied at each half boundary. The final dispatch decodes the sole pair. The popcount queue is shorter whenever it applies. On 64 random tables per arity with seed 1847 + arity, source fell 30.94% at 7 and 38.31% at 8. Arity-3 totals grew from 38068 to 43504 chars and fell from 135840 to 115040 commands."
 
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.moar_cheese_3.generator:moar_cheese_3_request"
 
 [resource_evidence.execution]
-# All-essential lookup, on every row: a pass over L queued bytes runs L
-# dequeues, L/2 kept-byte bodies and about L doubling calls, about 5L/2 +
-# O(1), and the passes' L sum to 2T - 2.  An ignored input costs at most
-# 3 commands but halves the table; the symmetric route is O(n^2) (192 at
-# n=7 against 828; notes/ablations/mc_measure_all.py).
-expression = "6T + 9n - 3"
+# Each packed pass over two halves of L bytes costs 5L+12 commands.
+# With m>=2 essential inputs the full packed run takes 3*2^m+13m-4
+# plus at most seven commands per ignored input. The symmetric route
+# takes at most 2m^2+11m+17 plus four commands per ignored input.
+cases = [
+    { through = 1, expression = "12" },
+    { through = 3, expression = "2n^2+11n+17" },
+    { expression = "3T+13n-4" },
+]
 exact = true
 arities = [1, 2, 3, 6]
 first = 1
@@ -76,11 +80,10 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-# Component peaks: T + 1 queued bytes; at most n + 5 definitions of a
-# character and a body index below n + 14; at most n + 2 frames, the
-# program's indexing at most T + 7n + 16 instructions and the rest at
-# most 7.
-expression = "8T + (2n + 6)bl(n + 14) + 11n + bl(T + 7n + 16) + 52"
+# The packed queue holds at most T/2+1 bytes and the symmetric queue n+3.
+# There are at most n+7 definitions and n+3 frames. Body IDs are at
+# most n+20, and non-root frames index bodies of at most four commands.
+expression = "8max(T/2+1,n+3)+(n+7)(8+bl(n+20))+(n+3)(bl(n+20)+3)+bl(max(T/2+6n+4,4n+10))"
 exact = false
 arities = [1, 2, 3, 6]
 first = 1
@@ -88,11 +91,9 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-# 4 characters a queued byte, the bit slot ( $ ), two dispatch
-# definitions, a doubling definition and a pass a further input: equal
-# from n = 2, 2 over at n = 1.  Ignored inputs and the symmetric route
-# only shorten it.
-expression = "4T + 22n + 58"
+# Each pair takes four chars. At full support the packed form adds
+# 20n+104 chars from n=3. A discarded slot takes two chars.
+expression = "2T+20n+104"
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
@@ -104,12 +105,12 @@ folding_constant_local = "input_weights"  # no essential input: the answer byte 
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 68, "1" = 68, "2" = 66, "3" = 66, "4" = 64, "5" = 64, "6" = 62, "7" = 62 }, source_units = 149 }
-"00001100" = { commands_by_row = { "0" = 42, "1" = 42, "2" = 42, "3" = 42, "4" = 42, "5" = 42, "6" = 42, "7" = 42 }, source_units = 120 }
-"00110110" = { commands_by_row = { "0" = 72, "1" = 72, "2" = 72, "3" = 72, "4" = 72, "5" = 72, "6" = 72, "7" = 72 }, source_units = 156 }
-"0110" = { commands_by_row = { "0" = 39, "1" = 39, "2" = 39, "3" = 39 }, source_units = 118 }
+"00001100" = { commands_by_row = { "0" = 37, "1" = 37, "2" = 37, "3" = 37, "4" = 37, "5" = 37, "6" = 37, "7" = 37 }, source_units = 152 }
+"00110110" = { commands_by_row = { "0" = 59, "1" = 59, "2" = 59, "3" = 59, "4" = 59, "5" = 59, "6" = 59, "7" = 59 }, source_units = 180 }
+"0110" = { commands_by_row = { "0" = 47, "1" = 47, "2" = 45, "3" = 45 }, source_units = 135 }
 "01101001" = { commands_by_row = { "0" = 68, "1" = 68, "2" = 66, "3" = 66, "4" = 64, "5" = 64, "6" = 62, "7" = 62 }, source_units = 149 }
 "0110100110010110" = { commands_by_row = { "0" = 93, "1" = 93, "2" = 91, "3" = 91, "4" = 89, "5" = 89, "6" = 87, "7" = 87, "8" = 87, "9" = 87, "10" = 85, "11" = 85, "12" = 83, "13" = 83, "14" = 81, "15" = 81 }, source_units = 163 }
-"1101001101101101" = { commands_by_row = { "0" = 129, "1" = 129, "2" = 129, "3" = 129, "4" = 129, "5" = 129, "6" = 129, "7" = 129, "8" = 129, "9" = 129, "10" = 129, "11" = 129, "12" = 129, "13" = 129, "14" = 129, "15" = 129 }, source_units = 210 }
+"1101001101101101" = { commands_by_row = { "0" = 96, "1" = 96, "2" = 96, "3" = 96, "4" = 96, "5" = 96, "6" = 96, "7" = 96, "8" = 96, "9" = 96, "10" = 96, "11" = 96, "12" = 96, "13" = 96, "14" = 96, "15" = 96 }, source_units = 216 }
 "11111110" = { commands_by_row = { "0" = 68, "1" = 68, "2" = 66, "3" = 66, "4" = 64, "5" = 64, "6" = 62, "7" = 62 }, source_units = 149 }
 
 [audits]

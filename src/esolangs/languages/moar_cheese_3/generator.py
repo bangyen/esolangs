@@ -1,25 +1,20 @@
 """moar cheese :3 Boolean program generator: input bits filter a queued table.
 
-The program enqueues the first essential input's bit, ``n`` or ``y``, then
-the essential inputs' table as bytes ``0``/``1``.  Each essential input is
-dequeued and run.  Its body defines how the table bytes act when they run:
-a kept byte enqueues itself and a dropped byte does nothing.  The next
-input's bit is enqueued behind the table, so once the pass has run every
-byte, that bit is at the front.  The final queue is the answer byte.
+The program enqueues the first essential bit, then the lookup bytes. Each
+queued bit configures the next pass. The next input is enqueued behind
+the table and reaches the front when that pass ends.
 
-- Lookup: a bit keeps one half, ``F`` for the first and ``S`` for the
-  second.  Doubling names run each half's dequeues, so a pass costs O(1)
-  characters and the table 4 a byte.
-- Symmetric tables (by popcount, m + 1 bytes and a marker ``M``): a bytes
-  run the next one, so a pass runs itself up to the marker.  A 1 drops the
-  first byte.  A last pass keeps the front byte and drops the rest.
+- Lookup: each byte holds two answers. A pass keeps one half, using
+  doubling names to count dequeues. The final bit decodes the sole byte.
+- Symmetric tables: each 1 drops one popcount entry. A marker ends each
+  pass, and the last pass keeps only the front byte.
 
-An ignored input is a bare instruction, ``n`` or ``y``.  It runs just
-before a dispatch, which redefines whatever it defines.
+Ignored input instructions run before dispatch and can redefine the byte
+rules. The queued bit sets the rules again before any table byte runs.
 
 Size:
-    4 characters a table byte plus 22 an input: O(T) characters;
-    n=4 parity: 163 chars, n=10 random 1847: 4,374 chars
+    Two characters per table bit plus O(n) setup and passes: O(T);
+    n=4 parity: 163 chars, n=10 random 1847: 2,352 chars
 
 Decisions:
     The screening probe's tree, which redefines the dispatch at each node,
@@ -27,6 +22,7 @@ Decisions:
 """
 
 from collections.abc import Callable
+from itertools import pairwise
 
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.projection import (
@@ -45,9 +41,15 @@ _SLOT = InputSlot(1, PAIR)
 #: a parenthesis.
 _POOL = [
     c
-    for c in "abcdefghijklmopqrstuvwxzABCDEGHIJLNOPQRTUVWXY23456789"
-    if c not in "nyFSKMZ01"
+    for c in "abcdefghijklmopqrstuvwxzABCDEGHIJLNOPQRSTUVWXY456789"
+    if c not in "nyFKMZ0123"
 ]
+
+_PACKED = "0123"
+_KEEP = " ".join(f"{c}(({c}))" for c in _PACKED)
+_DROP = " ".join(f"{c}()" for c in _PACKED)
+_HALVE = f"K({_KEEP}) Z({_DROP}) n(K F(Z)) y(Z F(K))"
+_DECODE = "0((0)) 3((1)) n(1((0)) 2((1))) y(1((1)) 2((0)))"
 
 
 def _enqueue(chars: str) -> str:
@@ -83,19 +85,24 @@ def _passes(
 
 
 def _lookup(lookup: WeightedLookup) -> TemplateLayout:
-    """Halve the table once per essential input."""
-    m = sum(1 for w in lookup.weights if w)
-    keep, drop = "0((0)) 1((1))", "0() 1()"
-    names = ["()", *_POOL[: m - 1]]
-    doubling = [f"{names[j]}({names[j - 1]} {names[j - 1]})" for j in range(1, m)]
-    head = [
-        _enqueue(lookup.table),
-        f" n(F({keep}) S({drop})) y(F({drop}) S({keep}))",
-        *(" " + d for d in doubling),
-    ]
-    return _passes(
-        lookup.weights, head, lambda k: f"F {names[m - 1 - k]} S {names[m - 1 - k]}", ""
+    """Halve the packed queue and decode the last pair."""
+    m = sum(bool(w) for w in lookup.weights)
+    packed = "".join(
+        _PACKED[int(lookup.table[at : at + 2], 2)]
+        for at in range(0, len(lookup.table), 2)
     )
+    names = ["()", *_POOL[: max(0, m - 2)]]
+    head = [_enqueue(packed), " " + (_HALVE if m > 1 else _DECODE)]
+    head.extend(f" {b}({a} {a})" for a, b in pairwise(names))
+
+    def stage(k: int) -> str:
+        if k == m - 1:
+            return "()"
+        unit = names[m - 2 - k]
+        finish = " " + _DECODE if k == m - 2 else ""
+        return f"{unit} F {unit}" + finish
+
+    return _passes(lookup.weights, head, stage, "")
 
 
 def _symmetric(lookup: WeightedLookup) -> TemplateLayout:
@@ -114,10 +121,9 @@ def _layout(truth_table: str) -> TemplateLayout:
     if not any(weighted.weights):
         bare: list[str | InputSlot] = [_SLOT, " "]
         return layout_fragments([*bare * n, f"({truth_table[0]})"])
-    candidates = [_lookup(weighted)]
     if (symmetric := symmetric_lookup(weighted)) is not None:
-        candidates.append(_symmetric(symmetric))
-    return min(candidates, key=lambda layout: len(layout.source))
+        return _symmetric(symmetric)
+    return _lookup(weighted)
 
 
 def moar_cheese_3_request(request: GenerationRequest) -> TemplateLayout:
