@@ -213,7 +213,13 @@ evidence, not optimization tasks.
     on every input with 9, 12, 9 and 12 wrong answers, all inside the
     gap. A separate fit reproduced the independently seeded fixture D
     on all 131,072 inputs.
-    [Runnable fixtures and reference bits](../experiments/malbolge-n17/README.md#exact-truth-table).
+    Choosing the lookup and printer polarities jointly covers three more
+    inputs (21,516, 103,437 and 127,034), leaving 18 primary positions.
+    Across 26 lookup tables, every one of the 8,192 assignments to the
+    13 selector bits has a matching encoding. Four tables halted on every
+    input with 8, 9, 8 and 10 wrong answers, all within those 18 positions.
+    [Selector coverage check](../experiments/malbolge-n17/README.md#selector-coverage)
+    and [runnable fixtures](../experiments/malbolge-n17/README.md#exact-truth-table).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
