@@ -155,6 +155,12 @@ evidence, not optimization tasks.
     The gap fell to 52 primary positions. On all 131,072 inputs per table,
     four tables printed one digit and halted with 22, 24, 26 and 30 wrong
     answers, all within those 52 positions.
+    Changing the data address that selects digit 1 from 45,925 to 41,551
+    freed five three-bit words and used three others. Six requested bits
+    select the lookup. All 64 settings
+    passed 7,680 runs covering all eight values of the five freed words.
+    The gap fell to 47 primary positions. Four tables halted on every input
+    with 25, 25, 23 and 24 wrong answers, all within those positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
