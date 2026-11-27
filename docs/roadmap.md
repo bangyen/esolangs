@@ -226,6 +226,10 @@ evidence, not optimization tasks.
     50,294 and 68,724. Ten lookup tables cover all 32,768 assignments to the
     15 selector bits. Four full tables halted on every input with 5, 4, 5
     and 7 wrong answers, all inside the 13 positions.
+    Expanding the lookup choices covers inputs 45,112 and 45,114 as well.
+    The general gap is 11. Across 49 lookups, every assignment to the 17
+    selector bits has an encoding. Four full runs halted on every input
+    with 5, 4, 5 and 2 wrong answers, all within those 11 positions.
     [Selector coverage check](../experiments/malbolge-n17/README.md#selector-coverage)
     and [runnable fixtures](../experiments/malbolge-n17/README.md#exact-truth-table).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program

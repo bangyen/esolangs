@@ -1,48 +1,42 @@
 """Check the measured local answer patterns for the 17-input packing experiment."""
 
+from functools import reduce
 from itertools import product
+from operator import and_
 from pathlib import Path
 
 # Each group shares a marker. A primary input's low two bits select its printer.
 GROUPS = (
     (5133, 5134),
     (21516, 21517, 21518),
-    (45088, 45089, 45090, 45113),
+    (45088, 45089, 45090, 45112, 45113, 45114),
     (103436, 103437, 103438),
     (127032, 127033, 127034),
 )
 
 
-def group_choices(group: tuple[int, ...]) -> list[tuple[int, ...]]:
-    """Give the eight physical pattern masks for each requested answer pattern."""
-    inversions = [
-        sum(((polarity >> (row % 4)) & 1) << i for i, row in enumerate(group))
-        for polarity in range(8)
-    ]
-    return [
-        tuple(1 << (requested ^ flip) for flip in inversions)
-        for requested in range(1 << len(group))
-    ]
+def group_choices(group: tuple[int, ...], masks: tuple[int, ...]) -> list[int]:
+    """For each requested pattern, mark every compatible lookup and polarity."""
+    choices = [0] * (1 << len(group))
+    for polarity in range(8):
+        flip = sum(((polarity >> (row % 4)) & 1) << i for i, row in enumerate(group))
+        for lookup, mask in enumerate(masks):
+            setting = 1 << (8 * lookup + polarity)
+            for requested in range(len(choices)):
+                if mask & (1 << (requested ^ flip)):
+                    choices[requested] |= setting
+    return choices
 
 
 def main() -> None:
-    """Exhaust the requested answers on the five coupled columns."""
+    """Count assignments that admit the same setting in all five columns."""
     lines = Path(__file__).with_name("selector-masks.txt").read_text().splitlines()
     masks = [tuple(int(word, 16) for word in line.split()) for line in lines]
-    choices = [group_choices(group) for group in GROUPS]
-
-    covered = 0
-    for answers in product(*choices):
-        if any(
-            all(
-                mask & column[flips]
-                for mask, column in zip(lookup, answers, strict=True)
-            )
-            for lookup in masks
-            for flips in range(8)
-        ):
-            covered += 1
-
+    choices = [
+        group_choices(group, column)
+        for group, column in zip(GROUPS, zip(*masks, strict=True), strict=True)
+    ]
+    covered = sum(bool(reduce(and_, assignment)) for assignment in product(*choices))
     total = 1 << sum(map(len, GROUPS))
     print(f"{covered:,} of {total:,} selector assignments covered")
     if covered != total:
