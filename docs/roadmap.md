@@ -173,6 +173,11 @@ evidence, not optimization tasks.
     all eight values. The gap fell to 37 positions (36 primary, one spill).
     Four tables printed one digit and halted on every input with 17, 21,
     23 and 21 wrong answers, all within those 37 positions.
+    Word 41,391 can encode either answer for spill input 80,611. Its
+    two source instructions select pointer walks that rejoin before
+    the next arithmetic instruction. This leaves 36 primary positions.
+    Four tables halted on every input with 16, 20, 23 and 20 wrong
+    answers, all within those positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
