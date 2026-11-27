@@ -186,7 +186,11 @@ evidence, not optimization tasks.
     Independently reversing the digits printed by output slots 1 and 2
     covers inputs 45,089 and 5,134, leaving 33 primary positions. The four
     tables halted on every input with 12, 12, 15 and 12 wrong answers,
-    all within those positions.
+    all within those positions. Moving the slot 0 lookup six instructions
+    earlier lets that slot reverse its digits too. Input 127,032 gains
+    either answer, leaving 32 primary positions. Four tables printed one
+    digit and halted on every input with 13, 12, 15 and 12 wrong answers,
+    all within those 32 positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
