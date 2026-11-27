@@ -164,9 +164,15 @@ evidence, not optimization tasks.
     The decoder selects between two output addresses three instructions
     earlier and uses a 12-instruction printer. Words 41,559, 45,933 and
     54,681 each regained all eight three-bit values under all four lookup
-    settings (288 runs). The gap fell to 44 primary positions. Four tables
+    settings (288 runs). The gap fell to 44 positions. Four tables
     halted on every input with 17, 26, 27 and 23 wrong answers, all
     within those positions.
+    Reordering nine register writes and changing two pointer walks freed
+    words 45,929, 45,928 and 41,557. Across four lookup settings, all six
+    words freed since the 47-position layout passed 768 runs covering
+    all eight values. The gap fell to 37 positions (36 primary, one spill).
+    Four tables printed one digit and halted on every input with 17, 21,
+    23 and 21 wrong answers, all within those 37 positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
