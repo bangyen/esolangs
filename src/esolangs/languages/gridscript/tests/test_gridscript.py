@@ -292,10 +292,10 @@ def test_boolean_generator_bounds_its_index(monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setattr(generator, "_INDEX_BITS", 1)
     monkeypatch.setattr(generator, "_CHUNK_INPUTS", 1)
-    packed = generator.gridscript("0110")
+    packed = generator.gridscript("0001")
     assert "REMOVE THIS POSITION" in packed
     assert "DIVIDE BY a" in packed
-    assert _out(packed, "1\n1\n") == "0"
+    assert _out(packed, "1\n1\n") == "1"
 
     # The leading input is ignored. The other three exceed the two-bit
     # packed route's reduced budget and select the tree.

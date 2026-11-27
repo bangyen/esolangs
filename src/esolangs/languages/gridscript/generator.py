@@ -8,14 +8,15 @@ index in the dataspace by doubling, and ``REMOVE THIS POSITION`` loads that
 chunk.  Each of the (at most four) low inputs then divides it by
 ``1 + bit * (2^w - 1)`` for its weight ``w``, and ``v - 2*floor(v/2)`` leaves
 the answer.  Ignored inputs are read into an unused variable; a constant
-table prints its bit. The packed layout is used while its index fits a
+table prints its bit. Parity sums the essential inputs and prints the
+remainder modulo two. The packed layout is used while its index fits a
 signed INT. Wider tables reduce a binary tree on the buffer using its
 input bits and the identity a + bit*(b-a).
 
 Size:
-    Theta(T) text. The packed route uses decimal chunks; tree labels are
-    sized by subtree height so their weighted total is linear in T.
-    n=4 parity: 411 chars, n=10 random 1847: 1,097 chars.
+    Worst-case Theta(T) characters. Parity uses O(n) characters. Tree
+    labels grow with subtree height, with a linear total.
+    n=4 parity: 241 chars, n=10 random 1847: 1,097 chars.
 
 Decisions:
     Chunks are always the widest that fit, 2^min(k, 4) bits for k kept
@@ -29,6 +30,7 @@ Decisions:
     stay under 2^16, exact even as 32-bit FLOATs.
 """
 
+from esolangs.generation.algebraic import parity_bias
 from esolangs.generation.helpers import _validate_truth_table
 from esolangs.generation.projection import essential_inputs, read_at
 from esolangs.generation.requests import GenerationRequest
@@ -37,6 +39,7 @@ from esolangs.runtime._program import Program
 #: Table bits per chunk: the largest power of two whose chunks fit an INT.
 _CHUNK_INPUTS = 4
 _INDEX_BITS = 31
+_REMAINDER = ("STORE TO c", "DIVIDE BY 2", "MULTIPLY BY -2", "INCREMENT BY c")
 
 
 def _build(n: int, kept: list[int], table: str, low: int) -> list[str]:
@@ -66,8 +69,22 @@ def _build(n: int, kept: list[int], table: str, low: int) -> list[str]:
                 cmds.append(f"MULTIPLY a BY {(1 << weight) - 1}")
             cmds += ["INCREMENT a", "DIVIDE BY a"]
     if low:
-        cmds += ["STORE TO c", "DIVIDE BY 2", "MULTIPLY BY -2", "INCREMENT BY c"]
+        cmds.extend(_REMAINDER)
     return [*cmds, "PRINT"]
+
+
+def _parity(n: int, kept: list[int], bias: int) -> list[str]:
+    """Sum the essential digits in the dataspace."""
+    first = kept[0]
+    selected = set(kept)
+    commands = ["INPUT z"] * first + ["INPUT"]
+    if bias:
+        commands.append("INCREMENT")
+    for i in range(first + 1, n):
+        commands.extend(
+            ("INPUT a", "INCREMENT BY a") if i in selected else ("INPUT z",)
+        )
+    return [*commands, *_REMAINDER, "PRINT"]
 
 
 def _height_name(height: int) -> str:
@@ -118,12 +135,15 @@ def gridscript(truth_table: str) -> str:
         cmds = ["INPUT z"] * n + [f"PRINT {truth_table[0]}"]
     else:
         table = read_at(truth_table, kept, n)
-        least_low = max(0, len(kept) - _INDEX_BITS)
-        most_low = min(len(kept), _CHUNK_INPUTS)
-        if least_low > most_low:
-            cmds = _tree(n, kept, table)
+        if (bias := parity_bias(table)) is not None:
+            cmds = _parity(n, kept, bias)
         else:
-            cmds = _build(n, kept, table, most_low)
+            least_low = max(0, len(kept) - _INDEX_BITS)
+            most_low = min(len(kept), _CHUNK_INPUTS)
+            if least_low > most_low:
+                cmds = _tree(n, kept, table)
+            else:
+                cmds = _build(n, kept, table, most_low)
     return "#B.\n@width 2\n@height 1\n(1,1):START\n" + "".join(
         f"(2,1):{c}\n" for c in cmds
     )

@@ -10,7 +10,7 @@ admitted = 2026-11-17T21:00:00-05:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "one pass over collocated nodes: the table read at its essential inputs is split onto the buffer as decimal chunks of 2^m bits (m <= 4, shortest among safe indexes); the high inputs double an index in the dataspace, REMOVE THIS POSITION loads its chunk, each low input divides it by 1 + bit(2^w - 1), and v - 2floor(v/2) is printed; wide indexes use a pairwise buffer reduction on Boolean leaves"
+qualification = "one pass over collocated nodes: the table read at its essential inputs is split onto the buffer as decimal chunks of 2^m bits (m <= 4, shortest among safe indexes); the high inputs double an index in the dataspace, REMOVE THIS POSITION loads its chunk, each low input divides it by 1 + bit(2^w - 1), and v - 2floor(v/2) is printed; wide indexes use a pairwise buffer reduction on Boolean leaves. For parity, sum essential inputs and print the remainder modulo two"
 
 [semantic_evidence]
 version = 1
@@ -27,7 +27,7 @@ version = 1
 [[evidence.anchors]]
 arity = 4
 rule = "parity"
-size = 411
+size = 241
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.gridscript.generator:gridscript_request"
@@ -48,6 +48,7 @@ construction = "esolangs.languages.gridscript.generator:gridscript_request"
 [resource_evidence.execution]
 # Two moves; SPLIT, a read, the index's 3 commands an input, REMOVE and
 # PRINT (3n + 3); a low input adds at most one command and the remainder 4.
+# Parity uses at most 2n+7 commands, including both moves.
 cases = [
     { through = 31, expression = "3n + 11" },
     { expression = "7T+3n+11" },
@@ -61,7 +62,8 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 [resource_evidence.workspace]
 # The buffer, 8 bits a one-bit chunk at worst; pending and held node sets
 # over at most 4n + 9 nodes; the index in the dataspace; tracer floats,
-# three variables and the input cursor.
+# three variables and the input cursor. Parity has at most 2n+5 nodes
+# and no buffer. Its accumulator and saved sum have magnitude at most n+1.
 # The wide tree has up to 7T+n+2 pending nodes and n+2 small variables.
 cases = [
     { through = 31, expression = "8T + 2(4n+9)bl(4n+9) + 2bl(2n) + n + 400" },
@@ -78,7 +80,8 @@ description = { growth = "T log T", claim = "at most", template = "{claim} {form
 # k >= 5 kept: <= 6*2^(k-4) chunk characters (five digits and a space),
 # 55 a high input, 269 the four low inputs, 89 remainder and print, 14 an
 # ignored input: 171 + 6*2^(k-4) + 41k + 14n. k = 4: 355 + 14n, attained
-# by n = 4 parity (411); k < 4 is smaller.
+# by n = 4 conjunction (411); k < 4 is smaller. The parity route
+# takes at most 117+35n chars.
 # A height-h variable costs at most 1+h letters; T/2^h nodes use it.
 cases = [
     { through = 31, expression = "3T/8 + 55n + 185" },
@@ -108,13 +111,25 @@ audited = 2026-11-17
 construction = "esolangs.languages.gridscript.generator:gridscript_request"
 notes = "Shipped (16-bit chunks split onto the buffer, indexed by the inputs): 1,097 chars; the screening probe's PUSH-per-bit buffer emits 14,020 and its SELECT-call tree 148,793 (32 sampled rows correct each; notes/worktrees/gridscript/ablations/gs_probe_compare.py)."
 
+[ablations.parity_sum_20261127]
+kind = "replay"
+baseline_revision = "ce580dde29b84e7d42aba4f01b4b6a10d7af79fd"
+witness = { arity = 4, rule = "parity" }
+source = { before = 411, after = 241, unit = "chars" }
+budget = 30
+band = "fast"
+scale = 1
+audited = 2026-11-27
+construction = "esolangs.languages.gridscript.generator:gridscript_request"
+notes = "The first essential input initializes the dataspace directly. The remaining digits add to it, with one increment for complemented parity. The packed lookup and parity use the same remainder commands. Parity falls from 604 to 346 chars at n=7 and from 707 to 381 at n=8. Arity-3 totals fall from 82647 to 81655 chars and 37696 to 37256 commands."
+
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 19, "7" = 19 }, source_units = 335 }
 "00001100" = { commands_by_row = { "0" = 16, "1" = 16, "2" = 16, "3" = 16, "4" = 16, "5" = 16, "6" = 16, "7" = 16 }, source_units = 274 }
 "00110110" = { commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 19, "7" = 19 }, source_units = 335 }
-"0110" = { commands_by_row = { "0" = 15, "1" = 15, "2" = 15, "3" = 15 }, source_units = 260 }
-"01101001" = { commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 19, "7" = 19 }, source_units = 335 }
-"0110100110010110" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23, "8" = 23, "9" = 23, "10" = 23, "11" = 23, "12" = 23, "13" = 23, "14" = 23, "15" = 23 }, source_units = 411 }
+"0110" = { commands_by_row = { "0" = 10, "1" = 10, "2" = 10, "3" = 10 }, source_units = 171 }
+"01101001" = { commands_by_row = { "0" = 12, "1" = 12, "2" = 12, "3" = 12, "4" = 12, "5" = 12, "6" = 12, "7" = 12 }, source_units = 206 }
+"0110100110010110" = { commands_by_row = { "0" = 14, "1" = 14, "2" = 14, "3" = 14, "4" = 14, "5" = 14, "6" = 14, "7" = 14, "8" = 14, "9" = 14, "10" = 14, "11" = 14, "12" = 14, "13" = 14, "14" = 14, "15" = 14 }, source_units = 241 }
 "1101001101101101" = { commands_by_row = { "0" = 23, "1" = 23, "2" = 23, "3" = 23, "4" = 23, "5" = 23, "6" = 23, "7" = 23, "8" = 23, "9" = 23, "10" = 23, "11" = 23, "12" = 23, "13" = 23, "14" = 23, "15" = 23 }, source_units = 411 }
 "11111110" = { commands_by_row = { "0" = 19, "1" = 19, "2" = 19, "3" = 19, "4" = 19, "5" = 19, "6" = 19, "7" = 19 }, source_units = 335 }
 
