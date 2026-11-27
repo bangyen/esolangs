@@ -107,10 +107,3 @@ def small_tree_plan(
         return canvas
 
     return CanvasPlan(draw, width, height)
-
-
-def small_tree_canvas(
-    root: Node, *, compact: bool = True, tight: bool = True, unit: int = _UNIT
-) -> Canvas:
-    """Draw a compact tree at its measured dimensions."""
-    return small_tree_plan(root, compact=compact, tight=tight, unit=unit)()

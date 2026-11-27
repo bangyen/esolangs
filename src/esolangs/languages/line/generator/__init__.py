@@ -133,13 +133,6 @@ def _inline_boolean(projection: InputProjection) -> Node:
     return fork(levels[0][0], 0, None)
 
 
-def projected_boolean(truth_table: str, *, reverse: bool = False) -> Node | None:
-    """Store only essential inputs, overwriting the next kept slot for ignores."""
-    return next(
-        _projected_booleans(project_inputs(TruthTable(truth_table)), (reverse,)), None
-    )
-
-
 def _projected_booleans(
     projection: InputProjection, orientations: tuple[bool, ...]
 ) -> Iterator[Node]:

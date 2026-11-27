@@ -5,11 +5,24 @@ import random
 import pytest
 
 from esolangs.generation.helpers import permute_truth_table
-from esolangs.languages.line.generator import balance, line, projected_boolean
+from esolangs.generation.requests import TruthTable, project_inputs
+from esolangs.languages.line.generator import (
+    _projected_booleans,
+    balance,
+    line,
+)
+from esolangs.languages.line.generator.layout import Node
 from esolangs.languages.line.interpreter import _Machine
 from esolangs.raster import Raster
 from esolangs.runtime.io import ScriptedIO
 from tests.support.generator_support import measure_run
+
+
+def projected_boolean(truth_table: str, *, reverse: bool = False) -> Node | None:
+    """Store only essential inputs, overwriting the next kept slot for ignores."""
+    return next(
+        _projected_booleans(project_inputs(TruthTable(truth_table)), (reverse,)), None
+    )
 
 
 def _lift(core, n, kept):

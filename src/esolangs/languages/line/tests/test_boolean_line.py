@@ -11,7 +11,8 @@ import esolangs
 from esolangs import run
 from esolangs.languages.line.generator import line_boolean
 from esolangs.languages.line.generator.layout import Node
-from esolangs.languages.line.generator.render import render
+from esolangs.languages.line.generator.render import Canvas, _UNIT, render
+from esolangs.languages.line.generator.small_tree import small_tree_plan
 from esolangs.languages.line.generator.tree_layout import tree_extents
 from esolangs.languages.line.interpreter.extract import extract
 from esolangs.languages.line.interpreter.simulate import (
@@ -37,6 +38,13 @@ def _io(inputs: list[int]) -> tuple[IO, list[int]]:
     outputs: list[int] = []
     values: Iterator[int] = iter(inputs)
     return IO(read=values.__next__, write=outputs.append), outputs
+
+
+def small_tree_canvas(
+    root: Node, *, compact: bool = True, tight: bool = True, unit: int = _UNIT
+) -> Canvas:
+    """Draw a compact tree at its measured dimensions."""
+    return small_tree_plan(root, compact=compact, tight=tight, unit=unit)()
 
 
 def _check_truth_table(
@@ -257,8 +265,6 @@ def test_line_extent_fast_path_preserves_merged_runs_and_shared_arms() -> None:
 
 @pytest.mark.medium
 def test_tighter_spacing_executes_every_small_function(tmp_path: Path) -> None:
-    from esolangs.languages.line.generator.small_tree import small_tree_canvas
-
     total = 0
     path = str(tmp_path / "shorter-stems.png")
     for inputs in range(1, 4):
@@ -307,8 +313,6 @@ def test_tighter_spacing_preserves_path_clearance(table: str, tmp_path: Path) ->
 @pytest.mark.medium
 @pytest.mark.parametrize("table", ["00010111", "00010101", "00100110", "01000101"])
 def test_shorter_stems_balance_keeps_the_area_ceiling(table: str) -> None:
-    from esolangs.languages.line.generator.small_tree import small_tree_canvas
-
     previous = [
         small_tree_canvas(line_boolean(table, reverse=reverse), compact=False)
         for reverse in (False, True)
