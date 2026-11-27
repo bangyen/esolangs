@@ -218,6 +218,8 @@ evidence, not optimization tasks.
     Across 26 lookup tables, every one of the 8,192 assignments to the
     13 selector bits has a matching encoding. Four tables halted on every
     input with 8, 9, 8 and 10 wrong answers, all within those 18 positions.
+    Rerouting all 14 pointer reads of word 41,555 also gave an exact
+    program for fixture B, verified on all 131,072 inputs.
     [Selector coverage check](../experiments/malbolge-n17/README.md#selector-coverage)
     and [runnable fixtures](../experiments/malbolge-n17/README.md#exact-truth-table).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
