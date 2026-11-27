@@ -195,7 +195,12 @@ evidence, not optimization tasks.
     Sending it through the same pointer path as 45,925 lets the lookup
     table encode input 103,436, leaving 31 primary positions. Four tables
     printed one digit and halted on every input with 13, 14, 13 and 18
-    wrong answers, all within those positions.
+    wrong answers, all within those positions. Rerouting one startup walk
+    and two input-dependent walks freed word 54,676 for inputs 61,496
+    through 61,498. All eight assignments passed under every lookup and
+    polarity setting. The gap fell to 28 primary positions. Four tables
+    halted on every input with 11, 13, 11 and 16 wrong answers, all
+    within those positions.
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
