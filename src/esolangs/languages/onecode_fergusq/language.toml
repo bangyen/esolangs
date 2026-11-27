@@ -4,7 +4,7 @@ admitted = 2026-11-15T16:05:35-05:00
 
 [proof_status]
 labels = ["linear lookup"]
-qualification = "a string store writes successive addressed cells; a Horner index over essential inputs reads the selected cell"
+qualification = "a Horner expression forms the projected row index; a string stores four answers per cell and a divisor table extracts the selected bit"
 
 [evidence]
 version = 1
@@ -12,7 +12,15 @@ version = 1
 [[evidence.anchors]]
 arity = 4
 rule = "parity"
-size = 96
+size = 109
+unit = "chars"
+scale = 1
+construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_request"
+
+[[evidence.anchors]]
+arity = 8
+rule = "parity"
+size = 215
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_request"
@@ -22,15 +30,17 @@ version = 1
 archive_context = {}
 
 [ablations.literal_address_lookup]
-kind = "measurement"
-witness = { arity = 4, rule = "parity" }
-source = { value = 96, unit = "chars" }
+kind = "replay"
+baseline_revision = "ce580dde29b84e7d42aba4f01b4b6a10d7af79fd"
+witness = { arity = 8, rule = "parity" }
+source = { before = 404, after = 215, unit = "chars" }
+rows = [0, 1, 2, 3, 252, 253, 254, 255]
 budget = 30
 band = "fast"
 scale = 1
-audited = 2026-11-15
+audited = 2026-11-27
 construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_request"
-notes = "A string store lays out sixteen answers and the input constructs one cell address."
+notes = "The packed decoder uses i for the bit index, j for the cell index and v for the quotient. The first four cells hold divisor digits. One Horner expression subtracts the ASCII bias once and keeps interior discarded reads in source order. On 200 random tables at each of n=7/8 (seed 1847 + arity), source fell 33.98%/46.78%. Across arity 3, source grows from 17566 to 24292 chars and commands from 60784 to 93104."
 
 [audits]
 trick_prototype = 2026-11-27
@@ -48,9 +58,10 @@ version = 2
 construction = "esolangs.languages.onecode_fergusq.generator:onecode_fergusq_request"
 
 [resource_evidence.execution]
-# Five operations for the first bit, nine for each later bit, and eight
-# for storing and reading the table. A discarded read takes two.
-expression = "9n+4"
+# With m essential inputs, the Horner assignment takes 4m+1 steps.
+# Interior discards add four each and edge discards add two each.
+# The store and decoder take 33 steps. Constants take 2n+3.
+expression = "4n+34"
 exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
@@ -58,24 +69,29 @@ unit = "steps"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} steps; all inputs essential" }
 
 [resource_evidence.workspace]
-# Full tables write 6T+nT-T+2 bits to the addressed cells. The operand
-# stack peaks at 6T+2 before the store; the index uses 8+n bits.
-expression = "(n+11)T+n+12+bl(9n+4)+bl(n)"
+# P=ceil(T/4) packed cells. Memory peaks at 25+7P+bit_sum(P+4) bits
+# and the literal and address on the stack peak at 26+7P. Variables
+# peak at 23 bits for n<=2 and 29+2n from n=3, reached at row T-4.
+cases = [
+    { through = 2, expression = "74+14ceil(T/4)+bit_sum(ceil(T/4)+4)+bl(4n+34)+bl(n)" },
+    { expression = "80+2n+14ceil(T/4)+bit_sum(ceil(T/4)+4)+bl(4n+34)+bl(n)" },
+]
 exact = true
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "worst", template = "{claim} {formula} bits, including integer addresses and ASCII cells" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} bits, including packed cells, addresses and decoder state" }
 
 [resource_evidence.scaling]
-# The full-essential form has T literal digits, 17 characters per input
-# and 12 fixed characters. Projected reads and constants are shorter.
-expression = "T+17n+12"
+# At full support the reader uses 11n chars plus the bias digits.
+# The store and decoder use one char per packed cell and 58 fixed chars.
+# Ignored inputs cost at most nine chars each and reduce the packed table.
+expression = "ceil(T/4)+11n+digits(48(T-1))+58"
 exact = true
 arities = [1, 2, 3, 4, 6, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} characters; one lookup literal" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} characters; one packed lookup literal" }
 
 [semantic_evidence]
 version = 1
@@ -86,11 +102,11 @@ tests = [
 ]
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }
-"00001100" = { commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 24, "5" = 24, "6" = 24, "7" = 24 }, source_units = 58 }
-"00110110" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }
-"0110" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22 }, source_units = 50 }
-"01101001" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }
-"0110100110010110" = { commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 96 }
-"1101001101101101" = { commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 96 }
-"11111110" = { commands_by_row = { "0" = 31, "1" = 31, "2" = 31, "3" = 31, "4" = 31, "5" = 31, "6" = 31, "7" = 31 }, source_units = 71 }
+"00000001" = { commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 96 }
+"00001100" = { commands_by_row = { "0" = 44, "1" = 44, "2" = 44, "3" = 44, "4" = 44, "5" = 44, "6" = 44, "7" = 44 }, source_units = 92 }
+"00110110" = { commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 96 }
+"0110" = { commands_by_row = { "0" = 42, "1" = 42, "2" = 42, "3" = 42 }, source_units = 84 }
+"01101001" = { commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 96 }
+"0110100110010110" = { commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 50, "5" = 50, "6" = 50, "7" = 50, "8" = 50, "9" = 50, "10" = 50, "11" = 50, "12" = 50, "13" = 50, "14" = 50, "15" = 50 }, source_units = 109 }
+"1101001101101101" = { commands_by_row = { "0" = 50, "1" = 50, "2" = 50, "3" = 50, "4" = 50, "5" = 50, "6" = 50, "7" = 50, "8" = 50, "9" = 50, "10" = 50, "11" = 50, "12" = 50, "13" = 50, "14" = 50, "15" = 50 }, source_units = 109 }
+"11111110" = { commands_by_row = { "0" = 46, "1" = 46, "2" = 46, "3" = 46, "4" = 46, "5" = 46, "6" = 46, "7" = 46 }, source_units = 96 }

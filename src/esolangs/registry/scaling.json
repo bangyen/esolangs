@@ -70,7 +70,7 @@
   "object_disoriented": "linear: worst min(24T+56,H) (n=1), H (n=2..8), min(24T+56,H) (n\u22659) characters, exact n=2..8",
   "obrainfuck": "linear: at most 4T + 52n + 47 characters",
   "one_i": "linear: worst 9T/2 - 6 characters past n = 1: six a node",
-  "onecode_fergusq": "linear: worst T+17n+12 characters; one lookup literal",
+  "onecode_fergusq": "linear: worst ceil(T/4)+11n+digits(48(T-1))+58 characters; one packed lookup literal",
   "painfuck": "linear: at most 31T/2+3n-21 characters past n = 3: to n = 15",
   "parenthesys": "linear: worst \u230aT/8\u230b+n+51+17\u230a(n-4)/3\u230b+6min(1,n-4-3\u230a(n-4)/3\u230b) characters past n = 3",
   "piet": "linear: worst A (n=2..3), 3(3ceil(T/3)+5n+49+3T/2+n-2floor(n/2)) (n\u22654) codels. Small-layout A, exact n=3..7",
