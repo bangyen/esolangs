@@ -207,7 +207,13 @@ evidence, not optimization tasks.
     wrong answers inside those positions. Choosing the lookup and markers
     for each whole table separately gave exact programs for fixture A and
     its complement on all 131,072 inputs each.
-    [Runnable fixture and reference bits](../experiments/malbolge-n17/README.md#exact-truth-table).
+    Rerouting the pointer reads at 41,556 and 45,930 freed five more
+    answers (127,009–127,010 and 127,076–127,078). The general gap is
+    21 positions. Four lookup settings suffice. The four tables halted
+    on every input with 9, 12, 9 and 12 wrong answers, all inside the
+    gap. A separate fit reproduced the independently seeded fixture D
+    on all 131,072 inputs.
+    [Runnable fixtures and reference bits](../experiments/malbolge-n17/README.md#exact-truth-table).
 - **Open mathematics:** Whether some 17-input Malbolge table has no program
   is open; the Malbolge row above is the constructive side
   ([proofs](proofs/index.md#malbolge-bound)).
