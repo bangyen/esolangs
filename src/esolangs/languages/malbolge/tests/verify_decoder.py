@@ -15,7 +15,7 @@ from esolangs.languages.malbolge.generator.packed import (
     _SOURCE_OPS,
     _decoder,
     _install_layout,
-    _settings,
+    _layouts,
 )
 from esolangs.languages.malbolge.interpreter import _CRAZY, _XLAT1, _XLAT2
 from esolangs.languages.malbolge.proof_formulas import _PACKED_COMMAND_BOUND
@@ -51,7 +51,7 @@ def _write_inputs(dest: Path) -> None:
     mutable = bytearray(_WORDS)
     baseline = source.encode("ascii")
     with (dest / "layouts").open("wb") as out:
-        for lookup, perm in _settings()[0]:
+        for lookup, perm in _layouts():
             for polarity in range(8):
                 program = bytearray(decoder.source)
                 _install_layout(program, lookup, perm, polarity)

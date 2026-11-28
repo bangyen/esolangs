@@ -68,7 +68,9 @@ class _Column(NamedTuple):
     fixed: dict[int, str]
 
 
-type _Settings = tuple[list[tuple[bytes, tuple[int, ...]]], list[list[int]]]
+type _SelectorGroup = dict[int, list[tuple[int, int]]]
+
+type _Layout = tuple[bytes, tuple[int, ...]]
 
 
 def _at(machine: _Machine, target: int) -> None:
@@ -122,42 +124,64 @@ def _decoder() -> _Decoder:
 
 
 @cache
-def _settings() -> _Settings:
-    """Index each measured local pattern by compatible lookup and printer polarity."""
+def _layouts() -> tuple[_Layout, ...]:
+    """Read the calibrated lookup and printer order pairs in selection order."""
     lookups = (_DATA / "packed-lookups.txt").read_bytes().splitlines()
     layouts = []
-    choices = [[0] * (1 << len(group)) for group in _ROWS]
-    for i, line in enumerate(
+    for line in (
         (_DATA / "packed-settings.txt").read_text(encoding="ascii").splitlines()
     ):
-        index, perm, *values = line.split()
-        layouts.append((lookups[int(index)], tuple(map(int, perm))))
-        for group, compatible, text in zip(_ROWS, choices, values, strict=True):
-            mask = int(text, 16)
-            for polarity in range(8):
-                flip = sum(
-                    ((polarity >> _SPILL_SLOTS.get(row, row % 4)) & 1) << j
-                    for j, row in enumerate(group)
-                )
-                flag = 1 << (8 * i + polarity)
-                for pattern in range(len(compatible)):
-                    if mask >> (pattern ^ flip) & 1:
-                        compatible[pattern] |= flag
-    return layouts, choices
+        index, order = line.split()
+        layouts.append((lookups[int(index)], tuple(map(int, order))))
+    return tuple(layouts)
+
+
+def _polarity_flips() -> tuple[tuple[int, ...], ...]:
+    """Project each printer polarity onto the selector row order."""
+    return tuple(
+        tuple(
+            sum(
+                ((polarity >> _SPILL_SLOTS.get(row, row % 4)) & 1) << j
+                for j, row in enumerate(group)
+            )
+            for polarity in range(8)
+        )
+        for group in _ROWS
+    )
+
+
+_POLARITY_FLIPS = _polarity_flips()
+
+
+# Try the widest group first. A rejected layout needs no other masks.
+_GROUP_ORDER = tuple(sorted(range(len(_ROWS)), key=lambda i: -len(_ROWS[i])))
+
+
+@cache
+def _group_choices(lookup: bytes, perm: tuple[int, ...], group: int) -> tuple[int, ...]:
+    """Index each local pattern by its compatible printer polarities."""
+    mask = _group_mask(lookup, perm, group)
+    flips = _POLARITY_FLIPS[group]
+    return tuple(
+        sum(1 << i for i, flip in enumerate(flips) if mask >> (pattern ^ flip) & 1)
+        for pattern in range(1 << len(_ROWS[group]))
+    )
 
 
 def _selection(table: str) -> tuple[bytes, tuple[int, ...], int]:
-    """Intersect the seven groups and use the lowest compatible setting."""
-    layouts, choices = _settings()
-    settings = -1
-    for rows, masks in zip(_ROWS, choices, strict=True):
-        pattern = sum(int(table[row]) << j for j, row in enumerate(rows))
-        settings &= masks[pattern]
-    if not settings:
-        raise AssertionError("selector coverage is incomplete")
-    i, flip = divmod((settings & -settings).bit_length() - 1, 8)
-    lookup, perm = layouts[i]
-    return lookup, perm, flip
+    """Use the first compatible layout and printer polarity."""
+    patterns = tuple(
+        sum(int(table[row]) << j for j, row in enumerate(rows)) for rows in _ROWS
+    )
+    for lookup, perm in _layouts():
+        polarities = 255
+        for group in _GROUP_ORDER:
+            polarities &= _group_choices(lookup, perm, group)[patterns[group]]
+            if not polarities:
+                break
+        else:
+            return lookup, perm, (polarities & -polarities).bit_length() - 1
+    raise AssertionError("selector coverage is incomplete")
 
 
 def _pattern(
@@ -183,6 +207,45 @@ def _pattern(
     return bits
 
 
+def _marker_labels(
+    source: bytearray, hubs: tuple[int, ...], perm: tuple[int, ...], col: int
+) -> Iterator[tuple[int, dict[int, str]]]:
+    """Yield column markers with all eight ordinary labels."""
+    # Advancing 243 words shifts both raw and high by -243 modulo 94.
+    # Their difference, and thus the ordinary label, depends only on the column.
+    rep = col + 1
+    for marker_op in _ACTIVE:
+        marker = _char_for(marker_op, 51031 + 3 * col)
+        if marker < 83:
+            continue
+        labels = {}
+        for op in _ACTIVE:
+            label = _pattern(source, hubs, perm, rep, _char_for(op, rep), marker, 7)
+            if label < 0 or label in labels:
+                break
+            labels[label] = op
+        else:
+            yield marker, labels
+
+
+def _operand_patterns(
+    source: bytearray,
+    hubs: tuple[int, ...],
+    perm: tuple[int, ...],
+    word: int,
+    marker: int,
+    used: int,
+) -> Iterator[tuple[str, int]]:
+    """Yield the patterns of legal operands at a navigation word."""
+    for op in _SOURCE_OPS[word]:
+        raw = _char_for(op, word)
+        if 29524 <= word <= 29527:
+            raw = ord(_XLAT2[raw - 33])
+        bits = _pattern(source, hubs, perm, word, raw, marker, used)
+        if bits >= 0:
+            yield op, bits
+
+
 def _column_options(
     source: bytearray,
     hubs: tuple[int, ...],
@@ -193,31 +256,69 @@ def _column_options(
     used: bytes,
 ) -> Iterator[_Column]:
     """Yield bijective ordinary labels and legal operands for the navigation words."""
-    # Advancing 243 words shifts both raw and high by -243 modulo 94.
-    # Their difference, and thus the ordinary label, depends only on the column.
-    rep = col + 1
-    for marker_op in _ACTIVE:
-        marker = _char_for(marker_op, 51031 + 3 * col)
-        if marker < 83:
-            continue
-        labels = {
-            _pattern(source, hubs, perm, rep, _char_for(o, rep), marker, 7): o
-            for o in _ACTIVE
-        }
-        if len(labels) != 8 or -1 in labels:
-            continue
-        options = []
-        for k in required:
-            matches = []
-            for op in _SOURCE_OPS[k]:
-                raw = _char_for(op, k)
-                if 29524 <= k <= 29527:
-                    raw = ord(_XLAT2[raw - 33])
-                if _pattern(source, hubs, perm, k, raw, marker, used[k]) == answers[k]:
-                    matches.append(op)
-            options.append(matches)
+    for marker, labels in _marker_labels(source, hubs, perm, col):
+        options = [
+            [
+                op
+                for op, bits in _operand_patterns(
+                    source, hubs, perm, k, marker, used[k]
+                )
+                if bits == answers[k]
+            ]
+            for k in required
+        ]
         for ops in product(*options):
             yield _Column(marker, labels, dict(zip(required, ops, strict=True)))
+
+
+def _coupled_operands(left: str, right: str) -> bool:
+    """Allow operands whose two-word pointer walk rejoins."""
+    return left == "<" or right not in "jv"
+
+
+@cache
+def _selector_groups() -> tuple[_SelectorGroup, ...]:
+    """Map each selector pattern bit to its operand word and slot."""
+    decoder = _decoder()
+    groups = []
+    for rows in _ROWS:
+        words: defaultdict[int, list[tuple[int, int]]] = defaultdict(list)
+        for bit, row in enumerate(rows):
+            primary, spill, slot = decoder.locations[row // 4]
+            word, word_bit = (spill, slot) if row % 4 == 3 else (primary, row % 4)
+            words[word].append((word_bit, bit))
+        groups.append(dict(words))
+    return tuple(groups)
+
+
+def _group_mask(lookup: bytes, perm: tuple[int, ...], group: int) -> int:
+    """Read the compatibility mask from the lookup and legal operands."""
+    decoder = _decoder()
+    source = bytearray(decoder.source)
+    source[5213:5548] = lookup
+    # Within a selector group, each operand has its own marker.
+    domains = {
+        word: {
+            (op, sum((bits >> slot & 1) << bit for slot, bit in slots))
+            for marker, _ in _marker_labels(
+                source, decoder.hubs, perm, (word - 1) % 243
+            )
+            for op, bits in _operand_patterns(
+                source, decoder.hubs, perm, word, marker, decoder.occupied[word]
+            )
+        }
+        for word, slots in _selector_groups()[group].items()
+    }
+    if len(domains) == 1:
+        patterns = {bits for _, bits in next(iter(domains.values()))}
+    else:
+        patterns = {
+            a | b
+            for left, a in domains[39391]
+            for right, b in domains[39394]
+            if _coupled_operands(left, right)
+        }
+    return sum(1 << bits for bits in patterns)
 
 
 def _install_layout(
@@ -261,7 +362,7 @@ def _packed_program(table: str) -> str:
         (left, right)
         for left in coupled[24]
         for right in coupled[27]
-        if left.fixed[39391] == "<" or right.fixed[39394] not in "jv"
+        if _coupled_operands(left.fixed[39391], right.fixed[39394])
     )
     for col, words in columns.items():
         marker, labels, fixed = chosen[col]

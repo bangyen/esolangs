@@ -132,13 +132,15 @@ def main() -> int:
     """Recompute the masks from executable bytes and intersect every requested group."""
     layout = packed._decoder()
     rows = _rows_by_word(layout)
-    settings, choices = packed._settings()
-    lines = (
-        (packed._DATA / "packed-settings.txt").read_text(encoding="ascii").splitlines()
-    )
-    for (lookup, perm), line in zip(settings, lines, strict=True):
-        expected = tuple(int(token, 16) for token in line.split()[2:])
-        assert _masks(_domains(layout, rows, lookup, perm)) == expected
+    choices = [[0] * (1 << len(group)) for group in packed._ROWS]
+    for i, (lookup, perm) in enumerate(packed._layouts()):
+        masks = _masks(_domains(layout, rows, lookup, perm))
+        for group, (combined, mask) in enumerate(zip(choices, masks, strict=True)):
+            assert packed._group_mask(lookup, perm, group) == mask
+            for pattern, polarities in enumerate(
+                packed._group_choices(lookup, perm, group)
+            ):
+                combined[pattern] |= polarities << (8 * i)
 
     # The frontier keeps distinct intersections. An empty intersection witnesses
     # an uncovered assignment even when two requested prefixes share a mask.
