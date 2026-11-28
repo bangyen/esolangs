@@ -27,13 +27,22 @@ def _native(table: str, *, balanced: bool) -> int:
         image = balance(table, image)
     image = Raster.from_png(image.to_png())
     machine = _Machine(image, _ReadFirstIO("0" * n))
-    workspace = resource_bounds("Line")["workspace"].formula
+    bounds = resource_bounds("Line")
+    if balanced:
+        cap = 5 * n
+        tape = sum(max(1, cell.bit_length()) for cell in range(n))
+        workspace = (
+            2 * n
+            + 1
+            + (3 * n - 2).bit_length()
+            + (n - 1).bit_length()
+            + (2 * n - 1).bit_length()
+            + tape
+        )
+    else:
+        cap = int(bounds["execution"].formula(n, table))
+        workspace = bounds["workspace"].formula(n, table)
     maximum = 0
-    cap = (
-        5 * n
-        if balanced
-        else int(resource_bounds("Line")["execution"].formula(n, table))
-    )
     for row, expected in enumerate(table):
         machine.cursor = (0, 0, 0)
         machine.tape.clear()
@@ -43,7 +52,7 @@ def _native(table: str, *, balanced: bool) -> int:
         assert machine.io.getvalue() == expected
         assert machine.io.input_num() == 9
         assert steps <= cap
-        assert written.bits <= workspace(n, table)
+        assert written.bits <= workspace
         maximum = max(maximum, steps)
     return maximum
 

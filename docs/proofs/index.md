@@ -159,6 +159,33 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   also smaller. Exhaustion at arities one through three gives
   84, 586 and 1457 characters.
 
+- Line: <a id="line-workspace"></a> An inline tree over `m` kept inputs
+  has at most `2^(m+1)-1` stroke frames. It writes at most `n` bit
+  cells, with address widths summing to `n bl(n-1)-2^bl(n-1)+2`.
+  The pointer and input cursor reach `n-1` and `2n-1`. From six
+  inputs, a full tree uses at most two ops per stroke. Leaving out
+  `r` reads saves `r` frame-index bits. The longest drain uses at most
+  `r+4` ops, so its offset fits in `r+2` bits. Loaded trees through
+  five inputs use at most `3n-2` ops per stroke. Their two constant
+  routes fit the same bound from two inputs. Arity one through three
+  is exhaustive. The fold has at most three frames per table row,
+  two bit cells and a stroke offset bounded by `3n+3` commands, so
+  its peak is smaller from four inputs.
+
+  The full tree reaches each component bound on the all-ones input.
+  The finite witness corpus keeps the full layout through fourteen
+  inputs. From fifteen, let `B` be the least power of two at least
+  `n` and `K=T/(4B)`. Take `K` distinct `B`-row words encoding
+  `0..K-1`. Pair identical words in the first half, then pair every
+  word with its cyclic successor in the second. The encoding retains
+  all inputs. The first half owns all `K` arrivals, so the second
+  half's left joins have mutually overlapping spans. The fold has
+  width at least `16K-7` and height at least `2K` in layout units.
+  The full inline box has upper widths `W1=26, W2=32` and
+  `W(d+2)=2W(d)+2` by the alternating arm rotations. Its height
+  is at most `W(d-1)` from two inputs. The inline area is below
+  `240T`, while `K>=32B` makes the fold larger.
+
 The ledger records coverage of every `2**n`-bit table for every finite `n`.
 “Total” means mathematical coverage. Ignore explicit digit, instruction,
 line, tape, route-width, work and generation-time guards when lifting them
@@ -514,7 +541,7 @@ for the level counts. `tests/proofs/test_execution_formulas.py` and
 | INTERCAL | parameterized tree | equal-width inputs feed a reduced diagram; actual folded expressions and coupled selector/mask aliases are shared where shorter | linear: at most 24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4⌊(n+7)/5⌋+13 (n=1..5), F (n≥6) characters: F the all-named diagram | proved | linear: exact S commands. S counts statements including GIVE UP | linear: exact B+bl(S) bits. B counts the final write set and S counts statements |
 | Kiss | tree | a node is S over its two halves, which S reads a bit to choose; a node whose halves agree reads it through SS(SKK) | linear: worst 7T-5 characters: 5 a node, 2 a leaf | proved | poly n: worst 4n - 1 rewrites: four a skip level, then a read, the output and the halt | linear: worst 24T + 2bl(n) + 17 bits past n = 1: a root skip holds its half twice |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: worst max(T,3)(12n+32) (n=1..6), 3(11T+52n+3) (n≥7) cells; tree then lookup | proved | linear: worst C*(n+491+X) + (1-C)*(T+296n+682 + min(1,max(0,n-6))*(10T-240n-680)) steps seed 2. C constant, X +x. Other headings add at most 2 | linear: worst 8n+27 (n=5..6), 12T+n+7+2bl(n) (n≥7) bits |
-| Line | tree | small loaded trees and projected inline readers preserve totality and physical input order; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: at most pixels from n=6: Pareto boxes over projected input sets | proved | poly n: worst 5n (n=1..5), 3n+3 (n≥6) commands by default, with balanced layouts retaining the first bound | poly n: at most 2n+1+bl(3n-2)+bl(n-1)+bl(2n-1)+(n·bl(n-1)-2^bl(n-1)+2) bits from n=5 |
+| Line | tree | small loaded trees and projected inline readers preserve totality and physical input order; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: at most pixels from n=6: Pareto boxes over projected input sets | proved | poly n: worst 5n (n=1..5), 3n+3 (n≥6) commands by default, with balanced layouts retaining the first bound | poly n: worst 10 (n=1), 2n+1+bl(3n-2)+bl(n-1)+bl(2n-1)+(n*bl(n-1)-2^bl(n-1)+2) (n=2..5), 2n+3+bl(n-1)+bl(2n-1)+(n*bl(n-1)-2^bl(n-1)+2) (n≥6) bits bits by default ([proof](#line-workspace)) |
 | Malbolge | exception | positional two-answer cells through sixteen inputs; at seventeen, each 15-bit prefix has a three-answer word and one shared spill slot; finite source space excludes some eighteen-input tables ([construction](#malbolge-bound)) | linear: worst 13340 (n=1..11), 15260 (n=12..13), 21831 (n=14), 52480 (n=15), 59049 (n≥16) characters | proved | unmeasured: at most E+J commands. E is the executed main prefix and J bounds the remaining commands | poly n: at most B+E+10W+J*(1+10F)+49+bl(n) bits. W prefix writes, F marks a following stub |
 | moar cheese :3 | parameterized lookup | the queue holds pairs of answers; doubling calls count dequeues while each input keeps one half, then the last bit decodes the remaining pair; a symmetric table drops one popcount entry per 1 | linear: worst 2T+20n+104 characters, n=3..10; at most at n=1, 2 | proved | linear: worst 12 (n=1), 2n^2+11n+17 (n=2..3), 3T+13n-4 (n≥4) commands | linear: at most 8max(T/2+1,n+3)+(n+7)(8+bl(n+20))+(n+3)(bl(n+20)+3)+bl(max(T/2+6n+4,4n+10)) bits |
 | Modulous | linear lookup | pair literal for asymmetric inputs; O(n)-source symmetric count reader retained; default exact maxima, split literals pay extra pushes/cursor bits | linear: worst 68 (n=1), 6T+28n+21 (n=2..4), 3T+28n+144 (n=5), T/2+48n+157+power2_digits_sum(n-1) (n≥6) characters | proved | linear: worst 4D+7J+P*(2n+3)+(1-D-J-P)*(T+3n+2+min(1,max(0,n-4))*(4-T/2)+min(1,max(0,n-5))*(2T+2n-37)+min(1,n-1)*max(0,S-1)) commands. D, J and P mark the direct, branch and discard readers. S counts literal pushes | linear: worst A*(9+bl(M))+P*(7+bl(2n+3)+bl(2n-1)+bl(n))+(1-A-P)*(13max(0,2-n)+min(1,n-1)*(6T+2-3T*min(1,max(0,n-4))+(n-1)*min(1,max(0,n-5))+bl(max(M,T+3n+2+min(1,max(0,n-4))*(12-T/2)+min(1,max(0,n-5))*(3n+3-T/2)))+bl(2n-1)+bl(n))) bits. A selects the one-input integer reader, P the discard reader and M counts tokens |
