@@ -5,6 +5,13 @@ def resource_tables(n: int) -> tuple[str, ...]:
     """Return additional cases in the order used for resource measurement."""
     width = 1 << n
     tables: tuple[str, ...] = ()
+    if n >= 5:
+        # The zero arms are emitted last. Length-12 runs at these two
+        # small arities cross a jump-width boundary without shortening the
+        # cursor width. Larger arities use a wholly constant final leaf.
+        leaf = 1 << (n - (n - 3) // 2)
+        running = {5: "0" * 12 + "0101", 6: "01" * 10 + "0" * 12}.get(n, "0" * leaf)
+        tables += (running[::-1] + "01" * ((width - leaf) // 2 - 1) + "00",)
     if n >= 8:
         # One leaf of 12- and 14-cell runs (12a + 14b = S, 3 a cell); the
         # others alternate, so every input stays essential.

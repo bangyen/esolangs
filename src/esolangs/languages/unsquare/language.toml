@@ -92,16 +92,44 @@ unit = "commands"
 description = { growth = "sqrt T", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: 12- or 14-cell loops, one half pushed and popped" }
 
 [resource_evidence.workspace]
-expression = "T/2^max(0,⌊(n-3)/2⌋)+12+(max(0,⌊(n-3)/2⌋)+1)bl(L)+bl(max(0,L-33))+2bl(n)"
-exact = false
-arities = [1, 2, 3, 6, 7]
+# Let d=floor((n-3)/2), B=2^(n-d), and b=n-d. From n=8 the
+# source and cursor fit in n+1 bits. A leaf and the first byte
+# read after it peak at B+6 stack bits. The accumulator reaches
+# b+1 only with an even run of all B entries.
+# Following the latest d branch openings gives leaf offset
+# (B+16)(2^d-1)-3d. At even n this is T-16-3d, so all d
+# openings use at most n bits. The leaf loop can gain another
+# bit only if its run is shorter than B, losing an accumulator bit.
+# At odd n the last branch opening and the leaf loop can exceed T.
+# The full last leaf gives equality. Projecting a bit loses a branch
+# opening or halves B, more than the possible jump-width gain.
+# At n=5 and 6 a 12-entry counted run keeps the cursor width and
+# crosses the next jump-width boundary. The four cursor/jump
+# width pairs at n=4..7 are (7,7), (8,11), (8,13), (9,23).
+# Reduced arities lose by the stack and the shorter source.
+# The first three arities are exhaustive.
+cases = [
+    { through = 1, expression = "25" },
+    { through = 2, expression = "31" },
+    { through = 3, expression = "37" },
+    { through = 4, expression = "48" },
+    { through = 5, expression = "53" },
+    { through = 6, expression = "71" },
+    { through = 7, expression = "82" },
+    { expression = "2^(n-floor((n-3)/2))+n-floor((n-3)/2)+8+(floor((n-3)/2)+2)n+2(n%2)+2bl(n)" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one half's cells on the stack" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
+# Let d be the branch depth. A projected input can add at most
+# 2*2^d characters, which the loss of table entries already pays.
+# Parity retains every input and has no compressible runs.
 expression = "T+T/2^max(0,⌊(n-3)/2⌋)+16·2^max(0,⌊(n-3)/2⌋)+10(n-max(0,⌊(n-3)/2⌋))+10"
-exact = [2, 3, 4, 5, 6, 7, 8, 9]
+exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 first = 1
 unit = "characters"
