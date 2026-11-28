@@ -55,8 +55,11 @@ def _glyph_domains(
     """Pick the legal native glyph for each available binary label."""
     hubs = decoder.hubs
     output_hubs = set(_HUBS[0] + _HUBS[1])
+    # Both output lanes are synthesized over the decoder's no-op prefix seed.
     lookup_operands = {
-        address for address in _LOOKUP if hubs[decoder.source[address]] in output_hubs
+        address
+        for address in _LOOKUP
+        if address % 3 != 1 or hubs[decoder.source[address]] in output_hubs
     }
     mutable_reads = lookup_operands | {51031 + 3 * col for col in decoder.columns}
     operands = {

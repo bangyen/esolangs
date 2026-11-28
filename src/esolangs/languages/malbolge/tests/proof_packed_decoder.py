@@ -1,4 +1,4 @@
-"""Check storage independence and the complete 17-input selector cover."""
+"""Check packed storage independence and certify selector coverage."""
 
 from __future__ import annotations
 
@@ -7,11 +7,17 @@ from itertools import product
 
 from esolangs.languages.malbolge.generator import packed
 from esolangs.languages.malbolge.generator.isa import _ACTIVE, _WORDS, _char_for
+from esolangs.languages.malbolge.generator.lookup_diagram import ALL_PHASES, Diagram
+from esolangs.languages.malbolge.generator.lookup_projection import (
+    _WITNESS_LIMIT,
+    project,
+    select_bounded,
+)
+from esolangs.languages.malbolge.generator.lookup_request import selector_axes
 from esolangs.languages.malbolge.interpreter import _XLAT2
 
-# Full reconstruction took 2.1 s on the reference machine.
 BAND = "by-hand"
-COST = 3.5
+COST = 8.0
 
 
 def _rows_by_word(decoder: packed._Decoder) -> dict[int, list[tuple[int, int]]]:
@@ -128,32 +134,71 @@ def _masks(domains: dict[int, list[_Choice]]) -> tuple[int, ...]:
     return tuple(masks[g] for g in packed._ROWS)
 
 
-def main() -> int:
-    """Recompute the masks from executable bytes and intersect every requested group."""
-    layout = packed._decoder()
-    rows = _rows_by_word(layout)
-    choices = [[0] * (1 << len(group)) for group in packed._ROWS]
-    for i, (lookup, perm) in enumerate(packed._layouts()):
-        masks = _masks(_domains(layout, rows, lookup, perm))
-        for group, (combined, mask) in enumerate(zip(choices, masks, strict=True)):
-            assert packed._group_mask(lookup, perm, group) == mask
-            for pattern, polarities in enumerate(
-                packed._group_choices(lookup, perm, group)
-            ):
-                combined[pattern] |= polarities << (8 * i)
-    assert packed._selector_masks() == tuple(map(tuple, choices))
+def _certify(physical: int, width: int) -> int:
+    """Return its exact output mask and check the uniform witness allocation bound."""
+    bound = ALL_PHASES + 1
 
-    # The frontier keeps distinct intersections. An empty intersection witnesses
-    # an uncovered assignment even when two requested prefixes share a mask.
-    frontier = {-1}
-    for patterns in sorted(choices, key=len, reverse=True):
-        frontier = {mask & local for mask in frontier for local in patterns}
-        assert 0 not in frontier
-    width = sum(map(len, packed._ROWS))
-    print(
-        f"Malbolge: {1 << 17:,} distinct slots, "
-        f"all {1 << width:,} selector assignments covered"
+    def account(arena: Diagram, root: int, _variable: int, colors: int) -> None:
+        nonlocal bound
+        bound += arena.color_nodes(root, colors)
+
+    arena, root = project(physical, account)
+    assert bound <= _WITNESS_LIMIT, (physical, bound)
+    return arena.truth_mask(root, width)
+
+
+def _flip_axes(mask: int, changed: int, full: int) -> int:
+    """XOR selected output axes by swapping the corresponding bitset halves."""
+    while changed:
+        bit = changed & -changed
+        stride = 1 << (bit.bit_length() - 1)
+        low = full // ((1 << stride) + 1)
+        mask = ((mask & low) << stride) | ((mask & (full ^ low)) >> stride)
+        changed ^= bit
+    return mask
+
+
+def check_cover() -> None:
+    """Prove selector totality and bound the allocation for every witness."""
+    groups = packed._selector_groups()
+    width, pin, axes = selector_axes(groups)
+    full = (1 << (1 << width)) - 1
+    physical = tuple(_certify(answer, width) for answer in range(1 << len(pin)))
+    flips = tuple(
+        sum(
+            1 << axis
+            for word in axes.values()
+            for slot, axis in word.items()
+            if phase >> slot & 1
+        )
+        for phase in range(7)
     )
+    for logical in range(1 << len(pin)):
+        covered = 0
+        for phase, flip in enumerate(flips):
+            if covered != full:
+                covered |= _flip_axes(physical[logical ^ phase], flip, full)
+        assert covered == full, logical
+
+    print(f"Malbolge: all {1 << (width + len(pin)):,} selector assignments covered")
+
+
+def main() -> int:
+    """Verify slot independence and one reconstructed lookup in the proof band."""
+    decoder = packed._decoder()
+    rows = _rows_by_word(decoder)
+    groups = packed._selector_groups()
+    # Evaluate the emitted layout independently of the projected factors.
+    lookup, phase = select_bounded((0,) * len(groups))
+    masks = _masks(_domains(decoder, rows, lookup, (0, 1, 2)))
+    for group, mask in zip(groups, masks, strict=True):
+        bits = sum(
+            (phase >> slot & 1) << row
+            for entries in group.values()
+            for slot, row in entries
+        )
+        assert mask >> bits & 1
+    print(f"Malbolge: {1 << 17:,} distinct slots and a valid reconstructed lookup")
     return 0
 
 

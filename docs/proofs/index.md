@@ -27,17 +27,18 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   line before the remaining paths and cycles are oriented. The
   131,072 (word, slot) pairs are distinct across 44,224 words.
   Each column marker maps the eight legal source bytes to eight output
-  triples. Words shared with navigation have fewer legal bytes. Four
-  printer orders fit their instruction frames. A lookup/order pair is
-  eligible when each navigation word outside the selector groups can
-  encode all its occupied bits independently. The generator derives one
-  compatibility mask per pattern in each of seven
-  answer groups. It intersects the requested masks and decodes the first set
-  bit into the lookup, printer order and polarity. Inverse encodings map
-  requested answers directly to legal operands. The
-  [executable certificate](../../src/esolangs/languages/malbolge/tests/proof_packed_decoder.py)
-  reconstructs the masks from the instruction bytes and checks all
-  8,388,608 assignments. Words 39,391 and 39,394 use the joint rule
+  triples. Words shared with navigation have fewer legal bytes. The
+  construction fills the decoder's two no-op lookup lanes from relations for
+  ordinary permutations and independent navigation patterns. It projects
+  color variables in dependency order, retaining the compatible printer
+  polarities at each terminal. Inverse encodings map requested answers
+  directly to legal operands. The
+  [coverage certificate](../../src/esolangs/languages/malbolge/tests/proof_packed_decoder.py)
+  projects eight physical right-operand slices. Printer polarity XORs
+  the output axes. Their unions cover all 8,388,608 selector assignments.
+  Each slice uses at most 400,000 projection nodes and 2,000,000
+  witness nodes. Back substitution retains each requested output cofactor
+  before the projection discards its bucket. Words 39,391 and 39,394 use the joint rule
   that a left `<` permits any right operand, while other left operands
   require a right operand other than `j` or `v`.
   Word 59,036 excludes `j` because pairing it with byte 67 at 29,530
@@ -46,9 +47,9 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   checks 3,945,867 payload and marker combinations. Its acyclic instruction
   graph bounds every packed run by 9,101 commands. Replay with
   `uv run python -m esolangs.languages.malbolge.tests.verify_decoder`.
-  Append `--domains` to replay both allowed glyphs at each lookup tap
-  for order `012`, with all three guard paths checked for rejoining.
-  This replay derives its glyphs and prefix seed from the decoder.
+  The native replay derives both allowed glyphs at each lookup tap and
+  the prefix seed from the decoder. It checks printer order `012` and
+  all three guard paths for rejoining.
 
   Generation takes `O(T)` RAM work for `T` truth-table rows under the
   fixed 59,049-cell machine. Validation and constant detection scan the
@@ -56,7 +57,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   the essential-input analysis is linear and dropping one input copies
   alternate blocks once. The weight-class scan compares fixed-size blocks.
   The packed route reads four answers per prefix and writes each occupied
-  payload word once. Its selector masks and local operand choices have
+  payload word once. Its lookup relations and local operand choices have
   fixed machine dimensions and do not rescan the truth table. Layout
   setup and rendering add a machine-bounded cost, including on a cold
   build. The bound uses the fixed machine and word size.

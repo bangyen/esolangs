@@ -2,8 +2,8 @@
 
 Each 15-bit prefix owns a three-answer word. Its fourth answer occupies
 one of three slots in a shared spill word. A marker per address column
-selects a permutation of the eight legal source instructions. A finite
-cover of SAT-calibrated lookups handles the words used during navigation.
+selects a permutation of the eight legal source instructions. The lookup
+and printer polarity are derived from the requested navigation answers.
 """
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator
 from functools import cache
-from itertools import permutations
 from pathlib import Path
 from typing import NamedTuple
 
@@ -32,7 +31,6 @@ _ROWS = (
     (89100, 89101, 89102),
     (7183, 39951),
 )
-_SPILL_SLOTS = {7183: 2, 39951: 1}
 _LEFT_OPERAND, _RIGHT_OPERAND = 39391, 39394
 # All other occupied words can take any of the eight source instructions.
 _SOURCE_OPS = {
@@ -82,8 +80,6 @@ class _Encodings(NamedTuple):
 
 type _SelectorGroup = dict[int, list[tuple[int, int]]]
 
-type _Layout = tuple[bytes, tuple[int, ...]]
-
 
 def _at(machine: _Machine, target: int) -> None:
     for _ in range(15000):
@@ -132,100 +128,15 @@ def _decoder() -> _Decoder:
     return _Decoder(bytes(source), hubs, tuple(locations), bytes(used), dict(columns))
 
 
-def _printer_orders() -> Iterator[tuple[int, ...]]:
-    """Place both polarities of each printer inside its frame."""
-    for order in permutations(range(3)):
-        if all(
-            start
-            + _TAPS[channel]
-            - _TAPS[slot]
-            + 7
-            + max(map(len, _SHORT if channel == 0 else _LONG))
-            <= limit
-            for slot, (start, channel, limit) in enumerate(
-                zip(_PRINTERS, order, (4538, 4698, 4619), strict=True)
-            )
-        ):
-            yield order
-
-
-@cache
-def _layouts() -> tuple[_Layout, ...]:
-    """Derive the compatible printer placements for each calibrated lookup."""
-    decoder = _decoder()
-    frame = decoder.source[5213:5548]
-    lane_width = len(frame[::3])
-    orders = tuple(_printer_orders())
-    occupied = decoder.occupied
-    selected = {word for group in _selector_groups() for word in group}
-    independent = {
-        word: 1 << occupied[word].bit_count() for word in _SOURCE_OPS.keys() - selected
-    }
-    layouts = []
-    for lanes in (_DATA / "packed-lookups.txt").read_bytes().splitlines():
-        # Printer taps never use the middle lane. Restore its navigation bytes.
-        frame_lookup = bytearray(frame)
-        frame_lookup[::3] = lanes[:lane_width]
-        frame_lookup[1::3] = lanes[lane_width:]
-        lookup = bytes(frame_lookup)
-        for order in orders:
-            encodings = _operand_encodings(lookup, order)
-            if all(
-                len(encodings[w].by_answer) == width for w, width in independent.items()
-            ):
-                layouts.append((lookup, order))
-    return tuple(layouts)
-
-
-def _polarity_flips() -> tuple[tuple[int, ...], ...]:
-    """Project each printer polarity onto the selector row order."""
-    return tuple(
-        tuple(
-            sum(
-                ((polarity >> _SPILL_SLOTS.get(row, row % 4)) & 1) << j
-                for j, row in enumerate(group)
-            )
-            for polarity in range(8)
-        )
-        for group in _ROWS
-    )
-
-
-_POLARITY_FLIPS = _polarity_flips()
-
-
-def _group_choices(lookup: bytes, perm: tuple[int, ...], group: int) -> tuple[int, ...]:
-    """Index each local pattern by its compatible printer polarities."""
-    mask = _group_mask(lookup, perm, group)
-    flips = _POLARITY_FLIPS[group]
-    return tuple(
-        sum(1 << i for i, flip in enumerate(flips) if mask >> (pattern ^ flip) & 1)
-        for pattern in range(1 << len(_ROWS[group]))
-    )
-
-
-@cache
-def _selector_masks() -> tuple[tuple[int, ...], ...]:
-    """Transpose local compatibility into one bitset per answer pattern."""
-    masks = [[0] * (1 << len(rows)) for rows in _ROWS]
-    for i, (lookup, perm) in enumerate(_layouts()):
-        for group, patterns in enumerate(masks):
-            for pattern, polarities in enumerate(_group_choices(lookup, perm, group)):
-                patterns[pattern] |= polarities << (8 * i)
-    return tuple(map(tuple, masks))
-
-
 def _selection(table: str) -> tuple[bytes, tuple[int, ...], int]:
-    """Intersect the requested masks and decode their first set bit."""
-    compatible = -1
-    for rows, masks in zip(_ROWS, _selector_masks(), strict=True):
-        pattern = sum(int(table[row]) << j for j, row in enumerate(rows))
-        compatible &= masks[pattern]
-    if not compatible:
-        raise AssertionError("selector coverage is incomplete")
-    i, polarity = divmod((compatible & -compatible).bit_length() - 1, 8)
-    lookup, perm = _layouts()[i]
-    return lookup, perm, polarity
+    """Derive the lookup and shared polarity from the navigation answers."""
+    from .lookup_request import select  # The constructor shares decoder geometry.
+
+    request = tuple(
+        sum(int(table[row]) << bit for bit, row in enumerate(rows)) for rows in _ROWS
+    )
+    lookup, polarity = select(request)
+    return lookup, (0, 1, 2), polarity
 
 
 def _pattern(
@@ -344,34 +255,6 @@ def _selector_groups() -> tuple[_SelectorGroup, ...]:
     return tuple(groups)
 
 
-def _group_mask(lookup: bytes, perm: tuple[int, ...], group: int) -> int:
-    """Read the compatibility mask from the lookup and legal operands."""
-    encodings = _operand_encodings(lookup, perm)
-    slots = _selector_groups()[group]
-
-    def patterns(word: int, answers: dict[int, _Operand]) -> set[int]:
-        return {
-            sum((bits >> slot & 1) << bit for slot, bit in slots[word])
-            for bits in answers
-        }
-
-    if len(slots) == 1:
-        (word,) = slots
-        return sum(1 << bits for bits in patterns(word, encodings[word].by_answer))
-    left, right = encodings[_LEFT_OPERAND], encodings[_RIGHT_OPERAND]
-    # The right word supplies the low three bits. A left '<' allows any
-    # right operand; all other left operands require the restricted right.
-    any_right = sum(1 << bits for bits in patterns(_RIGHT_OPERAND, right.by_answer))
-    safe_right = sum(1 << bits for bits in patterns(_RIGHT_OPERAND, right.restricted))
-    open_left = sum(
-        any_right << bits for bits in patterns(_LEFT_OPERAND, left.restricted)
-    )
-    other_left = sum(
-        safe_right << bits for bits in patterns(_LEFT_OPERAND, left.by_answer)
-    )
-    return open_left | other_left
-
-
 def _coupled_encodings(
     encodings: dict[int, _Encodings], answers: bytearray
 ) -> tuple[_Operand, _Operand]:
@@ -388,7 +271,7 @@ def _coupled_encodings(
 def _install_layout(
     source: bytearray, lookup: bytes, perm: tuple[int, ...], polarity: int
 ) -> None:
-    """Place the calibrated lookup and the three straight-line printers."""
+    """Place the derived lookup and the three straight-line printers."""
     source[5213:5548] = lookup
     for slot, virt in enumerate(perm):
         old = _PRINTERS[slot]

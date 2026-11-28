@@ -129,7 +129,7 @@ def _restrict_navigation(options: _Options, banks: set[int]) -> None:
     reserved = {29528, 41391}
     pins = {}
     # 29528 supplies the two selector slots. At 41391 only the middle
-    # bit can vary independently in every calibrated lookup.
+    # bit can vary independently when constructing the lookup.
     for word, bits in ((29528, (1, 2)), (41391, (1,))):
         for bit in bits:
             slot = (word % _BANK, bit)
