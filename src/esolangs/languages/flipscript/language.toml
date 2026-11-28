@@ -59,6 +59,7 @@ notes = "Shipped (shared diagram, downward computed jumps): 6,547 chars; the scr
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.flipscript.generator:flipscript_request"
+witnesses = "esolangs.languages.flipscript.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # start, two lines an input, then output and stop.
@@ -83,12 +84,18 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 # At most sum_k min(2^k, 2^2^(n-k)) nodes, O(T/n), of 25 chars plus two
 # offsets of O(n) digits; that count stays under 17T + 64 for n <= 63 and
 # its ratio to T only falls after.  Random tables measure 3.6T at n = 18.
-expression = "17T + 64"
-exact = false
+cases = [
+    { through = 1, expression = "64" },
+    { through = 2, expression = "114" },
+    { through = 3, expression = "197" },
+    { through = 4, expression = "303" },
+    { expression = "17T + 64" },
+]
+exact = [1, 2, 3, 4]
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}, exact through n=4" }
 
 [generator_sizes]
 "00000001" = { commands_by_row = { "0" = 7, "1" = 7, "2" = 7, "3" = 7, "4" = 8, "5" = 8, "6" = 9, "7" = 8 }, source_units = 144 }

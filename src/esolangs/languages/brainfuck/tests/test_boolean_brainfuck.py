@@ -9,6 +9,7 @@ from esolangs.debugger import make_vm
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
+from tests.proofs.test_scaling_formulas import check_exhaustive_four_input_size
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
@@ -267,3 +268,7 @@ def _check_shared_body_must_be_strictly_shorter(monkeypatch) -> None:
             machine = _Machine(source, io)
             count_steps(machine, 69 * 2 + 44)
             assert io.getvalue() == table[row]
+
+
+def test_exhaustive_four_input_size() -> None:
+    check_exhaustive_four_input_size("brainfuck")

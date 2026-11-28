@@ -21,6 +21,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner
 from tests.generators.sample_tables import five_input_sample
+from tests.proofs.test_scaling_formulas import check_exhaustive_four_input_size
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
@@ -464,3 +465,7 @@ def _check_arithmetic_twins() -> None:
     while not machine.halted:
         machine.step()
     assert io.getvalue() == "2\n"
+
+
+def test_exhaustive_four_input_size() -> None:
+    check_exhaustive_four_input_size("Algebraic Programming Language")

@@ -14,9 +14,9 @@ Both that shared form and the all-inline tree are priced arithmetically and
 only the shorter is built, so generation stays O(T).
 
 Size:
-    O(T): at most 5T + 23 chars, the inline tree's bound (exact max
-    n = 2..4): 3T leaf + 2(T - 1) branch chars + the 15-char ``Q`` header;
-    a fold saves at least a 3-char leaf and the ``I`` header costs 13.
+    O(T): at most 5T + 23 chars from the inline tree: 3T for leaves,
+    2(T - 1) for branches and 15 for the ``Q`` header.
+    A fold saves at least a 3-char leaf and the ``I`` header costs 13.
     n=4 parity: 69 chars, n=10 random 1847: 1,218 chars.  Constant
     tables: 2n + 16.
 

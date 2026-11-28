@@ -132,12 +132,18 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 # and never counted.  A recurrence over (level, flag the child leaves the
 # pointer on) matches this closed form n = 1..16 and the plain tree exactly
 # on every table n <= 4 before the zero-arm and redundant-move cleanup.
-expression = "35T/2 + 55n + 25"
-exact = false
+cases = [
+    { through = 1, expression = "109" },
+    { through = 2, expression = "186" },
+    { through = 3, expression = "286" },
+    { through = 4, expression = "434" },
+    { expression = "35T/2 + 55n + 25" },
+]
+exact = [1, 2, 3, 4]
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}, exact through n=4" }
 
 [semantic_evidence]
 version = 1

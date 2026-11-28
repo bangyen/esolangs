@@ -11,6 +11,7 @@ from esolangs.exceptions import (
 )
 from esolangs.languages.flipscript.interpreter import _Machine, run
 from esolangs.runtime.io import ScriptedIO
+from tests.proofs.test_scaling_formulas import check_exhaustive_four_input_size
 
 _PARITY = (
     "start(0)\nnum INPUT = input\nnum ISEVEN = INPUT%2\nup stop\n"
@@ -142,3 +143,7 @@ def test_rejected_assignment_retries_keep_the_first_read() -> None:
 
 def test_a_jump_past_the_file_halts() -> None:
     assert _out('start(0)\njump 65536\noutput("x")') == ""
+
+
+def test_exhaustive_four_input_size() -> None:
+    check_exhaustive_four_input_size("Flipscript")

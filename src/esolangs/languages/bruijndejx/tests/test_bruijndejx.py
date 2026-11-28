@@ -5,6 +5,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.languages.bruijndejx.interpreter import run
 from esolangs.runtime.io import ScriptedIO
+from tests.proofs.test_scaling_formulas import check_exhaustive_four_input_size
 from tests.support.execution import assert_digit_cap_independent
 
 
@@ -42,3 +43,7 @@ def test_the_pages_examples_and_binding_rules() -> None:
             _out(code)
     with pytest.raises(HaltError, match="argument"):
         _out("* *.")
+
+
+def test_exhaustive_four_input_size() -> None:
+    check_exhaustive_four_input_size("Bruijndejx")

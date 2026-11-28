@@ -80,7 +80,8 @@ def test_every_formula_cell_is_checked() -> None:
 def _check_formula_reference(data: dict) -> None:
     data = copy.deepcopy(data)
     scaling = data["scaling"]
-    del scaling["expression"]
+    scaling.pop("expression", None)
+    scaling.pop("cases", None)
     scaling["formula_ref"] = "execution"
     data["execution"]["expression"] = "11n"
     bounds = parse_bounds(REFERENCE, data)

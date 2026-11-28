@@ -86,6 +86,7 @@ construction = "esolangs.languages.algebraic_programming_language.generator:alge
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.algebraic_programming_language.generator:algebraic_programming_language_request"
+witnesses = "esolangs.languages.algebraic_programming_language.tests.resource_witnesses:resource_tables"
 corpus = "esolangs.languages.algebraic_programming_language.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
@@ -113,17 +114,20 @@ description = { growth = "poly n", claim = "at most", template = "{claim} {formu
 #
 # A node costs 18 and its halves; the worst class pairs with its own twin,
 # one ``!`` more.  Past 14 a per-level count exceeds it, so the inline
-# tree's 21T/2 + 4n + 6 stands; n = 1 reaches 31.
+# tree's 21T/2 + 4n + 6 stands.
 cases = [
-    { through = 1, expression = "21T/2+4n+6" },
+    { through = 1, expression = "21" },
+    { through = 2, expression = "29" },
+    { through = 3, expression = "44" },
+    { through = 4, expression = "80" },
     { through = 14, expression = "10T+4n+6" },
     { expression = "21T/2+4n+6" },
 ]
-exact = false
-arities = [2, 3, 4, 5, 6, 8]
-first = 2
+exact = [1, 2, 3, 4]
+arities = [1, 2, 3, 4, 5, 6, 8]
+first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}, exact through n=4" }
 
 [semantic_evidence]
 version = 1

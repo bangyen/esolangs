@@ -17,6 +17,7 @@ from esolangs.registry import Catalog
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
 from tests.generators.sample_tables import five_input_sample
+from tests.proofs.test_scaling_formulas import check_exhaustive_four_input_size
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import measure_run, run_filled, verify_generated
 from tests.support.witness_tables import witnesses
@@ -296,3 +297,7 @@ def _check_terminal_drops() -> None:
     table = "0" * 127 + "1"
     mutant = "1" + table[1:]
     assert not _terminal_family(mutant, 7)
+
+
+def test_exhaustive_four_input_size() -> None:
+    check_exhaustive_four_input_size("Underload")

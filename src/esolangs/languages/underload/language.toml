@@ -97,22 +97,21 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: spliced program, stack" }
 
 [resource_evidence.scaling]
-# F: 153 at n = 4, then 5n + 31T/4 - 3: 7 a node over 5-input halves of <= 241.
-#
-# The plain composition is always a candidate, so a node is at most 7 plus
-# its halves.  241 is the worst 5-input subtree: every ordered pair of
-# 4-input halves whose plain sum passes 234 was built (6.2M); 161 is the
-# exhaustive n = 4 worst.
+# The 241-character five-input subtree ceiling comes from
+# 6,204,452 ordered half pairs (6990fae17).
+# Larger compositions cost at most seven plus their two halves.
 cases = [
-    { through = 3, expression = "5n+⌊31T/4⌋-3" },
+    { through = 1, expression = "22" },
+    { through = 2, expression = "47" },
+    { through = 3, expression = "88" },
     { through = 4, expression = "153" },
     { expression = "5n+31T/4-3" },
 ]
-exact = false
-arities = [4, 5, 6, 7]
-first = 4
+exact = [1, 2, 3, 4, 5]
+arities = [1, 2, 3, 4, 5, 6, 7]
+first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}: 241 a five-input half" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}, exact through n=5" }
 
 [semantic_evidence]
 version = 1
