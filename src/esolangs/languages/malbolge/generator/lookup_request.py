@@ -40,6 +40,7 @@ from .packed_layout import (
 
 _OUTPUT = 4
 _PAIR_BRANCH = (5, 0)
+_PAIR_GUARDS = {_LEFT_OPERAND: (_SAFE_LEFT_OP, 0), _RIGHT_OPERAND: (_SAFE_RIGHT_OPS, 1)}
 _PHASE_BLOCKS = (3, 12, 48, 64)
 _NODE_LIMIT = 400_000
 type RequestWord = tuple[int, int, str]
@@ -133,13 +134,8 @@ def prepare(physical: int | None = None) -> Prepared:
     targets: dict[int, frozenset[Variable]] = {}
     for word in _SOURCE_OPS:
         occupied = decoder.occupied[word]
-        allowed = (
-            (_ACTIVE, _SAFE_LEFT_OP)
-            if word == _LEFT_OPERAND
-            else (_ACTIVE, _SAFE_RIGHT_OPS)
-            if word == _RIGHT_OPERAND
-            else (_ACTIVE,)
-        )
+        guard = _PAIR_GUARDS.get(word)
+        allowed = (_ACTIVE,) if guard is None else (_ACTIVE, guard[0])
         for answer in range(8):
             if answer & occupied != answer:
                 continue
@@ -164,7 +160,7 @@ def prepare(physical: int | None = None) -> Prepared:
                 if owner == word
             )
         )
-        if word in (_LEFT_OPERAND, _RIGHT_OPERAND):
+        if word in _PAIR_GUARDS:
             selector_scope |= {_PAIR_BRANCH}
         if physical is not None:
             selector_scope |= {
@@ -232,11 +228,10 @@ def prepare(physical: int | None = None) -> Prepared:
 def contact_relation(arena: Diagram, prepared: Prepared, word: int, answer: int) -> int:
     """Combine unrestricted contacts with the selected side of the joint guard."""
     term = prepared.patterns.get((word, answer, _ACTIVE), 0)
-    if word in (_LEFT_OPERAND, _RIGHT_OPERAND):
-        restricted = _SAFE_LEFT_OP if word == _LEFT_OPERAND else _SAFE_RIGHT_OPS
-        branch = arena.literal(
-            prepared.position[_PAIR_BRANCH], int(word == _RIGHT_OPERAND)
-        )
+    guard = _PAIR_GUARDS.get(word)
+    if guard is not None:
+        restricted, branch_bit = guard
+        branch = arena.literal(prepared.position[_PAIR_BRANCH], branch_bit)
         term = arena.combine(
             arena.combine(term, branch),
             prepared.patterns[word, answer, restricted],

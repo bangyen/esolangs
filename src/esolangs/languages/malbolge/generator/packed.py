@@ -19,7 +19,7 @@ from esolangs.languages.malbolge.generator.isa import (
     _WORDS,
     _char_for,
 )
-from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine
+from esolangs.languages.malbolge.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 
 from .decoder_routes import _write_decoder_routes
@@ -37,6 +37,7 @@ from .packed_layout import (
     _column_marker,
     _high_cell,
     _lookup_base,
+    _lookup_glyph,
     _word_column,
 )
 from .spill import _spill_locations
@@ -385,9 +386,7 @@ def _operand_patterns(
 ) -> Iterator[tuple[str, int]]:
     """Yield the patterns of legal operands at a navigation word."""
     for op in _SOURCE_OPS[word]:
-        raw = _char_for(op, word)
-        if 29524 <= word <= 29527:
-            raw = ord(_XLAT2[raw - 33])
+        raw = _lookup_glyph(word, _char_for(op, word))
         bits = _pattern(source, hubs, word, raw, marker, used)
         if bits is not None:
             yield op, bits

@@ -15,6 +15,7 @@ from .packed_layout import (
     _ONE_HUB,
     _SHORT_HUB,
     _column_marker,
+    _lookup_glyph,
 )
 
 if TYPE_CHECKING:
@@ -71,10 +72,8 @@ def _glyph_domains(
     mutable_reads = lookup_operands | {_column_marker(col) for col in decoder.columns}
     operands = {
         address: tuple(
-            ord(_XLAT2[raw - 33]) if 29524 <= address <= 29527 else raw
-            for raw in (
-                _char_for(op, address) for op in source_ops.get(address, _ACTIVE)
-            )
+            _lookup_glyph(address, _char_for(op, address))
+            for op in source_ops.get(address, _ACTIVE)
         )
         for address, used in enumerate(decoder.occupied)
         if used

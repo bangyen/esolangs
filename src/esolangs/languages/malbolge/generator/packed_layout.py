@@ -1,5 +1,7 @@
 """Shared addresses of the packed decoder's code and operand regions."""
 
+from esolangs.languages.malbolge.interpreter import _XLAT2
+
 from .isa import _char_for
 
 # Spill navigation and column dispatch.
@@ -38,6 +40,11 @@ def _column_marker(column: int) -> int:
 def _high_cell(word: int) -> int:
     """Return the high lookup operand for the payload word's band."""
     return (word - 1) // _COLUMN_COUNT * _COLUMN_COUNT + _HIGH_OPERAND_OFFSET
+
+
+def _lookup_glyph(word: int, raw: int) -> int:
+    """Return the operand glyph after any encryption in the decoder prefix."""
+    return ord(_XLAT2[raw - 33]) if 29524 <= word <= 29527 else raw
 
 
 def _lookup_base(word: int, raw: int, marker: int) -> int:

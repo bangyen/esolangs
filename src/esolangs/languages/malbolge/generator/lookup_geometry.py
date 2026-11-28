@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING, NamedTuple
 from esolangs.languages.malbolge.generator.isa import _ACTIVE, _char_for
 from esolangs.languages.malbolge.generator.lookup_domains import _glyph_domains
 from esolangs.languages.malbolge.generator.packed import _SOURCE_OPS, _decoder
-from esolangs.languages.malbolge.interpreter import _XLAT2
 
 from .packed_layout import (
     _SHORT_HUB,
     _TAPS,
     _column_marker,
     _lookup_base,
+    _lookup_glyph,
     _word_column,
 )
 
@@ -113,9 +113,7 @@ def geometry() -> Geometry:
             ):
                 continue
             for op in allowed:
-                raw = _char_for(op, word)
-                if 29524 <= word <= 29527:
-                    raw = ord(_XLAT2[raw - 33])
+                raw = _lookup_glyph(word, _char_for(op, word))
                 reads = tuple(_tap(word, raw, marker, i) for i in slots)
                 if all(glyphs[address] for address in reads):
                     contacts.append(Contact(role, op, reads))

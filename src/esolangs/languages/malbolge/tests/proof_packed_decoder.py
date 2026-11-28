@@ -14,6 +14,7 @@ from esolangs.languages.malbolge.generator.lookup_projection import (
     select_bounded,
 )
 from esolangs.languages.malbolge.generator.lookup_request import (
+    prepare,
     selector_axes,
     unpack_request,
 )
@@ -151,7 +152,7 @@ def _certify(physical: int, width: int) -> int:
         nonlocal bound
         bound += arena.color_nodes(root, colors)
 
-    arena, root = project(physical, account)
+    arena, root = project(prepare(physical), physical, account)
     assert bound <= _WITNESS_LIMIT, (physical, bound)
     return arena.truth_mask(root, width)
 

@@ -23,10 +23,9 @@ _WITNESS_LIMIT = 2_000_000
 
 
 def project(
-    physical: int, capture: Callable[[Diagram, int, int, int], None]
+    plan: Prepared, physical: int, capture: Callable[[Diagram, int, int, int], None]
 ) -> tuple[Diagram, int]:
     """Eliminate colors while reporting the buckets before projection."""
-    plan = prepare(physical)
     width, _, axes = selector_axes()
     colors = len(plan.order) - width
     arena = Diagram(len(plan.order), _NODE_LIMIT)
@@ -97,7 +96,7 @@ def _recover(plan: Prepared, physical: int, output: int, colors: int) -> bytes |
     def retain(arena: Diagram, root: int, variable: int, colors: int) -> None:
         history.append((variable, arena.cofactor(root, colors, output, target)))
 
-    arena, root = project(physical, retain)
+    arena, root = project(plan, physical, retain)
     if not arena.evaluate(root, output):
         return None
     assignment = 0
