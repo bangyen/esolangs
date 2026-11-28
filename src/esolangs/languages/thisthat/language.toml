@@ -95,7 +95,7 @@ exact = true
 arities = [3, 4]
 first = 3
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: C marks the constant layout" }
+description = { growth = "sqrt T", claim = "worst", template = "{claim} {formula} {unit}: C marks the constant layout" }
 
 [resource_evidence.workspace]
 # The tape widths sum to n·bl(n-1)-2^bl(n-1)+2: zero costs one bit.

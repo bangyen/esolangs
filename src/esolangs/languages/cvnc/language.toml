@@ -93,7 +93,7 @@ exact = [1, 2, 3]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: exact through n=3" }
+description = { growth = "sqrt T", claim = "at most", template = "{claim} {formula} {unit}: exact through n=3" }
 
 [resource_evidence.workspace]
 # Nonconstants build the terminal syllable and write three function tokens.

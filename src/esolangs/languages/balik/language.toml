@@ -77,7 +77,7 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
+description = { growth = "sqrt T", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
 # A projected reader can add a column bit only when its box loses a row bit.

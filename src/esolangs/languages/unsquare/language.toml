@@ -89,7 +89,7 @@ exact = true
 arities = [8, 9]
 first = 8
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: 12- or 14-cell loops, one half pushed and popped" }
+description = { growth = "sqrt T", claim = "worst", template = "{claim} {formula} {unit} past n={previous}: 12- or 14-cell loops, one half pushed and popped" }
 
 [resource_evidence.workspace]
 expression = "T/2^max(0,⌊(n-3)/2⌋)+12+(max(0,⌊(n-3)/2⌋)+1)bl(L)+bl(max(0,L-33))+2bl(n)"

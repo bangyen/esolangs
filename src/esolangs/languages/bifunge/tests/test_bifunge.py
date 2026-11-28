@@ -1,5 +1,7 @@
 """Bifunge raw playfields, byte I/O and Boolean execution."""
 
+from math import sqrt
+
 import pytest
 
 import esolangs
@@ -7,6 +9,7 @@ from esolangs.exceptions import ExecutionBudgetError
 from esolangs.languages.bifunge._commands import Command
 from esolangs.languages.bifunge.interpreter import _Machine, _parse, run
 from esolangs.runtime.io import ScriptedIO
+from tests.proofs._locality import worst_commands
 from tests.support.prepared_support import check_split_factory_rejections
 from tests.support.witness_tables import SMALL_TABLES, row_bits, witnesses
 
@@ -89,3 +92,10 @@ def test_split_factory_rejects_raw_source_and_options():
     from esolangs.languages.bifunge.interpreter import prepare_machine
 
     check_split_factory_rejections(prepare_machine, ["@"])
+
+
+@pytest.mark.parametrize("n", [4, 8])
+def test_worst_sampled_table_meets_the_locality_floor(n: int) -> None:
+    """Some table needs it: one cell a command from the corner, sixteen commands."""
+    t = 1 << n
+    assert worst_commands("Bifunge", n) >= sqrt(t / 2) - 2

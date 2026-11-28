@@ -13,6 +13,7 @@ from esolangs.languages.bitwise_cyclic_tag.interpreter import (
 from esolangs.languages.bitwise_cyclic_tag.interpreter import run as run_bct
 from esolangs.runtime.io import ScriptedIO
 from tests.generators.reader_support import _TABLES
+from tests.proofs._locality import worst_commands
 from tests.support.evaluation import _evaluate
 from tests.support.witness_tables import parity as _parity
 from tests.support.witness_tables import row_bits as _bits
@@ -132,3 +133,10 @@ def _check_constants() -> None:
                     assert io.getvalue() == bit
                     assert io.reads == 0
                     assert io.input_char() == ord("7")
+
+
+@pytest.mark.parametrize("n", [4, 8])
+def test_worst_sampled_table_meets_the_locality_floor(n: int) -> None:
+    """Some table needs it: each command reads at most three bits."""
+    t = 1 << n
+    assert worst_commands("Bitwise Cyclic Tag", n) >= t / 3

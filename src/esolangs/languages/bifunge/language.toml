@@ -55,7 +55,7 @@ exact = true
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "steps"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula}; the same distance to each leaf" }
+description = { growth = "sqrt T", claim = "worst", template = "{claim} {formula}; the same distance to each leaf" }
 
 [resource_evidence.workspace]
 # Coordinates and cursor, n+7 stack bits, two partial bytes, heading and halt flag.

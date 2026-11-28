@@ -67,7 +67,7 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one read and one computed jump a level" }
 
 [resource_evidence.workspace]
 # Every run reaches line R, reads n framed bits and writes only numeric X.

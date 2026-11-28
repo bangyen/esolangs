@@ -1,5 +1,6 @@
 """Tests for the Balik Boolean generator."""
 
+from math import sqrt
 from unittest.mock import patch
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 import esolangs
 from esolangs.exceptions import InputExhaustedError
 from esolangs.runtime.io import ScriptedIO
+from tests.proofs._locality import worst_commands
 from tests.support.event_io import ReadFirstIO
 from tests.support.generator_support import (
     assert_constant_output,
@@ -92,3 +94,10 @@ def _check_projection() -> None:
             machine.step()
             commands += 1
         assert commands == execution(n, code)
+
+
+@pytest.mark.parametrize("n", [4, 8])
+def test_worst_sampled_table_meets_the_locality_floor(n: int) -> None:
+    """Some table needs it: one cell a command from the corner, eight symbols."""
+    t = 1 << n
+    assert worst_commands("Balik", n) >= sqrt(2 * t / 3) - 2

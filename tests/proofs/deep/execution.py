@@ -42,6 +42,10 @@ POLY_GROWTH = 1.5
 
 STEP_GROWTH = 1.4
 
+#: Most per-added-input growth a ``sqrt T`` Execution cell may show: ``sqrt T``
+#: reads x1.41 and ``n sqrt T`` x1.59 at n=8, against ``T``'s x2.
+SQRT_GROWTH = 1.75
+
 #: Rungs needed after the last route change before a ratio means anything,
 #: and the window the slope is fitted over. Five, because route-count
 #: wobble has no single period: an alternating cycle can read 1.14x then
@@ -229,6 +233,8 @@ def _self_check() -> tuple[float, float, float]:
     assert linear <= MAX_GROWTH, f"linear control read x{linear}"
     assert linearithmic > MAX_GROWTH, f"T log T control read x{linearithmic}"
     assert quadratic > MAX_GROWTH, f"quadratic control read x{quadratic}"
+    root = _growth([(n, n * 2 ** (n / 2)) for n in window])
+    assert root <= SQRT_GROWTH < linear, f"n sqrt T control read x{root}"
     cubic = _step_growth([(n, n**3) for n in range(6, 13)])
     hidden = _step_growth([(n, 32768 + 2**n // 4) for n in range(6, 13)])
     assert cubic is not None
@@ -278,8 +284,11 @@ def main() -> int:
     poly = {
         row.generator for row in load_ledger().rows if row.execution_class == "poly n"
     }
-    assert not poly & set(exempt), (
-        f"exempt rows claim poly n: {sorted(poly & set(exempt))}"
+    root = {
+        row.generator for row in load_ledger().rows if row.execution_class == "sqrt T"
+    }
+    assert not (poly | root) & set(exempt), (
+        f"exempt rows claim sublinear: {sorted((poly | root) & set(exempt))}"
     )
     # A poly n claim must also survive a dense table; keep the worse reading.
     for at, row in enumerate(measured):
@@ -296,7 +305,7 @@ def main() -> int:
 
     print(
         f"Execution contract: {len(measured)} generators, bound x{MAX_GROWTH}, "
-        f"x{POLY_GROWTH} for poly n\n"
+        f"x{POLY_GROWTH} for poly n, x{SQRT_GROWTH} for sqrt T\n"
     )
     print(f"  {'generator':30s} {'growth':>7s} {'commands':>9s}  where")
     for row in sorted(measured, key=lambda r: -(r.ratio or 0)):
@@ -315,7 +324,14 @@ def main() -> int:
         if row.generator not in exempt
         and (
             row.ratio is None
-            or row.ratio > (POLY_GROWTH if row.generator in poly else MAX_GROWTH)
+            or row.ratio
+            > (
+                POLY_GROWTH
+                if row.generator in poly
+                else SQRT_GROWTH
+                if row.generator in root
+                else MAX_GROWTH
+            )
         )
     ]
     xpass = sorted(

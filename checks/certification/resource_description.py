@@ -15,8 +15,9 @@ SCALING_CLASSES = frozenset({"linear", "T log T", "T**2", "2**T"})
 #: What backs a scaling class: an argument for every table, a measurement on
 #: the supported domain, or a bound the language itself forces.
 SCALING_EVIDENCE = frozenset({"proved", "measured", "lower bound"})
-EXECUTION_CLASSES = frozenset({"poly n", "linear", "unmeasured"})
-WORKSPACE_CLASSES = EXECUTION_CLASSES | {"T log T"}
+#: ``sqrt T`` admits a poly n factor: a planar walk to one of T cells.
+EXECUTION_CLASSES = frozenset({"poly n", "sqrt T", "linear", "unmeasured"})
+WORKSPACE_CLASSES = frozenset({"poly n", "linear", "unmeasured", "T log T"})
 _FIELDS = frozenset({"claim", "formula", "unit", "first", "previous"})
 
 

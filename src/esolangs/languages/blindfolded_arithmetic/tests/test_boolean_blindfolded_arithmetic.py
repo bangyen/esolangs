@@ -1,11 +1,15 @@
 """Tests for the Blindfolded Arithmetic Boolean generator."""
 
+from math import log2
 from unittest.mock import patch
+
+import pytest
 
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from esolangs.vm import make_vm
 from scripts.docs.evidence import construction_boundaries
+from tests.proofs._locality import worst_commands
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import (
     assert_every_row,
@@ -81,3 +85,10 @@ def _check_alternating_rounds() -> None:
             assert io.getvalue() == bit
             assert io.reads == 1
             assert io.input_num() == 99
+
+
+@pytest.mark.parametrize("n", [4, 8])
+def test_worst_sampled_table_meets_the_locality_floor(n: int) -> None:
+    """Some table needs it: one of 864 instruction forms a command."""
+    t = 1 << n
+    assert worst_commands("Blindfolded Arithmetic", n) >= t / log2(864)

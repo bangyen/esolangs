@@ -1,8 +1,13 @@
 """Tests for the NOR machine Boolean generator."""
 
+from math import log2
+
+import pytest
+
 import esolangs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
+from tests.proofs._locality import worst_commands
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.event_io import count_steps
 from tests.support.generator_support import assert_every_row, three_input_corpus_size
@@ -104,3 +109,10 @@ def _check_single_accumulator_boundaries() -> None:
                     assert io.past_end == 0
                     assert steps == len(commands) <= execution(n, commands)
                     assert written.bits <= workspace(n, commands)
+
+
+@pytest.mark.parametrize("n", [4, 8])
+def test_worst_sampled_table_meets_the_locality_floor(n: int) -> None:
+    """Some table needs it: one of six letters a command, run from the first."""
+    t = 1 << n
+    assert worst_commands("NOR machine", n) >= t / log2(6)
