@@ -3,18 +3,18 @@
 Row 0 writes the lookup table right to left into memory row 0, a ``◉`` per
 1 entry and a ``═`` (memory pointer one cell right) between entries, so the
 pointer ends on entry 0.  ``╖`` drops the pointer to memory row 1, and row 1
-runs left through one gadget per input: ``◇`` reads the bit, ``┬`` sends a
-1 straight along ``w`` ``═`` cells (pointer ``w`` cells left, onto a fresh
-0 cell) and a 0 down around a plain detour, and ``◉`` on both arms makes
-the cell 1, which takes the merging ``┬`` left.  A weight-0 input is a bare
-``◇``.  ``╚`` lifts the pointer onto the indexed entry, ``◆`` prints it.
+runs left through one gadget per input. ``◇`` reads the bit, and ``╤`` sends
+a 1 left with a memory move, then ``w - 1`` ``═`` cells reach a fresh 0.
+A 0 goes down around a plain detour. ``◉`` on both arms makes the cell 1,
+which takes the merging ``┬`` left. A weight-0 input is a bare ``◇``.
+``╚`` lifts the pointer onto the indexed entry, and ``◆`` prints it.
 
 The weights are the essential inputs' binary place values, or 1 each with
 the table by popcount for a symmetric table, whichever draws shorter.
 
 Size:
-    about 3 cells per lookup entry and 5 per input: O(T) characters;
-    n=4 parity: 75 chars, n=10 random 1847: 4,611 chars
+    At most 3max(2T, T + 3n + 4) cells for T rows and n inputs.
+    n=4 parity: 63 chars, n=10 random 1847: 4,611 chars
 """
 
 from esolangs.generation.helpers import _validate_truth_table
@@ -33,8 +33,8 @@ def _draw(lookup: WeightedLookup) -> str:
     mid, low = ["┘"], [" "]
     for weight in lookup.weights:
         if weight:
-            mid += ["◇", "┬", "═" * weight, "◉", "┬"]
-            low += [" ", "┘", "─" * weight, "◉", "└"]
+            mid += ["◇", "╤", "═" * (weight - 1), "◉", "┬"]
+            low += [" ", "┘", "─" * (weight - 1), "◉", "└"]
         else:
             mid.append("◇")
             low.append(" ")
