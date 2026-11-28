@@ -70,13 +70,14 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-# X, the line index (n + 1 bits for O(T/n) lines) and the input cursor.
-expression = "2n + 100"
-exact = false
+# Every run reaches line R, reads n framed bits and writes only numeric X.
+expression = "96+bl(R)+bl(2n)"
+source_terms = { names = ["R"], provider = "esolangs.languages.flipscript.proof_formulas:workspace_terms" }
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} for R source lines" }
 
 [resource_evidence.scaling]
 # At most sum_k min(2^k, 2^2^(n-k)) nodes, O(T/n), of 25 chars plus two
