@@ -77,7 +77,7 @@ exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
 # The packed queue holds at most T/2+1 bytes and the symmetric queue n+3.

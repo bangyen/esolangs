@@ -76,7 +76,7 @@
   "piet": "linear: worst A (n=2..3), 3(3ceil(T/3)+5n+49+3T/2+n-2floor(n/2)) (n\u22654) codels. Small-layout A, exact n=3..7",
   "pilas": "linear: at most 38T characters: before zero-add cancellation",
   "pointless": "linear: at most 329+14n+digits(P)+2digits(n)+A characters: every function declared",
-  "q_bal": "linear: worst 13 (n=1), digits(2^T-1)+power2_digits_sum(n)+4n+9 (n\u22652) characters characters, attained by OR from n=2",
+  "q_bal": "linear: worst 13 (n=1), digits(2^T-1)+power2_digits_sum(n)+4n+9 (n\u22652) characters, attained by OR from n=2",
   "qrain": "linear: at most 29T + 10n + 25 characters: the plain tree",
   "quassaunt": "linear: at most (residuals(n)+2)(170+4W)+400+W+6n characters: bounded names and nodes",
   "refractran": "linear: O(T/log T) shared nodes, O(log T) digits per node",

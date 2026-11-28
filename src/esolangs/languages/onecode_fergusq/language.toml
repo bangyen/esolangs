@@ -80,7 +80,7 @@ exact = true
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "worst", template = "{claim} {formula} bits, including packed cells, addresses and decoder state" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula}, including packed cells, addresses and decoder state" }
 
 [resource_evidence.scaling]
 # At full support the reader uses 11n chars plus the bias digits.
