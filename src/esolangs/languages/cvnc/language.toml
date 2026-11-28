@@ -90,13 +90,15 @@ unit = "commands"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: path and shared-subtree climbs" }
 
 [resource_evidence.workspace]
-# The stated workspace bound, evaluated for n and the program.
-expression = "64 + bl(2n-1) + 2bl(L)"
-exact = false
+# Nonconstants build the terminal syllable and write three function tokens.
+# Any shared-copy climb's overshoot is paid back in separate syllables.
+expression = "bl(K)+bl(2n-1)+C+(1-C)(24+bl(S-1))"
+source_terms = { names = ["K", "S", "C"], provider = "esolangs.languages.cvnc.proof_formulas:workspace_terms" }
+exact = true
 arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: cursor, accumulator and three function tokens" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: K commands, S syllables, C constant" }
 
 [resource_evidence.scaling]
 expression = "17T/2+5+8(bl(17T/2+59)+1)"
