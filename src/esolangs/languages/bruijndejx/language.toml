@@ -50,15 +50,16 @@ version = 2
 construction = "esolangs.languages.bruijndejx.generator:bruijndejx_request"
 
 [resource_evidence.execution]
-# A two-way read is 10 transitions (2 pushes, the Q lookup, 2 binds, 3
-# pushes, the ?, the chosen index), an ignoring read 8; a named residual
-# adds its lookup, never at the root; the leaf's /, push and * add 3.
-expression = "11n + 2"
-exact = false
+# Only depths >=2 can have two distinct parents and add a lookup.
+# Parity forks at every level and names both residuals at those depths.
+# With k=n-2 named levels, its shared size is <=3k^2+15k+33:
+# names at height h are at most h chars. This beats the inline tree.
+expression = "10n+3+max(0,n-2)"
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 # Peak at ? inside Q: three argument cells, each holding Q's two-cell
