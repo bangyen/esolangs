@@ -4,7 +4,9 @@ from .spill_routes import _SpillCode
 
 
 def _column_readout(source: bytearray) -> None:
-    code = _SpillCode(161)
+    start, pointer, end = 44469, 161, 45104
+    code = _SpillCode(pointer)
+    readout = 209
     code.apply("p", 170)
     code.jump(171, 74)
     code.jump(74, 41551)
@@ -44,7 +46,7 @@ def _column_readout(source: bytearray) -> None:
     code.mix(165, 182)
 
     def rotate_readout() -> None:
-        code.apply("*", 209)
+        code.apply("*", readout)
         code.jump(210, 102)
         code.long(102)
         code.reset()
@@ -56,12 +58,13 @@ def _column_readout(source: bytearray) -> None:
     code.mix(164, 182)
     rotate_readout()
     code.apply("*", 131)
-    code.apply("i", 209)
-    code.write(source, 44469, 45104)
+    code.apply("i", readout)
+    code.write(source, start, end)
 
 
 def _middle_bridge(source: bytearray) -> None:
-    code = _SpillCode(181)
+    start, pointer, end = 45116, 181, 45194
+    code = _SpillCode(pointer)
     code.jump(183, 51)
     code.return_to_readout()
     code.apply("p", 157)
@@ -79,11 +82,12 @@ def _middle_bridge(source: bytearray) -> None:
     code.jump(72, 125)
     code.jump(134, 157)
     code.apply("i", 165)
-    code.write(source, 45116, 45194)
+    code.write(source, start, end)
 
 
 def _middle_rejoin(source: bytearray) -> None:
-    code = _SpillCode(166)
+    start, pointer, end = 57826, 166, 57916
+    code = _SpillCode(pointer)
     code.jump(166, 125)
     code.jump(125, 104)
     code.return_to_all_twos()
@@ -113,11 +117,12 @@ def _middle_rejoin(source: bytearray) -> None:
     code.apply("p", 131)
     code.jump(134, 157)
     code.apply("i", 157)
-    code.write(source, 57826, 57916)
+    code.write(source, start, end)
 
 
 def _join_spill_axes(source: bytearray) -> None:
-    code = _SpillCode(168)
+    start, pointer, end = 18225, 168, 18954
+    code = _SpillCode(pointer)
     code.jump(168, 48)
     code.jump(52, 127)
     code.mix(128, 150)
@@ -176,11 +181,12 @@ def _join_spill_axes(source: bytearray) -> None:
     code.jump(166, 125)
     code.apply("p", 157)
     code.apply("i", 160)
-    code.write(source, 18225, 18954)
+    code.write(source, start, end)
 
 
 def _select_payload(source: bytearray) -> None:
-    code = _SpillCode(210)
+    start, pointer, end = 37909, 210, 38635
+    code = _SpillCode(pointer)
     code.jump(210, 102)
     code.long(102)
     code.reset()
@@ -331,11 +337,12 @@ def _select_payload(source: bytearray) -> None:
     code.reset()
     code.jump(134, 157)
     code.apply("i", 164)
-    code.write(source, 37909, 38635)
+    code.write(source, start, end)
 
 
 def _skip_spill(source: bytearray) -> None:
-    code = _SpillCode(198)
+    start, pointer, end = 5048, 198, 5199
+    code = _SpillCode(pointer)
     code.jump(198, 1)
     code.jump(1, 86)
     code.apply("p", 88)
@@ -399,7 +406,7 @@ def _skip_spill(source: bytearray) -> None:
     code.reset()
     code.jump(134, 157)
     code.apply("i", 157)
-    code.write(source, 5048, 5199)
+    code.write(source, start, end)
 
 
 def _write_decoder_routes(source: bytearray) -> None:

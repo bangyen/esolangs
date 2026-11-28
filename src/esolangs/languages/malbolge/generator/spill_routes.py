@@ -66,6 +66,12 @@ class _SpillCode:
         self.jump(65, 47)
         self.jump(48, 126)
 
+    def return_to_staged_word(self) -> None:
+        """Return from the staging cells to D126."""
+        self.jump(204, 73)
+        self.jump(74, 48)
+        self.jump(48, 126)
+
     def rotate_selector(self, count: int) -> None:
         for _ in range(count):
             self.jump(93, 113)
@@ -151,7 +157,8 @@ def _upper_return(pointer: int, target: int, jump: _Jump) -> None:
 
 
 def _lower_fold(source: bytearray) -> None:
-    code = _SpillCode(41552)
+    start, pointer, end = 11786, 41552, 12263
+    code = _SpillCode(pointer)
     code.jump(41552, 36)
     code.reset()
     code.walk(201)
@@ -169,11 +176,12 @@ def _lower_fold(source: bytearray) -> None:
     code.apply("p", word)
     code.mix(twos, word)
     code.dispatch()
-    code.write(source, 11786, 12263)
+    code.write(source, start, end)
 
 
 def _middle_fold(source: bytearray) -> None:
-    code = _SpillCode(45926)
+    start, pointer, end = 24908, 45926, 25431
+    code = _SpillCode(pointer)
     code.jump(45926, 45)
     code.jump(48, 126)
     code.walk(202)
@@ -192,11 +200,12 @@ def _middle_fold(source: bytearray) -> None:
     code.mix(ones, seed)
     code.apply("p", word)
     code.dispatch()
-    code.write(source, 24908, 25431)
+    code.write(source, start, end)
 
 
 def _upper_fold(source: bytearray) -> None:
-    code = _SpillCode(54674)
+    start, pointer, end = 31388, 54674, 32026
+    code = _SpillCode(pointer)
     code.jump(54674, 39)
     code.reset()
     code.return_to = _upper_return
@@ -225,11 +234,12 @@ def _upper_fold(source: bytearray) -> None:
     code.mix(ones, seed)
     code.apply("p", word)
     code.dispatch()
-    code.write(source, 31388, 32026)
+    code.write(source, start, end)
 
 
 def _lower_entry(source: bytearray) -> None:
-    code = _SpillCode(50)
+    start, pointer, end = 11667, 50, 11776
+    code = _SpillCode(pointer)
     code.short(50)
     code.jump(45, 112)
     code.jump(113, 88)
@@ -239,11 +249,12 @@ def _lower_entry(source: bytearray) -> None:
     code.apply("*", 142)
     code.apply("*", 184)
     code.apply("i", 186)
-    code.write(source, 11667, 11776)
+    code.write(source, start, end)
 
 
 def _middle_entry(source: bytearray) -> None:
-    code = _SpillCode(66)
+    start, pointer, end = 24814, 66, 24907
+    code = _SpillCode(pointer)
     code.apply("p", 66)
     code.short(70)
     code.jump(45, 112)
@@ -261,11 +272,12 @@ def _middle_entry(source: bytearray) -> None:
     code.return_to_readout()
     code.apply("*", 170)
     code.apply("i", 180)
-    code.write(source, 24814, 24907)
+    code.write(source, start, end)
 
 
 def _middle_exit(source: bytearray) -> None:
-    code = _SpillCode(187)
+    start, pointer, end = 25437, 187, 25514
+    code = _SpillCode(pointer)
     code.walk(189)
     code.jump(189, 86)
     code.apply("p", 88)
@@ -291,11 +303,12 @@ def _middle_exit(source: bytearray) -> None:
     code.jump(54674, 39)
     code.jump(51, 187)
     code.apply("i", 187)
-    code.write(source, 25437, 25514)
+    code.write(source, start, end)
 
 
 def _lower_exit(source: bytearray) -> None:
-    code = _SpillCode(165)
+    start, pointer, end = 12271, 165, 12389
+    code = _SpillCode(pointer)
     code.jump(166, 125)
     code.jump(125, 104)
     code.apply("p", 105)
@@ -347,7 +360,7 @@ def _lower_exit(source: bytearray) -> None:
     code.jump(35, 29525)
     code.jump(29525, 60)
     code.apply("i", 61)
-    code.write(source, 12271, 12389)
+    code.write(source, start, end)
 
 
 def _write_spill_routes(source: bytearray) -> None:

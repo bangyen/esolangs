@@ -27,7 +27,8 @@ from .decoder_tail import _write_decoder_tail
 from .emitter import _ENCODING_PERIOD
 from .spill import _BANK, _spill_locations
 from .spill_routes import _write_spill_routes
-from .startup_routes import _write_startup_routes
+from .startup_input import _write_input_routes
+from .startup_routes import _write_dispatch_setup
 
 _ROWS = (
     (45112, 45113, 45114),
@@ -251,7 +252,8 @@ def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
     source = bytearray(_char_for("o", k) for k in range(_WORDS))
     _write_reset_seed(source)
-    _write_startup_routes(source)
+    _write_input_routes(source)
+    _write_dispatch_setup(source)
     _write_hub_fills(source)
     _write_shared_routes(source)
     _write_rotation_pair(source)
