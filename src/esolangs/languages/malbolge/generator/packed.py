@@ -130,20 +130,26 @@ def _write_guard_returns(source: bytearray) -> None:
             source[address] = _char_for(op, address)
 
 
+def _short_hub_cell(k: int) -> bool:
+    """Return whether the walked pointer cell will name the short hub."""
+    residue = k % 20
+    return 37 <= k < 125 and (
+        residue in (4, 10, 17)
+        or (residue == 3 and k < 83)
+        or (residue == 11 and k >= 91)
+    )
+
+
+def _one_hub_cell(k: int) -> bool:
+    """Return whether the walked pointer cell will name the one hub."""
+    residue = k % 20
+    return 40 <= k < 128 and (
+        residue in (0, 7, 14) or (residue == 13 and k <= 73) or k == 121
+    )
+
+
 def _write_hub_fills(source: bytearray) -> None:
     """Stamp the three hub families into their all-ones pointer cells."""
-
-    def short(k: int) -> bool:
-        residue = k % 20
-        return (
-            residue in (4, 10, 17)
-            or (residue == 3 and k < 83)
-            or (residue == 11 and k >= 91)
-        )
-
-    def one(k: int) -> bool:
-        residue = k % 20
-        return residue in (0, 7, 14) or (residue == 13 and k <= 73) or k == 121
 
     def long(k: int) -> bool:
         residue = k % 20
@@ -160,16 +166,16 @@ def _write_hub_fills(source: bytearray) -> None:
     # The one family skips gaps via the walked reset operands and the
     # primed all-ones cell at D55, which leads through the encrypted neighbor.
     one_fill = (
-        scan(40, 41, one)
+        scan(40, 41, _one_hub_cell)
         + "jjj"
-        + scan(47, 55, one)
+        + scan(47, 55, _one_hub_cell)
         + "jj"
-        + scan(60, 108, one)
+        + scan(60, 108, _one_hub_cell)
         + "joojo"
-        + scan(114, 128, one)
+        + scan(114, 128, _one_hub_cell)
     )
     for pc, ops in (
-        (3317, scan(37, 125, short)),
+        (3317, scan(37, 125, _short_hub_cell)),
         (3627, one_fill),
         (3949, scan(35, 124, long)),
     ):
@@ -222,13 +228,30 @@ def _write_reset_seed(source: bytearray) -> None:
         place("p", glyph)
 
 
+def _write_high_dispatch(source: bytearray, readouts: tuple[int, ...]) -> None:
+    """Place the high lookup operand and return glyph in each occupied band."""
+    # Primary and spill words occupy the same high bands.
+    for high in {_high_cell(word + 1) for word in readouts}:
+        source[high] = _char_for("p", high)
+        address = high + 1
+        if address == 52811:
+            # This band retains the higher of its two short-hub glyphs.
+            continue
+        # In the first band at the top-trit transition, both shadow
+        # walks also consume this operand, which leads through the one hub.
+        routed = _one_hub_cell if high - 79 == _WORDS // 3 else _short_hub_cell
+        source[address] = min(
+            raw for op in _ACTIVE if routed((raw := _char_for(op, address)) + 1)
+        )
+
+
 @cache
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
     source = bytearray(_char_for("o", k) for k in range(_WORDS))
     for line in (_DATA / "packed-decoder.txt").read_text(encoding="ascii").splitlines():
-        address, ops = line.split()
-        lo = int(address)
+        origin, ops = line.split()
+        lo = int(origin)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
     _write_reset_seed(source)
     _write_hub_fills(source)
@@ -239,13 +262,8 @@ def _decoder() -> _Decoder:
     for start in (_PRINTERS[0] + 6, *_PRINTERS[1:]):
         _write_printer(source, start, _SHORT[0])
     readouts = _readouts(16)
-    # Primary and spill words occupy the same high bands.
-    for k in {_high_cell(w + 1) for w in readouts}:
-        source[k] = _char_for("p", k)
+    _write_high_dispatch(source, readouts)
     spill_locations = _spill_locations(source, readouts, _SOURCE_OPS)
-    machine = _Machine(source.decode("ascii"), ScriptedIO("0" * 17))
-    _at(machine, 4513)
-    hubs = tuple(machine.memory[v + 4] + 1 for v in range(127))
     used = bytearray(_WORDS)
     locations = []
     for w in readouts:
@@ -259,6 +277,17 @@ def _decoder() -> _Decoder:
     for word, occupied in enumerate(used):
         if occupied:
             columns[(word - 1) % 243].append(word)
+    # The jump beside each column marker leads through the short hub.
+    for column in columns:
+        address = 51032 + 3 * column
+        source[address] = next(
+            raw
+            for op in _ACTIVE
+            if _short_hub_cell((raw := _char_for(op, address)) + 1)
+        )
+    machine = _Machine(source.decode("ascii"), ScriptedIO("0" * 17))
+    _at(machine, 4513)
+    hubs = tuple(machine.memory[v + 4] + 1 for v in range(127))
     return _Decoder(bytes(source), hubs, tuple(locations), bytes(used), dict(columns))
 
 

@@ -55,6 +55,8 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Both dispatch guards return via the encrypted all-ones operand and
   the first walked cell that points to the return. The startup fills
   three hub families by walking the low pointer cells in residue order.
+  Each used column has a companion glyph that jumps through the short hub.
+  The high operand bands derive their return glyphs from the same hub families.
   The reset constants use the encoding period while C and D advance together.
   Three residue steps and both reversible payload reads share their routes.
 

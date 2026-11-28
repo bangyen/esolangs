@@ -255,7 +255,13 @@ def _spill_locations(
     assert len(readouts) == len(residues) * len(banks)
     markers = {_MARKERS + residue for residue in residues}
     primary = {word + 1 for word in readouts}
-    fixed = primary | markers | {51031 + 3 * i for i in range(243)}
+    # Reserve each column marker and its short-hub companion before
+    # assigning spills. The used columns are known after allocation.
+    fixed = (
+        primary
+        | markers
+        | {51031 + 3 * i + offset for i in range(243) for offset in (0, 1)}
+    )
     fixed.update(
         k for k, raw in enumerate(source) if k not in source_ops and _op(raw, k) != "o"
     )
