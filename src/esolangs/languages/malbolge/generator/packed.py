@@ -25,6 +25,7 @@ from esolangs.languages.malbolge.generator.isa import (
 from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine
 from esolangs.runtime.io import ScriptedIO
 
+from .decoder_routes import _write_decoder_routes
 from .emitter import _ENCODING_PERIOD
 from .spill import _BANK, _spill_locations
 from .spill_routes import _write_spill_routes
@@ -205,46 +206,12 @@ def _write_shared_routes(source: bytearray) -> None:
             source[address] = _char_for(op, address)
 
 
-def _write_rotation_routes(source: bytearray) -> None:
-    """Emit repeated rotations and their data-pointer returns."""
-
-    def walk(start: int, target: int) -> str:
-        return "o" * (target - start)
-
-    # Rotate D133 and D126, then advance back to D133.
-    pair = "*j" + walk(64, 65) + "j" + walk(47, 48) + "j*"
-    rotate_pair = pair + walk(127, 133)
-    # The D38 return brings D back to the column word at D36.
-    column = "*" + (walk(37, 38) + "j" + walk(35, 36) + "*") * 4
-    # Update the readout, write both return hubs, and reload all-twos.
-    readout = (
-        "p"
-        + walk(143, 145)
-        + "jj"
-        + walk(41551, 41552)
-        + "jpj"
-        + walk(45925, 45926)
-        + "jj*j"
-        + walk(88, 89)
-        + "j"
-        + walk(54673, 54678)
-        + "j"
-        + walk(70, 71)
-        + "pj"
-    )
-    # After rotating D209, enter the long hub and return through D72.
-    suffix = walk(186, 209) + "*jj" + walk(54673, 54674) + "jjj"
-    for pc, ops in (
-        (1959, rotate_pair * 2 + pair),
-        (38016, readout),
-        (38122, readout),
-        (44483, column),
-        (44807, suffix),
-        (44898, suffix),
-        (44989, suffix),
-    ):
-        for address, op in enumerate(ops, pc):
-            source[address] = _char_for(op, address)
+def _write_rotation_pair(source: bytearray) -> None:
+    """Rotate D133 and D126 three times through the three low returns."""
+    pair = "*j" + "o" * (65 - 64) + "j" + "o" * (48 - 47) + "j*"
+    ops = (pair + "o" * (133 - 127)) * 2 + pair
+    for address, op in enumerate(ops, 1959):
+        source[address] = _char_for(op, address)
 
 
 def _write_reset_seed(source: bytearray) -> None:
@@ -271,19 +238,44 @@ def _write_reset_seed(source: bytearray) -> None:
         place("p", glyph)
 
 
+def _write_cold_hub_returns(source: bytearray) -> None:
+    """Install the hub companions and the cold selector operands."""
+    for hub, destinations in (
+        (41552, (36, 35)),
+        (45926, (45, 121)),
+        (54674, (39, 38)),
+    ):
+        for address, destination in enumerate(destinations, hub):
+            source[address] = destination - 1
+    # The shifted long-hub return reaches the D71 lookup tap.
+    source[54678] = 70 - 1
+    source[50220] = min(
+        raw for op in _ACTIVE if _short_hub_cell((raw := _char_for(op, 50220)) + 1)
+    )
+    # The selector and exceptional operands share space with saved pointers.
+    for address, op in (
+        (29524, "j"),
+        (29528, _SOURCE_OPS[29528][0]),
+        (_LEFT_OPERAND, _SOURCE_OPS[_LEFT_OPERAND][0]),
+        (_RIGHT_OPERAND, "p"),
+        (59035, _SOURCE_OPS[59035][0]),
+        (59036, _SOURCE_OPS[59036][-1]),
+    ):
+        source[address] = _char_for(op, address)
+
+
 def _write_high_dispatch(source: bytearray, readouts: tuple[int, ...]) -> None:
     """Place the high lookup operand and return glyph in each occupied band."""
     # Primary and spill words occupy the same high bands.
     for high in {_high_cell(word + 1) for word in readouts}:
         source[high] = _char_for("p", high)
         address = high + 1
-        if address == 52811:
-            # This band retains the higher of its two short-hub glyphs.
-            continue
+        # One band uses the higher of its two short-hub glyphs.
+        choose = max if address == 52811 else min
         # In the first band at the top-trit transition, both shadow
         # walks also consume this operand, which leads through the one hub.
         routed = _one_hub_cell if high - 79 == _WORDS // 3 else _short_hub_cell
-        source[address] = min(
+        source[address] = choose(
             raw for op in _ACTIVE if routed((raw := _char_for(op, address)) + 1)
         )
 
@@ -299,7 +291,9 @@ def _decoder() -> _Decoder:
     _write_reset_seed(source)
     _write_hub_fills(source)
     _write_shared_routes(source)
-    _write_rotation_routes(source)
+    _write_rotation_pair(source)
+    _write_cold_hub_returns(source)
+    _write_decoder_routes(source)
     _write_spill_routes(source)
     _write_guard_approaches(source)
     _write_guard_returns(source)
