@@ -106,18 +106,23 @@ unit = "bits"
 description = { growth = "linear", claim = "exact", template = "{claim} {formula} {unit}. B counts the final write set and S counts statements" }
 
 [resource_evidence.scaling]
-# Each scalar level prices its input labels by decimal width. A spilled
-# reference adds at most eight characters, at most five times its scalar
-# price. Dimension statements pay the exact array count and width.
+# Through n = 5, each scalar level prices its input labels by decimal width.
+# From n = 6, F names every reduced-diagram node: inlining never lengthens
+# the program (a node is inlined only when its readers' copies cost no more
+# than its statement), so F prices at most min(2^k, unequal cofactors)
+# nodes at level k, each a statement, the widest name (spilled when past
+# 65535) and the longest mux of two such references, plus inputs, aliases,
+# arrays, result and PLEASE (tests/formulas.py).
 cases = [
-    { through = 15, expression = "24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4⌊(n+7)/5⌋+13" },
-    { expression = "5(24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4⌊(n+7)/5⌋+13)+⌈(T+2n-65535)/(1+isqrt(T+2n-65536))⌉(14+digits((1+isqrt(T+2n-65536))))+digits_sum(⌈(T+2n-65535)/(1+isqrt(T+2n-65536))⌉+1)-1" },
+    { through = 5, expression = "24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4⌊(n+7)/5⌋+13" },
+    { expression = "F" },
 ]
+source_terms = { names = ["F"], provider = "esolangs.languages.intercal.tests.formulas:scaling_terms" }
 exact = false
 arities = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}: scalar or spilled" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}: F the all-named diagram" }
 
 [semantic_evidence]
 version = 1

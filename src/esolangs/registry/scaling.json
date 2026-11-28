@@ -54,7 +54,7 @@
   "hot": "linear: worst 27T/2 + 73n + 86 characters past n = 1: pairs",
   "hq9_with_headers": "linear: at most one table literal, one read command per input",
   "inject": "linear: worst T+71n+29+2R+3(max(0,n-49)+max(0,n-2753)+max(0,n-143361))+2(max(0,3n-49)+max(0,3n-2753)+max(0,3n-143361)) characters past n = 4",
-  "intercal": "linear: at most 24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4\u230a(n+7)/5\u230b+13 (n=1..15), 5(24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4\u230a(n+7)/5\u230b+13)+\u2308(T+2n-65535)/(1+isqrt(T+2n-65536))\u2309(14+digits((1+isqrt(T+2n-65536))))+digits_sum(\u2308(T+2n-65535)/(1+isqrt(T+2n-65536))\u2309+1)-1 (n\u226516) characters: scalar or spilled",
+  "intercal": "linear: at most 24T+2weighted_decimal_sum(n)+11n+digits_sum(n+1)+2digits(n+1)+4\u230a(n+7)/5\u230b+13 (n=1..5), F (n\u22656) characters: F the all-named diagram",
   "kiss": "linear: worst 7T-5 characters: 5 a node, 2 a leaf",
   "laserfuck": "linear: worst max(T,3)(12n+32) (n=1..6), 3(11T+52n+3) (n\u22657) cells; tree then lookup",
   "line": "linear: at most pixels from n=6: Pareto boxes over projected input sets",
