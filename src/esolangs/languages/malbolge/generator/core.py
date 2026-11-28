@@ -31,11 +31,14 @@ from .isa import (
     _ONE_OPERAND,
     _ROTATE,
     _WORD_TRITS,
+    _WORDS,
     _ZERO_OPERAND,
     _char_for,
     _first_free,
     _g,
+    _program,
     _progression,
+    _render,
     _rot,
 )
 
@@ -163,6 +166,20 @@ def _table_char(h: int, label: str) -> int:
         raise AssertionError(f"no {label} character at {h}")
     offset = (valid & -valid).bit_length() - 1
     return 33 + (offset - shift) % 94
+
+
+def _render_answers(
+    code: dict[int, str],
+    data: dict[int, int],
+    answers: Iterable[tuple[int, str]],
+    words: int = _WORDS,
+) -> str:
+    """Fill the template's cells with glyphs for pairs of output bits."""
+    program = _program(code)
+    program.update(data)
+    for cell, pair in answers:
+        program[cell] = _table_char(cell, _ANSWER[pair])
+    return _render(program, words)
 
 
 def _chain(value: int, ops: str) -> int:

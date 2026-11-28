@@ -62,7 +62,6 @@ from esolangs.languages.malbolge.descriptor import _DIGITS_N as _DIGITS_N
 from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
-    _ANSWER,
     _HUB_LOW_TRITS,
     _IDENTITY_STUB,
     _K_CELL,
@@ -87,11 +86,11 @@ from .core import (
     _operand_stub,
     _pointers,
     _prime,
+    _render_answers,
     _s01,
     _seed_g,
     _seed_label_chains,
     _stub_builds,
-    _table_char,
     _walker,
     _write_hubs,
 )
@@ -102,8 +101,6 @@ from .isa import (
     _WORDS,
     _ZERO_OPERAND,
     _printable_slot,
-    _program,
-    _render,
     _rot,
 )
 
@@ -883,12 +880,10 @@ def _hubs(layout: _Layout | None = None) -> dict[str, tuple[int, ...]]:
 def _render_build(truth_table: str, build: _Digits) -> str:
     """Return ``build``'s program with ``truth_table``'s answer cells filled."""
     code, data, tables, words = build
-    program = _program(code)
-    program.update(data)
-    for row, h in enumerate(tables):
-        label = _ANSWER[truth_table[2 * row : 2 * row + 2]]
-        program[h] = _table_char(h, label)
-    return _render(program, words)
+    answers = (
+        (cell, truth_table[2 * row : 2 * row + 2]) for row, cell in enumerate(tables)
+    )
+    return _render_answers(code, data, answers, words)
 
 
 def _digits_program(truth_table: str, n: int) -> str:

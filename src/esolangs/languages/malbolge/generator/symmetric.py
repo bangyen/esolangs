@@ -26,13 +26,12 @@ from esolangs.generation.lookup import symmetric_outputs
 from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
-    _ANSWER,
     _K_CELL,
     _hub_layout,
     _main_planner,
     _merge_code,
     _pointers,
-    _table_char,
+    _render_answers,
 )
 from .digits import (
     _D_FLOOR,
@@ -56,7 +55,7 @@ from .digits import (
     _seed_values,
 )
 from .emitter import _Planner
-from .isa import _printable_slot, _program, _render
+from .isa import _printable_slot
 
 
 def _weight_gadget() -> tuple[str, ...]:
@@ -275,9 +274,8 @@ def _symmetric_program(truth_table: str) -> str | None:
     if classes is None:
         return None
     code, data, weights = _symmetric()
-    program = _program(code)
-    program.update(data)
-    for cell, weight in weights.items():
-        label = _ANSWER[classes[weight] + classes[weight + 1]]
-        program[cell] = _table_char(cell, label)
-    return _render(program)
+    answers = (
+        (cell, classes[weight] + classes[weight + 1])
+        for cell, weight in weights.items()
+    )
+    return _render_answers(code, data, answers)
