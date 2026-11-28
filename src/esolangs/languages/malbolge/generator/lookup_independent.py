@@ -233,7 +233,7 @@ def independent_lookup(geo: Geometry) -> bytes:
         else decoder.source[a]
         for a, options in geo.glyphs.items()
     )
-    verified = _operand_encodings(output, (0, 1, 2))
+    verified = _operand_encodings(output)
     assert all(
         len(verified[word].by_answer) == 1 << decoder.occupied[word].bit_count()
         for word in (29524, 41391, 59035, 59036, 59037)

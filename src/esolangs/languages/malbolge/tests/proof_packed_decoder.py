@@ -62,7 +62,6 @@ def _domains(
     decoder: packed._Decoder,
     rows: dict[int, list[tuple[int, int]]],
     lookup: bytes,
-    perm: tuple[int, ...],
 ) -> dict[int, list[_Choice]]:
     """Collect all legal word/marker combinations for each shared column."""
     source = bytearray(decoder.source)
@@ -77,9 +76,7 @@ def _domains(
                 continue
             rep = column + 1
             labels = {
-                packed._pattern(
-                    source, decoder.hubs, perm, rep, _char_for(o, rep), marker, 7
-                )
+                packed._pattern(source, decoder.hubs, rep, _char_for(o, rep), marker, 7)
                 for o in _ACTIVE
             }
             if labels != set(range(8)):
@@ -96,7 +93,6 @@ def _domains(
                     bits = packed._pattern(
                         source,
                         decoder.hubs,
-                        perm,
                         word,
                         raw,
                         marker,
@@ -200,7 +196,7 @@ def main() -> int:
     groups = packed._selector_groups()
     # Evaluate the emitted layout independently of the projected factors.
     lookup, phase = select_bounded((0,) * len(groups))
-    masks = _masks(_domains(decoder, rows, lookup, (0, 1, 2)))
+    masks = _masks(_domains(decoder, rows, lookup))
     for group, mask in zip(groups, masks, strict=True):
         bits = sum(
             (phase >> slot & 1) << row

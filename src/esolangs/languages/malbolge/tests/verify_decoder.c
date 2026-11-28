@@ -339,7 +339,7 @@ static unsigned char checkpoint[94][128][3];
 #define SETTINGS 8
 #define LAYOUT_SIZE (250 + LOOKUP_END - LOOKUP_START)
 typedef struct {
-  unsigned char order[3], flip, code[LAYOUT_SIZE];
+  unsigned char flip, code[LAYOUT_SIZE];
 } Layout;
 static Layout layouts[SETTINGS];
 static int models, layout_offset[WORDS], variable_addresses[LAYOUT_SIZE],
@@ -412,9 +412,7 @@ static void run_printer(State *start, int setting, int z, int key, int hub,
   recording = 1;
   live_count = 0;
   State state = *start;
-  int count = 0,
-      tap = printer_entry[z] + lookup_tap[layout->order[z]] - lookup_tap[z],
-      hit = 0;
+  int count = 0, tap = printer_entry[z], hit = 0;
   checked_key = key;
   checked_tap = tap;
   while (count++ < 2000) {
@@ -473,7 +471,7 @@ static void verify_suffix(State *start, int lookup_glyph, int marker, int z,
     if (done[t])
       continue;
     Layout *l = layouts + t;
-    int key = 5113 + 3 * lookup_glyph + lookup_tap[l->order[z]] - marker;
+    int key = 5113 + 3 * lookup_glyph + lookup_tap[z] - marker;
     int byte =
         layout_offset[key] ? l->code[layout_offset[key] - 1] : initial[key];
 
@@ -489,7 +487,7 @@ static void verify_suffix(State *start, int lookup_glyph, int marker, int z,
       if (!alternate)
         continue;
       int hub = hubs[alternate];
-      if (hub != ONE_HUB && hub != SHORT_HUB && !(l->order[z] && hub == LONG_HUB))
+      if (hub != ONE_HUB && hub != SHORT_HUB && !(z && hub == LONG_HUB))
         continue;
       ran = 1;
       run_printer(start, t, z, key, hub, row, word, raw, marker, lookup_glyph,
@@ -517,8 +515,7 @@ static void verify_suffix(State *start, int lookup_glyph, int marker, int z,
     for (int u = t + 1; u < models; u++) {
       const Layout *q = layouts + u;
       if ((layout_offset[key] && q->code[layout_offset[key] - 1] != byte) ||
-          done[u] || l->order[z] != q->order[z] ||
-          ((l->flip ^ q->flip) >> z & 1))
+          done[u] || ((l->flip ^ q->flip) >> z & 1))
         continue;
       int j = 0;
       while (j < read_count &&

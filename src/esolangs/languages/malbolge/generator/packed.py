@@ -322,21 +322,19 @@ def _decoder() -> _Decoder:
     return _Decoder(bytes(source), hubs, locations, occupied, columns)
 
 
-def _selection(table: str) -> tuple[bytes, tuple[int, ...], int]:
+def _selection(table: str) -> tuple[bytes, int]:
     """Derive the lookup and shared polarity from the navigation answers."""
     from .lookup_request import select  # The constructor shares decoder geometry.
 
     request = tuple(
         sum(int(table[row]) << bit for bit, row in enumerate(rows)) for rows in _ROWS
     )
-    lookup, polarity = select(request)
-    return lookup, (0, 1, 2), polarity
+    return select(request)
 
 
 def _pattern(
     source: bytearray,
     hubs: tuple[int, ...],
-    perm: tuple[int, ...],
     k: int,
     raw: int,
     marker: int,
@@ -345,18 +343,18 @@ def _pattern(
     """Read the requested output slots through their three physical lookup taps."""
     key = _lookup_base(k, raw, marker)
     bits = 0
-    for slot, virt in enumerate(perm):
+    for slot, tap in enumerate(_TAPS):
         if used >> slot & 1:
-            hub = hubs[source[key + _TAPS[virt]]]
+            hub = hubs[source[key + tap]]
             if hub == _ONE_HUB:
                 bits |= 1 << slot
-            elif hub != _SHORT_HUB and (not virt or hub != _LONG_HUB):
+            elif hub != _SHORT_HUB and (not slot or hub != _LONG_HUB):
                 return -1
     return bits
 
 
 def _marker_labels(
-    source: bytearray, hubs: tuple[int, ...], perm: tuple[int, ...], col: int
+    source: bytearray, hubs: tuple[int, ...], col: int
 ) -> Iterator[_Column]:
     """Yield column markers with all eight ordinary labels."""
     # Advancing one column period subtracts that period from raw and high modulo 94.
@@ -368,7 +366,7 @@ def _marker_labels(
             continue
         labels = {}
         for op in _ACTIVE:
-            label = _pattern(source, hubs, perm, rep, _char_for(op, rep), marker, 7)
+            label = _pattern(source, hubs, rep, _char_for(op, rep), marker, 7)
             if label < 0 or label in labels:
                 break
             labels[label] = op
@@ -379,7 +377,6 @@ def _marker_labels(
 def _operand_patterns(
     source: bytearray,
     hubs: tuple[int, ...],
-    perm: tuple[int, ...],
     word: int,
     marker: int,
     used: int,
@@ -389,13 +386,13 @@ def _operand_patterns(
         raw = _char_for(op, word)
         if 29524 <= word <= 29527:
             raw = ord(_XLAT2[raw - 33])
-        bits = _pattern(source, hubs, perm, word, raw, marker, used)
+        bits = _pattern(source, hubs, word, raw, marker, used)
         if bits >= 0:
             yield op, bits
 
 
 @cache
-def _operand_encodings(lookup: bytes, perm: tuple[int, ...]) -> dict[int, _Encodings]:
+def _operand_encodings(lookup: bytes) -> dict[int, _Encodings]:
     """Invert each navigation word's fixed byte-to-answer mapping."""
     decoder = _decoder()
     source = bytearray(decoder.source)
@@ -405,9 +402,9 @@ def _operand_encodings(lookup: bytes, perm: tuple[int, ...]) -> dict[int, _Encod
         by_answer: dict[int, _Operand] = {}
         restricted: dict[int, _Operand] = {}
         col = (word - 1) % _COLUMN_COUNT
-        for column in _marker_labels(source, decoder.hubs, perm, col):
+        for column in _marker_labels(source, decoder.hubs, col):
             for op, bits in _operand_patterns(
-                source, decoder.hubs, perm, word, column.marker, decoder.occupied[word]
+                source, decoder.hubs, word, column.marker, decoder.occupied[word]
             ):
                 operand = _Operand(column, op)
                 by_answer.setdefault(bits, operand)
@@ -420,7 +417,7 @@ def _operand_encodings(lookup: bytes, perm: tuple[int, ...]) -> dict[int, _Encod
 
 
 @cache
-def _ordinary_columns(lookup: bytes, perm: tuple[int, ...]) -> dict[int, _Column]:
+def _ordinary_columns(lookup: bytes) -> dict[int, _Column]:
     """Derive an answer alphabet for each column without navigation operands."""
     decoder = _decoder()
     source = bytearray(decoder.source)
@@ -428,7 +425,7 @@ def _ordinary_columns(lookup: bytes, perm: tuple[int, ...]) -> dict[int, _Column
     restricted = {(word - 1) % _COLUMN_COUNT for word in _SOURCE_OPS}
     columns: dict[int, _Column] = {}
     for col in decoder.columns.keys() - restricted:
-        for column in _marker_labels(source, decoder.hubs, perm, col):
+        for column in _marker_labels(source, decoder.hubs, col):
             columns.setdefault(col, column)
     return columns
 
@@ -467,34 +464,28 @@ def _write_printer(source: bytearray, pc: int, body: str) -> None:
         source[k] = _char_for(op, k)
 
 
-def _install_layout(
-    source: bytearray, lookup: bytes, perm: tuple[int, ...], polarity: int
-) -> None:
+def _install_layout(source: bytearray, lookup: bytes, polarity: int) -> None:
     """Place the derived lookup and the three straight-line printers."""
     source[_LOOKUP.start : _LOOKUP.stop] = lookup
-    for slot, virt in enumerate(perm):
-        old = _PRINTERS[slot]
-        pc = old + _TAPS[virt] - _TAPS[slot]
-        for k in range(old, pc):
-            source[k] = _char_for("o", k)
-        printer = (_SHORT if virt == 0 else _LONG)[polarity >> slot & 1]
+    for slot, pc in enumerate(_PRINTERS):
+        printer = (_SHORT if slot == 0 else _LONG)[polarity >> slot & 1]
         _write_printer(source, pc, printer)
 
 
 def _packed_program(table: str) -> str:
     """Emit three primary answers and one spill answer per 15-bit prefix."""
-    lookup, perm, polarity = _selection(table)
+    lookup, polarity = _selection(table)
     decoder = _decoder()
     base, blocks, columns = decoder.source, decoder.locations, decoder.columns
     source = bytearray(base)
-    _install_layout(source, lookup, perm, polarity)
+    _install_layout(source, lookup, polarity)
     answers = bytearray(_WORDS)
     for i, (primary, spill, slot) in enumerate(blocks):
         a, b, c, d = map(int, table[4 * i : 4 * i + 4])
         answers[primary] = (a + 2 * b + 4 * c) ^ polarity
         answers[spill] |= (d ^ (polarity >> slot & 1)) << slot
-    encodings = _operand_encodings(lookup, perm)
-    ordinary = _ordinary_columns(lookup, perm)
+    encodings = _operand_encodings(lookup)
+    ordinary = _ordinary_columns(lookup)
     operands = {
         word: codes.by_answer[answers[word]] for word, codes in encodings.items()
     }

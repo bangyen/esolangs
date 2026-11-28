@@ -39,7 +39,7 @@ from esolangs.languages.malbolge.tests.proof_packed_decoder import main as check
 def _domain_seed(decoder: _Decoder, lookup: bytes) -> bytes:
     """Supply valid prefix operands for the derived lookup domain."""
     program = bytearray(decoder.source)
-    _install_layout(program, lookup, (0, 1, 2), 0)
+    _install_layout(program, lookup, 0)
     for word, occupied in enumerate(decoder.occupied):
         if occupied:
             # The left '<' makes every right operand safe.
@@ -89,12 +89,11 @@ def _write_inputs(dest: Path) -> None:
     mutable = bytearray(_WORDS)
 
     with (dest / "layouts").open("wb") as out:
-        perm = (0, 1, 2)
         for polarity in range(8):
             program = bytearray(decoder.source)
-            _install_layout(program, lookup, perm, polarity)
+            _install_layout(program, lookup, polarity)
             out.write(
-                bytes([*perm, polarity])
+                bytes([polarity])
                 + program[4450:4700]
                 + program[_LOOKUP.start : _LOOKUP.stop]
             )

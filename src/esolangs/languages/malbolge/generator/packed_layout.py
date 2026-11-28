@@ -20,6 +20,7 @@ _ONE_HUB = 41551
 _SHORT_HUB = 45925
 _LONG_HUB = 54673
 
+# Printer entries and taps are indexed by the same output slot.
 _PRINTERS = (4513, 4663, 4585)
 _TAPS = (139, 127, 130)
 
