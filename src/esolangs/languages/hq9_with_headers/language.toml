@@ -80,6 +80,7 @@ construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_r
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.hq9_with_headers.generator:hq9_with_headers_request"
+witnesses = "esolangs.languages.hq9_with_headers.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "4n + 9"
@@ -98,7 +99,14 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: variables, op index and reads" }
 
 [resource_evidence.scaling]
-qualitative = { growth = "linear", text = "at most one table literal, one read command per input" }
+# Row zero alone false gives the largest nonconstant packed integer.
+# Constants use the same flow and checksum with shorter headers.
+expression = "317+2n+digits_sum(n+1)+digits((114n+111)%1024+43)+digits(2^T-2)"
+exact = true
+arities = [1, 2, 3, 6]
+first = 1
+unit = "characters"
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1
