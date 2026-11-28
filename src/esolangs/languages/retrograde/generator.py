@@ -9,7 +9,7 @@ is emitted into chunks. Rank preprocessing uses expected constant-time
 lookups on O(log T)-bit words; construction and source are O(T).
 
 Size:
-    At most 14T+4n-13 characters; n=10 random 1847: 6,794 chars.
+    Worst 9 characters at n=1, 9T+4n-15 thereafter; n=10 random 1847: 6,794 chars.
 """
 
 from esolangs.generation.helpers import (

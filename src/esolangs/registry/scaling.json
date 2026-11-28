@@ -80,7 +80,7 @@
   "qrain": "linear: at most 29T + 10n + 25 characters: the plain tree",
   "quassaunt": "linear: at most (residuals(n)+2)(170+4W)+400+W+6n characters: bounded names and nodes",
   "refractran": "linear: O(T/log T) shared nodes, O(log T) digits per node",
-  "retrograde": "linear: at most 14T + 4n - 13 characters",
+  "retrograde": "linear: worst 9 (n=1), 9T+4n-15 (n\u22652) characters characters",
   "rotfuck": "linear: worst 3T+79n+43 (n=2..6), 3T+48+31n+(97\u230an/5\u230b+16floor((\u230an/5\u230b+(n%5)%2)/2))/3-5min(1,(n%5))+min((48(2^(n%5)-1)%256),256-(48(2^(n%5)-1)%256))+32(T-2^(n%5))/93 (n\u22657) characters: lone-zero witness n=2..10",
   "rubic": "linear: worst max(63,47T-44) characters: distinct maximal children, seeded by constant/NOT pairs",
   "s_bleq": "linear: worst 175n+717+2(digits(n)-1)+A+\u230aT/n\u230b(2+digits(T-1))+min(1,T%n)(2+digits(2^(T%n)-1)) (n\u226511) characters; through n=28",

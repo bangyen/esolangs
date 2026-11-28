@@ -74,6 +74,7 @@ construction = "esolangs.languages.retrograde.generator:retrograde_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.retrograde.generator:retrograde_request"
+witnesses = "esolangs.languages.retrograde.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "12n - 2"
@@ -84,20 +85,31 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: native decisions and one final dump" }
 
 [resource_evidence.workspace]
-expression = "n + bl(L) + bl(n+1) + 16"
-exact = false
+# Only cells 0..n can write. The AB/BA witness uses a full root branch,
+# prints 1 after reversing, and has 9T+4n-15 characters from n=2.
+cases = [
+    { through = 1, expression = "10" },
+    { through = 2, expression = "13" },
+    { expression = "2n+8+bl(n)" },
+]
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: packed tape halves, pointers and direction" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-expression = "14T + 4n - 13"
-exact = false
+# Height two allows at most one literal beside a constant-one child.
+# Their full branch costs 23; each larger full branch adds 13.
+cases = [
+    { through = 1, expression = "9" },
+    { expression = "9T+4n-15" },
+]
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1
