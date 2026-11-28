@@ -55,7 +55,7 @@ _ROWS = (
 )
 _LEFT_OPERAND, _RIGHT_OPERAND = 39391, 39394
 _SAFE_LEFT_OP = "<"
-_RIGHT_OPS_REQUIRING_SAFE_LEFT = "jv"
+_SAFE_RIGHT_OPS = "".join(op for op in _ACTIVE if op not in "jv")
 # All other occupied words can take any of the eight source instructions.
 _SOURCE_OPS = {
     29524: "*/<ijopv",
@@ -417,9 +417,7 @@ def _operand_encodings(lookup: bytes) -> dict[int, _Encodings]:
                 operand = _Operand(column, op)
                 by_answer.setdefault(bits, operand)
                 safe_left = word == _LEFT_OPERAND and op == _SAFE_LEFT_OP
-                safe_right = (
-                    word == _RIGHT_OPERAND and op not in _RIGHT_OPS_REQUIRING_SAFE_LEFT
-                )
+                safe_right = word == _RIGHT_OPERAND and op in _SAFE_RIGHT_OPS
                 if safe_left or safe_right:
                     safe_with_any_partner.setdefault(bits, operand)
         encodings[word] = _Encodings(by_answer, safe_with_any_partner)
@@ -476,26 +474,30 @@ def _write_printer(source: bytearray, pc: int, body: str) -> None:
         source[k] = _char_for(op, k)
 
 
-def _install_layout(source: bytearray, lookup: bytes, polarity: int) -> None:
-    """Place the derived lookup and the three straight-line printers."""
-    source[_LOOKUP.start : _LOOKUP.stop] = lookup
+def _install_printers(source: bytearray, polarity: int) -> None:
+    """Install the three printers for the selected polarity."""
     for slot, pc in enumerate(_PRINTERS):
         printer = (_SHORT if slot == 0 else _LONG)[polarity >> slot & 1]
         _write_printer(source, pc, printer)
 
 
-def _packed_program(table: str) -> str:
-    """Emit three primary answers and one spill answer per 15-bit prefix."""
-    lookup, polarity = _selection(table)
-    decoder = _decoder()
-    base, blocks, columns = decoder.source, decoder.locations, decoder.columns
-    source = bytearray(base)
-    _install_layout(source, lookup, polarity)
+def _pack_answers(table: str, decoder: _Decoder, polarity: int) -> bytearray:
+    """Pack three primary bits and one spill bit per 15-bit prefix."""
     answers = bytearray(_WORDS)
-    for i, (primary, spill, slot) in enumerate(blocks):
+    for i, (primary, spill, slot) in enumerate(decoder.locations):
         a, b, c, d = map(int, table[4 * i : 4 * i + 4])
         answers[primary] = (a + 2 * b + 4 * c) ^ polarity
         answers[spill] |= (d ^ (polarity >> slot & 1)) << slot
+    return answers
+
+
+def _packed_program(table: str) -> str:
+    """Emit the packed decoder with the supplied truth table."""
+    lookup, polarity = _selection(table)
+    decoder = _decoder()
+    answers = _pack_answers(table, decoder, polarity)
+    source = bytearray(_lookup_image(lookup))
+    _install_printers(source, polarity)
     encodings = _operand_encodings(lookup)
     ordinary = _ordinary_columns(lookup)
     operands = {
@@ -507,7 +509,7 @@ def _packed_program(table: str) -> str:
     selected = {
         (word - 1) % _COLUMN_COUNT: operand.column for word, operand in operands.items()
     }
-    for col, words in columns.items():
+    for col, words in decoder.columns.items():
         marker, labels = selected[col] if col in selected else ordinary[col]
         source[_column_marker(col)] = marker
         for k in words:

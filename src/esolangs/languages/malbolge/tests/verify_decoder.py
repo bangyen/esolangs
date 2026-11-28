@@ -14,7 +14,8 @@ from esolangs.languages.malbolge.generator.packed import (
     _SOURCE_OPS,
     _Decoder,
     _decoder,
-    _install_layout,
+    _install_printers,
+    _lookup_image,
 )
 from esolangs.languages.malbolge.generator.packed_layout import (
     _COLUMN_COUNT,
@@ -36,10 +37,10 @@ from esolangs.languages.malbolge.tests.proof_packed_decoder import check_cover
 from esolangs.languages.malbolge.tests.proof_packed_decoder import main as check_storage
 
 
-def _domain_seed(decoder: _Decoder, lookup: bytes) -> bytes:
+def _domain_seed(decoder: _Decoder, image: bytes) -> bytes:
     """Supply valid prefix operands for the derived lookup domain."""
-    program = bytearray(decoder.source)
-    _install_layout(program, lookup, 0)
+    program = bytearray(image)
+    _install_printers(program, 0)
     for word, occupied in enumerate(decoder.occupied):
         if occupied:
             # The left '<' makes every right operand safe.
@@ -61,7 +62,8 @@ def _write_inputs(dest: Path) -> None:
         values[min(values)] if values and address % 3 != 1 else decoder.source[address]
         for address, values in glyphs.items()
     )
-    source = _domain_seed(decoder, lookup)
+    image = _lookup_image(lookup)
+    source = _domain_seed(decoder, image)
     (dest / "lookup-domains").write_bytes(
         bytes(values.get(bit, 0) for values in glyphs.values() for bit in (0, 1))
     )
@@ -90,8 +92,8 @@ def _write_inputs(dest: Path) -> None:
 
     with (dest / "layouts").open("wb") as out:
         for polarity in range(8):
-            program = bytearray(decoder.source)
-            _install_layout(program, lookup, polarity)
+            program = bytearray(image)
+            _install_printers(program, polarity)
             out.write(
                 bytes([polarity])
                 + program[4450:4700]

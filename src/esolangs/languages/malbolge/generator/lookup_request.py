@@ -10,6 +10,8 @@ from esolangs.languages.malbolge.generator.isa import _ACTIVE
 from esolangs.languages.malbolge.generator.packed import (
     _LEFT_OPERAND,
     _RIGHT_OPERAND,
+    _SAFE_LEFT_OP,
+    _SAFE_RIGHT_OPS,
     _SOURCE_OPS,
     _decoder,
     _selector_groups,
@@ -38,7 +40,6 @@ from .packed_layout import (
 
 _OUTPUT = 4
 _PAIR_BRANCH = (5, 0)
-_SAFE_RIGHT = "".join(op for op in _ACTIVE if op not in "jv")
 _PHASE_BLOCKS = (3, 12, 48, 64)
 _NODE_LIMIT = 400_000
 type RequestWord = tuple[int, int, str]
@@ -134,9 +135,9 @@ def prepare(physical: int | None = None) -> Prepared:
     for word in _SOURCE_OPS:
         occupied = decoder.occupied[word]
         allowed = (
-            (_ACTIVE, "<")
+            (_ACTIVE, _SAFE_LEFT_OP)
             if word == _LEFT_OPERAND
-            else (_ACTIVE, _SAFE_RIGHT)
+            else (_ACTIVE, _SAFE_RIGHT_OPS)
             if word == _RIGHT_OPERAND
             else (_ACTIVE,)
         )
@@ -244,7 +245,7 @@ def contact_relation(arena: Diagram, prepared: Prepared, word: int, answer: int)
     """Combine unrestricted contacts with the selected side of the joint guard."""
     term = prepared.patterns.get((word, answer, _ACTIVE), 0)
     if word in (_LEFT_OPERAND, _RIGHT_OPERAND):
-        restricted = "<" if word == _LEFT_OPERAND else _SAFE_RIGHT
+        restricted = _SAFE_LEFT_OP if word == _LEFT_OPERAND else _SAFE_RIGHT_OPS
         branch = arena.literal(
             prepared.position[_PAIR_BRANCH], int(word == _RIGHT_OPERAND)
         )
