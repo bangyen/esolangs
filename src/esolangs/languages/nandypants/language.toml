@@ -66,17 +66,28 @@ construction = "esolangs.languages.nandypants.generator:nandypants_request"
 witnesses = "esolangs.languages.nandypants.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
+# Reads cost 8n. The prologue, printer and end labels cost at most 19.
+# Each test dispatch costs at most four, including its destination label.
+# An early constant skips at least one test and adds at most one ladder
+# label per remaining level. A full path starting with one falls through
+# the root at cost at most one. Starting with zero costs at most two,
+# and its next internal child is ready since all depth-one parents are
+# placed, so that dispatch costs at most three.
+# The witness starts with one, then takes four-command dispatches. In
+# each pair of residuals X, Z, both X edges lead to X' and Z's one edge
+# also leads to X'. X must wait for Z and Z then places X' first. At the
+# bottom the zero ladder is first, so its end jump executes both labels.
 cases = [
     { through = 1, expression = "29" },
     { through = 2, expression = "40" },
     { through = 3, expression = "52" },
-    { expression = "12n + 18" },
+    { expression = "12n + 16" },
 ]
-exact = [1, 2, 3]
-arities = [1, 2, 3, 6]
+exact = true
+arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, exact n≤3" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "bl(R-1) + bl(n) + 16 - C"
