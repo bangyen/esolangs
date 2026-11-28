@@ -61,40 +61,62 @@ notes = "Shipped (skip counter beside the table, ceil(n/4) entries a pass): 1,17
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.artppeice.generator:artppeice_request"
+witnesses = "esolangs.languages.artppeice.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-# c = ceil(n/4) entries a pass.  A pass replays at most 3n + 5 setup lines
-# and 2 closing ones, an entry takes 10, and the copy after the indexed
-# one halts on its third line: at most floor(T/c) + 1 passes start.
-expression = "(3n + 7)⌊T/⌈n/4⌉⌋ + 10T + 3n + 8"
-exact = false
-arities = [1, 2, 3, 6]
+# A full lookup with c=ceil(n/4) copies and all inputs one consumes
+# all T counter words. The split pass has 3n+8 overhead lines and
+# six per copy; the single table has 3n+7 and ten. After every
+# complete pass, both halt after 3n+8 lines plus the leftover copies.
+# Smaller lookups reduce both setup and copies. Through n=6
+# they also choose split, which gets cheaper as the table shrinks.
+cases = [
+    { through = 6, expression = "(3n+8)floor(T/ceil(n/4))+6T+3n+8" },
+    { expression = "(3n+7)floor(T/ceil(n/4))+10T+3n+8" },
+]
+exact = true
+arities = [1, 2, 3, 5, 6, 7]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; full counter followed by the empty dequeue" }
 
 [resource_evidence.workspace]
-# One-character words of 8 bits: at most T in the counter, 2T in the
-# table queues, T + 3c in the sink (emptied every pass), n + c + 2 in E,
-# one per input queue, five in P and D; 8 + n one-letter names; the line
-# index and the input cursor.
-expression = "32T + 32n + 192"
-exact = false
-arities = [1, 2, 3, 6]
+# The peak is the second refill of E before the sink is emptied.
+# With all inputs one, the counter still has T-c words after one
+# pass. The sink refills with T words; the table retains T-c
+# words, or twice that for split. Each split copy drops one word.
+# Single copies add at most one temporary word and do not
+# increase totals. Ones in the first 2c rows avoid losing a D word.
+# At refill the extra names and words beat each transient entry.
+# Later passes have shorter tables and counters. Any reduced
+# lookup has at most T/2 entries and cannot win even with two
+# queues. Long names each appear as a key and in E at the peak.
+# The one-input maximum instead occurs in the first pass.
+cases = [
+    { through = 1, expression = "127" },
+    { through = 6, expression = "8(4T-4ceil(n/4)+3n+7)+bl(3n+7+6ceil(n/4))+bl(2n)" },
+    { expression = "8(3T+3n+6)+16(26digits_sum(floor(n/26))+(n-26floor(n/26))digits(floor(n/26))-min(n,26))+bl(3n+6+10ceil(n/4))+bl(2n)" },
+]
+exact = true
+arities = [1, 2, 3, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; named queues and cursors" }
 
 [resource_evidence.scaling]
-# One table queue, m essential inputs of weights summing to 2^m - 1 <= T - 1
-# and c = ceil(n/4) entry copies: 2T + 2(2^m - 1) + 27n + 32m + 207c + 181
-# characters, reached at m = n (input names are one letter below n = 26).
-expression = "4T + 59n + 207⌈n/4⌉ + 179"
-exact = [7, 8]
+# Split minus single is 2T+29-94c on a full lookup, so split wins
+# through n=6. Each shape grows with weighted reads and table words.
+# The full lookup spells each input name four times. Beyond the
+# first 26, each gets its group number as a decimal suffix.
+cases = [
+    { through = 6, expression = "6T+59n+113ceil(n/4)+208" },
+    { expression = "4T+59n+207ceil(n/4)+179+4(26digits_sum(floor(n/26))+(n-26floor(n/26))digits(floor(n/26))-min(n,26))" },
+]
+exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n=7..10; at most below" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; full positional lookup" }
 
 [catalogue]
 folding_constant_local = "input_weights"  # no essential input: a one-entry table and no counter words
