@@ -125,6 +125,40 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   parities. Exhaustion at arities one through three gives 7, 21 and 37
   commands, attained by `10`, `1101` and `10101000`.
 
+  <a id="ascenic-size"></a> A prefix through ADD costs `P` characters
+  including its terminal newline. With base `B` and retained
+  transition indices `K`, the source costs
+  `P + sum(2B+4k+34 for k in K) + 9(B+2max(K)+3)+36`.
+  Summing the forward prefix gives `P = 24n² + (123n-16)/2 + b`
+  at even arity and `P = 24n² + (171n+83)/2 + b` at odd arity,
+  with `B = 8n-2+4(n mod 2)+b` for last bit `b`.
+
+  At full arity, adding two omitted transitions preserves endpoint
+  bits and raises both orientation costs. Thus one or two omissions
+  suffice for an upper bound. Even arity selects forward in both
+  cases. Its maximum omits index zero and ends in one. Two omissions
+  with the same ending bit can at best omit indices zero and one.
+
+  At odd arity, with one omission and both endpoints one, the bases
+  coincide and the mirror prefix saves `12n+48`. The two costs cross
+  at missing index `(T+3n+10)/2`. The adjacent integers give the same
+  minimum, two characters below the mean, with both tails intact.
+  The even one gives an odd change-of-phase boundary, making every
+  input essential. Using endpoints zero lowers both costs. With two
+  omissions, use the mean of the two orientation costs as an upper
+  bound. Relative to the all-transition sum with endpoints one, each
+  omission lowers that mean by at least `2B+32+2(T-2)`, since the
+  two reflected indices sum to `T-2` and a base can fall by one.
+  This is already below the single-omission optimum.
+
+  A reduced forward scan has at most `6n` prefix lines,
+  `B <= 8n` and `T/2-2` transitions. Strictly increasing arguments
+  price its prefix at at most `30n²+117n`; summing the transition
+  and tail costs puts it below the full-arity witness. Constants and
+  parity have at most `2n+5` lines of argument at most `6n+7`,
+  also smaller. Exhaustion at arities one through three gives
+  84, 586 and 1457 characters.
+
 The ledger records coverage of every `2**n`-bit table for every finite `n`.
 “Total” means mathematical coverage. Ignore explicit digit, instruction,
 line, tape, route-width, work and generation-time guards when lifting them
@@ -429,7 +463,7 @@ for the level counts. `tests/proofs/test_execution_formulas.py` and
 | Aprknia | tree | ASCII parity leaves retain quotient24; a fresh zero pair and pop select the zero arm, whose reset is omitted only for a statically exact-zero exit | linear: worst 23 (n=1), 81T/4-19 (n≥2) characters characters | proved | poly n: worst 18n + 5 commands | poly n: worst 39 (n=1), 34n-6+bl(81T/4-19)+bl(n) (n≥2) bits bits |
 | ArrowQueue | parameterized lookup | one stage per input doubles the queued markers and adds the bit (Horner), and the count selects one of `2**n` constant-size cascade stages | linear: worst min(6(2T+6n+7),A,B,C,D) cells: cascade and four folds | proved | linear: at most 52 (n=1), 78 (n=2), 124 (n=3), 11T+32n+92 (n≥4) commands commands: exact n≤3 | linear: worst T + 13 + bl(T+6n+8) bits: queue, position, heading, halt and dump flags |
 | artppeice | linear lookup | the first pass routes w counter words per set input of weight w into a counter queue closed by P, beside a queue holding the essential inputs' table, a word an entry; each pass dequeues both in step, and only the closing P puts a word ahead of the entry's digit in the printed queue, whose first word is then dropped; an ignored input is a bare read | linear: worst 4T + 59n + 207⌈n/4⌉ + 179 characters, n=7..10; at most below | proved | linear: at most (3n + 7)⌊T/⌈n/4⌉⌋ + 10T + 3n + 8 commands | linear: at most 32T + 32n + 192 bits |
-| Ascenic | tree | Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump; named parity sums retained bits instead | T**2: at most 2T²+(16n+44+4(n-2⌊n/2⌋))T+floor((48n²+(203+24(n-2⌊n/2⌋))n-98+39(n-2⌊n/2⌋))/2)+8T+34n+80 characters from n = 2: generated Θ(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound)) | lower bound | linear: worst 7 (n=1), 21 (n=2), 37 (n=3), 2T+6n+1+4(n-2floor(n/2)) (n≥4) commands commands ([proof](#ascenic-execution)) | poly n: worst C*(bl(2n+1)+1+S)+(1-C)*max(bl(2T+7n+3-2floor(n/2))+max(bl(10n-7-4floor(n/2))+bl(10n-5-4floor(n/2))+n+1,bl((2T+10n-3-4floor(n/2))*(2T+10n-2-4floor(n/2)))),bl(2T+5n+5+2floor(n/2))+max(bl(8n-5)+bl(8n-3)+n+2,bl((2T+8n+1)*(2T+8n+2))))+bl(2n-1)+16(1-C) bits. C marks a constant and S marks the extra LT flag for constant one |
+| Ascenic | tree | Horner's rule by built `-2` constants makes each row's code `base + 2r`; `LT t`, `ADDS` at every change point adds 1 to codes below `t`, so the parity answers; straight-line code, no jump; named parity sums retained bits instead | T**2: worst 84 (n=1), 586 (n=2), 1457 (n=3), 2T²+(16n+44+6(n%2))T+(48n²+203n-98+(36n+95)(n%2))/2 (n≥4) characters characters ([proof](#ascenic-size)) | lower bound | linear: worst 7 (n=1), 21 (n=2), 37 (n=3), 2T+6n+1+4(n-2floor(n/2)) (n≥4) commands commands ([proof](#ascenic-execution)) | poly n: worst C*(bl(2n+1)+1+S)+(1-C)*max(bl(2T+7n+3-2floor(n/2))+max(bl(10n-7-4floor(n/2))+bl(10n-5-4floor(n/2))+n+1,bl((2T+10n-3-4floor(n/2))*(2T+10n-2-4floor(n/2)))),bl(2T+5n+5+2floor(n/2))+max(bl(8n-5)+bl(8n-3)+n+2,bl((2T+8n+1)*(2T+8n+2))))+bl(2n-1)+16(1-C) bits. C marks a constant and S marks the extra LT flag for constant one |
 | B-tapemark | finite lookup | the blank grid is the table, one mark per row copied by `*`; a stage per input walks the mark pointer by that input's weight and `+` prints the mark it lands on; the bounds are the default swap_marker dialect's — the old dialect shares the constructions with each stage rebuilt for its own round-trip landing, a constant number of cells and steps per stage apart, and is verified by execution (each dialect over the generated corpus at n=1..4, plus a swap witness distinguishing the readings) rather than re-derived | linear: worst A cells: smallest of four layouts with all inputs essential | proved | linear: worst steps: longest all-zero row after the layout race at each essential arity | T log T: worst W bits through n=8: peak snapshot over rows of the chosen layout. At most B thereafter |
 | Back | parameterized tree | last tested bit held in cell n; equal halves pass; pair finishers compute the answer | linear: worst ((25+15(n-2⌊n/2⌋))·2^⌊(n-6)/2⌋-4)((40+10(n-2⌊n/2⌋))·2^⌊(n-6)/2⌋-8) (n≥8) cells: pair comb through n=7 | proved | linear: worst C*(3n+2+B)+(1-C)*13 (n=1), C*(3n+2+B)+(1-C)*27 (n=2), C*(3n+2+B)+(1-C)*(max(T/2,6n+1)+T/2+3n+6) (n=3..7), C*(3n+2+B)+(1-C)*258 (n=8), C*(3n+2+B)+(1-C)*469 (n=9), C*(3n+2+B)+(1-C)*(max(3T/4+1,6n-1)+3T/4+3n+7) (n≥10) commands. C constant B, bounds past n=9 | poly n: at most n+bl(n)+C*(3+bl(3n+B))+(1-C)*(7+max(bl(6n-2),n)+bl(3n+4)) bits: C marks the constant B |
 | Balik | tree | nested boxes test one input cell each with a splitter that also merges, since the tested cell is unchanged; a constant subtable is one leaf; two leaf children share the splitter row; a final identity cofactor prints its unchanged input cell | linear: nested boxes, odd inner levels side by side | proved | sqrt T: worst 19 (n=1), 40 (n=2), 69 (n=3), (34+10(n-2⌊n/2⌋))·2^⌊n/2⌋+7n-40+2(n-2⌊n/2⌋) (n≥4) commands | poly n: worst 12 (n=1), n+3+bl(n)+bl(2n-1)+bl(28*2^(floor(n/2)-1)+3n-16+6(n%2))+bl((10*2^(floor(n/2)-1)-4)(1+n%2)-1) (n≥2) bits bits |

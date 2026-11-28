@@ -6,7 +6,7 @@
   "aprknia": "linear: worst 23 (n=1), 81T/4-19 (n\u22652) characters characters",
   "arrowqueue": "linear: worst min(6(2T+6n+7),A,B,C,D) cells: cascade and four folds",
   "artppeice": "linear: worst 4T + 59n + 207\u2308n/4\u2309 + 179 characters, n=7..10; at most below",
-  "ascenic": "T**2, lower bound: at most 2T\u00b2+(16n+44+4(n-2\u230an/2\u230b))T+floor((48n\u00b2+(203+24(n-2\u230an/2\u230b))n-98+39(n-2\u230an/2\u230b))/2)+8T+34n+80 characters from n = 2: generated \u0398(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))",
+  "ascenic": "T**2, lower bound: worst 84 (n=1), 586 (n=2), 1457 (n=3), 2T\u00b2+(16n+44+6(n%2))T+(48n\u00b2+203n-98+(36n+95)(n%2))/2 (n\u22654) characters characters ([proof](#ascenic-size))",
   "b_tapemark": "linear: worst A cells: smallest of four layouts with all inputs essential",
   "back": "linear: worst ((25+15(n-2\u230an/2\u230b))\u00b72^\u230a(n-6)/2\u230b-4)((40+10(n-2\u230an/2\u230b))\u00b72^\u230a(n-6)/2\u230b-8) (n\u22658) cells: pair comb through n=7",
   "balik": "linear: nested boxes, odd inner levels side by side",

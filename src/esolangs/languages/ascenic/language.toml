@@ -113,15 +113,17 @@ unit = "bits"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. C marks a constant and S marks the extra LT flag for constant one" }
 
 [resource_evidence.scaling]
-# Inserting the three operand setup lines shifts existing arguments by at
-# most four until the final doubled scale. The inserted lines use at most
-# 2n+6 apiece. The old bound plus this overhead still prices either scan.
-expression = "2T²+(16n+44+4(n-2⌊n/2⌋))T+floor((48n²+(203+24(n-2⌊n/2⌋))n-98+39(n-2⌊n/2⌋))/2)+8T+34n+80"
-exact = false
-arities = [2, 3, 4, 5, 6, 7]
-first = 2
+cases = [
+    { through = 1, expression = "84" },
+    { through = 2, expression = "586" },
+    { through = 3, expression = "1457" },
+    { expression = "2T²+(16n+44+6(n%2))T+(48n²+203n-98+(36n+95)(n%2))/2" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7]
+first = 1
 unit = "characters"
-description = { growth = "T**2", evidence = "lower bound", claim = "at most", template = "{claim} {formula} {unit} from n = 2: generated Θ(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))" }
+description = { growth = "T**2", evidence = "lower bound", claim = "worst", template = "{claim} {formula} {unit} ([proof](#ascenic-size))" }
 
 [semantic_evidence]
 version = 1
