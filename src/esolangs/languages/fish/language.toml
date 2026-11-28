@@ -95,18 +95,33 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
-# The packed stack peaks at two raw indices or a bit, float,
-# column and power selector. Keep the packed model past the precision stop.
+# The plain reader peaks just before 68*, with the prior index,
+# six ASCII bits, and seven bits of literals. All ones attains it.
+# A packed reader with m essential inputs has p=2n+2m prefix cost.
+# Its stack peaks at two raw copies and a three-bit 6, or at the
+# bit, float, column constant and four-bit e after the first divide.
+# The former costs 2max(7,m)+3. It dominates the latter from m=46
+# on the full or maximal-projection witnesses. The column spelling
+# follows _column; the second candidate length is always odd.
+# Packed area wins for full nonsymmetric tables at n=3..55.
+# The precision guard caps m at 55. Through n=200 the projected
+# 55-input lookup fits and maximizes the packed stack and cursor.
+# Its 113-bit stack and nine-bit cursor win through n=100. The
+# integer reader wins from 101. Beyond 200 the packed stack
+# needs at most 125 bits and its cursor stays shorter. One input is exhaustive.
 cases = [
+    { through = 1, expression = "15" },
     { through = 2, expression = "bl(9n+8)+n+13+bl(n)" },
-    { through = 45, expression = "bl(4n+42)+bl(n)+1+max(2max(7,n)+3,bl(15⌈(4n+43)/15⌉)+71)" },
-    { expression = "bl(4n+38+4bl(4n+39+4bl(4n+43)))+bl(n)+1+max(2max(7,n)+3,bl(4n+39+4bl(4n+43))+72)" },
+    { through = 45, expression = "bl(4n+42)+bl(n)+1+max(2max(7,n)+3,bl(15ceil((4n+43)/15))+71)" },
+    { through = 55, expression = "bl(4n+38+4bl(4n+39+4bl(4n+43)))+bl(n)+2n+4" },
+    { through = 100, expression = "123+bl(n)" },
+    { expression = "n+13+bl(9n+8)+bl(n)" },
 ]
 exact = true
-arities = [2, 3, 4, 5, 6, 7]
-first = 2
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
+first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 # The packed prefix first fits in multiples of 15, with a three-cell
