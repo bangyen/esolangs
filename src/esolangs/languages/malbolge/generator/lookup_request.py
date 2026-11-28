@@ -47,7 +47,16 @@ _PHASE_BLOCKS = tuple(
     sum(1 << phase for phase in block) for block in batched(PHASES, 2)
 )
 _NODE_LIMIT = 400_000
-type SelectorRequest = dict[int, dict[int, int]]
+
+
+class SelectorBits(NamedTuple):
+    """The occupied request slots and their logical bit values."""
+
+    mask: int
+    value: int
+
+
+type SelectorRequest = dict[int, SelectorBits]
 
 
 class SelectorWord(NamedTuple):
@@ -246,7 +255,7 @@ def _requested_relation(
     arena: Diagram,
     prepared: Prepared,
     word: int,
-    requested: dict[int, int],
+    requested: SelectorBits,
     phase_block: int,
 ) -> int:
     root = 0
@@ -255,9 +264,7 @@ def _requested_relation(
             1 << phase
             for phase in PHASES
             if phase_block >> phase & 1
-            and all(
-                ((answer ^ phase) >> slot & 1) == bit for slot, bit in requested.items()
-            )
+            and (answer ^ phase) & requested.mask == requested.value
         )
         if not phases:
             continue
@@ -278,9 +285,12 @@ def emit(prepared: Prepared, assignment: int) -> bytes:
 
 
 def unpack_request(request: tuple[int, ...]) -> SelectorRequest:
-    """Decode logical selector bits by operand word and slot."""
+    """Pack each word's logical answers into their physical slots."""
     return {
-        word: {slot: answer >> bit & 1 for slot, bit in entries}
+        word: SelectorBits(
+            sum(1 << slot for slot, _ in entries),
+            sum((answer >> bit & 1) << slot for slot, bit in entries),
+        )
         for group, answer in zip(_selector_groups(), request, strict=True)
         for word, entries in group.items()
     }

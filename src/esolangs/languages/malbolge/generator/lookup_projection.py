@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from functools import reduce
+from functools import cache, reduce
 
 from .lookup_diagram import ALL_PHASES, PHASES, Diagram
 from .lookup_elimination import Factor, take_bucket
@@ -58,19 +58,34 @@ def project(
     return arena, reduce(arena.combine, (factor.root for factor in pending), ALL_PHASES)
 
 
+@cache
+def _output_phase_flips() -> tuple[int, ...]:
+    """Pack each phase's flips relative to the start of the output suffix."""
+    width, _, axes = selector_axes()
+    return tuple(
+        sum(
+            (phase >> slot & 1) << (width - 1 - axis)
+            for slots in axes.values()
+            for slot, axis in slots.items()
+        )
+        for phase in PHASES
+    )
+
+
 def select_bounded(requested: SelectorRequest) -> tuple[bytes, int]:
     """Recover a layout by retaining only the requested output cofactors."""
-    _, pin, axes = selector_axes()
-    right = requested[_RIGHT_OPERAND]
-    logical = sum(right[slot] << rank for rank, slot in enumerate(pin))
-    for phase in PHASES:
+    width, pin, axes = selector_axes()
+    right = requested[_RIGHT_OPERAND].value
+    logical = sum((right >> slot & 1) << rank for rank, slot in enumerate(pin))
+    # The prepared output suffix places the highest axis first.
+    output = sum(
+        (requested[word].value >> slot & 1) << (width - 1 - axis)
+        for word, slots in axes.items()
+        for slot, axis in slots.items()
+    )
+    for phase, flip in zip(PHASES, _output_phase_flips(), strict=True):
         plan = prepare(logical ^ phase)
-        output = 0
-        for word, slots in axes.items():
-            for slot, axis in slots.items():
-                bit = requested[word][slot] ^ (phase >> slot & 1)
-                output |= bit << plan.position[_OUTPUT, axis]
-        lookup = _recover(plan, output)
+        lookup = _recover(plan, (output ^ flip) << plan.color_count)
         if lookup is not None:
             return lookup, phase
     raise AssertionError("selector coverage is incomplete")
