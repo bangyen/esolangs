@@ -75,12 +75,18 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-expression = "3T/2 + 80n + 301"
-exact = false
-arities = [1, 2, 3, 5]
+# Loaded code and data are charged in full. The final input comparison
+# peaks with two chicken strings and the largest pre-add row address.
+cases = [
+    { through = 4, expression = "19n+T+bit_stride(10,1,n)+T/2*ceil((20n+8)/T)+bl(10+ceil((20n+8)/T))+116+bl(T/2*ceil((20n+8)/T)+T-2)+bl(10n+4)" },
+    { through = 7, expression = "19n+T+bit_stride(10,1,n)+T/2*ceil((20n+12)/T)+bl(10+ceil((20n+12)/T))+121+bl(T/2*ceil((20n+12)/T)+T-2)+bl(10n+6)" },
+    { expression = "19n+3T/2+bit_stride(10,1,n)+5+max(120,bl(n-1))+bl(3T/2-2)+bl(10n+6)" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 # Six inputs alone cross a base-alignment boundary on inversion.
