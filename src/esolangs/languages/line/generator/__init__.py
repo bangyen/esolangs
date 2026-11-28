@@ -10,7 +10,7 @@ The projected inline tree bounds default area. A complete input-order
 residual fold replaces it when no larger; equal residuals share stems and
 constant residuals drain their remaining reads. A complete fold wins ties.
 
-Inline trees use at most 3n+2 commands and complete folds at most 3n+4,
+Inline trees use at most 3n+2 commands and complete folds at most 3n+3,
 against the preceding 5n default bound. Balanced feasibility layouts retain
 5n; n<=5 retains its previous construction.
 
@@ -194,7 +194,7 @@ def _generate(table: TruthTable, unit: int = _BOOLEAN_UNIT) -> Raster:
     n, truth_table = table.arity, table.bits
 
     # Inline tests plus projected readers cost at most 3n+2 commands; folds
-    # retain 3n+4. See [ablations.inline_level_reads] for the pixel cost.
+    # retain 3n+3. See [ablations.inline_level_reads] for the pixel cost.
     tree = (
         line_boolean(truth_table)
         if n <= _SMALL_MAX

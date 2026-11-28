@@ -48,7 +48,7 @@
   "for_thorn": "linear: at most characters: scope and distance costs over essential arities",
   "fractran": "linear: worst C = \u03a3_{d<n} min(2^d,2^2^(n-d)-2^2^(n-d-1)) states, O(log T) digits",
   "freestajlo": "linear: worst min(T + 4n + 1, \u2308T/6\u2309 + 4n + 19) characters",
-  "grapheme": "linear: at most 17n+15+digits(2^T) characters from n=2",
+  "grapheme": "linear: worst 17n+15+digits(2^T) characters from n=2",
   "gridscript": "linear: worst 3T/8 + 55n + 185 (n=1..4), 3T/8 + 55n + 171 (n=5..31), 160T+(55+bl(n))n+64 (n\u226532) characters, n=4..8",
   "home_row": "linear: worst 6T + 10n + 61 characters past n = 1: pairs",
   "hot": "linear: worst 27T/2 + 73n + 86 characters past n = 1: pairs",

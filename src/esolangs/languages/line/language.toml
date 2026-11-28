@@ -97,16 +97,17 @@ version = 2
 construction = "esolangs.languages.line.generator:line_request"
 
 [resource_evidence.execution]
-# Keep small trees within 5n; inline trees and folds within 3n+4.
+# Folds have at most n-1 joins because root edges are first arrivals.
+# Parity on 10...0 takes every later join through n=12.
 cases = [
     { through = 5, expression = "5n" },
-    { expression = "3n+4" },
+    { expression = "3n+3" },
 ]
-exact = [3, 5]
-arities = [1, 2, 3, 5, 6, 8]
+exact = [1, 2, 3, 4, 5, 6, 7, 8]
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} by default, with balanced layouts retaining the first bound" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} by default (attained at n=1..8), with balanced layouts retaining the first bound" }
 
 [resource_evidence.workspace]
 # The tape widths sum to n·bl(n-1)-2^bl(n-1)+2: zero costs one bit.

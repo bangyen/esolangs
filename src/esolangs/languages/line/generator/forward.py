@@ -64,7 +64,7 @@ def streaming_canvas(
 def _fold_canvas(
     table: str, old_area: int, *, unit: int
 ) -> tuple[Node, CanvasPlan] | None:
-    """Return a fold within 3n+4 commands beating ``old_area``, else None."""
+    """Return a fold within 3n+3 commands beating ``old_area``, else None."""
     dag = _load_dag(table)
     if dag is None:
         return None
@@ -79,8 +79,8 @@ def _fold_canvas(
     start = layout.forks[root][0] - 10, layout.forks[root][1]
     router = _Router(dag, layout, [], {})
     head = router.build(root)
-    # n reads, at most n tests and n joins, three output operations
-    # and a halt: n+2n+4 <= 5n for n >= 2.  Constant residuals drain
+    # n reads, at most n tests and n-1 joins, three output operations
+    # and a halt. Root edges are first arrivals. Constant residuals drain
     # inputs; only cells zero and one are used.  Moving an arm's '<'
     # onto its destination changes no path's command count.
     plan = stroke_plan(router.strokes, start, (1, 0), old_area, unit)
