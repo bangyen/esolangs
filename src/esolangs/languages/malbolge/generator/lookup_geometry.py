@@ -10,11 +10,11 @@ from esolangs.languages.malbolge.generator.packed import _SOURCE_OPS, _decoder
 from esolangs.languages.malbolge.interpreter import _XLAT2
 
 from .packed_layout import (
-    _COLUMN_COUNT,
     _SHORT_HUB,
     _TAPS,
     _column_marker,
     _lookup_base,
+    _word_column,
 )
 
 if TYPE_CHECKING:
@@ -84,7 +84,7 @@ def geometry() -> Geometry:
     alphabets: dict[Role, Alphabet] = {}
     mandatory: dict[Role, set[int]] = {}
     navigation: dict[int, tuple[Contact, ...]] = {}
-    navigation_columns = {(word - 1) % _COLUMN_COUNT for word in _NAVIGATION_WORDS}
+    navigation_columns = {_word_column(word) for word in _NAVIGATION_WORDS}
     selected = {(lane, role) for lane, roles in _ORDINARY.items() for role in roles}
     for column in decoder.columns:
         covered = False
@@ -103,7 +103,7 @@ def geometry() -> Geometry:
             )
         assert covered
     for word, allowed in _SOURCE_OPS.items():
-        column = (word - 1) % _COLUMN_COUNT
+        column = _word_column(word)
         slots = tuple(i for i in range(3) if decoder.occupied[word] >> i & 1)
         contacts = []
         for role, marker in _markers(column):

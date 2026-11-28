@@ -11,6 +11,7 @@ from .lookup_request import (
     _NODE_LIMIT,
     _OUTPUT,
     Prepared,
+    SelectorRequest,
     contact_relation,
     emit,
     prepare,
@@ -68,24 +69,20 @@ def project(
     return arena, reduce(arena.combine, (factor.root for factor in pending), ALL_PHASES)
 
 
-def select_bounded(request: tuple[int, ...]) -> tuple[bytes, int]:
+def select_bounded(requested: SelectorRequest) -> tuple[bytes, int]:
     """Recover a layout by retaining only the requested output cofactors."""
     width, pin, axes = selector_axes(_selector_groups())
-    logical = sum(
-        (request[group] >> bit & 1) << slot for slot, (group, bit) in enumerate(pin)
-    )
+    right = requested[_RIGHT_OPERAND]
+    logical = sum(right[slot] << rank for rank, slot in enumerate(pin))
     for phase in range(7):
         physical = logical ^ phase
         plan = prepare(physical)
         colors = len(plan.order) - width
         output = 0
-        for group, answer in zip(plan.groups, request, strict=True):
-            for word, entries in group.items():
-                if word == _RIGHT_OPERAND:
-                    continue
-                for slot, row in entries:
-                    bit = (answer >> row ^ phase >> slot) & 1
-                    output |= bit << plan.position[_OUTPUT, axes[word][slot]]
+        for word, slots in axes.items():
+            for slot, axis in slots.items():
+                bit = requested[word][slot] ^ (phase >> slot & 1)
+                output |= bit << plan.position[_OUTPUT, axis]
         lookup = _recover(plan, physical, output, colors)
         if lookup is not None:
             return lookup, phase

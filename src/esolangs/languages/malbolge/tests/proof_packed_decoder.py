@@ -13,7 +13,10 @@ from esolangs.languages.malbolge.generator.lookup_projection import (
     project,
     select_bounded,
 )
-from esolangs.languages.malbolge.generator.lookup_request import selector_axes
+from esolangs.languages.malbolge.generator.lookup_request import (
+    selector_axes,
+    unpack_request,
+)
 from esolangs.languages.malbolge.generator.packed_layout import (
     _BANK,
     _LOOKUP,
@@ -195,7 +198,7 @@ def main() -> int:
     rows = _rows_by_word(decoder)
     groups = packed._selector_groups()
     # Evaluate the emitted layout independently of the projected factors.
-    lookup, phase = select_bounded((0,) * len(groups))
+    lookup, phase = select_bounded(unpack_request((0,) * len(groups)))
     masks = _masks(_domains(decoder, rows, lookup))
     for group, mask in zip(groups, masks, strict=True):
         bits = sum(

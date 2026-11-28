@@ -25,6 +25,11 @@ _PRINTERS = (4513, 4663, 4585)
 _TAPS = (139, 127, 130)
 
 
+def _word_column(word: int) -> int:
+    """Return the payload word's column within its address band."""
+    return (word - 1) % _COLUMN_COUNT
+
+
 def _column_marker(column: int) -> int:
     """Return the marker before the column's short-hub companion."""
     return _COLUMN_MARKER_BASE + _COLUMN_MARKER_STRIDE * column

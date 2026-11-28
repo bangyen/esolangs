@@ -43,6 +43,7 @@ _PAIR_BRANCH = (5, 0)
 _PHASE_BLOCKS = (3, 12, 48, 64)
 _NODE_LIMIT = 400_000
 type RequestWord = tuple[int, int, str]
+type SelectorRequest = dict[int, dict[int, int]]
 
 
 class Prepared(NamedTuple):
@@ -86,24 +87,24 @@ def _support(
 
 def selector_axes(
     groups: tuple[dict[int, list[tuple[int, int]]], ...],
-) -> tuple[int, tuple[tuple[int, int], ...], dict[int, dict[int, int]]]:
-    """Place all selector bits except the right operand on numbered output axes."""
+) -> tuple[int, tuple[int, ...], dict[int, dict[int, int]]]:
+    """Number the projected bits and report the pinned right operand slots."""
     width = 0
     pin = []
     axes: dict[int, dict[int, int]] = {}
-    for index, group in enumerate(groups):
+    for group in groups:
         by_row = sorted(
             (row, word, slot)
             for word, entries in group.items()
             for slot, row in entries
         )
-        for row, word, slot in by_row:
+        for _, word, slot in by_row:
             if word == _RIGHT_OPERAND:
-                pin.append((slot, index, row))
+                pin.append(slot)
             else:
                 axes.setdefault(word, {})[slot] = width
                 width += 1
-    return width, tuple((index, row) for _, index, row in sorted(pin)), axes
+    return width, tuple(sorted(pin)), axes
 
 
 @cache
@@ -301,14 +302,18 @@ def emit(prepared: Prepared, assignment: int) -> bytes:
     )
 
 
-def _select_fast(request: tuple[int, ...]) -> tuple[bytes, int]:
-    """Project the compatible polarity mask and reconstruct its first layout."""
-    prepared = prepare()
-    requested = {
+def unpack_request(request: tuple[int, ...]) -> SelectorRequest:
+    """Decode logical selector bits by operand word and slot."""
+    return {
         word: {slot: answer >> bit & 1 for slot, bit in entries}
-        for group, answer in zip(prepared.groups, request, strict=True)
+        for group, answer in zip(_selector_groups(), request, strict=True)
         for word, entries in group.items()
     }
+
+
+def _select_fast(requested: SelectorRequest) -> tuple[bytes, int]:
+    """Project the compatible polarity mask and reconstruct its first layout."""
+    prepared = prepare()
     arena = Diagram(len(prepared.order), _NODE_LIMIT)
     for block in _PHASE_BLOCKS:
         arena.restore(prepared.checkpoint)
@@ -332,9 +337,10 @@ def _select_fast(request: tuple[int, ...]) -> tuple[bytes, int]:
 
 def select(request: tuple[int, ...]) -> tuple[bytes, int]:
     """Derive a compatible layout, using the bounded projection on arena overflow."""
+    requested = unpack_request(request)
     try:
-        return _select_fast(request)
+        return _select_fast(requested)
     except OverflowError:
         from .lookup_projection import select_bounded
 
-    return select_bounded(request)
+    return select_bounded(requested)

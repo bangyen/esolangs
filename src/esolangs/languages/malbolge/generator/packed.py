@@ -27,7 +27,6 @@ from .decoder_tail import _write_decoder_tail
 from .emitter import _ENCODING_PERIOD
 from .packed_layout import (
     _BANK,
-    _COLUMN_COUNT,
     _HIGH_OPERAND_OFFSET,
     _LONG_HUB,
     _LOOKUP,
@@ -38,6 +37,7 @@ from .packed_layout import (
     _column_marker,
     _high_cell,
     _lookup_base,
+    _word_column,
 )
 from .spill import _spill_locations
 from .spill_routes import _write_spill_routes
@@ -294,7 +294,7 @@ def _allocate_payloads(
     columns: defaultdict[int, list[int]] = defaultdict(list)
     for word, occupied in enumerate(used):
         if occupied:
-            columns[(word - 1) % _COLUMN_COUNT].append(word)
+            columns[_word_column(word)].append(word)
     return tuple(locations), bytes(used), dict(columns)
 
 
@@ -409,7 +409,7 @@ def _operand_encodings(lookup: bytes) -> dict[int, _Encodings]:
     for word in _SOURCE_OPS:
         by_answer: dict[int, _Operand] = {}
         safe_with_any_partner: dict[int, _Operand] = {}
-        col = (word - 1) % _COLUMN_COUNT
+        col = _word_column(word)
         for column in _marker_labels(source, decoder.hubs, col):
             for op, bits in _operand_patterns(
                 source, decoder.hubs, word, column.marker, decoder.occupied[word]
@@ -429,7 +429,7 @@ def _ordinary_columns(lookup: bytes) -> dict[int, _Column]:
     """Derive an answer alphabet for each column without navigation operands."""
     decoder = _decoder()
     source = _lookup_image(lookup)
-    restricted = {(word - 1) % _COLUMN_COUNT for word in _SOURCE_OPS}
+    restricted = {_word_column(word) for word in _SOURCE_OPS}
     columns: dict[int, _Column] = {}
     for col in decoder.columns.keys() - restricted:
         for column in _marker_labels(source, decoder.hubs, col):
@@ -500,14 +500,15 @@ def _packed_program(table: str) -> str:
     _install_printers(source, polarity)
     encodings = _operand_encodings(lookup)
     ordinary = _ordinary_columns(lookup)
+    left, right = _coupled_encodings(encodings, answers)
     operands = {
-        word: codes.by_answer[answers[word]] for word, codes in encodings.items()
+        word: codes.by_answer[answers[word]]
+        for word, codes in encodings.items()
+        if word not in (_LEFT_OPERAND, _RIGHT_OPERAND)
     }
-    operands[_LEFT_OPERAND], operands[_RIGHT_OPERAND] = _coupled_encodings(
-        encodings, answers
-    )
+    operands.update({_LEFT_OPERAND: left, _RIGHT_OPERAND: right})
     selected = {
-        (word - 1) % _COLUMN_COUNT: operand.column for word, operand in operands.items()
+        _word_column(word): operand.column for word, operand in operands.items()
     }
     for col, words in decoder.columns.items():
         marker, labels = selected[col] if col in selected else ordinary[col]
