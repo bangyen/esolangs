@@ -61,7 +61,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Three residue steps and both reversible payload reads share their routes.
   The payload walks can use default no-op glyphs in the reserved shadow lanes.
   Repeated rotations and readout writes derive their walks from pointer distances.
-  The spill folds, payload selection and high returns use fixed pointer routes.
+  The spill folds, payload selection and lookup returns use fixed pointer routes.
 
   Generation takes `O(T)` RAM work for `T` truth-table rows under the
   fixed 59,049-cell machine. Validation and constant detection scan the

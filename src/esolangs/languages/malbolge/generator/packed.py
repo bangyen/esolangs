@@ -17,18 +17,18 @@ from typing import NamedTuple
 from esolangs.languages.malbolge.generator.digits import _readouts
 from esolangs.languages.malbolge.generator.isa import (
     _ACTIVE,
-    _ALL1,
     _WORDS,
     _char_for,
-    _progression,
 )
 from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine
 from esolangs.runtime.io import ScriptedIO
 
 from .decoder_routes import _write_decoder_routes
+from .decoder_tail import _write_decoder_tail
 from .emitter import _ENCODING_PERIOD
 from .spill import _BANK, _spill_locations
 from .spill_routes import _write_spill_routes
+from .startup_routes import _write_first_read
 
 _DATA = Path(__file__).resolve().parent
 _ROWS = (
@@ -105,33 +105,6 @@ def _high_cell(word: int) -> int:
     return (word - 1) // 243 * 243 + 79
 
 
-def _write_guard_approaches(source: bytearray) -> None:
-    """Install the shared jump that the lookup guards use to enter low memory."""
-    # The first jump reads the glyph; six walks reach its pointer operand.
-    approach = "j" + "o" * 6 + "jo"
-    # The first guard and the printer guard share their next six jumps.
-    shared = approach + "j" + "o" * 5 + "jojjojooj"
-    for pc, ops in ((5585, shared), (5657, approach), (5697, shared)):
-        for address, op in enumerate(ops, pc):
-            source[address] = _char_for(op, address)
-
-
-def _write_guard_returns(source: bytearray) -> None:
-    """Route the two dispatch guards through the encrypted all-ones operand."""
-    operand = _ALL1 + 1
-    landing = ord(_XLAT2[_char_for("o", operand) - 33]) + 1
-    return_pointer = 86
-    terminal = _progression(return_pointer - 1, landing, 127)[0]
-    shared = "j" + "o" * (terminal - landing) + "j"
-    # Both low operands contain all-ones when the dispatch guard runs.
-    for pc, hub, low, approach in ((5609, 45926, 46, "o"), (5681, 41552, 36, "")):
-        walk = low - (source[hub] + 1)
-        assert walk >= 0
-        ops = approach + "j" + "o" * walk + "j" + shared
-        for address, op in enumerate(ops, pc):
-            source[address] = _char_for(op, address)
-
-
 def _short_hub_cell(k: int) -> bool:
     """Return whether the walked pointer cell will name the short hub."""
     residue = k % 20
@@ -186,20 +159,15 @@ def _write_hub_fills(source: bytearray) -> None:
 
 
 def _write_shared_routes(source: bytearray) -> None:
-    """Emit the residue steps, reversible payload reads and glyph palette."""
+    """Emit the residue steps and the glyph palette."""
     # Apply the accumulator mask, negate through all-twos and reload all-ones.
     residue = "jop" + "jojjooo*" + "ojjoojjop" + "ojjj*joj"
-    # The two payload passes apply and undo the same crazy involution.
-    shadow_walk = "j" * 7 + "ojojoo" + "j" * 4 + "ojo" + "j" * 3 + "ojooj"
-    payload = "**" + "o" * 23 + "jpoo" + shadow_walk
     # Printable operands descend cyclically twice for the suffix dispatch.
     palette = "v" * (2 * _ENCODING_PERIOD)
     for pc, ops in (
         (2177, residue),
         (2293, residue),
         (2325, residue),
-        (6194, payload),
-        (6260, payload),
         (4255, palette),
     ):
         for address, op in enumerate(ops, pc):
@@ -289,14 +257,14 @@ def _decoder() -> _Decoder:
         lo = int(origin)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
     _write_reset_seed(source)
+    _write_first_read(source)
     _write_hub_fills(source)
     _write_shared_routes(source)
     _write_rotation_pair(source)
     _write_cold_hub_returns(source)
     _write_decoder_routes(source)
     _write_spill_routes(source)
-    _write_guard_approaches(source)
-    _write_guard_returns(source)
+    _write_decoder_tail(source)
     # The short seed at the first entry follows its six-cell approach.
     for start in (_PRINTERS[0] + 6, *_PRINTERS[1:]):
         _write_printer(source, start, _SHORT[0])
