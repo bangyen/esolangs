@@ -74,12 +74,17 @@ construction = "esolangs.languages.arrowqueue.generator:arrowqueue_request"
 witnesses = "esolangs.languages.arrowqueue.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "11T + 32n + 92"
-exact = false
-arities = [1, 7]
+cases = [
+    { through = 1, expression = "52" },
+    { through = 2, expression = "78" },
+    { through = 3, expression = "124" },
+    { expression = "11T+32n+92" },
+]
+exact = [1, 2, 3]
+arities = [1, 2, 3, 7]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: Horner doubling 8 a marker, a row 1, fold corridors" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: exact n≤3" }
 
 [resource_evidence.workspace]
 expression = "T + 13 + bl(T+6n+8)"
