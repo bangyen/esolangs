@@ -626,7 +626,7 @@ Evaluate rows with `artifact.evaluate(bits)`. Import file and JSON helpers from
 catalog types from `esolangs.registry`. Use `Language(name).instantiate(...)`
 for checked template binding.
 
-In 3.0, replace `execute(...)` with `run(...)` and a raising `run(...)` with
+In 2.5, replace `execute(...)` with `run(...)` and a raising `run(...)` with
 `run(...).unwrap()`. Use `language.plan_generation(table)` for a
 `Ready` decision with `.build()` or an `Unsupported` decision with `.reason`
 and `.cap`. Planning constructs the artifact once. Bind dialect defaults with

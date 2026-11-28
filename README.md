@@ -84,7 +84,7 @@ a halt or divergence proof. A deadline raises `ExecutionTimeoutError`; `max_step
 Generated artifacts expose `.source` and templates expose `.fill(bits)`.
 Artifacts generated or loaded through a custom catalog use that catalog for
 `.evaluate(bits)`. Portable JSON takes its catalog from the loader.
-The [migration guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#compatibility) covers the 3.0 execution and planning changes.
+The [migration guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#compatibility) covers the 2.5 execution and planning changes.
 
 The [usage guide](https://github.com/bangyen/esolangs/blob/main/docs/usage.md)
 covers [input](https://github.com/bangyen/esolangs/blob/main/docs/usage.md#feeding-a-program),

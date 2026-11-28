@@ -5,6 +5,32 @@ public API; see [the compatibility policy](usage.md#compatibility).
 Releases before 0.10.0 are described on the
 [GitHub releases page](https://github.com/bangyen/esolangs/releases).
 
+## 2.5.0
+
+- **Breaking (minor-release exception):** `run` returns an
+  `ExecutionOutcome` instead of raising; call `.unwrap()` for the old
+  result or error. `execute` is removed. `PreparedProgram.run` matches.
+- **Breaking (minor-release exception):** Remove `evaluate`,
+  `instantiate`, `from_file`, `to_file`, `to_json`, `from_json`, `Catalog`
+  and `LanguageDeclaration` from the package. Use `artifact.evaluate(bits)`
+  or `artifact.bind(bits)`, `Language(name).instantiate`,
+  `esolangs.serialization` and `esolangs.registry`.
+- **Breaking (minor-release exception):** `Language.evaluate` and the
+  language argument to row evaluation are removed. Planning returns
+  `Ready` or `Unsupported` from `esolangs.planning`.
+- `Language(name, dialect=settings)` and `catalog.bind` set dialect
+  defaults; an artifact's retained choices override them. Copied
+  artifacts keep their owning catalog.
+- Malbolge generates every seventeen-input truth table.
+- Shrink generated programs on large tables: BracketOnly about 54%,
+  Bifunge about 39%, Nybbleist up to 74%, Onecode and moar cheese :3 up to
+  72% and 49%, Bytemap 24-72% from arity 7. Sonata emits one rule per row
+  through three inputs. Tubes, Trml, Q-BAL, GridScript and FALSE shrink
+  parity or small tables. GridScript, Tubes, Bytemap and Bruijndejx drop
+  tricks that saved under the audit bar.
+- Speed up the Brainfuck, Whitespace, Line and Piet interpreters.
+- Unary no longer treats a failed write as end of input.
+
 ## 2.4.0
 
 - **Breaking (minor-release exception):** `DialectSettings` requires a
