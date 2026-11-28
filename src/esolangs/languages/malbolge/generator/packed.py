@@ -198,6 +198,30 @@ def _write_shared_routes(source: bytearray) -> None:
             source[address] = _char_for(op, address)
 
 
+def _write_reset_seed(source: bytearray) -> None:
+    """Build the reset constants while C and D walk together."""
+    pc = 0
+
+    def place(op: str, glyph: int) -> None:
+        nonlocal pc
+        # The same printable operand decodes every 94 cells.
+        pc += (_char_for(op, pc) - glyph) % _ENCODING_PERIOD
+        source[pc] = glyph
+        pc += 1
+
+    # Two crazy operations on the cold accumulator leave 80.
+    place("p", 55)
+    place("p", 53)
+    # Preserve the low pointer window; crazy(80, 80) gives all-ones.
+    pc = 128
+    place("p", 80)
+    place("*", 50)
+    place("*", 48)
+    # The remaining crazy chain restores zero for the first pointer jump.
+    for glyph in (126, 116, 115, 111):
+        place("p", glyph)
+
+
 @cache
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
@@ -206,6 +230,7 @@ def _decoder() -> _Decoder:
         address, ops = line.split()
         lo = int(address)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
+    _write_reset_seed(source)
     _write_hub_fills(source)
     _write_shared_routes(source)
     _write_guard_approaches(source)
