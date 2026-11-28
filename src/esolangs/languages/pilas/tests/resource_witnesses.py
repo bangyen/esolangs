@@ -1,4 +1,4 @@
-"""Named witnesses for Pilas source size."""
+"""Named witnesses for Pilas resource bounds."""
 
 
 def resource_tables(n: int) -> tuple[str, ...]:
@@ -6,4 +6,4 @@ def resource_tables(n: int) -> tuple[str, ...]:
     first, second = "10", "11"
     for _ in range(n - 1):
         first, second = first + second, second + first
-    return (first,)
+    return (first, "1100" + first[4:]) if n >= 2 else (first,)

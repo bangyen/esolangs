@@ -79,12 +79,20 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
-expression = "3n + 24"
-exact = false
-arities = [1, 2, 3, 6]
+# An inverted span tops out at three ASCII bytes, plus its zero
+# residues and the idle bit. Constant roots instead keep K bytes.
+cases = [
+    { through = 1, expression = "25" },
+    { through = 2, expression = "29" },
+    { through = 3, expression = "32" },
+    { expression = "bl(n)+max(2n+25,6K+12+P)" },
+]
+source_terms = { names = ["K", "P"], provider = "esolangs.languages.pilas.proof_formulas:workspace_terms" }
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 8]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, K retained constant bytes and P peak pointer bits" }
 
 [resource_evidence.scaling]
 # Including the caller add, 10 and 11 both cost 14 after cancellation.
