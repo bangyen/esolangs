@@ -546,20 +546,10 @@ def _digits(
     short = _short(n)
     layout = _short_layout(first_table, last_table) if short else _full_layout()
     cells = _allocate_cells(layout, drain_last=drain_last)
-    _, pointer = _pointers(_D_LABEL, _seed_values(layout).items(), single=True)
     occupied = set(tables)
-    claimed: set[int] = set()
-    data, stubs = _hub_layout(
-        _hubs(layout),
-        occupied,
-        _D_FLOOR,
-        cells.builds,
-        packed=not short,
-        claimed=claimed,
+    main, pointer, stubs, claimed = _start_readout(
+        layout, cells, occupied, packed=not short
     )
-
-    main, _ = _main_planner(data)
-    _emit_digit_setup(main, cells)
     if drain_last:
         # Prepare the recovery operand while the data pointer is near it.
         _emit_zero(main, cells)
@@ -572,9 +562,9 @@ def _digits(
     )
     if drain_last:
         stubs = {a: "o" if op == "/" else op for a, op in stubs.items()}
-    code = _merge_code(main.code, stubs, data, occupied, claimed)
-    words = max(*code, *data, last_table) + 1 if short else _WORDS
-    return _Digits(code, data, tables, words)
+    code = _merge_code(main.code, stubs, main.data, occupied, claimed)
+    words = max(*code, *main.data, last_table) + 1 if short else _WORDS
+    return _Digits(code, main.data, tables, words)
 
 
 class _DCells(NamedTuple):
@@ -719,6 +709,32 @@ def _emit_digit_setup(main: _Planner, cells: _DCells) -> None:
         helper,
         (helper["all1"], helper["all2"], cells.s_cell, cells.z_cell),
     )
+
+
+class _ReadoutSetup(NamedTuple):
+    main: _Planner
+    pointer: dict[int, int]
+    stubs: dict[int, str]
+    claimed: set[int]
+
+
+def _start_readout(
+    layout: _Layout, cells: _DCells, occupied: set[int], *, packed: bool
+) -> _ReadoutSetup:
+    """Place readout hubs and stubs, then initialize the main planner."""
+    _, pointer = _pointers(_D_LABEL, _seed_values(layout).items(), single=True)
+    claimed: set[int] = set()
+    data, stubs = _hub_layout(
+        _hubs(layout),
+        occupied,
+        _D_FLOOR,
+        cells.builds,
+        packed=packed,
+        claimed=claimed,
+    )
+    main, _ = _main_planner(data)
+    _emit_digit_setup(main, cells)
+    return _ReadoutSetup(main, pointer, stubs, claimed)
 
 
 def _emit_labels(

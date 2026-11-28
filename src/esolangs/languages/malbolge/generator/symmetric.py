@@ -27,15 +27,10 @@ from esolangs.languages.malbolge.interpreter import _crazy
 
 from .core import (
     _K_CELL,
-    _hub_layout,
-    _main_planner,
     _merge_code,
-    _pointers,
     _render_answers,
 )
 from .digits import (
-    _D_FLOOR,
-    _D_LABEL,
     _D_SWAP_U,
     _D_SWAP_V,
     _DIGIT,
@@ -46,13 +41,11 @@ from .digits import (
     _d_choice,
     _DCells,
     _emit_digit_jump,
-    _emit_digit_setup,
     _emit_swap12,
     _fold,
     _fold_state,
     _full_layout,
-    _hubs,
-    _seed_values,
+    _start_readout,
 )
 from .emitter import _Planner
 from .isa import _printable_slot
@@ -234,19 +227,9 @@ def _symmetric() -> _Symmetric:
     cells_of_tables = set(weights)
     layout = _full_layout(weight_fold=True)
     cells = _allocate_cells(layout, inits=_s_inits())
-    _, pointer = _pointers(_D_LABEL, _seed_values(layout).items(), single=True)
-    claimed: set[int] = set()
-    data, stubs = _hub_layout(
-        _hubs(layout),
-        cells_of_tables,
-        _D_FLOOR,
-        cells.builds,
-        packed=True,
-        claimed=claimed,
+    main, pointer, stubs, claimed = _start_readout(
+        layout, cells, cells_of_tables, packed=True
     )
-
-    main, _ = _main_planner(data)
-    _emit_digit_setup(main, cells)
     _s_emit_groups(main, cells)
     _emit_digit_jump(
         main,
@@ -256,8 +239,8 @@ def _symmetric() -> _Symmetric:
         swap_cell=_continuation_cells(cells)(),
         rotate_readout=True,
     )
-    code = _merge_code(main.code, stubs, data, cells_of_tables, claimed)
-    return _Symmetric(code, data, weights)
+    code = _merge_code(main.code, stubs, main.data, cells_of_tables, claimed)
+    return _Symmetric(code, main.data, weights)
 
 
 def _symmetric_program(truth_table: str) -> str | None:
