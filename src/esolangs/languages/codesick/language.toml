@@ -83,14 +83,21 @@ unit = "steps"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: three a level, two at the last" }
 
 [resource_evidence.workspace]
-# Base-88 markers skip three keywords and fit digits(C+1) bytes,
-# where C caps distinct nonconstant subtables across internal levels.
-expression = "16n+8+8digits(residuals_without_constants(n)+1)+bl(3residuals_without_constants(n)+1)"
-exact = false
+# A miss retains n bits plus one marker in the input-keyed variable.
+# Unique edges suppress enough forwarders at n=7 and n=12 to save a cursor bit.
+cases = [
+    { through = 1, expression = "26" },
+    { through = 6, expression = "17n+9" },
+    { through = 8, expression = "17n+8" },
+    { through = 11, expression = "17n+16" },
+    { through = 14, expression = "17n+15" },
+    { expression = "16n+8+8digits(residuals_without_constants(n)+1)+bl(3residuals_without_constants(n)+1)" },
+]
+exact = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: the input as key, the unread bits, the ip" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, exact through n=14" }
 
 [resource_evidence.scaling]
 # At most ten label occurrences per node, one extra character on each
