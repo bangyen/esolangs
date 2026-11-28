@@ -58,7 +58,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Each used column has a companion glyph that jumps through the short hub.
   The high operand bands derive their return glyphs from the same hub families.
   The reset constants use the encoding period while C and D advance together.
-  Three residue steps and both reversible payload reads share their routes.
+  The startup derives its input folds, hub setup and dispatch routes directly.
   The payload walks can use default no-op glyphs in the reserved shadow lanes.
   Repeated rotations and readout writes derive their walks from pointer distances.
   The spill folds, payload selection and lookup returns use fixed pointer routes.

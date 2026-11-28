@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from functools import cache
-from pathlib import Path
 from typing import NamedTuple
 
 from esolangs.languages.malbolge.generator.digits import _readouts
@@ -28,9 +27,8 @@ from .decoder_tail import _write_decoder_tail
 from .emitter import _ENCODING_PERIOD
 from .spill import _BANK, _spill_locations
 from .spill_routes import _write_spill_routes
-from .startup_routes import _write_first_read
+from .startup_routes import _write_startup_routes
 
-_DATA = Path(__file__).resolve().parent
 _ROWS = (
     (45112, 45113, 45114),
     (127032, 127033, 127034),
@@ -252,12 +250,8 @@ def _write_high_dispatch(source: bytearray, readouts: tuple[int, ...]) -> None:
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
     source = bytearray(_char_for("o", k) for k in range(_WORDS))
-    for line in (_DATA / "packed-decoder.txt").read_text(encoding="ascii").splitlines():
-        origin, ops = line.split()
-        lo = int(origin)
-        source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
     _write_reset_seed(source)
-    _write_first_read(source)
+    _write_startup_routes(source)
     _write_hub_fills(source)
     _write_shared_routes(source)
     _write_rotation_pair(source)
