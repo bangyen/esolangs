@@ -99,12 +99,20 @@ construction = "esolangs.languages.brainif.generator:brainif_request"
 witnesses = "esolangs.languages.brainif.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "4n + 51"
-exact = false
-arities = [1, 2, 3, 6]
+# The ordinary zero tail uses 52 lines. At depth one either the
+# chosen residual follows a child or both arcs lead to the first
+# depth-two residual, which itself follows a child from n=4.
+cases = [
+    { through = 1, expression = "55" },
+    { through = 2, expression = "58" },
+    { through = 3, expression = "62" },
+    { expression = "4n+49" },
+]
+exact = true
+arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, one DAG path and a tail" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} for the default layout" }
 
 [resource_evidence.workspace]
 expression = "C + bl(R) + bl(n)"
