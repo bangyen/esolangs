@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from functools import cache
 from typing import NamedTuple
 
@@ -26,12 +25,13 @@ from .lookup_independent import (
     Variable,
     _compile_check,
     _coordinate,
-    _short_zero,
     alphabet_factor,
+    contact_clause,
     fixed_colors,
     independent_lookup,
     render_lookup,
     scopes,
+    shared_alphabet_scopes,
 )
 from .packed_layout import (
     _LOOKUP,
@@ -62,20 +62,11 @@ class Prepared(NamedTuple):
 
 
 def _word_requirements(geo: Geometry, word: int, answer: int, ops: str) -> Requirements:
-    occupied = _decoder().occupied[word]
-    slots = tuple(slot for slot in range(3) if occupied >> slot & 1)
     return tuple(
-        tuple(
-            (_coordinate(contact.role[0], address), answer >> slot & 1)
-            for slot, address in zip(slots, contact.reads, strict=True)
-        )
+        clause
         for contact in geo.navigation[word]
         if contact.op in ops
-        and all(
-            (answer >> slot & 1) in geo.glyphs[address]
-            and (slot != 0 or answer & 1 or _short_zero(geo, address))
-            for slot, address in zip(slots, contact.reads, strict=True)
-        )
+        and (clause := contact_clause(geo, contact, answer)) is not None
     )
 
 
@@ -169,13 +160,8 @@ def prepare(physical: int | None = None) -> Prepared:
         targets[word] = selector_scope
 
     navigation_scopes = tuple(_support(req, fixed) for req in checks)
-    uses = Counter(
-        a
-        for scope in (*roles.values(), *navigation_scopes, *targets.values())
-        for a in scope
-    )
-    ordinary_scopes = tuple(
-        frozenset(a for a in scope if uses[a] > 1) for scope in roles.values()
+    ordinary_scopes = shared_alphabet_scopes(
+        roles, (*navigation_scopes, *targets.values())
     )
     scopes_all = (*ordinary_scopes, *navigation_scopes, *targets.values())
     axes = tuple(sorted(set().union(*scopes_all)))

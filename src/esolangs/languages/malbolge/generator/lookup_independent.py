@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from itertools import product
 from typing import NamedTuple
 
@@ -11,7 +11,7 @@ from esolangs.languages.malbolge.generator.packed import _decoder, _operand_enco
 
 from .lookup_diagram import ALL_PHASES, Diagram
 from .lookup_elimination import Factor, eliminate, min_fill, reconstruct
-from .lookup_geometry import Geometry, Role
+from .lookup_geometry import Contact, Geometry, Role
 from .packed_layout import (
     _SHORT_HUB,
 )
@@ -53,30 +53,43 @@ def scopes(
     }
 
 
+def shared_alphabet_scopes(
+    role_scopes: Mapping[Role, frozenset[Variable]],
+    other_scopes: Iterable[frozenset[Variable]],
+) -> tuple[frozenset[Variable], ...]:
+    """Keep alphabet colors used by more than one constraint."""
+    uses = Counter(a for scope in (*role_scopes.values(), *other_scopes) for a in scope)
+    return tuple(
+        frozenset(a for a in scope if uses[a] > 1) for scope in role_scopes.values()
+    )
+
+
 def _short_zero(geo: Geometry, address: int) -> bool:
     return _decoder().hubs[geo.glyphs[address].get(0, 0)] == _SHORT_HUB
 
 
+def contact_clause(geo: Geometry, contact: Contact, bits: int) -> Clause | None:
+    """Compile a contact only if each tap can supply its requested bit."""
+    lane, _ = contact.role
+    clause = []
+    for slot, address in contact.reads:
+        bit = bits >> slot & 1
+        if bit not in geo.glyphs[address]:
+            return None
+        if slot == 0 and not bit and not _short_zero(geo, address):
+            return None
+        clause.append((_coordinate(lane, address), bit))
+    return tuple(clause)
+
+
 def contacts(geo: Geometry, word: int, bits: int) -> Requirements:
     """Expose native ways to read a particular occupied answer pattern."""
-    used = _decoder().occupied[word]
-    slots = tuple(slot for slot in range(3) if used >> slot & 1)
-    result = []
-    for entry in geo.navigation[word]:
-        if word == 29524 and entry.role[0] != 2:
-            continue
-        if all(
-            (bits >> slot & 1) in geo.glyphs[address]
-            and (slot != 0 or bits & 1 or _short_zero(geo, address))
-            for slot, address in zip(slots, entry.reads, strict=True)
-        ):
-            result.append(
-                tuple(
-                    (_coordinate(entry.role[0], address), bits >> slot & 1)
-                    for slot, address in zip(slots, entry.reads, strict=True)
-                )
-            )
-    return tuple(result)
+    return tuple(
+        clause
+        for contact in geo.navigation[word]
+        if (word != 29524 or contact.role[0] == 2)
+        and (clause := contact_clause(geo, contact, bits)) is not None
+    )
 
 
 def _missing(geo: Geometry, word: int, role: Role) -> tuple[tuple[Variable, ...], ...]:
@@ -88,8 +101,9 @@ def _missing(geo: Geometry, word: int, role: Role) -> tuple[tuple[Variable, ...]
     )
     for entry in geo.navigation[word]:
         if entry.role == role:
-            assert _short_zero(geo, entry.reads[0])
-            del atlas[tuple(_coordinate(lane, a) for a in entry.reads)]
+            addresses = tuple(address for _, address in entry.reads)
+            assert _short_zero(geo, addresses[0])
+            del atlas[tuple(_coordinate(lane, a) for a in addresses)]
     return tuple(atlas)
 
 
@@ -224,10 +238,7 @@ def independent_lookup(geo: Geometry) -> bytes:
         - fixed.keys()
         for item in checks
     )
-    uses = Counter(a for scope in (*role_scopes.values(), *check_scopes) for a in scope)
-    scopes_with_interface = tuple(
-        frozenset(a for a in scope if uses[a] > 1) for scope in role_scopes.values()
-    )
+    scopes_with_interface = shared_alphabet_scopes(role_scopes, check_scopes)
     coordinates = tuple(sorted(set().union(*scopes_with_interface, *check_scopes)))
     indices = {a: i for i, a in enumerate(coordinates)}
     order = min_fill(

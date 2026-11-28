@@ -33,7 +33,7 @@ class Contact(NamedTuple):
 
     role: Role
     op: str
-    reads: Reads
+    reads: tuple[tuple[int, int], ...]
 
 
 class Geometry(NamedTuple):
@@ -114,8 +114,8 @@ def geometry() -> Geometry:
                 continue
             for op in allowed:
                 raw = _lookup_glyph(word, _char_for(op, word))
-                reads = tuple(_tap(word, raw, marker, i) for i in slots)
-                if all(glyphs[address] for address in reads):
+                reads = tuple((slot, _tap(word, raw, marker, slot)) for slot in slots)
+                if all(glyphs[address] for _, address in reads):
                     contacts.append(Contact(role, op, reads))
         navigation[word] = tuple(contacts)
     return Geometry(glyphs, alphabets, mandatory, navigation)
