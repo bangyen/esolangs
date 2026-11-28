@@ -5,4 +5,6 @@ from tests.proofs._witness_builders import _diagram_witness
 
 def resource_tables(n: int) -> tuple[str, ...]:
     """Return additional truth tables for the resource ledger."""
-    return _diagram_witness("balik", n, 8, "execution_witness", bottom=1)
+    # One exceptional pair keeps every input essential.
+    table = "10" if n == 1 else "10" * ((1 << (n - 1)) - 1) + "11"
+    return (*_diagram_witness("balik", n, 8, "execution_witness", bottom=1), table)

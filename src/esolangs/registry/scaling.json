@@ -33,7 +33,7 @@
   "collatz_multiverse": "linear: at most 411+31(T/4)+((T/4)-3)min(1,max(0,(T/4)-3))+76min(16,(T/4))+13(min(1,(T/4))+min(5,(T/4))+min(11,(T/4))+min(15,(T/4)))+23n+digits_sum(n)+Q+39max(0,n-3)+2digits_sum(max(0,n-3))+power2_digits_sum(max(1,n-2))-1+2(digits(max(0,n-3))+max(0,3-n)+digits(n-2)+digits(n-1)) characters past n = 2: one line per cell",
   "container": "linear: at most 75+63n+7T+digits_sum(2n+1)+digits_sum(2n)+digits_sum(2n+2)/2+digits(2n-1)+4digits(2n)+power2_digits_sum(n)+digits_sum(T) (n=1), 72+59n+13T/2+digits_sum(2n+1)+digits_sum(2n)+digits_sum(2n+2)/2+digits(2n-1)+4digits(2n)+power2_digits_sum(n)+digits_sum(T) (n\u22652) characters: threshold build",
   "crement": "linear: worst 5+8min(1,n-1)+min(1,max(0,n-2))(3P+2n-10) lines: subtree ids",
-  "cvnc": "linear: at most 17T/2+5+8(bl(17T/2+59)+1) characters: pair 12, node 5, fixed-width binary exit",
+  "cvnc": "linear: at most 86 (n=1), 102 (n=2), 134 (n=3), 17T/2+5+8(bl(17T/2+59)+1) (n\u22654) characters characters: exact through n=3",
   "cyclic_tag": "linear: worst 3T + 2n + 1 characters, weighted padding",
   "decleq": "linear: at most 2(3\u2308(n+18)/3\u2309)+17n+12residuals_without_constants(n)+16+digits(3\u2308(n+18)/3\u2309)+2digits(n+17)+(2residuals_without_constants(n)+5)max(2,digits(3\u2308(n+18)/3\u2309+6n+6residuals_without_constants(n)+9))+3max(2,digits(3\u2308(n+18)/3\u2309+6n+6residuals_without_constants(n)+12))+3 characters: six cells per distinct subtree",
   "dimensional": "linear: worst 2T + 20n + 42 characters: two per entry",

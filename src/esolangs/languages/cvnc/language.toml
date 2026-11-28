@@ -79,15 +79,21 @@ construction = "esolangs.languages.cvnc.generator:cvnc_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.cvnc.generator:cvnc_request"
+witnesses = "esolangs.languages.cvnc.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Step counts are integral. Floor the whole nonnegative square-root term.
-expression = "17+4n+3(n-1)+isqrt(2L*(n-1)^2)+8(bl(17T/2+59)+1)"
-exact = false
+cases = [
+    { through = 1, expression = "77" },
+    { through = 2, expression = "80" },
+    { through = 3, expression = "83" },
+    { expression = "17+4n+3(n-1)+isqrt(2L*(n-1)^2)+8(bl(17T/2+59)+1)" },
+]
+exact = [1, 2, 3]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: path and shared-subtree climbs" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: exact through n=3" }
 
 [resource_evidence.workspace]
 # Nonconstants build the terminal syllable and write three function tokens.
@@ -101,12 +107,17 @@ unit = "bits"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: K commands, S syllables, C constant" }
 
 [resource_evidence.scaling]
-expression = "17T/2+5+8(bl(17T/2+59)+1)"
-exact = false
+cases = [
+    { through = 1, expression = "86" },
+    { through = 2, expression = "102" },
+    { through = 3, expression = "134" },
+    { expression = "17T/2+5+8(bl(17T/2+59)+1)" },
+]
+exact = [1, 2, 3]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: pair 12, node 5, fixed-width binary exit" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: exact through n=3" }
 
 [semantic_evidence]
 version = 1
