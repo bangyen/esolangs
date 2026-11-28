@@ -59,14 +59,20 @@ construction = "esolangs.languages.chicken.generator:chicken_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.chicken.generator:chicken_request"
+witnesses = "esolangs.languages.chicken.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "9n + 3"
-exact = false
-arities = [1, 2, 3, 5]
+# One base push, 9m-2 steps over m essential inputs, load and exit.
+# Inversion adds two steps and needs a nonconstant imbalance above 16.
+cases = [
+    { through = 4, expression = "9n+1" },
+    { expression = "9n+3" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
 expression = "3T/2 + 80n + 301"
@@ -77,12 +83,18 @@ unit = "bits"
 description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-expression = "5T + 4n^2 + 372n + 300"
-exact = false
-arities = [1, 2, 3, 5]
+# Six inputs alone cross a base-alignment boundary on inversion.
+# The optimized non-position cost increases with essential arity.
+cases = [
+    { through = 5, expression = "366n-2+4n(n-1)+ceil((20n+8)/T)(8+T/2)+T+7min(T-1,T/2+8)" },
+    { through = 6, expression = "2769" },
+    { expression = "366n-2+4n(n-1)+ceil((20n+8)/T)(8+T/2)+T+7min(T-1,T/2+8)" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1
