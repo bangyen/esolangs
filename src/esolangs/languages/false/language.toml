@@ -92,11 +92,11 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 # A cached expression call can nest inside its parent's frame. Allow two frames per input.
 expression = "A*(34n+67+2bl(L)*(n+2))+B*(5n+6+2bl(L)*(S+2n+2))+C*(n+1+2bl(L)*(S+n+2))+(1-A-B-C)*(6n+1+2bl(L))+bl(n)"
 source_terms = { names = ["A", "B", "C", "S"], provider = "esolangs.languages.false.tests.formulas:workspace_terms" }
-exact = false
+exact = true
 arities = [3, 4, 5, 6, 8, 9]
 first = 3
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}. A/B lookup routes, C cached lambda, S non-input stores" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}. A/B lookup routes, C cached lambda, S non-input stores" }
 
 [resource_evidence.scaling]
 expression = "9T/2+5n-7"

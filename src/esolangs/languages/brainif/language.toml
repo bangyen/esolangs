@@ -109,11 +109,11 @@ description = { growth = "poly n", claim = "at most", template = "{claim} {formu
 [resource_evidence.workspace]
 expression = "C + bl(R) + bl(n)"
 source_terms = { names = ["C", "R"], provider = "esolangs.languages.brainif.proof_formulas:workspace_terms" }
-exact = false
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: cell storage C and R lines" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: cell storage C and R lines" }
 
 [resource_evidence.scaling]
 # N counts layered nodes, A counts goto-address digits. Each node

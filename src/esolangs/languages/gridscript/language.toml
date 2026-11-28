@@ -80,18 +80,20 @@ description = { growth = "T log T", claim = "at most", template = "{claim} {form
 # k >= 5 kept: <= 6*2^(k-4) chunk characters (five digits and a space),
 # 55 a high input, 269 the four low inputs, 89 remainder and print, 14 an
 # ignored input: 171 + 6*2^(k-4) + 41k + 14n. k = 4: 355 + 14n, attained
-# by n = 4 conjunction (411); k < 4 is smaller. The parity route
+# by n = 4 conjunction (411); k < 4 is smaller. Both reach their bound
+# when every chunk has five digits (n = 4..8 here). The parity route
 # takes at most 117+35n chars.
 # A height-h variable costs at most 1+h letters; T/2^h nodes use it.
 cases = [
-    { through = 31, expression = "3T/8 + 55n + 185" },
+    { through = 4, expression = "3T/8 + 55n + 185" },
+    { through = 31, expression = "3T/8 + 55n + 171" },
     { expression = "160T+(55+bl(n))n+64" },
 ]
-exact = false
+exact = [4, 5, 6, 7, 8]
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}: packed buffer or bounded-value tree" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}, n=4..8" }
 
 [catalogue]
 folding_constant_local = "essential_inputs"  # no kept input: read, then print the constant

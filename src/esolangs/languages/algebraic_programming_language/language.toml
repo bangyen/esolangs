@@ -91,11 +91,11 @@ corpus = "esolangs.languages.algebraic_programming_language.tests.resource_witne
 [resource_evidence.execution]
 expression = "C*(4n+3+4J) + (1-C)*(max(21,ceil(65n/2)-21)+K+2min(K,3n+1))"
 source_terms = { names = ["C", "J", "K"], provider = "esolangs.languages.algebraic_programming_language.tests.formulas:execution_terms" }
-exact = false
+exact = true
 arities = [1, 2, 3, 4, 5, 6, 8]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: constant C, negation J, K definitions" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: constant C, negation J, K definitions" }
 
 [resource_evidence.workspace]
 # Frames store a function key, statement, value, return flag and optional x.

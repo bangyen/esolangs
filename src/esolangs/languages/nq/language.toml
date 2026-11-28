@@ -68,11 +68,11 @@ construction = "esolangs.languages.nq.generator:nq_request"
 
 [resource_evidence.execution]
 expression = "3n + 4"
-exact = false
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: one extra guard for compact parity leaves" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: one extra guard for compact parity leaves" }
 
 [resource_evidence.workspace]
 expression = "2n + bl(L) + 32"

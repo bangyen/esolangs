@@ -91,11 +91,11 @@ witnesses = "esolangs.languages.thisthat.tests.resource_witnesses:resource_table
 [resource_evidence.execution]
 expression = "C*(2n+5) + (1-C)*((32+16*(n-2floor(n/2)))*2^floor(n/2)-29)"
 source_terms = { names = ["C"], provider = "esolangs.languages.thisthat.proof_formulas:execution_terms" }
-exact = false
+exact = true
 arities = [3, 4]
 first = 3
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: C marks the constant layout" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: C marks the constant layout" }
 
 [resource_evidence.workspace]
 # The tape widths sum to n·bl(n-1)-2^bl(n-1)+2: zero costs one bit.

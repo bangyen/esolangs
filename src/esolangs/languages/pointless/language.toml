@@ -91,11 +91,11 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 [resource_evidence.workspace]
 expression = "C*(408+bl(L)+bl(n)) + (1-C)*((n+1)*(2bl(L)+4)+16n+430)"
 source_terms = { names = ["C"], provider = "esolangs.languages.pointless.proof_formulas:source_terms" }
-exact = false
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: C marks a straight-line constant" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C marks a straight-line constant" }
 
 [resource_evidence.scaling]
 # P is the largest root identifier and A prices declarations and

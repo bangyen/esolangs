@@ -111,11 +111,11 @@ description = { growth = "linear", claim = "worst", template = "{claim} {formula
 # The packed envelope retains the old word count and charges the spare bits for raw INDEX.
 expression = "C*(A+bl(4(n+1))+bl(49n)+1+max(5,bl(4n))+bl(n))+(1-C)*(bit_sum(20n+230+2ceil(T/n))+ceil(T/n)*(n+bl(20n+229+ceil(T/n)))+3n+5bl(n)+(5n+54)*bl(20n+216)+(15n+160)*bl(20n+229)+2bl(20n+229+2ceil(T/n))+bl(20n+212)+23)"
 source_terms = { names = ["C", "A"], provider = "esolangs.languages.addsubjump.proof_formulas:workspace_terms" }
-exact = false
+exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C marks direct constants and A counts their initial nonzero cells and addresses in bits" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}. C marks direct constants and A counts their initial nonzero cells and addresses in bits" }
 
 [resource_evidence.scaling]
 expression = "min(P,R)"

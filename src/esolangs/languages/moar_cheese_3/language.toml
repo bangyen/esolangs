@@ -94,11 +94,11 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 # Each pair takes four chars. At full support the packed form adds
 # 20n+104 chars from n=3. A discarded slot takes two chars.
 expression = "2T+20n+104"
-exact = false
+exact = [3, 4, 5, 6, 7, 8]
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n=3..10; at most at n=1, 2" }
 
 [catalogue]
 folding_constant_local = "input_weights"  # no essential input: the answer byte and bare inputs

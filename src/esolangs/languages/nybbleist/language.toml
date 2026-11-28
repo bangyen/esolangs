@@ -94,11 +94,11 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 # and output cost at most 25+8d. With m=2, the direct load adds one char
 # over the pop and replaces the deque payload.
 expression = "floor(3T/4)+9n+4n*ceil(bl(2n)/4)+13"
-exact = false
-arities = [1, 2, 3, 4, 6, 8]
+exact = [2, 3, 4, 5, 6, 7]
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} characters; packed nybbles and selectors" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} characters, n=2..7; at most otherwise; packed nybbles and selectors" }
 
 [semantic_evidence]
 version = 1

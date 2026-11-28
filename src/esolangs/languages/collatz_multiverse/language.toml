@@ -114,21 +114,21 @@ witnesses = "esolangs.languages.collatz_multiverse.tests.resource_witnesses:reso
 # Every unhosted line runs once. The decoder has up to 16 distinct four-row cells.
 expression = "C*(n+10)+(1-C)*(T/4+3n+4min(16,T/4)+2K+10)"
 source_terms = { names = ["C", "K"], provider = "esolangs.languages.collatz_multiverse.proof_formulas:execution_terms" }
-exact = false
+exact = true
 arities = [3, 5, 6, 8]
 first = 3
 unit = "lines"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: constant C, one step per line" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: constant C, one step per line" }
 
 [resource_evidence.workspace]
 # Constants retain five registers, then the instruction and input cursors.
 expression = "bl(2n-1)+C*(132+bl(n+11))+(1-C)*(R+A+D+bl(T/4+3n+4min(16,T/4)+2K+11))"
 source_terms = { names = ["C", "K", "R", "A", "D"], provider = "esolangs.languages.collatz_multiverse.proof_formulas:workspace_terms" }
-exact = false
+exact = true
 arities = [3, 4, 5, 6, 7, 9]
 first = 3
 unit = "bits"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: R registers, A and D arrays" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: R registers, A and D arrays" }
 
 [resource_evidence.scaling]
 # Q prices the unhosted constant closure. The decoder uses the

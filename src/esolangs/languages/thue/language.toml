@@ -100,12 +100,15 @@ unit = "bits"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the T + 3 character state string" }
 
 [resource_evidence.scaling]
-expression = "T + 187"
-exact = false
-arities = [1, 2, 3, 5]
+cases = [
+    { through = 6, expression = "T + 187" },
+    { expression = "T/2 + 223" },
+]
+exact = true
+arities = [1, 2, 3, 5, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: T/2 + 223 once pairs pack" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}; pairs pack from n = 7" }
 
 [semantic_evidence]
 version = 1

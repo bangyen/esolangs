@@ -90,11 +90,11 @@ description = { growth = "linear", claim = "at most", template = "{claim} {formu
 # and c = ceil(n/4) entry copies: 2T + 2(2^m - 1) + 27n + 32m + 207c + 181
 # characters, reached at m = n (input names are one letter below n = 26).
 expression = "4T + 59n + 207⌈n/4⌉ + 179"
-exact = false
+exact = [7, 8]
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, n=7..10; at most below" }
 
 [catalogue]
 folding_constant_local = "input_weights"  # no essential input: a one-entry table and no counter words

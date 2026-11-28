@@ -117,11 +117,11 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 [resource_evidence.workspace]
 expression = "bl(L-1)+bl(n)+(1-C)*bit_sum(n)+S*(12+bl(n))+13C+(1-S-C)*(max(12,bl(2n-3)+11)+n+bl(2n))"
 source_terms = { names = ["C", "S"], provider = "esolangs.languages.boolfuck.proof_formulas:workspace_terms" }
-exact = false
+exact = true
 arities = [2, 3, 4, 6, 7, 8]
 first = 2
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: C drains, S counts symmetrically" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}: C drains, S counts symmetrically" }
 
 [resource_evidence.scaling]
 # The finite three-input maximum, then the inherited upper envelopes.

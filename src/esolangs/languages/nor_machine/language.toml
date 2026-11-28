@@ -71,11 +71,11 @@ construction = "esolangs.languages.nor_machine.generator:nor_machine_request"
 [resource_evidence.execution]
 expression = "C*L + (1-C)*(15T + 12n^2 + 93n - 20)"
 source_terms = { names = ["C"], provider = "esolangs.languages.nor_machine.proof_formulas:execution_terms" }
-exact = false
+exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, with C set for a direct constant" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}, with C set for a direct constant" }
 
 [resource_evidence.workspace]
 # A constant peaks at three accumulator copies. A lookup keeps two selected arms.

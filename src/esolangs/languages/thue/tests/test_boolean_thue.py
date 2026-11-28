@@ -135,14 +135,14 @@ def test_short_tree_executes_one_and_two_input_tables() -> None:
 
 
 def test_thue_proof_text_counts_the_emitted_rules() -> None:
-    """The ledger's T + 187 bound is the plain layout: 19 rules, 22 queued."""
+    """The ledger's T + 187 case is the plain layout: 19 rules, 22 queued."""
     from scripts.docs.proof_status import load
 
     for table, count in (("0110", 19), ("0110" * 32, 22)):
         lines = boolean.thue(table).splitlines()
         assert len(lines[: lines.index("::=")]) == count, table
     scaling = next(row.scaling for row in load()[0] if row.generator == "Thue")
-    assert "at most T + 187 characters" in scaling
+    assert "worst T + 187 (n=1..6), T/2 + 223 (n≥7) characters" in scaling
 
 
 def test_thue_spells_the_table_once_and_its_rules_are_fixed() -> None:
