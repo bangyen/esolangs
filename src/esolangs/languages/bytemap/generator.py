@@ -1,32 +1,25 @@
-"""Bytemap Boolean program generator: a paged table of five-byte prints.
+"""Index a paged table of adjacent answer bytes.
 
-Row ``k`` of the table projected onto its m essential inputs is a print at
-page ``H``, row ``lo``, block ``mid`` of ``k = (H * 16 + mid) * 128 + lo``:
-``00 5400 01`` prints its own ``00`` byte, ``00 5603 01`` its count byte 1.
-Row 0 reads the inputs, first to last, into three counters by doubling and
-adding each character; an ignored input is read over its own opcode.  The
-chosen page copies ``lo + 1`` into the down jump atop each of its 16
-blocks and ``J - 5 * mid`` into a left jump at column J, which lands on
-block ``mid`` and drops onto the print.  A page header compares ``H`` with
-0, and otherwise writes the counters, ``H`` less one, into the next page's
-header 130 rows down. A binary tree with short hop relays covers tables
-whose page counters would exceed the eight-byte header.
+Row 0 folds the input characters into the page, column and row counters.
+An ignored input overwrites its own read opcode. Page headers decrement
+the page counter and carry the other two forward. A one-column page prints
+down from its strip. A wider strip patches the selected row's print to
+read ``blocks - mid`` bytes left, then jumps down to run it.
+A short-hop binary tree covers counters wider than the eight-byte header.
 
 Size:
-    O(T): paged tables use at most 21T/2 + 576 chars, 10 a row plus headers and strips.
-    Header and strip rows cost about 530 per 2,048 rows. n=4 parity: 598
-    chars, n=10 random 1847: 11,252 chars. Constant tables: 8n + 10.
+    Paged tables use at most 13T/2 + 100n + 520 chars for T rows and n inputs.
+    n=4 parity: 488 chars, n=10 random 1847: 4,192 chars.
+    Constant tables: 8n + 10.
     The alternating tree uses at most 20,000T characters.
 
 Decisions:
     A jump reaches 255 cells along one row or column, so a command touches
     data only in its own row or column.  The table hangs from column 0 so
     its rows carry no padding.  The counters ride in data slots copied
-    forward along row 0, then back along row 1.  Row 0 is never page 0's
-    header ([ablations.direct_header_retired_20261127]).  No carry crosses a
-    byte below 20 essential inputs, where H outgrows one byte, so the
-    programs run the same under either byte order (93 rows at n = 12, 14,
-    16 under a little-endian interpreter).
+    forward along row 0, then back along row 1. Below 20 essential inputs,
+    the page header's decrement stays within one byte, so either byte
+    order gives the same result.
 """
 
 from typing import NamedTuple
@@ -150,7 +143,7 @@ def _emit(
             + _op(0xA0, c1, v(part), v(part), v(part), size)
             + _op(0xA0, c2, v(part), s0, v(part), size)
         )
-    fix = {"lo": (0xA0, "lo", "dd"), "mid5": (0xA2, "mid", "minus5")}
+    fix = {"lo": (0xA0, "lo", "dd"), "neg_mid": (0xA2, "mid", "minus_one")}
     fix |= {"mid": (0xA0, "mid", "cc"), "H": (0xA0, "H", "CH")}
     code, counter, constant = fix[part]
     return _op(code, at, v(counter), d(constant), v(counter), lay.width[counter])
@@ -277,24 +270,23 @@ def bytemap(truth_table: str) -> str:
     units = _units(n, part_of)
     fixups: list[tuple[int, tuple[str, ...]]] = [(8, ("fix", "lo"))]
     if mid_bits:
-        fixups += [(8, ("fix", "mid5")), (8, ("fix", "mid"))]
+        fixups += [(8, ("fix", "neg_mid")), (8, ("fix", "mid"))]
     if h_bits:
         fixups.append((8, ("fix", "H")))
-    b0 = 5 * blocks  # the counters' column, just right of the strip
-    jpos = b0 + 8 + 8 * blocks + 8 * (mid_bits > 0)
+    b0 = blocks + 14 if mid_bits else 7  # leave room for the strip's left tail
     zero = {
         p: (_ASCII_ZERO * ((1 << bits) - 1)) % (1 << 8 * width[p])
         for p, bits in (("H", h_bits), ("mid", mid_bits), ("lo", lo_bits))
     }
     k_c = max(k_h, 1)
     ch = (-zero["H"]) % (1 << 8 * k_c)
-    # Data: [S_mid][S_lo][S_H][dd][minus5][cc][CH]
-    data = [0, 0, *[0] * k_c, (1 - zero["lo"]) % 256, 0xFB]
-    data += [(jpos + 5 * zero["mid"]) % 256, *ch.to_bytes(k_c, "big")]
+    # Data: [S_mid][S_lo][S_H][dd][-1][cc][CH]
+    data = [0, 0, *[0] * k_c, (1 - zero["lo"]) % 256, 0xFF]
+    data += [(blocks + zero["mid"]) % 256, *ch.to_bytes(k_c, "big")]
     at_data = {"S_mid": 0, "S_lo": 1, "S_H": 2, "dd": 2 + k_c}
-    at_data |= {"minus5": 3 + k_c, "cc": 4 + k_c, "CH": 5 + k_c}
+    at_data |= {"minus_one": 3 + k_c, "cc": 4 + k_c, "CH": 5 + k_c}
     grid = _Grid()
-    _pages(grid, table, rows, blocks, pages, k_v, k_h, offset, jpos)
+    _pages(grid, table, rows, blocks, pages, k_v, k_h, offset, b0)
     entry = (1, b0 + 8) if pages > 1 else (1, b0 - 2)
     lay = _Layout(offset, width, at_data, data, k_v, b0, entry)
     _long(grid, lay, units, fixups)
@@ -361,10 +353,9 @@ def _pages(
     k_v: int,
     k_h: int,
     offset: dict[str, int],
-    jpos: int,
+    b0: int,
 ) -> None:
     """Lay each page: header row r, strip row r + 1, table rows r + 2 on."""
-    b0 = 5 * blocks
     stride = rows + 2
     has_mid = blocks > 1
     for page in range(pages):
@@ -400,30 +391,41 @@ def _pages(
             grid.put((r + 3, b0 + 8), [_DOWN, stride - 3, _LEFT, 10])
         elif pages > 1:
             grid.put((r, h), [_LEFT, h - b0 + 2])
-        strip = r + 1
-        for block in range(blocks):
-            grid.put((strip, 5 * block), [_DOWN, 1])
-        grid.put((strip, b0 - 2), [_RIGHT, 2])
-        e = jpos + 2  # the copied counters: [cc][dd] or [dd]
-        e_dd = e + int(has_mid)
-        grid.put((strip, b0), _copy((strip, b0), (r, b0), (strip, e), 1 + int(has_mid)))
-        x = b0 + 8
-        for block in range(blocks):
-            grid.put(
-                (strip, x), _copy((strip, x), (strip, e_dd), (strip, 5 * block + 1), 1)
-            )
-            x += 8
-        if has_mid:
-            grid.put((strip, x), _copy((strip, x), (strip, e), (strip, jpos + 1), 1))
-            x += 8
-        assert x == jpos <= 255
-        grid.put((strip, jpos), [_LEFT, jpos])
-        grid.put((strip, e), [0] * (e_dd - e + 1))
+        _strip(grid, r, blocks, b0)
         base = page * blocks * rows
-        for block in range(blocks):
-            for lo in range(rows):
-                bit = table[base + block * rows + lo] == "1"
-                grid.put((r + 2 + lo, 5 * block), _PRINT[bit])
+        for lo in range(rows):
+            data = [int(table[base + block * rows + lo]) for block in range(blocks)]
+            if has_mid:
+                data += [0x00, _LEFT, blocks, 1]
+            grid.put((r + 2 + lo, 0), data)
+
+
+def _strip(grid: _Grid, header: int, blocks: int, b0: int) -> None:
+    """Apply the selected page's offsets and print its answer byte."""
+    r = header + 1
+    entry = (r, b0)
+    grid.put((r, b0 - 2), [_RIGHT, 2])
+    if blocks == 1:
+        grid.put((r, 0), [0x00, _DOWN, 1, 1])
+        grid.put(entry, _copy(entry, (header, b0), (r, 2), 1))
+        grid.put((r, b0 + 8), _jump((r, b0 + 8), (r, 0)))
+        return
+
+    # The down jump and the print-offset write target the same row.
+    print_col = blocks
+    offset_col = print_col + 2
+    scratch = b0 + 26
+    grid.put(entry, _copy(entry, (header, b0), (r, scratch), 2))
+    for col, target in ((b0 + 8, print_col + 1), (b0 + 16, offset_col + 6)):
+        at = (r, col)
+        grid.put(at, _copy(at, (r, scratch + 1), (r, target), 1))
+    grid.put((r, b0 + 24), _jump((r, b0 + 24), (r, offset_col)))
+    grid.put((r, scratch), [0, 0])
+    grid.put((r, print_col), [_DOWN, 1])
+    patch = (r, offset_col)
+    grid.put(patch, _copy(patch, (r, scratch), (r + 1, offset_col), 1))
+    after_patch = (r, offset_col + 8)
+    grid.put(after_patch, _jump(after_patch, (r, print_col)))
 
 
 def bytemap_request(request: GenerationRequest) -> Program:

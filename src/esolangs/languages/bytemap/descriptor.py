@@ -23,7 +23,7 @@ def _backend() -> BackendDefinition:
         layout=SourceLayout(
             no_wrap="a newline starts a new grid row",
         ),
-        # Not a tree: the inputs index a table of five-byte print commands.
+        # The inputs index a paged table of answer bytes.
         shape=Shape.LOOKUP,
     )
 

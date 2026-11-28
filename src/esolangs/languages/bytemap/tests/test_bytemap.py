@@ -137,6 +137,30 @@ def test_sixteen_essential_inputs_split_row_zero_and_page_the_return() -> None:
         assert api.read_answer(output) == table[row], row
 
 
+def test_packed_print_selects_a_byte_on_each_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from esolangs.languages.bytemap import generator
+
+    monkeypatch.setattr(generator, "_LO_BITS", 2)
+    monkeypatch.setattr(generator, "_MID_BITS", 2)
+    # Two pages of four rows by four columns, with one ignored input.
+    answers = "00101101110110000100110100110001"
+    table = "".join(bit * 2 for bit in answers)
+    machine = _Machine(generator.bytemap(table), ScriptedIO())
+    for row, answer in enumerate(table):
+        port = ScriptedIO(f"{row:06b}Q")
+        trial = _Machine(machine.source, port)
+        for _ in range(64):
+            trial.step()
+            if trial.halted:
+                break
+        assert trial.halted, row
+        assert port.getvalue() == answer, row
+        assert port.reads == 6
+        assert port.input_char() == ord("Q")
+
+
 def test_generator_falls_back_when_the_page_header_is_full(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

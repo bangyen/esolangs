@@ -23,7 +23,7 @@
   "brainfuck": "linear: at most 35T/2 + 55n + 25 characters: the plain tree",
   "brainif": "linear: at most max(28n+770,52N+840+A+2digits(4N+54)) characters: layered DAG before fall-through",
   "bruijndejx": "linear: at most 5T + 23 characters",
-  "bytemap": "linear: at most 21T/2 + 576 (n=1..59), 20000T (n\u226560) characters",
+  "bytemap": "linear: at most 13T/2 + 100n + 520 (n=1..59), 20000T (n\u226560) characters",
   "caballo": "linear: worst 33T/4 + n - 4 characters past n = 1: parity",
   "chicken": "linear: at most 5T + 4n^2 + 372n + 300 characters",
   "circlefuck": "linear: worst T+52n+10 (n=1..2), T+34n+27+(\u2308n/7\u2309-1)(149(\u2308n/7\u2309-2)+4(n-7\u2308n/7\u2309+79))/2 (n\u22653) characters: table, clamped reads, digit-cell walks",
