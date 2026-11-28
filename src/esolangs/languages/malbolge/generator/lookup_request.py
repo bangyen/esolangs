@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import cache
+from itertools import batched
 from typing import NamedTuple
 
 from esolangs.languages.malbolge.generator.isa import _ACTIVE
@@ -16,7 +17,7 @@ from esolangs.languages.malbolge.generator.packed import (
     _selector_groups,
 )
 
-from .lookup_diagram import Checkpoint, Diagram
+from .lookup_diagram import PHASES, Checkpoint, Diagram
 from .lookup_elimination import Factor, eliminate, reconstruct
 from .lookup_geometry import Geometry, geometry
 from .lookup_independent import (
@@ -42,7 +43,9 @@ from .packed_layout import (
 _OUTPUT = 4
 _PAIR_BRANCH = (5, 0)
 _PAIR_GUARDS = {_LEFT_OPERAND: (_SAFE_LEFT_OP, 0), _RIGHT_OPERAND: (_SAFE_RIGHT_OPS, 1)}
-_PHASE_BLOCKS = (3, 12, 48, 64)
+_PHASE_BLOCKS = tuple(
+    sum(1 << phase for phase in block) for block in batched(PHASES, 2)
+)
 _NODE_LIMIT = 400_000
 type RequestWord = tuple[int, int, str]
 type SelectorRequest = dict[int, dict[int, int]]
@@ -56,6 +59,8 @@ class Prepared(NamedTuple):
     fixed: dict[Variable, int]
     order: tuple[Variable, ...]
     position: dict[Variable, int]
+    physical: int | None
+    color_count: int
     shared: tuple[Factor, ...]
     alphabet_tables: tuple[AlphabetTable, ...]
     targets: dict[int, frozenset[int]]
@@ -165,7 +170,11 @@ def prepare(physical: int | None = None) -> Prepared:
         roles, (*navigation_scopes, *targets.values())
     )
     scopes_all = (*ordinary_scopes, *navigation_scopes, *targets.values())
-    output_order = tuple((_OUTPUT, axis) for axis in reversed(range(width)))
+    output_order = (
+        tuple((_OUTPUT, axis) for axis in reversed(range(width)))
+        if physical is not None
+        else ()
+    )
     order = order_colors(scopes_all, output_order)
     position = {a: i for i, a in enumerate(order)}
     arena = Diagram(len(order), _NODE_LIMIT)
@@ -192,6 +201,8 @@ def prepare(physical: int | None = None) -> Prepared:
         fixed,
         order,
         position,
+        physical,
+        len(order) - len(output_order),
         tuple(shared),
         tuple(tables),
         {
@@ -231,7 +242,7 @@ def _requested_relation(
             continue
         phases = sum(
             1 << phase
-            for phase in range(7)
+            for phase in PHASES
             if phase_block >> phase & 1
             and all(
                 ((answer ^ phase) >> slot & 1) == bit for slot, bit in requested.items()

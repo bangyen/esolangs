@@ -7,7 +7,11 @@ from itertools import product
 
 from esolangs.languages.malbolge.generator import packed
 from esolangs.languages.malbolge.generator.isa import _ACTIVE, _WORDS, _char_for
-from esolangs.languages.malbolge.generator.lookup_diagram import ALL_PHASES, Diagram
+from esolangs.languages.malbolge.generator.lookup_diagram import (
+    ALL_PHASES,
+    PHASES,
+    Diagram,
+)
 from esolangs.languages.malbolge.generator.lookup_projection import (
     _WITNESS_LIMIT,
     project,
@@ -152,7 +156,7 @@ def _certify(physical: int, width: int) -> int:
         nonlocal bound
         bound += arena.color_nodes(root, colors)
 
-    arena, root = project(prepare(physical), physical, account)
+    arena, root = project(prepare(physical), account)
     assert bound <= _WITNESS_LIMIT, (physical, bound)
     return arena.truth_mask(root, width)
 
@@ -180,11 +184,11 @@ def check_cover() -> None:
             for slot, axis in word.items()
             if phase >> slot & 1
         )
-        for phase in range(7)
+        for phase in PHASES
     )
     for logical in range(1 << len(pin)):
         covered = 0
-        for phase, flip in enumerate(flips):
+        for phase, flip in zip(PHASES, flips, strict=True):
             if covered != full:
                 covered |= _flip_axes(physical[logical ^ phase], flip, full)
         assert covered == full, logical

@@ -6,7 +6,8 @@ from collections.abc import Iterable, Sequence
 from functools import cache
 from typing import NamedTuple
 
-ALL_PHASES = 127
+PHASES = range(7)
+ALL_PHASES = sum(1 << phase for phase in PHASES)
 _TERMINALS = ALL_PHASES + 1
 type _Node = tuple[int, int, int]
 
