@@ -77,7 +77,7 @@
   "pilas": "linear: worst 20 (n=1), 20T-22 (n\u22652) characters characters",
   "pointless": "linear: at most 329+14n+digits(P)+2digits(n)+A characters: every function declared",
   "q_bal": "linear: worst 13 (n=1), digits(2^T-1)+power2_digits_sum(n)+4n+9 (n\u22652) characters, attained by OR from n=2",
-  "qrain": "linear: at most 29T + 10n + 25 characters: the plain tree",
+  "qrain": "linear: at most 53 (n=1), 97 (n=2), 175 (n=3), 29T + 10n + 25 (n\u22654) characters characters, exact n\u22643",
   "quassaunt": "linear: at most (residuals(n)+2)(170+4W)+400+W+6n characters: bounded names and nodes",
   "refractran": "linear: O(T/log T) shared nodes, O(log T) digits per node",
   "retrograde": "linear: worst 9 (n=1), 9T+4n-15 (n\u22652) characters characters",

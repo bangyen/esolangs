@@ -59,30 +59,46 @@ construction = "esolangs.languages.qrain.generator:qrain_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.qrain.generator:qrain_request"
+witnesses = "esolangs.languages.qrain.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "36n + 60"
-exact = false
+cases = [
+    { through = 1, expression = "43" },
+    { through = 2, expression = "74" },
+    { through = 3, expression = "103" },
+    { expression = "36n + 60" },
+]
+exact = [1, 2, 3]
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: reads, split, one tree path, print" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, exact n≤3" }
 
 [resource_evidence.workspace]
-expression = "bl(L) + (2n + 4)bl(2n + 2) + 9n + bl(n) + 10"
-exact = false
+cases = [
+    { through = 1, expression = "26" },
+    { through = 2, expression = "42" },
+    { through = 3, expression = "54" },
+    { expression = "bl(L)+(2n+4)bl(2n+2)+9n+bl(n)+10" },
+]
+exact = [1, 2, 3]
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: queues, indices, flags" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, exact n≤3" }
 
 [resource_evidence.scaling]
-expression = "29T + 10n + 25"
-exact = false
+cases = [
+    { through = 1, expression = "53" },
+    { through = 2, expression = "97" },
+    { through = 3, expression = "175" },
+    { expression = "29T + 10n + 25" },
+]
+exact = [1, 2, 3]
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: the plain tree" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}, exact n≤3" }
 
 [semantic_evidence]
 version = 1
