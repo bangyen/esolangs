@@ -87,12 +87,21 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: a skipped dp chain, 2 a level" }
 
 [resource_evidence.workspace]
-expression = "(n+1)(n+2)/2 + 51n + 82 + bl(n) + (3n+3) bl(⌊2L/5⌋) + (n+1) bl(n+3)"
-exact = false
-arities = [1, 2, 3, 6]
+# The deepest path retains n+1 sums and n+2 sequences.
+# Inverse parity keeps the final split's first result while evaluating
+# the zero selector. At n=4 its first branch ID crosses an extra bit.
+cases = [
+    { through = 1, expression = "151" },
+    { through = 2, expression = "218" },
+    { through = 3, expression = "296" },
+    { through = 4, expression = "383" },
+    { expression = "(7n^2+123n)/2+80" },
+]
+exact = true
+arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: nested frames" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}; nested frames and saved sums" }
 
 [resource_evidence.scaling]
 expression = "33T/4 + n - 4"
