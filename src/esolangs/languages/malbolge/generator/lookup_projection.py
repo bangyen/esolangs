@@ -26,23 +26,22 @@ def project(
     plan: Prepared, capture: Callable[[Diagram, int, int, int], None]
 ) -> tuple[Diagram, int]:
     """Eliminate colors while reporting the buckets before projection."""
-    physical = plan.physical
-    assert physical is not None
+    assert plan.physical is not None
     _, _, axes = selector_axes()
     arena = Diagram(len(plan.order), _NODE_LIMIT)
     arena.restore(plan.checkpoint)
     pending = list(plan.shared)
-    for word, scope in plan.targets.items():
+    for word, selector in plan.selectors.items():
         root = 0
-        for pattern in (physical,) if word == _RIGHT_OPERAND else range(8):
-            term = contact_relation(arena, plan, word, pattern)
+        for pattern, contacts in selector.answers.items():
+            term = contact_relation(arena, plan, word, contacts)
             for slot, axis in axes.get(word, {}).items():
                 literal = arena.literal(
                     plan.position[_OUTPUT, axis], pattern >> slot & 1
                 )
                 term = arena.combine(term, literal)
             root = arena.combine(root, term, union=True)
-        pending.append(Factor(scope, root))
+        pending.append(Factor(selector.scope, root))
     for variable in range(plan.color_count):
         bucket = take_bucket(arena, pending, variable)
         if bucket is None:

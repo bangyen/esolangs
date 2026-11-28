@@ -47,8 +47,14 @@ _PHASE_BLOCKS = tuple(
     sum(1 << phase for phase in block) for block in batched(PHASES, 2)
 )
 _NODE_LIMIT = 400_000
-type RequestWord = tuple[int, int, str]
 type SelectorRequest = dict[int, dict[int, int]]
+
+
+class SelectorWord(NamedTuple):
+    """One selector's factor scope and contact roots by answer and opcode set."""
+
+    scope: frozenset[int]
+    answers: dict[int, dict[str, int]]
 
 
 class Prepared(NamedTuple):
@@ -63,8 +69,7 @@ class Prepared(NamedTuple):
     color_count: int
     shared: tuple[Factor, ...]
     alphabet_tables: tuple[AlphabetTable, ...]
-    targets: dict[int, frozenset[int]]
-    patterns: dict[RequestWord, int]
+    selectors: dict[int, SelectorWord]
 
 
 def _word_requirements(geo: Geometry, word: int, answer: int, ops: str) -> Requirements:
@@ -127,7 +132,9 @@ def prepare(physical: int | None = None) -> Prepared:
     selector = {word for group in groups for word in group}
     width, _, outputs = selector_axes()
     checks: list[Requirements] = []
-    patterns: dict[RequestWord, Requirements] = {}
+    patterns: dict[int, dict[int, dict[str, Requirements]]] = {
+        word: {} for word in _SOURCE_OPS if word in selector
+    }
     targets: dict[int, frozenset[Variable]] = {}
     for word in _SOURCE_OPS:
         occupied = decoder.occupied[word]
@@ -141,7 +148,7 @@ def prepare(physical: int | None = None) -> Prepared:
             for ops in allowed:
                 reqs = _word_requirements(geo, word, answer, ops)
                 if word in selector:
-                    patterns[word, answer, ops] = reqs
+                    patterns[word].setdefault(answer, {})[ops] = reqs
                 else:
                     lane = min(
                         row[0][0][0]
@@ -153,8 +160,8 @@ def prepare(physical: int | None = None) -> Prepared:
         selector_scope = frozenset().union(
             *(
                 _support(req, fixed)
-                for (owner, _, _), req in patterns.items()
-                if owner == word
+                for contacts in patterns[word].values()
+                for req in contacts.values()
             )
         )
         if word in _PAIR_GUARDS:
@@ -192,8 +199,14 @@ def prepare(physical: int | None = None) -> Prepared:
             )
         )
     compiled = {
-        key: _compile_check(arena, req, position, fixed)
-        for key, req in patterns.items()
+        word: {
+            answer: {
+                ops: _compile_check(arena, req, position, fixed)
+                for ops, req in contacts.items()
+            }
+            for answer, contacts in answers.items()
+        }
+        for word, answers in patterns.items()
     }
     return Prepared(
         geo,
@@ -206,23 +219,24 @@ def prepare(physical: int | None = None) -> Prepared:
         tuple(shared),
         tuple(tables),
         {
-            word: frozenset(position[a] for a in scope)
+            word: SelectorWord(frozenset(position[a] for a in scope), compiled[word])
             for word, scope in targets.items()
         },
-        compiled,
     )
 
 
-def contact_relation(arena: Diagram, prepared: Prepared, word: int, answer: int) -> int:
+def contact_relation(
+    arena: Diagram, prepared: Prepared, word: int, contacts: dict[str, int]
+) -> int:
     """Combine unrestricted contacts with the selected side of the joint guard."""
-    term = prepared.patterns.get((word, answer, _ACTIVE), 0)
+    term = contacts[_ACTIVE]
     guard = _PAIR_GUARDS.get(word)
     if guard is not None:
         restricted, branch_bit = guard
         branch = arena.literal(prepared.position[_PAIR_BRANCH], branch_bit)
         term = arena.combine(
             arena.combine(term, branch),
-            prepared.patterns[word, answer, restricted],
+            contacts[restricted],
             union=True,
         )
     return term
@@ -236,10 +250,7 @@ def _requested_relation(
     phase_block: int,
 ) -> int:
     root = 0
-    for answer in range(8):
-        key = word, answer, _ACTIVE
-        if key not in prepared.patterns:
-            continue
+    for answer, contacts in prepared.selectors[word].answers.items():
         phases = sum(
             1 << phase
             for phase in PHASES
@@ -250,7 +261,7 @@ def _requested_relation(
         )
         if not phases:
             continue
-        term = contact_relation(arena, prepared, word, answer)
+        term = contact_relation(arena, prepared, word, contacts)
         root = arena.combine(root, arena.combine(term, phases), union=True)
     return root
 
@@ -285,10 +296,10 @@ def _select_fast(requested: SelectorRequest) -> tuple[bytes, int]:
             *prepared.shared,
             *(
                 Factor(
-                    scope,
+                    selector.scope,
                     _requested_relation(arena, prepared, word, requested[word], block),
                 )
-                for word, scope in prepared.targets.items()
+                for word, selector in prepared.selectors.items()
             ),
         ]
         witness = eliminate(arena, factors, range(len(prepared.order)))
