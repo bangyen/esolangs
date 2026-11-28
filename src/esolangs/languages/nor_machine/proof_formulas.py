@@ -1,9 +1,4 @@
-"""Direct constants and single-accumulator resource envelopes.
-
-A selector's shifted copy is h bits shorter; its peak is at most
-2U+h+4m+16 queue bits, versus 3(U+m)+6 during extraction (U=2**m).
-The command cap covers prefix O(n**3), Horner O(U), and summed smears O(U).
-"""
+"""Direct constants and the single-accumulator command envelope."""
 
 
 def _constant(n: int, program: str) -> bool:
