@@ -6,12 +6,12 @@ from .packed_layout import (
     _SHORT_HUB,
     _SPILL_MARKER_BASE,
 )
-from .spill_routes import _SpillCode
+from .route_emitter import _RouteEmitter
 
 
 def _marker_handoff(source: bytearray) -> None:
     start, pointer, end = 4699, 137, 5047
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(142, 126)
     code.jump(126, 163)
     code.crazy(173)
@@ -129,18 +129,18 @@ def _marker_handoff(source: bytearray) -> None:
     code.write(source, start, end)
 
 
-def _save_lookup(code: _SpillCode, lookup: int) -> None:
+def _save_lookup(code: _RouteEmitter, lookup: int) -> None:
     code.jump(86, lookup)
     code.crazy(lookup + 8)
 
 
-def _return_from_lookup(code: _SpillCode, lookup: int) -> None:
+def _return_from_lookup(code: _RouteEmitter, lookup: int) -> None:
     code.jump(lookup + 9, 121)
     code.jump(127, _ONE_HUB)
     code.jump(_ONE_HUB + 1, 36)
 
 
-def _through_shadow(code: _SpillCode) -> None:
+def _through_shadow(code: _RouteEmitter) -> None:
     shadow = 15309
     code.jump(41, 36)
     code.jump(37, shadow)
@@ -152,7 +152,7 @@ def _lookup_guard(source: bytearray) -> None:
     # The concrete lookup address only establishes a relative eight-cell walk.
     lookup = 5327
     start, pointer, end = 5565, 158, 5627
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(159, 47)
     code.jump(51, 187)
     code.jump(189, 86)
@@ -171,7 +171,7 @@ def _lookup_guard(source: bytearray) -> None:
 def _lookup_rejoin(source: bytearray) -> None:
     lookup = 5327
     start, pointer, end = 5629, 188, 5947
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(191, 60)
     code.rotate(61)
     code.long(62)
@@ -266,7 +266,7 @@ def _lookup_rejoin(source: bytearray) -> None:
 def _palette_return(source: bytearray) -> None:
     palette = 4325
     start, end = 6042, 6176
-    code = _SpillCode(palette)
+    code = _RouteEmitter(palette)
     code.rotate(palette + 6)
     code.jump(palette + 7, 74)
     code.jump(74, _ONE_HUB)
@@ -320,7 +320,7 @@ def _palette_return(source: bytearray) -> None:
 def _shadow_payload(source: bytearray) -> None:
     slot, palette = 42305, 4262
     start, pointer, end = 6185, 158, 6560
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.rotate(158)
     code.jump(159, 47)
     code.crazy(48)

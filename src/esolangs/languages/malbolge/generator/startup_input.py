@@ -1,6 +1,6 @@
 """Input folds for the packed Malbolge decoder."""
 
-from .spill_routes import _SpillCode
+from .route_emitter import _RouteEmitter
 
 # C and D immediately after the final input instruction.
 _INPUT_HANDOFF = (1620, 139)
@@ -8,7 +8,7 @@ _INPUT_HANDOFF = (1620, 139)
 
 def _write_first_read(source: bytearray) -> None:
     start, pointer, end = 237, 237, 356
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(237, 86)
     code.jump(88, 71)
     code.jump(71, 107)
@@ -40,7 +40,7 @@ def _write_first_read(source: bytearray) -> None:
 
 def _first_digit(source: bytearray) -> None:
     start, pointer, end = 356, 92, 1023
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     rotation_seed = 43
     code.jump(92, 75)
     code.crazy(75)
@@ -134,7 +134,7 @@ def _first_digit(source: bytearray) -> None:
     code.write(source, start, end)
 
 
-def _through_reset_seed(code: _SpillCode) -> None:
+def _through_reset_seed(code: _RouteEmitter) -> None:
     code.jump(48, 126)
     code.jump(127, 94)
     code.jump(94, 34)
@@ -142,7 +142,7 @@ def _through_reset_seed(code: _SpillCode) -> None:
 
 def _finish_first_group(source: bytearray) -> None:
     start, pointer, end = 1023, 61, 1110
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(61, 100)
     code.crazy(102)
     code.return_to_all_twos()
@@ -189,7 +189,7 @@ def _finish_first_group(source: bytearray) -> None:
 
 def _fold_second_group(source: bytearray) -> None:
     start, pointer, end = 1110, 55, 1233
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.crazy(57)
     code.jump(58, 90)
     code.jump(94, 34)
@@ -256,16 +256,25 @@ def _fold_second_group(source: bytearray) -> None:
     code.write(source, start, end)
 
 
-def _rotate_input_mask(code: _SpillCode) -> None:
+def _rotate_input_mask(code: _RouteEmitter) -> None:
     """Rotate D83 through the return from D62."""
     code.jump(62, 98)
     code.jump(98, 82)
     code.rotate(83)
 
 
+def _load_fold_mask(code: _RouteEmitter) -> None:
+    """Rotate the mask at D128 and return to the fold at D60."""
+    code.jump(84, 50)
+    code.jump(52, 127)
+    code.rotate(128)
+    code.jump(130, 29525)
+    code.jump(29525, 60)
+
+
 def _fold_third_group(source: bytearray) -> None:
     start, pointer, end = 1233, 39, 1360
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(42, 59)
     code.crazy(60)
     code.jump(61, 100)
@@ -310,11 +319,7 @@ def _fold_third_group(source: bytearray) -> None:
     code.jump(90, 56)
     code.crazy(60)
     _rotate_input_mask(code)
-    code.jump(84, 50)
-    code.jump(52, 127)
-    code.rotate(128)
-    code.jump(130, 29525)
-    code.jump(29525, 60)
+    _load_fold_mask(code)
     code.crazy(60)
     code.jump(62, 98)
     code.jump(98, 82)
@@ -334,7 +339,7 @@ def _fold_third_group(source: bytearray) -> None:
 
 def _fold_fourth_group(source: bytearray) -> None:
     start, pointer, end = 1360, 90, 1471
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(90, 56)
     code.crazy(61)
     _rotate_input_mask(code)
@@ -364,11 +369,7 @@ def _fold_fourth_group(source: bytearray) -> None:
     code.jump(29525, 60)
     code.crazy(61)
     _rotate_input_mask(code)
-    code.jump(84, 50)
-    code.jump(52, 127)
-    code.rotate(128)
-    code.jump(130, 29525)
-    code.jump(29525, 60)
+    _load_fold_mask(code)
     code.crazy(61)
     code.return_to_rotation_seed()
     code.crazy(137)
@@ -381,7 +382,7 @@ def _fold_fourth_group(source: bytearray) -> None:
 
 def _fold_fifth_group(source: bytearray) -> None:
     start, pointer, end = 1471, 91, 1589
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(91, 84)
     code.crazy(84)
     code.jump(86, 80)
@@ -442,7 +443,7 @@ def _fold_fifth_group(source: bytearray) -> None:
 def _read_suffix(source: bytearray) -> None:
     start, pointer = 1589, 132
     end, next_pointer = _INPUT_HANDOFF
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.crazy(132)
     code.rotate(133)
     code.jump(134, 64)

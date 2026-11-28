@@ -14,7 +14,7 @@ from .packed_layout import (
     _SHORT_HUB,
     _TAPS,
     _column_marker,
-    _high_cell,
+    _lookup_base,
 )
 
 if TYPE_CHECKING:
@@ -54,8 +54,7 @@ def _markers(column: int) -> Iterator[tuple[Role, int]]:
 
 
 def _tap(word: int, raw: int, marker: int, channel: int) -> int:
-    high = _char_for("p", _high_cell(word))
-    return 5113 + 3 * _char_for("p", 19745 + high - raw) + _TAPS[channel] - marker
+    return _lookup_base(word, raw, marker) + _TAPS[channel]
 
 
 def _alphabet(

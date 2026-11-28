@@ -1,5 +1,7 @@
 """Shared addresses of the packed decoder's code and operand regions."""
 
+from .isa import _char_for
+
 # Spill navigation and column dispatch.
 _SPILL_DISPATCH = 5024
 _SPILL_BRANCH = 5046
@@ -30,3 +32,9 @@ def _column_marker(column: int) -> int:
 def _high_cell(word: int) -> int:
     """Return the high lookup operand for the payload word's band."""
     return (word - 1) // _COLUMN_COUNT * _COLUMN_COUNT + _HIGH_OPERAND_OFFSET
+
+
+def _lookup_base(word: int, raw: int, marker: int) -> int:
+    """Return the payload's lookup address before adding a printer tap."""
+    high = _char_for("p", _high_cell(word))
+    return 5113 + 3 * _char_for("p", 19745 + high - raw) - marker

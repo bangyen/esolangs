@@ -37,6 +37,7 @@ from .packed_layout import (
     _TAPS,
     _column_marker,
     _high_cell,
+    _lookup_base,
 )
 from .spill import _spill_locations
 from .spill_routes import _write_spill_routes
@@ -342,8 +343,7 @@ def _pattern(
     used: int,
 ) -> int:
     """Read the requested output slots through their three physical lookup taps."""
-    high = _char_for("p", _high_cell(k))
-    key = 5113 + 3 * _char_for("p", 19745 + high - raw) - marker
+    key = _lookup_base(k, raw, marker)
     bits = 0
     for slot, virt in enumerate(perm):
         if used >> slot & 1:

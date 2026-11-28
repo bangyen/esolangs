@@ -5,12 +5,12 @@ from .packed_layout import (
     _ONE_HUB,
     _SHORT_HUB,
 )
-from .spill_routes import _SpillCode
+from .route_emitter import _RouteEmitter
 
 
 def _column_readout(source: bytearray) -> None:
     start, pointer, end = 44469, 161, 45104
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     readout = 209
     code.crazy(170)
     code.jump(171, 74)
@@ -69,7 +69,7 @@ def _column_readout(source: bytearray) -> None:
 
 def _middle_bridge(source: bytearray) -> None:
     start, pointer, end = 45116, 181, 45194
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(183, 51)
     code.return_to_readout()
     code.crazy(157)
@@ -92,7 +92,7 @@ def _middle_bridge(source: bytearray) -> None:
 
 def _middle_rejoin(source: bytearray) -> None:
     start, pointer, end = 57826, 166, 57916
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(166, 125)
     code.jump(125, 104)
     code.return_to_all_twos()
@@ -127,7 +127,7 @@ def _middle_rejoin(source: bytearray) -> None:
 
 def _join_spill_axes(source: bytearray) -> None:
     start, pointer, end = 18225, 168, 18954
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(168, 48)
     code.jump(52, 127)
     code.mix(128, 150)
@@ -191,7 +191,7 @@ def _join_spill_axes(source: bytearray) -> None:
 
 def _select_payload(source: bytearray) -> None:
     start, pointer, end = 37909, 210, 38635
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(210, 102)
     code.long(102)
     code.reset()
@@ -347,7 +347,7 @@ def _select_payload(source: bytearray) -> None:
 
 def _skip_spill(source: bytearray) -> None:
     start, pointer, end = 5048, 198, 5199
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(198, 1)
     code.jump(1, 86)
     code.crazy(88)

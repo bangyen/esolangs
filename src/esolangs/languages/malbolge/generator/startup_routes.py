@@ -6,14 +6,14 @@ from .packed_layout import (
     _ONE_HUB,
     _SHORT_HUB,
 )
-from .spill_routes import _SpillCode
+from .route_emitter import _RouteEmitter
 from .startup_input import _INPUT_HANDOFF
 
 
 def _save_suffix_and_readout(source: bytearray) -> None:
     start, pointer = _INPUT_HANDOFF
     end = 1863
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.crazy(139)
     code.crazy(146)
     code.jump(147, 29525)
@@ -61,7 +61,7 @@ def _save_suffix_and_readout(source: bytearray) -> None:
 def _seed_address_rotations(source: bytearray) -> None:
     """Set the rotation seed before the paired rotations at C1959."""
     start, pointer, end = 1863, 151, 1959
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(151, 43)
     code.jump(48, 126)
     code.crazy(133)
@@ -78,10 +78,21 @@ def _seed_address_rotations(source: bytearray) -> None:
     code.write(source, start, end)
 
 
+def _stage_residue_word(code: _RouteEmitter) -> None:
+    """Stage the accumulator in D203 and return to the address registers."""
+    code.jump(78, 62)
+    code.jump(62, 98)
+    code.jump(98, 82)
+    code.jump(83, 202)
+    code.crazy(203)
+    code.return_to_staged_word()
+    code.jump(126, 163)
+
+
 def _finish_address_rotations(source: bytearray) -> None:
     """Continue at C1992 after the paired rotations."""
     start, pointer, end = 1992, 127, 2177
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(131, 106)
     code.jump(106, 45)
     code.jump(48, 126)
@@ -120,13 +131,7 @@ def _finish_address_rotations(source: bytearray) -> None:
     code.rotate(76)
     code.jump(77, 74)
     code.rotate(76)
-    code.jump(78, 62)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.jump(83, 202)
-    code.crazy(203)
-    code.return_to_staged_word()
-    code.jump(126, 163)
+    _stage_residue_word(code)
     code.rotate(165)
     code.mix(180, 186)
     code.crazy(194)
@@ -145,17 +150,11 @@ def _finish_address_rotations(source: bytearray) -> None:
 def _stage_address_residues(source: bytearray) -> None:
     """Stage the next residue mask between the passes at C2177 and C2293."""
     start, pointer, end = 2205, 35, 2293
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(35, 54)
     code.jump(55, 76)
     code.crazy(76)
-    code.jump(78, 62)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.jump(83, 202)
-    code.crazy(203)
-    code.return_to_staged_word()
-    code.jump(126, 163)
+    _stage_residue_word(code)
     code.rotate(180)
     code.rotate(185)
     code.mix(186, 197)
@@ -187,7 +186,7 @@ def _stage_address_residues(source: bytearray) -> None:
 def _reload_residue_mask(source: bytearray) -> None:
     """Reload the mask between the passes at C2293 and C2325."""
     start, pointer, end = 2321, 35, 2325
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     mask = 35
     code.crazy(mask)
     code.jump(36, 65)
@@ -197,7 +196,7 @@ def _reload_residue_mask(source: bytearray) -> None:
     code.write(source, start, end)
 
 
-def _prime_pointer(code: _SpillCode, cell: int, *returns: tuple[int, int]) -> None:
+def _prime_pointer(code: _RouteEmitter, cell: int, *returns: tuple[int, int]) -> None:
     """Apply the mask twice with the intervening pointer return."""
     code.crazy(cell)
     for operand, landing in returns:
@@ -208,7 +207,7 @@ def _prime_pointer(code: _SpillCode, cell: int, *returns: tuple[int, int]) -> No
 def _prime_hub_operands(source: bytearray) -> None:
     """Prime the low pointer cells before the three hub fills."""
     start, pointer, end = 2353, 35, 2917
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     _prime_pointer(code, 35, (38, 35))
     code.jump(36, 65)
     code.jump(65, 47)
@@ -301,7 +300,7 @@ def _prime_hub_operands(source: bytearray) -> None:
 
 def _prepare_short_hub(source: bytearray) -> None:
     start, pointer, end = 2917, 65, 3317
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(65, 47)
     code.crazy(54)
     code.crazy(55)
@@ -358,7 +357,7 @@ def _prepare_short_hub(source: bytearray) -> None:
 def _prepare_one_hub(source: bytearray) -> None:
     """Continue after the short-hub fill and prepare the fill at C3627."""
     start, pointer, end = 3405, 125, 3627
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(127, 29525)
     code.jump(29526, 59)
     code.jump(59, 118)
@@ -429,7 +428,7 @@ def _prepare_one_hub(source: bytearray) -> None:
 def _prepare_long_hub(source: bytearray) -> None:
     """Continue after the one-hub fill and prepare the fill at C3949."""
     start, pointer, end = 3708, 128, 3949
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     code.jump(129, 0)
     code.jump(0, 34)
     code.rotate(35)
@@ -497,7 +496,7 @@ def _prepare_long_hub(source: bytearray) -> None:
 def _enter_dispatch(source: bytearray) -> None:
     """Continue after the long-hub fill and emit the jump at C4242."""
     start, pointer, end = 4038, 124, 4243
-    code = _SpillCode(pointer)
+    code = _RouteEmitter(pointer)
     ones = 128
     dispatch = 136
     code.rotate(dispatch)
