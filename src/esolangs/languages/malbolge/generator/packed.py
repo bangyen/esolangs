@@ -15,7 +15,13 @@ from pathlib import Path
 from typing import NamedTuple
 
 from esolangs.languages.malbolge.generator.digits import _readouts
-from esolangs.languages.malbolge.generator.isa import _ACTIVE, _WORDS, _char_for
+from esolangs.languages.malbolge.generator.isa import (
+    _ACTIVE,
+    _ALL1,
+    _WORDS,
+    _char_for,
+    _progression,
+)
 from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine
 from esolangs.runtime.io import ScriptedIO
 
@@ -107,6 +113,22 @@ def _write_guard_approaches(source: bytearray) -> None:
             source[address] = _char_for(op, address)
 
 
+def _write_guard_returns(source: bytearray) -> None:
+    """Route the two dispatch guards through the encrypted all-ones operand."""
+    operand = _ALL1 + 1
+    landing = ord(_XLAT2[_char_for("o", operand) - 33]) + 1
+    return_pointer = 86
+    terminal = _progression(return_pointer - 1, landing, 127)[0]
+    shared = "j" + "o" * (terminal - landing) + "j"
+    # Both low operands contain all-ones when the dispatch guard runs.
+    for pc, hub, low, approach in ((5609, 45926, 46, "o"), (5681, 41552, 36, "")):
+        walk = low - (source[hub] + 1)
+        assert walk >= 0
+        ops = approach + "j" + "o" * walk + "j" + shared
+        for address, op in enumerate(ops, pc):
+            source[address] = _char_for(op, address)
+
+
 @cache
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
@@ -116,6 +138,7 @@ def _decoder() -> _Decoder:
         lo = int(address)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
     _write_guard_approaches(source)
+    _write_guard_returns(source)
     # The short seed at the first entry follows its six-cell approach.
     for start in (_PRINTERS[0] + 6, *_PRINTERS[1:]):
         _write_printer(source, start, _SHORT[0])

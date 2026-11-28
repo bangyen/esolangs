@@ -52,6 +52,8 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   printer body emitted by the same rule as the active printers. It checks order `012` and
   all three guard paths for rejoining. The guards share an entry that
   jumps through the glyph and walks six cells to its pointer operand.
+  Both dispatch guards return via the encrypted all-ones operand and
+  the first walked cell that points to the return.
 
   Generation takes `O(T)` RAM work for `T` truth-table rows under the
   fixed 59,049-cell machine. Validation and constant detection scan the
