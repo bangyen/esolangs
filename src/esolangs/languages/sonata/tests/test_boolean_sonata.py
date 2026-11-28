@@ -25,13 +25,10 @@ def test_every_row_prints_its_answer() -> None:
             _check_constants()
         n = len(table).bit_length() - 1
         program = esolangs.generate("Sonata", table).source
-        if n != 2:
-            assert "0_I->%0_I" not in program
-            # An exact-length setup still leaves a wrong-length binary input unanswered.
-            invalid = "0" * (n + 1)
-            assert run("Sonata", program, stdin=invalid).unwrap().output == invalid
-        elif len(set(table)) == 2:
-            assert "0_I->%0_I" in program
+        assert "0_I->%0_I" not in program
+        # Exact-length rules leave a wrong-length binary input unanswered.
+        invalid = "0" * (n + 1)
+        assert run("Sonata", program, stdin=invalid).unwrap().output == invalid
         assert_every_row("Sonata", table, program=program)
 
 
@@ -51,8 +48,9 @@ def test_pair_table_prints_its_answer() -> None:
 
 
 def _check_constants() -> None:
-    assert_analysis_complement("Sonata", "symmetric_outputs", "0110")
-    assert_analysis_complement("Sonata", "read_at", "0010")
+    # Row rules take n <= 3, so the analyses are witnessed at n = 4.
+    assert_analysis_complement("Sonata", "symmetric_outputs", "0110100110010110")
+    assert_analysis_complement("Sonata", "read_at", "0010001000100010")
     from esolangs.languages.sonata.interpreter import _Machine
 
     language = esolangs.Language("Sonata")
@@ -88,7 +86,8 @@ def _check_constants() -> None:
                 machine.step()
                 total_steps += 1
             assert io.getvalue() == "=" + table[row]
-    assert (total_chars, total_steps) == (24980, 18080)
+    # 254 row-rule programs of 63 chars, two 11-char constants; 2 steps a row.
+    assert (total_chars, total_steps) == (16024, 4096)
 
 
 def test_projection_mask_avoids_the_unicode_name_boundary() -> None:
@@ -128,8 +127,9 @@ def test_public_generator_switches_to_masks(monkeypatch: pytest.MonkeyPatch) -> 
 def test_one_rule_per_row_answers_in_two_steps() -> None:
     """Rewriting has no locality floor: steps trade against (n+3)T source."""
     table = "0110100110010110"
-    rules = "".join(f"{row:04b}->{bit}\n" for row, bit in enumerate(table))
+    rules = "\n".join(f"{row:04b}->={bit}" for row, bit in enumerate(table))
     for row, bit in enumerate(table):
         stdin = esolangs.encode_inputs("Sonata", row_bits(row, 4), truth_table=table)
-        assert run("Sonata", rules, stdin=stdin).observation.output == bit
+        output = run("Sonata", rules, stdin=stdin).observation.output
+        assert esolangs.read_answer("Sonata", output) == bit
     assert measure("Sonata", table, program=rules)[0] == 2

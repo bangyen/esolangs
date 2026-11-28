@@ -11,7 +11,7 @@ admitted = 2026-10-21T23:43:42-04:00
 
 [proof_status]
 labels = ["finite lookup"]
-qualification = "the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them. At the Unicode name boundary, a fixed-name mask reads the same bits"
+qualification = "one rule a row answers through three inputs; beyond, the essential input bits double a unary row index in one rewrite each, and each index unit strips one entry of the table read at them. At the Unicode name boundary, a fixed-name mask reads the same bits"
 
 [ablations]
 archive_refs = [
@@ -33,14 +33,14 @@ archive_context = { audited = "2026-11-02" }
 folding_constant_local = "_RULES"  # no essential input: the setup rule leaves @#c
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 7, "5" = 8, "6" = 8, "7" = 9 }, source_units = 92 }
-"00001100" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 6, "3" = 6, "4" = 7, "5" = 7, "6" = 8, "7" = 8 }, source_units = 94 }
-"00110110" = { commands_by_row = { "0" = 6, "1" = 7, "2" = 8, "3" = 9, "4" = 10, "5" = 11, "6" = 12, "7" = 13 }, source_units = 100 }
-"0110" = { commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8 }, source_units = 108 }
-"01101001" = { commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 7, "5" = 8, "6" = 8, "7" = 9 }, source_units = 92 }
+"00000001" = { commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 63 }
+"00001100" = { commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 63 }
+"00110110" = { commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 63 }
+"0110" = { commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2 }, source_units = 27 }
+"01101001" = { commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 63 }
 "0110100110010110" = { commands_by_row = { "0" = 7, "1" = 8, "2" = 8, "3" = 9, "4" = 8, "5" = 9, "6" = 9, "7" = 10, "8" = 8, "9" = 9, "10" = 9, "11" = 10, "12" = 9, "13" = 10, "14" = 10, "15" = 11 }, source_units = 97 }
 "1101001101101101" = { commands_by_row = { "0" = 7, "1" = 8, "2" = 9, "3" = 10, "4" = 11, "5" = 12, "6" = 13, "7" = 14, "8" = 15, "9" = 16, "10" = 17, "11" = 18, "12" = 19, "13" = 20, "14" = 21, "15" = 22 }, source_units = 112 }
-"11111110" = { commands_by_row = { "0" = 6, "1" = 7, "2" = 7, "3" = 8, "4" = 7, "5" = 8, "6" = 8, "7" = 9 }, source_units = 92 }
+"11111110" = { commands_by_row = { "0" = 2, "1" = 2, "2" = 2, "3" = 2, "4" = 2, "5" = 2, "6" = 2, "7" = 2 }, source_units = 63 }
 
 [schemes]
 folds_without_tree = true
@@ -86,33 +86,46 @@ construction = "esolangs.languages.sonata.generator:sonata_request"
 witnesses = "esolangs.languages.sonata.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "T+n+3-min(1,(n-2)^2)+min(1,floor(n/55041))"
+# Row rules through n=3: one rewrite, then the halt.
+cases = [
+    { through = 1, expression = "T+n+2" },
+    { through = 3, expression = "2" },
+    { expression = "T+n+2+min(1,floor(n/55041))" },
+]
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "steps"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: index, strips, halt" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: row rules to n=3, then index, strips, halt" }
 
 [resource_evidence.workspace]
-expression = "16T+10+16min(1,floor(n/55041))"
+cases = [
+    { through = 1, expression = "16T+10" },
+    { through = 3, expression = "8n+2" },
+    { expression = "16T+10+16min(1,floor(n/55041))" },
+]
 exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: the string at its longest, an index of T - 1 units beside the table" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: the input, or an index beside the table" }
 
 [resource_evidence.scaling]
 # Full-support nonsymmetric doubling attains through six inputs.
 # The n=1 identity stays on doubling: count lookup requires m>=2.
-# A projection costs 2**m+2n+2m+80, plus21 if n=2. Pair packing
-# from m=7 instead costs <=2**(m-1)+2n+2m+115, below this ceiling.
-# The mask layout uses at most T+n+1724 characters from n=55041.
-expression = "T+4n+101-21min(1,(n-2)^2)"
+# A projection costs 2**m+2n+2m+80. Pair packing from m=7 instead
+# costs <=2**(m-1)+2n+2m+115, below this ceiling. Row rules take
+# n=2, 3. The mask layout uses at most T+n+1724 characters from n=55041.
+cases = [
+    { through = 1, expression = "T+4n+80" },
+    { through = 3, expression = "(n+5)T-1" },
+    { expression = "T+4n+80" },
+]
 exact = [1, 2, 3, 4, 5, 6]
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: exact n=1..6, upper bound thereafter" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}: exact n=1..6, upper bound thereafter" }
 
 [semantic_evidence]
 version = 1

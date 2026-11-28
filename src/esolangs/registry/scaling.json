@@ -91,7 +91,7 @@
   "slow_acv_mammalian": "linear: at most 12(2(W+P+Q)+8194) characters",
   "smallfuck": "linear: at most P (n=1), P+20n+100 (n\u22652) characters: coefficient prefix and Davio tail",
   "smu": "linear: at most 7T+150",
-  "sonata": "linear: worst T+4n+101-21min(1,(n-2)^2) characters: exact n=1..6, upper bound thereafter",
+  "sonata": "linear: worst T+4n+80 (n=1), (n+5)T-1 (n=2..3), T+4n+80 (n\u22654) characters: exact n=1..6, upper bound thereafter",
   "sstack": "linear: at most 24T-9 characters: 21 a node, 3 a leaf, 12 prologue",
   "stisp": "linear: at most F+28 characters past n = 2: named-diagram ceiling plus selectors",
   "streetcode": "linear: worst (32n+80)T (n=2..3), 7(3T/2+108+51min(n-1,6)+max(0,T/2-64)+3max(0,n-7)) (n\u22654) cells: tree, then the flat street",
