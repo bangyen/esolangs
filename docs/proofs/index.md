@@ -50,7 +50,8 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   The native replay derives both allowed glyphs at each lookup tap and
   the prefix seed from the decoder, including three copies of the short
   printer body emitted by the same rule as the active printers. It checks order `012` and
-  all three guard paths for rejoining.
+  all three guard paths for rejoining. The guards share an entry that
+  jumps through the glyph and walks six cells to its pointer operand.
 
   Generation takes `O(T)` RAM work for `T` truth-table rows under the
   fixed 59,049-cell machine. Validation and constant detection scan the

@@ -96,6 +96,17 @@ def _high_cell(word: int) -> int:
     return (word - 1) // 243 * 243 + 79
 
 
+def _write_guard_approaches(source: bytearray) -> None:
+    """Install the shared jump that the lookup guards use to enter low memory."""
+    # The first jump reads the glyph; six walks reach its pointer operand.
+    approach = "j" + "o" * 6 + "jo"
+    # The first guard and the printer guard share their next six jumps.
+    shared = approach + "j" + "o" * 5 + "jojjojooj"
+    for pc, ops in ((5585, shared), (5657, approach), (5697, shared)):
+        for address, op in enumerate(ops, pc):
+            source[address] = _char_for(op, address)
+
+
 @cache
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
@@ -104,6 +115,7 @@ def _decoder() -> _Decoder:
         address, ops = line.split()
         lo = int(address)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
+    _write_guard_approaches(source)
     # The short seed at the first entry follows its six-cell approach.
     for start in (_PRINTERS[0] + 6, *_PRINTERS[1:]):
         _write_printer(source, start, _SHORT[0])
