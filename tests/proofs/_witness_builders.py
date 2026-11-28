@@ -93,22 +93,28 @@ def _suffolk_deep(n: int) -> str:
 
 # language-owners: ["BFStack"]
 def _bfstack_block(i: int, e: int) -> str:
-    """2^e rows of zeros but one: the worst block, distinct by its row.
+    """2^e rows alternating from 1, repeating once: the worst block, distinct by ``i``.
 
-    The cascade lists every other row and ends at the last; the one sits at row
-    ``i`` of 256 rows (row 0 is the dearest start, 1), else at row 1.  A lone
-    one at row 0 or the last of a whole table is symmetric: the count takes it.
+    Every row but the repeat changes the answer, the last one included, so
+    the decoder unwinds S - 2 changes from row S - 1 and the start bit is 1.
+    A repeat at a multiple of 4 leaves the second input inessential, so the
+    ``i``-th repeat row skips them (191 rows of 256).
     """
     rows = 2**e
-    at = i if e == 8 else 1
-    return "0" * at + "1" + "0" * (rows - at - 1)
+    at = (
+        [j for j in range(1, rows - 1) if j % 4][i % (rows - 2 - (rows - 2) // 4)]
+        if e == 8
+        else 1
+    )
+    bits = [1]
+    for row in range(1, rows):
+        bits.append(bits[-1] if row == at else 1 - bits[-1])
+    return "".join(map(str, bits))
 
 
 def _bfs_chars(n: int) -> str:
-    """Distinct worst blocks of up to 256 rows under a tree of blocks."""
+    """Distinct worst blocks of up to 256 rows under a full tree of branches."""
     e = min(n, 8)
-    if n == 8:
-        return _bfstack_block(1, e)
     return "".join(_bfstack_block(i, e) for i in range(2 ** (n - e)))
 
 

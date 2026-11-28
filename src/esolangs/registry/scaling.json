@@ -11,7 +11,7 @@
   "back": "linear: worst ((25+15(n-2\u230an/2\u230b))\u00b72^\u230a(n-6)/2\u230b-4)((40+10(n-2\u230an/2\u230b))\u00b72^\u230a(n-6)/2\u230b-8) (n\u22658) cells: pair comb through n=7",
   "balik": "linear: nested boxes, odd inner levels side by side",
   "befunge": "linear: worst 80(\u2308(5n+64)/78\u2309+\u2308T/480\u2309) (n\u22659) cells; six-bit packed",
-  "bfstack": "linear: at most 128T",
+  "bfstack": "linear: worst 7T + 54n + 46 (n=3..8), 2333T/256 - 62 (n\u22659) characters",
   "bifunge": "linear: worst 8*2^\u230an/2\u230b*(15n+18*2^\u2308n/2\u2309) text cells; one rectangular tree and an input strip",
   "bit_tilde": "linear: worst 3T+19n+115 characters past n = 3: minority planting",
   "bitdeque": "linear: at most 93+20n+digits(4n+26+2S)+2max(37,23+2digits(4n+26+2S))+(13+digits(4n+26+2S))S characters: shared-tree token bound",

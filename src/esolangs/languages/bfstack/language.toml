@@ -114,16 +114,22 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
 
 [resource_evidence.scaling]
-# For a terminal span of S rows and w remaining inputs the encoder,
-# decoder and print cost at most 54w+7(S-1)+57, at most 64S for w >= 1.
-# Terminal spans are disjoint. Each prefix node costs at most 62 more
-# characters, and each block inside a prefix branch has one final pop.
-expression = "128T"
-exact = false
+# A block of S = 2^k rows over k essential of w remaining inputs costs
+# 51 + 2(w-k) + 54k + (S-1) for the encoder, 3c + 3m + 3 for the decoder
+# (c the last change, m changes; m <= S-2 once k >= 2) and 2 to print:
+# at most 7S + 54k + 2(w-k) + 46, the worst block at k = w. A branch costs
+# 62 and a block under one 1 more, so from n = 9 the full tree of
+# 256-row blocks gives 2^(n-8)(2270 + 1 + 62) - 62. Alternating rows with
+# one repeat reach both (tests/proofs/_witness_builders.py:_bfs_chars).
+cases = [
+    { through = 8, expression = "7T + 54n + 46" },
+    { expression = "2333T/256 - 62" },
+]
+exact = true
 arities = [3, 4, 5, 6, 7, 8, 9]
 first = 3
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1
