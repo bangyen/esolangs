@@ -15,4 +15,6 @@ def _longest_path(n: int) -> str:
 
 def resource_tables(n: int) -> tuple[str, ...]:
     """Return additional truth tables for the resource ledger."""
-    return (_brainif_worst(n) if n >= 2 else "11", _longest_path(n))
+    size = ("", "10", "1110", "11100100", "1110010011010101")
+    extra = (size[n],) if n < len(size) else ()
+    return (_brainif_worst(n) if n >= 2 else "11", _longest_path(n), *extra)

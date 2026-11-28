@@ -11,6 +11,7 @@ from esolangs._bindings import TEMPLATE_CHAR, runs
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from tests.proofs.conventions import _embedding, _tables
+from tests.proofs.test_scaling_formulas import check_exhaustive_four_input_size
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import three_input_corpus_size
 from tests.support.witness_tables import witnesses
@@ -237,3 +238,7 @@ def test_constant_native_and_short_loads_keep_all_slots() -> None:
                         assert steps + 1 == 3 * n + 3 + int(bit)
                         assert written.bits == workspace(n, template.source)
     assert three_input_corpus_size("Bitdeque") == 54_914
+
+
+def test_exhaustive_four_input_size() -> None:
+    check_exhaustive_four_input_size("Bitdeque")

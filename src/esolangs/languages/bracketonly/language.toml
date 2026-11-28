@@ -58,16 +58,17 @@ unit = "steps"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula}; all-zero parity visits n tests and a zero leaf" }
 
 [resource_evidence.workspace]
-# At most n+4 live frames. Each has a node ID of at most n+5 bits,
-# a four-bit function ID, a child offset, and at most eleven bits of
-# non-input values plus a zero subtotal. One live call holds up to n
-# six-bit ASCII digits. The root and draw counters use one bit each.
-expression = "(n+4)(n+21+bl(max(11,n+1)))+6n+bl(n)+2"
-exact = false
-arities = [1, 2, 3, 4]
+# The full tree has fewer than 32T call IDs. At most n+4 frames are
+# live. Outside their IDs, the output frame costs six, resolved tests
+# cost seven each, and the active test costs 26 with MOD and TWO live.
+# A suffix draining r inputs uses at most 7r+19 bits outside its IDs.
+# All-zero parity fills the n+4 frames with (n+5)-bit IDs at the last TWO.
+expression = "(n+4)(n+5)+7n+26+bl(n)"
+exact = true
+arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula}; lazy evaluation frames and the input cursor" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}; parity reaches the last remainder with every test live" }
 
 [resource_evidence.scaling]
 # A test costs 120 chars and a final split has one four-char and one

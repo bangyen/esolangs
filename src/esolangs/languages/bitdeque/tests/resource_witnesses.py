@@ -14,4 +14,5 @@ def resource_tables(n: int) -> tuple[str, ...]:
     tables: tuple[str, ...] = ()
     tables += ("10" + "01" * (width // 2 - 1),)
     tables += _named_witnesses(n)
-    return tables
+    size = ("", "10", "1101", "10110100", "1110110111001011")
+    return (*tables, size[n]) if n < len(size) else tables

@@ -127,13 +127,19 @@ description = { growth = "poly n", claim = "worst", template = "{claim} {formula
 # N counts layered nodes, A counts goto-address digits. Each node
 # pays 52 characters including line separators; the root saves 17.
 # The fixed climb and output tail add 840 plus both done-address widths and a 17-character landing.
-expression = "max(28n+770,52N+840+A+2digits(4N+54))"
+cases = [
+    { through = 1, expression = "885" },
+    { through = 2, expression = "983" },
+    { through = 3, expression = "1166" },
+    { through = 4, expression = "1361" },
+    { expression = "max(28n+770,52N+840+A+2digits(4N+54))" },
+]
 source_terms = { names = ["A", "N"], provider = "esolangs.languages.brainif.tests.formulas:scaling_terms" }
-exact = false
+exact = [1, 2, 3, 4]
 arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: layered DAG before fall-through" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula}, exact n≤4: layered DAG before fall-through" }
 
 [semantic_evidence]
 version = 1

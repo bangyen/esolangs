@@ -112,3 +112,14 @@ def test_grid_sizes_are_cells() -> None:
         if LANGUAGES[name].backend.grid != (unit == "cells")
     )
     assert not wrong, f"{wrong}: a grid states cells, any other source does not"
+
+
+def check_exhaustive_four_input_size(name: str) -> None:
+    """Check the finite maximum beyond the common exhaustive corpus."""
+    n = 4
+    width = 1 << n
+    reached = False
+    for value in range(1 << width):
+        table = f"{value:0{width}b}"
+        reached |= check_size_bound(name, n, table, esolangs.generate(name, table))
+    check_exact_size(name, n, reached=reached)

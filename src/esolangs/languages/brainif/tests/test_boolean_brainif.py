@@ -16,6 +16,7 @@ from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
 from tests.generators.boolean_runners import _runner, assert_runner_rows
+from tests.proofs.test_scaling_formulas import check_exhaustive_four_input_size
 from tests.support.evaluation import _evaluate
 from tests.support.event_io import ReadFirstIO, count_steps
 from tests.support.generator_support import (
@@ -370,3 +371,7 @@ def test_emitted_spelling_and_targets_match_the_spec(width: int | None) -> None:
                     "output",
                 }
         assert_runner_rows(run_brainif, "\n".join(lines), table)
+
+
+def test_exhaustive_four_input_size() -> None:
+    check_exhaustive_four_input_size("BrainIf")
