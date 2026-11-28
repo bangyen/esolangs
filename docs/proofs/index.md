@@ -48,7 +48,8 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   graph bounds every packed run by 9,101 commands. Replay with
   `uv run python -m esolangs.languages.malbolge.tests.verify_decoder`.
   The native replay derives both allowed glyphs at each lookup tap and
-  the prefix seed from the decoder. It checks printer order `012` and
+  the prefix seed from the decoder, including three copies of the short
+  printer body emitted by the same rule as the active printers. It checks order `012` and
   all three guard paths for rejoining.
 
   Generation takes `O(T)` RAM work for `T` truth-table rows under the

@@ -104,6 +104,9 @@ def _decoder() -> _Decoder:
         address, ops = line.split()
         lo = int(address)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
+    # The short seed at the first entry follows its six-cell approach.
+    for start in (_PRINTERS[0] + 6, *_PRINTERS[1:]):
+        _write_printer(source, start, _SHORT[0])
     readouts = _readouts(16)
     # Primary and spill words occupy the same high bands.
     for k in {_high_cell(w + 1) for w in readouts}:
@@ -268,6 +271,12 @@ def _coupled_encodings(
     return first, right.by_answer[right_bits] if first.op == "<" else safe
 
 
+def _write_printer(source: bytearray, pc: int, body: str) -> None:
+    """Install the shared lookup entry and output halt around a printer body."""
+    for k, op in enumerate("joooj" + body + "<v", pc):
+        source[k] = _char_for(op, k)
+
+
 def _install_layout(
     source: bytearray, lookup: bytes, perm: tuple[int, ...], polarity: int
 ) -> None:
@@ -279,8 +288,7 @@ def _install_layout(
         for k in range(old, pc):
             source[k] = _char_for("o", k)
         printer = (_SHORT if virt == 0 else _LONG)[polarity >> slot & 1]
-        for i, op in enumerate("joooj" + printer + "<v", pc):
-            source[i] = _char_for(op, i)
+        _write_printer(source, pc, printer)
 
 
 def _packed_program(table: str) -> str:
