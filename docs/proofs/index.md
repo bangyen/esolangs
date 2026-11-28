@@ -22,7 +22,10 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   two answers per cell. At seventeen the first fifteen bits select a primary
   word. Suffixes `00`, `01` and `10` read its three slots. Suffix `11`
   replaces one base-nine digit of the address and selects a spill slot.
-  The 131,072 (word, slot) pairs are distinct across 44,608 words.
+  The generator derives the spill markers from the slot geometry and
+  the decoder's legal jump routes. A Latin rank assigns one point per
+  line before the remaining paths and cycles are oriented. The
+  131,072 (word, slot) pairs are distinct across 44,224 words.
   Each column marker maps the eight legal source bytes to eight output
   triples. Words shared with navigation have fewer legal bytes. The
   generator derives one compatibility mask per pattern in each of seven
@@ -37,7 +40,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Word 59,036 excludes `j` because pairing it with byte 67 at 29,530
   halts without output on row 89,100. The packed source occupies all
   59,049 cells. The [native verifier](../../src/esolangs/languages/malbolge/tests/verify_decoder.py)
-  checks 3,941,771 payload and marker combinations. Its acyclic instruction
+  checks 3,945,867 payload and marker combinations. Its acyclic instruction
   graph bounds every packed run by 9,101 commands. Replay with
   `uv run python -m esolangs.languages.malbolge.tests.verify_decoder`.
 

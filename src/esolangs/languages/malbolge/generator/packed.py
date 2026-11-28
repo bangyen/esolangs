@@ -16,8 +16,10 @@ from typing import NamedTuple
 
 from esolangs.languages.malbolge.generator.digits import _readouts
 from esolangs.languages.malbolge.generator.isa import _ACTIVE, _WORDS, _char_for
-from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine, _op
+from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine
 from esolangs.runtime.io import ScriptedIO
+
+from .spill import _BANK, _spill_locations
 
 _DATA = Path(__file__).resolve().parent
 _ROWS = (
@@ -109,27 +111,16 @@ def _decoder() -> _Decoder:
     # Primary and spill words occupy the same high bands.
     for k in {_high_cell(w + 1) for w in readouts}:
         source[k] = _char_for("p", k)
+    spill_locations = _spill_locations(source, readouts, _SOURCE_OPS)
     machine = _Machine(source.decode("ascii"), ScriptedIO("0" * 17))
-    _at(machine, 5024)
-    # The marker selects which base-nine digit the spill routine replaces.
-    directions = {}
-    for marker in {source[57592 + w % 729] for w in readouts}:
-        d = marker + 1
-        for pc in range(5025, 5046):
-            if _op(machine.memory[pc], pc) == "j":
-                d = machine.memory[d]
-            d = (d + 1) % _WORDS
-        directions[marker] = {24908: 0, 11786: 1, 31388: 2}[machine.memory[d] + 1]
     _at(machine, 4513)
     hubs = tuple(machine.memory[v + 4] + 1 for v in range(127))
     used = bytearray(_WORDS)
     locations = []
     for w in readouts:
-        axis = directions[source[57592 + w % 729]]
-        place = 9**axis
-        digit = (w // place) % 9
-        spill = w + 1 + ((7, 8, 3)[axis] - digit) * place
-        slot = (digit // (3, 1, 1)[axis] + 1) % 3
+        bank, residue = divmod(w, _BANK)
+        local, slot = spill_locations[residue]
+        spill = bank * _BANK + local
         locations.append((w + 1, spill, slot))
         used[w + 1] = 7
         used[spill] |= 1 << slot
