@@ -15,7 +15,7 @@ definitions = ["B = the initial memory bits, source cells and fill", "E = execut
 
 [proof_status.audit]
 totality = "Exception"
-generation_time = "Open"
+generation_time = "Linear"
 output_size = "Linear"
 evidence = "docs/proofs/index.md#malbolge-bound"
 
@@ -136,7 +136,7 @@ exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "characters"
-description = { growth = "linear", evidence = "measured", claim = "worst", template = "{claim} {formula}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula}" }
 
 [semantic_evidence]
 version = 1

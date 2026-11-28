@@ -37,6 +37,17 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   graph bounds every packed run by 9,101 commands. Replay with
   `uv run python -m esolangs.languages.malbolge.tests.verify_decoder`.
 
+  Generation takes `O(T)` RAM work for `T` truth-table rows under the
+  fixed 59,049-cell machine. Validation and constant detection scan the
+  table. The positional route fills one cell per row pair. At seventeen,
+  the essential-input analysis is linear and dropping one input copies
+  alternate blocks once. The weight-class scan compares fixed-size blocks.
+  The packed route reads four answers per prefix and writes each occupied
+  payload word once. Its selector masks and local operand choices have
+  fixed machine dimensions and do not rescan the truth table. Layout
+  setup and rendering add a machine-bounded cost, including on a cold
+  build. The bound uses the fixed machine and word size.
+
 - Ascenic: <a id="ascenic-bound"></a> worst-case source is `Theta(T**2)`
   characters for both the language and generator. Arguments rise strictly
   and are unary, so `L` lines cost at least `L(L+1)/2` characters, and a
@@ -398,7 +409,7 @@ for the level counts. `tests/proofs/test_execution_formulas.py` and
 | Kiss | tree | a node is S over its two halves, which S reads a bit to choose; a node whose halves agree reads it through SS(SKK) | linear: worst 7T-5 characters: 5 a node, 2 a leaf | proved | poly n: worst 4n - 1 rewrites: four a skip level, then a read, the output and the halt | linear: worst 24T + 2bl(n) + 17 bits past n = 1: a root skip holds its half twice |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep | linear: worst max(T,3)(12n+32) (n=1..6), 3(11T+52n+3) (n≥7) cells; tree then lookup | proved | linear: worst C*(n+491+X) + (1-C)*(T+296n+682 + min(1,max(0,n-6))*(10T-240n-680)) steps seed 2. C constant, X +x. Other headings add at most 2 | linear: worst 8n+27 (n=5..6), 12T+n+7+2bl(n) (n≥7) bits |
 | Line | tree | small loaded trees and projected inline readers preserve totality and physical input order; complete ordered residual folds share every state unless their exact pixel area exceeds the fallback | linear: at most pixels from n=6: Pareto boxes over projected input sets | proved | poly n: at most 5n (n=1..5), 3n+4 (n≥6) commands by default, with balanced layouts retaining the first bound | poly n: at most 2n+1+bl(3n-2)+bl(n-1)+bl(2n-1)+(n·bl(n-1)-2^bl(n-1)+2) bits from n=5 |
-| Malbolge | exception | positional two-answer cells through sixteen inputs; at seventeen, each 15-bit prefix has a three-answer word and one shared spill slot; finite source space excludes some eighteen-input tables ([construction](#malbolge-bound)) | linear: worst 13340 (n=1..11), 15260 (n=12..13), 21831 (n=14), 52480 (n=15), 59049 (n≥16) characters | measured | unmeasured: at most E+J commands. E is the executed main prefix and J bounds the remaining commands | poly n: at most B+E+10W+J*(1+10F)+49+bl(n) bits. W prefix writes, F marks a following stub |
+| Malbolge | exception | positional two-answer cells through sixteen inputs; at seventeen, each 15-bit prefix has a three-answer word and one shared spill slot; finite source space excludes some eighteen-input tables ([construction](#malbolge-bound)) | linear: worst 13340 (n=1..11), 15260 (n=12..13), 21831 (n=14), 52480 (n=15), 59049 (n≥16) characters | proved | unmeasured: at most E+J commands. E is the executed main prefix and J bounds the remaining commands | poly n: at most B+E+10W+J*(1+10F)+49+bl(n) bits. W prefix writes, F marks a following stub |
 | moar cheese :3 | parameterized lookup | the queue holds pairs of answers; doubling calls count dequeues while each input keeps one half, then the last bit decodes the remaining pair; a symmetric table drops one popcount entry per 1 | linear: at most 2T+20n+104 characters | proved | linear: worst 12 (n=1), 2n^2+11n+17 (n=2..3), 3T+13n-4 (n≥4) commands | linear: at most 8max(T/2+1,n+3)+(n+7)(8+bl(n+20))+(n+3)(bl(n+20)+3)+bl(max(T/2+6n+4,4n+10)) bits |
 | Modulous | linear lookup | pair literal for asymmetric inputs; O(n)-source symmetric count reader retained; default exact maxima, split literals pay extra pushes/cursor bits | linear: worst 68 (n=1), 6T+28n+21 (n=2..4), 3T+28n+144 (n=5), T/2+48n+157+power2_digits_sum(n-1) (n≥6) characters | proved | linear: worst 4D+7J+P*(2n+3)+(1-D-J-P)*(T+3n+2+min(1,max(0,n-4))*(4-T/2)+min(1,max(0,n-5))*(2T+2n-37)+min(1,n-1)*max(0,S-1)) commands. D, J and P mark the direct, branch and discard readers. S counts literal pushes | linear: worst A*(9+bl(M))+P*(7+bl(2n+3)+bl(2n-1)+bl(n))+(1-A-P)*(13max(0,2-n)+min(1,n-1)*(6T+2-3T*min(1,max(0,n-4))+(n-1)*min(1,max(0,n-5))+bl(max(M,T+3n+2+min(1,max(0,n-4))*(12-T/2)+min(1,max(0,n-5))*(3n+3-T/2)))+bl(2n-1)+bl(n))) bits. A selects the one-input integer reader, P the discard reader and M counts tokens |
 | Monotonic Boolfuck | tree | — | linear: worst 53T/2 - 21 characters past n = 1 | proved | poly n: worst 21n + 13 commands | poly n: at most bl(L) + bl(4n + 2) + 2n·bl(2n) + 25 bits |
@@ -599,7 +610,7 @@ size regression. Open generator-linearity work lives in the
 | --- | --- | --- | --- |
 | Ascenic | Total | Language lower bound | Language lower bound |
 | Befunge | Exception | Linear | Linear |
-| Malbolge | Exception | Open | Linear |
+| Malbolge | Exception | Linear | Linear |
 | Unary | Cap | Language lower bound | Language lower bound |
 
 <!-- SCALING-STATUS:END -->
