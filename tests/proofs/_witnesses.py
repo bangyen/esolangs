@@ -59,18 +59,11 @@ def _subleq_packed_worst(n: int) -> str:
 
 
 # language-owners: ["BFStack"]
-#: BFStack's worst 8-input block for execution, a rule: ones at rows 1 and 255.
-#: Its 253 zero rows end at 254 and the last row's input is all ones.
-_BFSTACK_BLOCK = "0" + "1" + "0" * 253 + "1"
-
-
 def _bfstack_worst(n: int) -> str:
-    """Worst from n = 8, a rule: the block under one arms at every wide level.
-
-    A one arm costs 60 commands a level against a zero arm's 59, and a
-    constant zero half keeps every level from folding as equal halves.
-    """
-    table = _BFSTACK_BLOCK
+    """Keep one repeat in an alternating block beneath every wide one arm."""
+    if n == 1:
+        return "10"
+    table = "11" + "01" * ((1 << (min(n, 8) - 1)) - 1)
     while len(table) < 1 << n:
         table = "1" * len(table) + table
     return table

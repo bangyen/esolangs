@@ -93,15 +93,21 @@ witnesses = "esolangs.languages.bfstack.tests.resource_witnesses:resource_tables
 corpus = "esolangs.languages.bfstack.tests.resource_witnesses:resource_corpus"
 
 [resource_evidence.execution]
-# At most 64 commands per input outside of weight additions and decoding.
-# Weight additions total at most 255. At most 255 decoder decrements
-# execute, each with up to four control commands and three answer updates.
-expression = "64n+2300"
-exact = false
-arities = [8, 9, 10]
-first = 9
+# For index r, the encoder costs at most 51+55k+2(w-k)+r for k
+# essential inputs out of w. The decoder costs 3r+d+1+3m, with d
+# entered guards and m changes among them. Alternation alone can give
+# m=T-1 and then projects to one input. One repeat attains T-2.
+# Wide one/zero arms cost 60/59 commands and a nested block pops once.
+cases = [
+    { through = 1, expression = "117" },
+    { through = 8, expression = "55n+8T+43" },
+    { expression = "60n+2052" },
+]
+exact = true
+arities = [1, 2, 3, 8, 9, 10]
+first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}" }
 
 [resource_evidence.workspace]
 # Prefix branch sentinels, an ASCII answer, a byte index and the current

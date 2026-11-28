@@ -20,9 +20,7 @@ def resource_corpus(n: int) -> tuple[str, ...] | None:
 
 def resource_tables(n: int) -> tuple[str, ...]:
     """Return additional cases in the order used for resource measurement."""
-    tables: tuple[str, ...] = ()
-    if n >= 8:
-        tables += (_bfstack_worst(n),)
+    tables = (_bfstack_worst(n),)
     if n >= 9:
         tables += (_bfstack_ws_worst(n),)
     tables += _named_witnesses(n)
