@@ -7,6 +7,7 @@ from esolangs import run
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
+from tests.proofs.measurement import measure
 from tests.support.analysis_support import assert_analysis_complement
 from tests.support.generator_support import (
     assert_every_row,
@@ -122,3 +123,13 @@ def test_public_generator_switches_to_masks(monkeypatch: pytest.MonkeyPatch) -> 
             assert (
                 language.run(source, stdin=f"{row:03b}").unwrap().output == f"={answer}"
             )
+
+
+def test_one_rule_per_row_answers_in_two_steps() -> None:
+    """Rewriting has no locality floor: steps trade against (n+3)T source."""
+    table = "0110100110010110"
+    rules = "".join(f"{row:04b}->{bit}\n" for row, bit in enumerate(table))
+    for row, bit in enumerate(table):
+        stdin = esolangs.encode_inputs("Sonata", row_bits(row, 4), truth_table=table)
+        assert run("Sonata", rules, stdin=stdin).observation.output == bit
+    assert measure("Sonata", table, program=rules)[0] == 2

@@ -736,8 +736,9 @@ two cells, halving that. These floors are `sqrt T`; their generators are
 linear. The bound does not cover a far jump (matched brackets, goto, calls),
 a command that reads an unbounded token, data the source seeds without a
 command (Movesum, Taglate), or several start points (thisthat). Rewriting
-(Thue, ///, Sonata) reads a rule anywhere in one step and needs another
-argument.
+has no such floor: one Sonata rule per row, `row->answer`, answers in two
+steps from `(n+3)T` characters, so its linear steps buy linear source. Thue
+and /// are unchecked.
 
 ## Scaling status
 
