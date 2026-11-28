@@ -76,22 +76,35 @@ construction = "esolangs.languages.refractran.generator:refractran_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.refractran.generator:refractran_request"
+witnesses = "esolangs.languages.refractran.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "2L + 1"
-exact = false
-arities = [1, 2, 3, 5]
+cases = [
+    { through = 1, expression = "17" },
+    { through = 2, expression = "39" },
+    { through = 3, expression = "83" },
+    { through = 4, expression = "157" },
+    { expression = "2L+1" },
+]
+exact = [1, 2, 3, 4]
+arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: each four-fraction swap takes at most eight inspections, plus the final dump" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: exact through n=4" }
 
 [resource_evidence.workspace]
-expression = "8L + bl(L) + 16"
-exact = false
-arities = [1, 2, 3, 5]
+cases = [
+    { through = 1, expression = "18" },
+    { through = 2, expression = "27" },
+    { through = 3, expression = "49" },
+    { through = 4, expression = "81" },
+    { expression = "8L+bl(L)+16" },
+]
+exact = [1, 2, 3, 4]
+arities = [1, 2, 3, 4, 5]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: prime rails or summed constant exponents, fraction cursor and direction" }
+description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: exact through n=4" }
 
 [resource_evidence.scaling]
 qualitative = { growth = "linear", text = "O(T/log T) shared nodes, O(log T) digits per node" }
