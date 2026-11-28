@@ -12,6 +12,7 @@ from .isa import _ACTIVE, _WORDS, _char_for
 
 _MARKERS = 57592
 _BANK = 729
+_SHADOW_WALK_OFFSETS = (296, 314, 377, 404, 647, 648)
 _PLACES = (1, 9, 81)
 _HOLES = (7, 8, 3)
 _SCALES = (3, 1, 1)
@@ -260,6 +261,9 @@ def _spill_locations(
     fixed = (
         primary
         | markers
+        # The two reversible payload walks read these lanes. Their NOPs
+        # carry valid jump glyphs and must stay outside the spill domain.
+        | {bank + offset for bank in banks for offset in _SHADOW_WALK_OFFSETS}
         | {51031 + 3 * i + offset for i in range(243) for offset in (0, 1)}
     )
     fixed.update(
