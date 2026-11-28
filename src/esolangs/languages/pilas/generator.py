@@ -10,7 +10,7 @@ halves are opposite constants reads the rest, then prints its first input's
 byte, or 97 minus it. Adjacent zero-push/add identities are omitted.
 
 Size:
-    O(T) in the tree's nodes; n=4 parity: 250 chars.
+    Worst 20 chars at n=1, 20T-22 otherwise; n=4 parity: 250 chars.
     Root constants retain k bytes: 3n+13-2k+2b chars, 4n-2k+15+4b steps;
     6k+14+bl(3n+10)+bl(n) written bits at most, within 3n+24.
 

@@ -64,6 +64,7 @@ construction = "esolangs.languages.pilas.generator:pilas_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.pilas.generator:pilas_request"
+witnesses = "esolangs.languages.pilas.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # The inverted one-bit leaf takes 15 main commands and 14 idle commands.
@@ -86,12 +87,19 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-expression = "38T"
-exact = false
+# Including the caller add, 10 and 11 both cost 14 after cancellation.
+# A full branch adds 26 to its two charged children. Constants, literal
+# spans and ignored tests are cheaper. Repeatedly join the two distinct
+# maximizers in both orders. The root trades its add for a five-char tail.
+cases = [
+    { through = 1, expression = "20" },
+    { expression = "20T-22" },
+]
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: before zero-add cancellation" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1
