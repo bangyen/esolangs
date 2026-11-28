@@ -169,16 +169,20 @@ _PARITY = "01101001"
     ),
 )
 def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
-    """A tree folds a one-dependency table; a reducing sum drops its inputs."""
+    """A tree folds ignored inputs; a reducing sum drops them."""
     fn = generator_for(name)
     assert fn is not None
+    full_table, folded_tables = load_certification(LANGUAGES[name]).folding_probe or (
+        _PARITY,
+        _ONE_DEPENDENCY,
+    )
     try:
-        best = min(source_units(fn(table)) for table in _ONE_DEPENDENCY)
-        parity = source_units(fn(_PARITY))
+        best = min(source_units(fn(table)) for table in folded_tables)
+        full_size = source_units(fn(full_table))
     except esolangs.GeneratorCapError:
         assert_proved_resource_cap(name)
         pytest.skip("fold probe exceeds a proved language resource cap")
-    folds = 1 - best / parity
+    folds = 1 - best / full_size
     if LANGUAGES[name].backend.shape is Shape.REDUCING:
         # The gain is real but is not a fold, so assert it from the other
         # direction: the saving must come from dropped inputs, which means a
@@ -187,8 +191,8 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
             f"{name} declares Shape.REDUCING but gains only {folds:.1%} on a "
             "one-dependency table -- its reduction has regressed"
         )
-        for table in _ONE_DEPENDENCY:
-            assert source_units(fn(table)) < parity, table
+        for table in folded_tables:
+            assert source_units(fn(table)) < full_size, table
         return
     assert folds >= 0.05, (
         f"{name} is a tree (the default shape) but folds only {folds:.1%} on "

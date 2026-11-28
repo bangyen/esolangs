@@ -23,6 +23,8 @@ class CertificationSpec:
     size_bound: Callable[[int], int] | None = None
     #: Admitted controls when a generic corpus exceeds a proved cap.
     benchmark_tables: tuple[str, ...] = ()
+    #: Full-support and folded tables when parity bypasses the tree.
+    folding_probe: tuple[str, tuple[str, ...]] | None = None
     slow_scaling: bool = False
     slow_width_sweep: bool = False
     reader_checked: bool = False

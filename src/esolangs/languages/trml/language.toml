@@ -10,7 +10,7 @@ sharing_exempt = "a literal prefix tree has no named term references; each selec
 
 [proof_status]
 labels = ["tree"]
-qualification = "A fixed rule header selects the prefix-tree child named by each bound bit, strips the empty-input wrapper and prints the leaf."
+qualification = "root rules select a prefix-tree child or carry parity while consuming each bound input, then unwrap the output bit"
 
 [semantic_evidence]
 version = 1
@@ -24,7 +24,7 @@ version = 1
 [[evidence.anchors]]
 arity = 4
 rule = "parity"
-size = 186
+size = 129
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.trml.generator:trml_request"
@@ -33,20 +33,22 @@ construction = "esolangs.languages.trml.generator:trml_request"
 version = 1
 archive_context = {}
 
-[ablations.prefix_tree]
-kind = "measurement"
+[ablations.parity_state_20261127]
+kind = "replay"
+baseline_revision = "ce580dde29b84e7d42aba4f01b4b6a10d7af79fd"
 witness = { arity = 4, rule = "parity" }
-source = { value = 186, unit = "chars" }
+source = { before = 186, after = 129, unit = "chars" }
 budget = 30
 band = "fast"
 scale = 1
-audited = 2026-11-22
+audited = 2026-11-27
 construction = "esolangs.languages.trml.generator:trml_request"
-notes = "The fixed rule header adds no table-dependent bytes; each binary node and leaf is one character."
+notes = "Carry the parity bit in the root symbol. Parity emits 416 to 135 characters at arity 7 and 674 to 137 at arity 8. All arity-3 tables total 41708 to 41254 characters. Sampled random tables at arities 4 through 8 emit identical source."
 
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.trml.generator:trml_request"
+witnesses = "esolangs.languages.trml.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "n+2"
@@ -57,14 +59,22 @@ unit = "steps"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} steps; one rewrite per bit, one wrapper removal and one final output step" }
 
 [resource_evidence.scaling]
-expression = "146+2T+2n"
+# Constants reach the first case and conjunction reaches the second.
+# At n=2, the only full-support tables with two mixed pairs are parity
+# and its complement. From n=3, toggle the last bit on an AND of the rest.
+cases = [
+    { through = 1, expression = "150" },
+    { through = 2, expression = "156" },
+    { expression = "146+2T+2n" },
+]
 exact = true
 arities = [1, 2, 3, 4, 6, 10]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} characters; fixed header, cons input and full prefix tree" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} for the largest emitted tree" }
 
 [resource_evidence.workspace]
+# The parity object is just a root, the input and its end marker.
 expression = "16T+16n+9"
 exact = false
 arities = [1, 2, 3, 4]
@@ -81,8 +91,8 @@ blind_reimplementation = 2026-11-22
 "00000001" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 160 }
 "00001100" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 158 }
 "00110110" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 164 }
-"0110" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 158 }
-"01101001" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 168 }
-"0110100110010110" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 186 }
+"0110" = { commands_by_row = { "0" = 4, "1" = 4, "2" = 4, "3" = 4 }, source_units = 125 }
+"01101001" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 127 }
+"0110100110010110" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 129 }
 "1101001101101101" = { commands_by_row = { "0" = 6, "1" = 6, "2" = 6, "3" = 6, "4" = 6, "5" = 6, "6" = 6, "7" = 6, "8" = 6, "9" = 6, "10" = 6, "11" = 6, "12" = 6, "13" = 6, "14" = 6, "15" = 6 }, source_units = 178 }
 "11111110" = { commands_by_row = { "0" = 5, "1" = 5, "2" = 5, "3" = 5, "4" = 5, "5" = 5, "6" = 5, "7" = 5 }, source_units = 160 }
