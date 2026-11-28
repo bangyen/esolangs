@@ -84,12 +84,24 @@ version = 2
 construction = "esolangs.languages.thue.generator:thue_request"
 
 [resource_evidence.execution]
-expression = "5T/2 + 3n - 1"
-exact = false
-arities = [3, 7]
+# Halving and returning across the survivors cost 2(T-1).
+# The marker work is 3n-1 before the final print. Packing adds
+# T/2 expansions and one initial marker rewrite; its four rules
+# cost 36 characters, so it wins the full lookup only from n=7.
+# Projected and folded layouts hold at most T/2 entries. Each queued
+# read costs three, including a fold's first read, and the fold's
+# discard costs one per stored entry plus a restore instead of
+# further sweeps. The shared route is admitted only below
+# 2T+2n-1 rewrites. Parity stays full and attains either case.
+cases = [
+    { through = 6, expression = "2T+3n-2" },
+    { expression = "5T/2+3n-1" },
+]
+exact = true
+arities = [1, 2, 3, 6, 7]
 first = 1
 unit = "rewrites"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: n marker sweeps, one expanding pairs" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; full lookup with pair expansion from seven inputs" }
 
 [resource_evidence.workspace]
 expression = "8T + 24 + bl(2n)"
