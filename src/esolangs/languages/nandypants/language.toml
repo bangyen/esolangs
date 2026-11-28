@@ -63,14 +63,20 @@ construction = "esolangs.languages.nandypants.generator:nandypants_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.nandypants.generator:nandypants_request"
+witnesses = "esolangs.languages.nandypants.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-expression = "12n + 18"
-exact = false
+cases = [
+    { through = 1, expression = "29" },
+    { through = 2, expression = "40" },
+    { through = 3, expression = "52" },
+    { expression = "12n + 18" },
+]
+exact = [1, 2, 3]
 arities = [1, 2, 3, 6]
 first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, exact n≤3" }
 
 [resource_evidence.workspace]
 expression = "bl(R-1) + bl(n) + 16 - C"
