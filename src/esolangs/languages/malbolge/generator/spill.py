@@ -38,6 +38,83 @@ class _State(NamedTuple):
     returned: bool
 
 
+def _write_upper_axis(source: bytearray) -> None:
+    """Emit the spill fold that replaces the highest base-nine digit."""
+    start, pointer = 31390, 72
+    ops: list[str] = []
+
+    def walk(target: int) -> None:
+        nonlocal pointer
+        assert pointer <= target
+        ops.append("o" * (target - pointer))
+        pointer = target
+
+    def jump(operand: int, landing: int) -> None:
+        nonlocal pointer
+        walk(operand)
+        ops.append("j")
+        pointer = landing
+
+    def apply(op: str, target: int) -> None:
+        nonlocal pointer
+        if pointer == 72:
+            jump(72, 125)
+        if pointer > target:
+            # These low return operands survive the startup and the fold.
+            if pointer >= 199:
+                jump(200, 45)
+            elif pointer == 168:
+                jump(168, 48)
+            elif pointer >= 148:
+                jump(151, 43)
+            elif pointer >= 137:
+                jump(142, 126)
+            else:
+                jump(131, 106)
+                jump(106, 45)
+            if pointer < 126:
+                jump(48, 126)
+        walk(target)
+        ops.append(op)
+        pointer += 1
+
+    def mix_from(operand: int, target: int) -> None:
+        apply("*", operand)
+        apply("p", target)
+
+    seed = 126
+    ones, twos, zero = 128, 129, 198
+    mask, word, dispatch = 136, 149, 167
+
+    apply("*", 133)
+    apply("p", 147)
+    for operand in (twos, zero, twos, ones):
+        mix_from(operand, mask)
+    apply("p", word)
+    mix_from(zero, mask)
+    apply("p", word)
+    mix_from(twos, word)
+    for _ in range(2):
+        mix_from(twos, mask)
+    apply("p", word)
+    mix_from(zero, seed)
+    apply("*", seed)
+    mix_from(twos, seed)
+    mix_from(ones, seed)
+    for _ in range(4):
+        apply("*", seed)
+    apply("p", word)
+    mix_from(ones, seed)
+    apply("p", word)
+    apply("*", dispatch)
+    mix_from(ones, dispatch)
+    apply("i", dispatch)
+    body = "".join(ops)
+    assert start + len(body) == 32026
+    for address, op in enumerate(body, start):
+        source[address] = _char_for(op, address)
+
+
 def _stage(source: bytearray, row: int) -> _State:
     """Run the fixed prefix to the spill dispatch."""
     machine = _Machine(source.decode("ascii"), ScriptedIO(f"{row:017b}"))

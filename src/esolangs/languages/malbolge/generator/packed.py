@@ -26,7 +26,7 @@ from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine
 from esolangs.runtime.io import ScriptedIO
 
 from .emitter import _ENCODING_PERIOD
-from .spill import _BANK, _spill_locations
+from .spill import _BANK, _spill_locations, _write_upper_axis
 
 _DATA = Path(__file__).resolve().parent
 _ROWS = (
@@ -242,7 +242,6 @@ def _write_rotation_routes(source: bytearray) -> None:
         (11681, selector * 4),
         (12156, fold),
         (25443, selector * 3),
-        (31919, fold),
         (38016, readout),
         (38122, readout),
         (44483, column),
@@ -307,6 +306,7 @@ def _decoder() -> _Decoder:
     _write_hub_fills(source)
     _write_shared_routes(source)
     _write_rotation_routes(source)
+    _write_upper_axis(source)
     _write_guard_approaches(source)
     _write_guard_returns(source)
     # The short seed at the first entry follows its six-cell approach.
