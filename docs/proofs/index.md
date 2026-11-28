@@ -336,8 +336,11 @@ sampled row; the Workspace column is its peak written state in bits, every
 top-level part of the VM snapshot the run ever changes, counted whole
 (`scripts/benchmark.py`'s `WrittenState`), so read-only code is excluded and
 a preallocated tape or a self-modified program counts.  `poly n` grows at
-most x1.5 an input, `linear` at most x2.15, `T log T` (T cells of `log T`-bit
-values) at most x2.5; `unmeasured` says why.  `tests/proofs/deep/execution.py`
+most x1.5 an input, `linear` at most x2.15, and `T log T` (T cells of
+`log T`-bit values) at most x2.5. An `unmeasured` Execution cell marks an
+exemption from the growth check. The audit can still report command counts
+for these rows, and formula tests check their stated bounds.
+`tests/proofs/deep/execution.py`
 and `tests/proofs/deep/workspace.py` measure halting rows on parity tables,
 and a `poly n` cell on a seeded dense table too: parity has n ANF terms and
 can hide a generator's T-dependent work. The dense series runs to n=12; its
