@@ -98,7 +98,7 @@ def _domains(
                         marker,
                         decoder.occupied[word],
                     )
-                    if bits >= 0:
+                    if bits is not None:
                         valid.append((opcode, bits))
                 values.append(valid)
             for assignment in product(*values):

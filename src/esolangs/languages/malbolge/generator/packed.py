@@ -54,6 +54,8 @@ _ROWS = (
     (7183, 39951),
 )
 _LEFT_OPERAND, _RIGHT_OPERAND = 39391, 39394
+_SAFE_LEFT_OP = "<"
+_RIGHT_OPS_REQUIRING_SAFE_LEFT = "jv"
 # All other occupied words can take any of the eight source instructions.
 _SOURCE_OPS = {
     29524: "*/<ijopv",
@@ -95,7 +97,7 @@ class _Operand(NamedTuple):
 
 class _Encodings(NamedTuple):
     by_answer: dict[int, _Operand]
-    restricted: dict[int, _Operand]
+    safe_with_any_partner: dict[int, _Operand]
 
 
 type _SelectorGroup = dict[int, list[tuple[int, int]]]
@@ -333,14 +335,14 @@ def _selection(table: str) -> tuple[bytes, int]:
 
 
 def _pattern(
-    source: bytearray,
+    source: bytes | bytearray,
     hubs: tuple[int, ...],
     k: int,
     raw: int,
     marker: int,
     used: int,
-) -> int:
-    """Read the requested output slots through their three physical lookup taps."""
+) -> int | None:
+    """Read the requested slots, or return None if a tap cannot supply its bit."""
     key = _lookup_base(k, raw, marker)
     bits = 0
     for slot, tap in enumerate(_TAPS):
@@ -349,12 +351,12 @@ def _pattern(
             if hub == _ONE_HUB:
                 bits |= 1 << slot
             elif hub != _SHORT_HUB and (not slot or hub != _LONG_HUB):
-                return -1
+                return None
     return bits
 
 
 def _marker_labels(
-    source: bytearray, hubs: tuple[int, ...], col: int
+    source: bytes | bytearray, hubs: tuple[int, ...], col: int
 ) -> Iterator[_Column]:
     """Yield column markers with all eight ordinary labels."""
     # Advancing one column period subtracts that period from raw and high modulo 94.
@@ -367,7 +369,7 @@ def _marker_labels(
         labels = {}
         for op in _ACTIVE:
             label = _pattern(source, hubs, rep, _char_for(op, rep), marker, 7)
-            if label < 0 or label in labels:
+            if label is None or label in labels:
                 break
             labels[label] = op
         else:
@@ -375,7 +377,7 @@ def _marker_labels(
 
 
 def _operand_patterns(
-    source: bytearray,
+    source: bytes | bytearray,
     hubs: tuple[int, ...],
     word: int,
     marker: int,
@@ -387,20 +389,26 @@ def _operand_patterns(
         if 29524 <= word <= 29527:
             raw = ord(_XLAT2[raw - 33])
         bits = _pattern(source, hubs, word, raw, marker, used)
-        if bits >= 0:
+        if bits is not None:
             yield op, bits
+
+
+@cache
+def _lookup_image(lookup: bytes) -> bytes:
+    """Overlay a lookup on the decoder for both column encoders."""
+    source = _decoder().source
+    return b"".join((source[: _LOOKUP.start], lookup, source[_LOOKUP.stop :]))
 
 
 @cache
 def _operand_encodings(lookup: bytes) -> dict[int, _Encodings]:
     """Invert each navigation word's fixed byte-to-answer mapping."""
     decoder = _decoder()
-    source = bytearray(decoder.source)
-    source[_LOOKUP.start : _LOOKUP.stop] = lookup
+    source = _lookup_image(lookup)
     encodings = {}
     for word in _SOURCE_OPS:
         by_answer: dict[int, _Operand] = {}
-        restricted: dict[int, _Operand] = {}
+        safe_with_any_partner: dict[int, _Operand] = {}
         col = (word - 1) % _COLUMN_COUNT
         for column in _marker_labels(source, decoder.hubs, col):
             for op, bits in _operand_patterns(
@@ -408,11 +416,13 @@ def _operand_encodings(lookup: bytes) -> dict[int, _Encodings]:
             ):
                 operand = _Operand(column, op)
                 by_answer.setdefault(bits, operand)
-                if (word == _LEFT_OPERAND and op == "<") or (
-                    word == _RIGHT_OPERAND and op not in "jv"
-                ):
-                    restricted.setdefault(bits, operand)
-        encodings[word] = _Encodings(by_answer, restricted)
+                safe_left = word == _LEFT_OPERAND and op == _SAFE_LEFT_OP
+                safe_right = (
+                    word == _RIGHT_OPERAND and op not in _RIGHT_OPS_REQUIRING_SAFE_LEFT
+                )
+                if safe_left or safe_right:
+                    safe_with_any_partner.setdefault(bits, operand)
+        encodings[word] = _Encodings(by_answer, safe_with_any_partner)
     return encodings
 
 
@@ -420,8 +430,7 @@ def _operand_encodings(lookup: bytes) -> dict[int, _Encodings]:
 def _ordinary_columns(lookup: bytes) -> dict[int, _Column]:
     """Derive an answer alphabet for each column without navigation operands."""
     decoder = _decoder()
-    source = bytearray(decoder.source)
-    source[_LOOKUP.start : _LOOKUP.stop] = lookup
+    source = _lookup_image(lookup)
     restricted = {(word - 1) % _COLUMN_COUNT for word in _SOURCE_OPS}
     columns: dict[int, _Column] = {}
     for col in decoder.columns.keys() - restricted:
@@ -451,11 +460,14 @@ def _coupled_encodings(
     """Select the first compatible pair without visiting operand pairs."""
     left, right = encodings[_LEFT_OPERAND], encodings[_RIGHT_OPERAND]
     left_bits, right_bits = answers[_LEFT_OPERAND], answers[_RIGHT_OPERAND]
-    safe = right.restricted.get(right_bits)
-    if safe is None:
-        return left.restricted[left_bits], right.by_answer[right_bits]
-    first = left.by_answer[left_bits]
-    return first, right.by_answer[right_bits] if first.op == "<" else safe
+    safe_right = right.safe_with_any_partner.get(right_bits)
+    if safe_right is None:
+        safe_left = left.safe_with_any_partner[left_bits]
+        return safe_left, right.by_answer[right_bits]
+    first_left = left.by_answer[left_bits]
+    if first_left.op == _SAFE_LEFT_OP:
+        return first_left, right.by_answer[right_bits]
+    return first_left, safe_right
 
 
 def _write_printer(source: bytearray, pc: int, body: str) -> None:
