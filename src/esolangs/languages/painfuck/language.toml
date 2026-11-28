@@ -79,18 +79,30 @@ construction = "esolangs.languages.painfuck.generator:painfuck_request"
 witnesses = "esolangs.languages.painfuck.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
-# The exhaustive three-input maximum, then the three proved form bounds.
+# Inline and direct chains are bounded by 22n, and bank admission
+# bounds a whole program by floor((3n²+3)/4)+20n+4. Both are below
+# the affine maximum past n=4. At n=4 the only possible banks have
+# two distinct repeated four-row blocks ABBA. Depth one can't repeat
+# after equal halves fold. Exhaust the 182 ordered nonconstant A,B.
+# With k retained inputs, put their ones first. The transfer loops
+# then cost 8min(i,k) for each prefix i=1..n-1 and the final loop
+# costs 8floor((k+1)/2) with bias one. The fixed cost is 5n+4+n-k.
+# This grows through k=n-1 and the last bit pays only at odd n.
+# The witness keeps k>=n-1. Both parity residuals at each relevant
+# depth after the root require at least 12 chars per two-sided node,
+# so the 2k-3 required nodes alone beat the affine spelling from n=5.
 cases = [
-    { through = 1, expression = "25" },
-    { through = 2, expression = "47" },
+    { through = 1, expression = "5" },
+    { through = 2, expression = "32" },
     { through = 3, expression = "62" },
-    { expression = "max(22n,4n²+8n+5-6⌊n/2⌋,⌊(3n²+3)/4⌋+20n+4)" },
+    { through = 4, expression = "91" },
+    { expression = "4n²+8n+5-6floor(n/2)" },
 ]
 exact = true
-arities = [3, 6]
-first = 3
+arities = [1, 2, 3, 4, 5, 6]
+first = 1
 unit = "commands"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula}: affine, admitted banks or inline" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}; affine transfer loops above four inputs" }
 
 [resource_evidence.workspace]
 expression = "2n + 5 + 3bl(n) + (n+1)bl(L)"
