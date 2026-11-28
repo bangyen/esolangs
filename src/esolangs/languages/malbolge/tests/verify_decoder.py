@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import subprocess
 import tempfile
 from array import array
@@ -11,8 +12,10 @@ from random import Random
 
 from esolangs.languages.malbolge.generator import malbolge
 from esolangs.languages.malbolge.generator.isa import _ACTIVE, _WORDS, _char_for
+from esolangs.languages.malbolge.generator.lookup_domains import _LOOKUP, _glyph_domains
 from esolangs.languages.malbolge.generator.packed import (
     _SOURCE_OPS,
+    _Decoder,
     _decoder,
     _install_layout,
     _layouts,
@@ -22,12 +25,47 @@ from esolangs.languages.malbolge.proof_formulas import _PACKED_COMMAND_BOUND
 from esolangs.languages.malbolge.tests.proof_packed_decoder import main as check_cover
 
 
-def _write_inputs(dest: Path) -> None:
-    """Export the executable layouts, VM tables and permitted source operands."""
+def _domain_seed(decoder: _Decoder, lookup: bytes) -> bytes:
+    """Supply valid prefix operands independently of the stored lookup cover."""
+    program = bytearray(decoder.source)
+    _install_layout(program, lookup, (0, 1, 2), 0)
+    for word, occupied in enumerate(decoder.occupied):
+        if occupied:
+            # The left '<' makes every right operand safe.
+            op = "<" if word == 39391 else _SOURCE_OPS.get(word, _ACTIVE)[0]
+            program[word] = _char_for(op, word)
+    for column in decoder.columns:
+        address = 51031 + 3 * column
+        program[address] = next(
+            raw for op in _ACTIVE if (raw := _char_for(op, address)) >= 83
+        )
+    return bytes(program)
+
+
+def _write_inputs(dest: Path, *, domain_proof: bool = False) -> None:
+    """Export layouts, VM tables and permitted source operands."""
     decoder = _decoder()
-    rng = Random(17017)
-    source = malbolge("".join(str(rng.randrange(2)) for _ in range(1 << 17)))
-    (dest / "initial").write_bytes(array("H", map(ord, source)).tobytes())
+    glyphs = _glyph_domains(decoder, _SOURCE_OPS) if domain_proof else {}
+    layouts: tuple[tuple[bytes, tuple[int, ...]], ...]
+    if domain_proof:
+        lookup = bytes(
+            values[min(values)]
+            if values and address % 3 != 1
+            else decoder.source[address]
+            for address, values in glyphs.items()
+        )
+        source = _domain_seed(decoder, lookup)
+        layouts = ((lookup, (0, 1, 2)),)
+        (dest / "lookup-domains").write_bytes(
+            bytes(values.get(bit, 0) for values in glyphs.values() for bit in (0, 1))
+        )
+    else:
+        rng = Random(17017)
+        source = malbolge(
+            "".join(str(rng.randrange(2)) for _ in range(1 << 17))
+        ).encode("ascii")
+        layouts = _layouts()
+    (dest / "initial").write_bytes(array("H", iter(source)).tobytes())
     (dest / "isa").write_bytes(
         (_XLAT1 + _XLAT2).encode("ascii") + bytes(v for row in _CRAZY for v in row)
     )
@@ -49,9 +87,9 @@ def _write_inputs(dest: Path) -> None:
     (dest / "domains").write_bytes(domains.tobytes())
 
     mutable = bytearray(_WORDS)
-    baseline = source.encode("ascii")
+
     with (dest / "layouts").open("wb") as out:
-        for lookup, perm in _layouts():
+        for lookup, perm in layouts:
             for polarity in range(8):
                 program = bytearray(decoder.source)
                 _install_layout(program, lookup, perm, polarity)
@@ -60,20 +98,27 @@ def _write_inputs(dest: Path) -> None:
                 )
                 for addresses in (range(4450, 4700), range(5213, 5548)):
                     for k in addresses:
-                        if program[k] != baseline[k]:
+                        if program[k] != source[k]:
                             mutable[k] = 1
+    for address in _LOOKUP:
+        if glyphs.get(address) and address % 3 != 1:
+            mutable[address] = 1
     (dest / "mutable").write_bytes(mutable)
 
 
-def main() -> None:
+def main(*, domain_proof: bool = False) -> None:
     """Verify all rows from reset and check the union of reachable control flow."""
-    check_cover()
+    if not domain_proof:
+        check_cover()
     source = Path(__file__).with_name("verify_decoder.c").resolve()
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
-        _write_inputs(work)
+        _write_inputs(work, domain_proof=domain_proof)
+        flags = ["-DMALBOLGE_DOMAIN_PROOF"] if domain_proof else []
         subprocess.run(
-            ["cc", "-std=c11", "-O3", str(source), "-o", "verify"], cwd=work, check=True
+            ["cc", "-std=c11", "-O3", *flags, str(source), "-o", "verify"],
+            cwd=work,
+            check=True,
         )
         subprocess.run([str(work / "verify")], cwd=work, check=True)
         predecessors: dict[int, set[int]] = {}
@@ -93,4 +138,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--domains", action="store_true", help="Verify all derived lookup glyphs"
+    )
+    main(domain_proof=parser.parse_args().domains)

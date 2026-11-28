@@ -46,6 +46,9 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   checks 3,945,867 payload and marker combinations. Its acyclic instruction
   graph bounds every packed run by 9,101 commands. Replay with
   `uv run python -m esolangs.languages.malbolge.tests.verify_decoder`.
+  Append `--domains` to replay both allowed glyphs at each lookup tap
+  for order `012`, with all three guard paths checked for rejoining.
+  This replay derives its glyphs and prefix seed from the decoder.
 
   Generation takes `O(T)` RAM work for `T` truth-table rows under the
   fixed 59,049-cell machine. Validation and constant detection scan the

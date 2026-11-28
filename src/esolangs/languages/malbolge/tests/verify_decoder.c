@@ -175,12 +175,78 @@ static void check_access(State *s, Word *m, int row, int op) {
     }
   }
 }
+#ifdef MALBOLGE_DOMAIN_PROOF
+static unsigned char native_lookup_domains[335][2];
+static long guard_checks, guard_glyphs;
+static int checked_key, checked_tap;
+static int guard_finish(const Word *m, int start, int stop, int raw) {
+  int d = raw + 1;
+  for (int c = start + 1; c < stop; c++) {
+    int op = opcode(m[c], c);
+    assert(op == 'o' || op == 'j');
+    if (op == 'j') {
+      if (d >= 5213 && d < 5548 && d % 3 != 1) {
+        fprintf(stderr, "universal guard at %d reads mutable output %d at %d\n",
+                start, d, c);
+        exit(11);
+      }
+      record_read(d);
+      int value = m[d];
+      if (d >= start && d < c && value >= 33 && value <= 126)
+        value = encrypt[value - 33];
+      d = value;
+    }
+    d = (d + 1) % WORDS;
+  }
+  return d;
+}
+
+static void check_guard(State *s, Word *m, int row) {
+  int c = s->c, d = s->d;
+  int stop = c == 5585 ? 5617 : c == 5657 ? 5687 : c == 5697 ? 5721 : 0;
+  if (!stop)
+    return;
+  assert(d >= 5213 && d < 5548 && d % 3 == 2);
+  int want = guard_finish(m, c, stop, m[d]);
+  guard_checks++;
+  for (int j = 0; j < 2; j++) {
+    int alternate = native_lookup_domains[d - 5213][j];
+    if (!alternate)
+      continue;
+    guard_glyphs++;
+    int got = guard_finish(m, c, stop, alternate);
+    if (got != want) {
+      fprintf(stderr,
+              "guard divergence row%d pc%d addr%d raw%d alt%d got%d want%d\n",
+              row, c, d, m[d], alternate, got, want);
+      exit(12);
+    }
+  }
+}
+
+#endif
+
 /* Instruction fetch and jump-target encryption both read the old cell.
  * Record a suffix cell only on its first read before a write. */
 static int step(State *s, Word *m, int row) {
   int a = s->a, c = s->c, d = s->d, op = opcode(m[c], c);
   check_access(s, m, row, op);
   if (recording) {
+#ifdef MALBOLGE_DOMAIN_PROOF
+    check_guard(s, m, row);
+    if (c >= 5213 && c < 5548 && c % 3 != 1 && layout_changes[c])
+      abort();
+    if (op && strchr("ji*p", op) && d >= 5213 && d < 5548 && d % 3 != 1 &&
+        layout_changes[d] && c != 5585 && c != 5657 && c != 5697 &&
+        !(c == checked_tap && d == checked_key)) {
+      fprintf(stderr, "unexpected output-lane read at pc%d addr%d row%d\n", c,
+              d, row);
+      exit(13);
+    }
+    if (op == 'i' && m[d] >= 5213 && m[d] < 5548 && m[d] % 3 != 1 &&
+        layout_changes[m[d]])
+      abort();
+#endif
     record_read(c);
     if (op == 'i' || op == 'j' || op == '*' || op == 'p') {
       int no = live_count;
@@ -265,7 +331,11 @@ static void load_inputs(void) {
 
 static Word before_marker[WORDS], before_payload[WORDS], marked_memory[WORDS];
 static unsigned char checkpoint[94][128][3];
+#ifdef MALBOLGE_DOMAIN_PROOF
+#define SETTINGS 8
+#else
 #define SETTINGS 2272
+#endif
 typedef struct {
   unsigned char order[3], flip, code[585];
 } Layout;
@@ -328,13 +398,18 @@ static unsigned int equivalent_trits(int a, int value) {
 }
 static void run_printer(State *start, int setting, int z, int key, int hub,
                         int row, int word, int raw, int marker,
-                        int lookup_glyph) {
+                        int lookup_glyph, int glyph_override) {
   const Layout *layout = &layouts[setting];
   memcpy(suffix_memory, memory, sizeof suffix_memory);
   for (int i = 0; i < variable_count; i++) {
     int k = variable_addresses[i];
     suffix_memory[k] = layout->code[layout_offset[k] - 1];
   }
+#ifdef MALBOLGE_DOMAIN_PROOF
+  suffix_memory[key] = glyph_override;
+#else
+  (void)glyph_override;
+#endif
   ++epoch;
   recording = 1;
   live_count = 0;
@@ -342,6 +417,10 @@ static void run_printer(State *start, int setting, int z, int key, int hub,
   int count = 0,
       tap = printer_entry[z] + lookup_tap[layout->order[z]] - lookup_tap[z],
       hit = 0;
+#ifdef MALBOLGE_DOMAIN_PROOF
+  checked_key = key;
+  checked_tap = tap;
+#endif
   while (count++ < 2000) {
     if (state.c == tap) {
       if (state.d != key) {
@@ -401,24 +480,46 @@ static void verify_suffix(State *start, int lookup_glyph, int marker, int z,
     int key = 5113 + 3 * lookup_glyph + lookup_tap[l->order[z]] - marker;
     int byte =
         layout_offset[key] ? l->code[layout_offset[key] - 1] : initial[key];
-    int hub = hubs[byte];
-    if (hub != 41551 && hub != 45925 && !(l->order[z] && hub == 54673))
-      continue;
-    run_printer(start, t, z, key, hub, row, word, raw, marker, lookup_glyph);
-    int layout_reads[585], read_count = 0;
-    for (int i = 0; i < live_count; i++) {
-      int k = live[i];
-      if (layout_changes[k])
-        layout_reads[read_count++] = layout_offset[k] - 1;
-      else {
-        unsigned int val = equivalent_trits(first_crazy_a[k], memory[k]);
-        if (!requirements[k]) {
-          requirements[k] = val;
-          required_cells[size++] = k;
-        } else
-          requirements[k] &= val;
+
+    int glyph_choices[2] = {byte, 0};
+#ifdef MALBOLGE_DOMAIN_PROOF
+    if (key >= 5213 && key < 5548 && key % 3 != 1 && layout_changes[key]) {
+      glyph_choices[0] = native_lookup_domains[key - 5213][0];
+      glyph_choices[1] = native_lookup_domains[key - 5213][1];
+    }
+#endif
+    int layout_reads[585], read_count = 0, ran = 0;
+    unsigned char read_layout[585] = {0};
+    for (int choice = 0; choice < 2; choice++) {
+      int alternate = glyph_choices[choice];
+      if (!alternate)
+        continue;
+      int hub = hubs[alternate];
+      if (hub != 41551 && hub != 45925 && !(l->order[z] && hub == 54673))
+        continue;
+      ran = 1;
+      run_printer(start, t, z, key, hub, row, word, raw, marker, lookup_glyph,
+                  alternate);
+      for (int i = 0; i < live_count; i++) {
+        int k = live[i];
+        if (layout_changes[k]) {
+          int offset = layout_offset[k] - 1;
+          if (!read_layout[offset]) {
+            read_layout[offset] = 1;
+            layout_reads[read_count++] = offset;
+          }
+        } else {
+          unsigned int val = equivalent_trits(first_crazy_a[k], memory[k]);
+          if (!requirements[k]) {
+            requirements[k] = val;
+            required_cells[size++] = k;
+          } else
+            requirements[k] &= val;
+        }
       }
     }
+    if (!ran)
+      continue;
     for (int u = t + 1; u < models; u++) {
       const Layout *q = layouts + u;
       if ((layout_offset[key] && q->code[layout_offset[key] - 1] != byte) ||
@@ -468,6 +569,10 @@ static void verify_suffix(State *start, int lookup_glyph, int marker, int z,
 
 int main(void) {
   load_inputs();
+#ifdef MALBOLGE_DOMAIN_PROOF
+  read_file("lookup-domains", native_lookup_domains,
+            sizeof native_lookup_domains);
+#endif
   for (int k = 0; k < WORDS; k++)
     if (operand_values[k][0])
       column_marker[51031 + 3 * ((k - 1) % 243)] = 1;
@@ -570,5 +675,9 @@ int main(void) {
          "slice %d reads of layout-dependent cells %d\n",
          n, markers, marker_joins, operand_cases, keys, max_prefix_slice,
          early_layout_reads);
+#ifdef MALBOLGE_DOMAIN_PROOF
+  printf("Universal guard states %ld, glyph alternatives %ld\n", guard_checks,
+         guard_glyphs);
+#endif
   return early_layout_reads != 0;
 }
