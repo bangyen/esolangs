@@ -19,6 +19,14 @@ class Factor(NamedTuple):
     root: int
 
 
+class Bucket(NamedTuple):
+    """The ordered roots and conjunction of factors that touch one variable."""
+
+    roots: tuple[int, ...]
+    joint: int
+    remaining_scope: frozenset[int]
+
+
 class Witness(NamedTuple):
     """Compatible printer phases and the buckets used to recover colors."""
 
@@ -51,6 +59,18 @@ def min_fill(
     return tuple(result)
 
 
+def take_bucket(arena: Diagram, pending: list[Factor], variable: int) -> Bucket | None:
+    """Remove the factors that touch a variable and combine them in scope order."""
+    work = [factor for factor in pending if variable in factor.scope]
+    if not work:
+        return None
+    pending[:] = [factor for factor in pending if variable not in factor.scope]
+    roots = tuple(factor.root for factor in sorted(work, key=lambda f: len(f.scope)))
+    joint = reduce(arena.combine, roots, ALL_PHASES)
+    scope = frozenset().union(*(factor.scope for factor in work))
+    return Bucket(roots, joint, scope - {variable})
+
+
 def eliminate(
     arena: Diagram, factors: Iterable[Factor], order: Iterable[int]
 ) -> Witness:
@@ -58,21 +78,15 @@ def eliminate(
     pending = list(factors)
     history: list[tuple[int, tuple[int, ...]]] = []
     for variable in order:
-        work = [factor for factor in pending if variable in factor.scope]
-        if not work:
+        bucket = take_bucket(arena, pending, variable)
+        if bucket is None:
             continue
-        pending = [factor for factor in pending if variable not in factor.scope]
-        roots = tuple(
-            factor.root for factor in sorted(work, key=lambda f: len(f.scope))
-        )
-        joint = reduce(arena.combine, roots, ALL_PHASES)
-        projected = arena.exists(joint, variable)
+        projected = arena.exists(bucket.joint, variable)
         arena.clear_memo()
         if not projected:
             return Witness(0, [])
-        union = frozenset().union(*(factor.scope for factor in work))
-        pending.append(Factor(union - {variable}, projected))
-        history.append((variable, roots))
+        pending.append(Factor(bucket.remaining_scope, projected))
+        history.append((variable, bucket.roots))
         if arena.size > 160_000 and len(history) % 3 == 0:
             remap = arena.compact(
                 [*(r for _, r in pending), *(r for _, rs in history for r in rs)]

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from functools import reduce
 
 from .lookup_diagram import ALL_PHASES, Diagram
-from .lookup_elimination import Factor
+from .lookup_elimination import Factor, take_bucket
 from .lookup_request import (
     _NODE_LIMIT,
     _OUTPUT,
@@ -43,25 +43,15 @@ def project(
             root = arena.combine(root, term, union=True)
         pending.append(Factor(scope, root))
     for variable in range(colors):
-        group = [factor for factor in pending if variable in factor.scope]
-        if not group:
+        bucket = take_bucket(arena, pending, variable)
+        if bucket is None:
             continue
-        pending = [factor for factor in pending if variable not in factor.scope]
-        joint = reduce(
-            arena.combine,
-            (
-                factor.root
-                for factor in sorted(group, key=lambda factor: len(factor.scope))
-            ),
-            ALL_PHASES,
-        )
-        capture(arena, joint, variable, colors)
-        projected = arena.exists(joint, variable)
+        capture(arena, bucket.joint, variable, colors)
+        projected = arena.exists(bucket.joint, variable)
         arena.clear_memo()
         if not projected:
             return arena, 0
-        involved = frozenset().union(*(factor.scope for factor in group))
-        pending.append(Factor(involved - {variable}, projected))
+        pending.append(Factor(bucket.remaining_scope, projected))
         if arena.size > 150_000:
             mapping = arena.compact(factor.root for factor in pending)
             pending = [Factor(factor.scope, mapping[factor.root]) for factor in pending]

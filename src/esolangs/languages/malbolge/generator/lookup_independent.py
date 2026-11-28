@@ -228,6 +228,21 @@ def render_lookup(
     )
 
 
+def order_colors(
+    scopes: tuple[frozenset[Variable], ...],
+    output_order: tuple[Variable, ...] = (),
+) -> tuple[Variable, ...]:
+    """Run min-fill on indexed colors and place deferred outputs last."""
+    axes = tuple(sorted(set().union(*scopes)))
+    indices = {axis: i for i, axis in enumerate(axes)}
+    deferred = frozenset(indices[axis] for axis in output_order if axis in indices)
+    order = min_fill(
+        (frozenset(indices[axis] for axis in scope) for scope in scopes), deferred
+    )
+    colors = tuple(axes[i] for i in order if i not in deferred)
+    return colors + output_order if deferred else colors
+
+
 def independent_lookup(geo: Geometry) -> bytes:
     """Render a deterministic lookup that supplies every independent pattern."""
     fixed = fixed_colors(geo)
@@ -239,13 +254,7 @@ def independent_lookup(geo: Geometry) -> bytes:
         for item in checks
     )
     scopes_with_interface = shared_alphabet_scopes(role_scopes, check_scopes)
-    coordinates = tuple(sorted(set().union(*scopes_with_interface, *check_scopes)))
-    indices = {a: i for i, a in enumerate(coordinates)}
-    order = min_fill(
-        frozenset(indices[a] for a in scope)
-        for scope in (*scopes_with_interface, *check_scopes)
-    )
-    ordered = tuple(coordinates[i] for i in order)
+    ordered = order_colors((*scopes_with_interface, *check_scopes))
     position = {a: i for i, a in enumerate(ordered)}
     arena = Diagram(len(ordered), 400_000)
     factors = []

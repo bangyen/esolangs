@@ -17,7 +17,7 @@ from esolangs.languages.malbolge.generator.packed import (
 )
 
 from .lookup_diagram import Checkpoint, Diagram
-from .lookup_elimination import Factor, eliminate, min_fill, reconstruct
+from .lookup_elimination import Factor, eliminate, reconstruct
 from .lookup_geometry import Geometry, geometry
 from .lookup_independent import (
     AlphabetTable,
@@ -29,6 +29,7 @@ from .lookup_independent import (
     contact_clause,
     fixed_colors,
     independent_lookup,
+    order_colors,
     render_lookup,
     scopes,
     shared_alphabet_scopes,
@@ -164,18 +165,8 @@ def prepare(physical: int | None = None) -> Prepared:
         roles, (*navigation_scopes, *targets.values())
     )
     scopes_all = (*ordinary_scopes, *navigation_scopes, *targets.values())
-    axes = tuple(sorted(set().union(*scopes_all)))
-    axis_index = {a: i for i, a in enumerate(axes)}
-    deferred = frozenset(i for i, axis in enumerate(axes) if axis[0] == _OUTPUT)
-    order = tuple(
-        axes[i]
-        for i in min_fill(
-            (frozenset(axis_index[a] for a in scope) for scope in scopes_all), deferred
-        )
-        if i not in deferred
-    )
-    if deferred:
-        order += tuple((_OUTPUT, axis) for axis in reversed(range(width)))
+    output_order = tuple((_OUTPUT, axis) for axis in reversed(range(width)))
+    order = order_colors(scopes_all, output_order)
     position = {a: i for i, a in enumerate(order)}
     arena = Diagram(len(order), _NODE_LIMIT)
     shared = []
