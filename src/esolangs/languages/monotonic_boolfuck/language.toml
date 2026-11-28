@@ -64,6 +64,7 @@ construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfu
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.monotonic_boolfuck.generator:monotonic_boolfuck_request"
+witnesses = "esolangs.languages.monotonic_boolfuck.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "21n + 13"
@@ -74,12 +75,20 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-expression = "bl(L) + bl(4n + 2) + 2n·bl(2n) + 25"
-exact = false
-arities = [1, 2, 3, 6]
+# The root-zero parity row loses only address 1 and reaches the later
+# output PC. A second zero loses at least two more address bits.
+cases = [
+    { through = 1, expression = "25" },
+    { through = 2, expression = "31" },
+    { through = 3, expression = "39" },
+    { through = 4, expression = "48" },
+    { expression = "bit_sum(2n+1)+n+15+bl(2n+2)+bl(n)" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "53T/2 - 21"
