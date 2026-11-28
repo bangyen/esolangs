@@ -93,13 +93,31 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}: two passes over the S non-whitespace characters" }
 
 [resource_evidence.workspace]
-# Each visited coordinate lies within the at-most-2L-command walk.
-expression = "2(n+1)T + 3 + bl(L-1) + 4(bl(2L)+1)"
-exact = false
-arities = [3, 6]
+# All layouts stay in rows -1 through 1. The east build writes
+# x=0,-1,...,-(T-1), costing (n+2)T+1 bits. It paints at most T/2
+# answers, and a full lane forces one at x=0 or -1 because its
+# terminal run has length one. The other answers cost at most n+3
+# each. Shorter lanes cost less. The full witness keeps its painted
+# high-width answers and one at -1. Its ant, cursor and extent
+# contribute 3n+11 bits.
+# The eastward mirror drops T-1 lane sign bits and pays at most
+# n+2 bits per answer. Including the two wall cells, its grid is
+# at most (3n+4)T/2+2n+9. The westward mirror can add one lane
+# cell and a stopper, but paints at most n+1 near-unanimity
+# answers. Only x=-T costs n+4; other answers cost at most n+3.
+# Its two extra coordinate bits do not close the gap from n=4.
+# Arities one to three are exhaustive.
+cases = [
+    { through = 1, expression = "25" },
+    { through = 2, expression = "43" },
+    { through = 3, expression = "83" },
+    { expression = "(3n+7)T/2+2n+13" },
+]
+exact = true
+arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}: corridor, answers, ant, cursor, visited bounds" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 expression = "13T/2 + 3n - 2"
