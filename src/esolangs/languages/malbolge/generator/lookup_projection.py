@@ -9,13 +9,12 @@ from .lookup_diagram import ALL_PHASES, PHASES, Diagram
 from .lookup_elimination import Factor, take_bucket
 from .lookup_request import (
     _NODE_LIMIT,
-    _OUTPUT,
     Prepared,
     SelectorRequest,
     contact_relation,
     emit,
     prepare,
-    selector_axes,
+    selector_layout,
 )
 from .packed import _RIGHT_OPERAND
 
@@ -27,7 +26,7 @@ def project(
 ) -> tuple[Diagram, int]:
     """Eliminate colors while reporting the buckets before projection."""
     assert plan.physical is not None
-    _, _, axes = selector_axes()
+    offsets = selector_layout().offsets
     arena = Diagram(len(plan.order), _NODE_LIMIT)
     arena.restore(plan.checkpoint)
     pending = list(plan.shared)
@@ -35,10 +34,8 @@ def project(
         root = 0
         for pattern, contacts in selector.answers.items():
             term = contact_relation(arena, plan, word, contacts)
-            for slot, axis in axes.get(word, {}).items():
-                literal = arena.literal(
-                    plan.position[_OUTPUT, axis], pattern >> slot & 1
-                )
+            for slot, offset in offsets.get(word, {}).items():
+                literal = arena.literal(plan.color_count + offset, pattern >> slot & 1)
                 term = arena.combine(term, literal)
             root = arena.combine(root, term, union=True)
         pending.append(Factor(selector.scope, root))
@@ -61,12 +58,12 @@ def project(
 @cache
 def _output_phase_flips() -> tuple[int, ...]:
     """Pack each phase's flips relative to the start of the output suffix."""
-    width, _, axes = selector_axes()
+    offsets = selector_layout().offsets
     return tuple(
         sum(
-            (phase >> slot & 1) << (width - 1 - axis)
-            for slots in axes.values()
-            for slot, axis in slots.items()
+            (phase >> slot & 1) << offset
+            for slots in offsets.values()
+            for slot, offset in slots.items()
         )
         for phase in PHASES
     )
@@ -74,14 +71,15 @@ def _output_phase_flips() -> tuple[int, ...]:
 
 def select_bounded(requested: SelectorRequest) -> tuple[bytes, int]:
     """Recover a layout by retaining only the requested output cofactors."""
-    width, pin, axes = selector_axes()
+    layout = selector_layout()
     right = requested[_RIGHT_OPERAND].value
-    logical = sum((right >> slot & 1) << rank for rank, slot in enumerate(pin))
-    # The prepared output suffix places the highest axis first.
+    logical = sum(
+        (right >> slot & 1) << rank for rank, slot in enumerate(layout.pinned_slots)
+    )
     output = sum(
-        (requested[word].value >> slot & 1) << (width - 1 - axis)
-        for word, slots in axes.items()
-        for slot, axis in slots.items()
+        (requested[word].value >> slot & 1) << offset
+        for word, slots in layout.offsets.items()
+        for slot, offset in slots.items()
     )
     for phase, flip in zip(PHASES, _output_phase_flips(), strict=True):
         plan = prepare(logical ^ phase)

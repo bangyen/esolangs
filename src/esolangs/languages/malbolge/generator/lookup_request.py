@@ -96,12 +96,19 @@ def _support(
     return frozenset(a for row in requirements for a, _ in row) - fixed.keys()
 
 
+class SelectorLayout(NamedTuple):
+    """Map each projected word and slot to an offset in the output suffix."""
+
+    pinned_slots: tuple[int, ...]
+    offsets: dict[int, dict[int, int]]
+    output_order: tuple[Variable, ...]
+
+
 @cache
-def selector_axes() -> tuple[int, tuple[int, ...], dict[int, dict[int, int]]]:
-    """Number the projected bits and report the pinned right operand slots."""
-    width = 0
+def selector_layout() -> SelectorLayout:
+    """Derive the output suffix in the reverse of selector row order."""
     pin = []
-    axes: dict[int, dict[int, int]] = {}
+    projected = []
     for group in _selector_groups():
         by_row = sorted(
             (row, word, slot)
@@ -112,9 +119,13 @@ def selector_axes() -> tuple[int, tuple[int, ...], dict[int, dict[int, int]]]:
             if word == _RIGHT_OPERAND:
                 pin.append(slot)
             else:
-                axes.setdefault(word, {})[slot] = width
-                width += 1
-    return width, tuple(sorted(pin)), axes
+                projected.append((word, slot))
+    width = len(projected)
+    offsets: dict[int, dict[int, int]] = {}
+    for axis, (word, slot) in enumerate(projected):
+        offsets.setdefault(word, {})[slot] = width - 1 - axis
+    output_order = tuple((_OUTPUT, axis) for axis in reversed(range(width)))
+    return SelectorLayout(tuple(sorted(pin)), offsets, output_order)
 
 
 @cache
@@ -139,7 +150,7 @@ def prepare(physical: int | None = None) -> Prepared:
     roles = scopes(geo, fixed)
     groups = _selector_groups()
     selector = {word for group in groups for word in group}
-    width, _, outputs = selector_axes()
+    layout = selector_layout()
     checks: list[Requirements] = []
     patterns: dict[int, dict[int, dict[str, Requirements]]] = {
         word: {} for word in _SOURCE_OPS if word in selector
@@ -177,7 +188,8 @@ def prepare(physical: int | None = None) -> Prepared:
             selector_scope |= {_PAIR_BRANCH}
         if physical is not None:
             selector_scope |= {
-                (_OUTPUT, axis) for axis in outputs.get(word, {}).values()
+                layout.output_order[offset]
+                for offset in layout.offsets.get(word, {}).values()
             }
         targets[word] = selector_scope
 
@@ -186,11 +198,7 @@ def prepare(physical: int | None = None) -> Prepared:
         roles, (*navigation_scopes, *targets.values())
     )
     scopes_all = (*ordinary_scopes, *navigation_scopes, *targets.values())
-    output_order = (
-        tuple((_OUTPUT, axis) for axis in reversed(range(width)))
-        if physical is not None
-        else ()
-    )
+    output_order = layout.output_order if physical is not None else ()
     order = order_colors(scopes_all, output_order)
     position = {a: i for i, a in enumerate(order)}
     arena = Diagram(len(order), _NODE_LIMIT)

@@ -19,7 +19,7 @@ from esolangs.languages.malbolge.generator.lookup_projection import (
 )
 from esolangs.languages.malbolge.generator.lookup_request import (
     prepare,
-    selector_axes,
+    selector_layout,
     unpack_request,
 )
 from esolangs.languages.malbolge.generator.packed_layout import (
@@ -174,14 +174,16 @@ def _flip_axes(mask: int, changed: int, full: int) -> int:
 
 def check_cover() -> None:
     """Prove selector totality and bound the allocation for every witness."""
-    width, pin, axes = selector_axes()
+    layout = selector_layout()
+    width = len(layout.output_order)
+    pin = layout.pinned_slots
     full = (1 << (1 << width)) - 1
     physical = tuple(_certify(answer, width) for answer in range(1 << len(pin)))
     flips = tuple(
         sum(
-            1 << axis
-            for word in axes.values()
-            for slot, axis in word.items()
+            1 << layout.output_order[offset][1]
+            for word in layout.offsets.values()
+            for slot, offset in word.items()
             if phase >> slot & 1
         )
         for phase in PHASES
