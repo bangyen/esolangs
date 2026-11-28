@@ -9,7 +9,7 @@ and printer polarity are derived from the requested navigation answers.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import cache
 from pathlib import Path
 from typing import NamedTuple
@@ -129,6 +129,53 @@ def _write_guard_returns(source: bytearray) -> None:
             source[address] = _char_for(op, address)
 
 
+def _write_hub_fills(source: bytearray) -> None:
+    """Stamp the three hub families into their all-ones pointer cells."""
+
+    def short(k: int) -> bool:
+        residue = k % 20
+        return (
+            residue in (4, 10, 17)
+            or (residue == 3 and k < 83)
+            or (residue == 11 and k >= 91)
+        )
+
+    def one(k: int) -> bool:
+        residue = k % 20
+        return residue in (0, 7, 14) or (residue == 13 and k <= 73) or k == 121
+
+    def long(k: int) -> bool:
+        residue = k % 20
+        return (
+            (residue in (2, 9, 16) and k != 36)
+            or (residue == 15 and k <= 75)
+            or (residue == 3 and k >= 103)
+        )
+
+    def scan(lo: int, hi: int, belongs: Callable[[int], bool]) -> str:
+        return "".join("p" if belongs(k) else "o" for k in range(lo, hi))
+
+    # The short and long families walk through their full ranges.
+    # The one family skips gaps via the walked reset operands and the
+    # primed all-ones cell at D55, which leads through the encrypted neighbor.
+    one_fill = (
+        scan(40, 41, one)
+        + "jjj"
+        + scan(47, 55, one)
+        + "jj"
+        + scan(60, 108, one)
+        + "joojo"
+        + scan(114, 128, one)
+    )
+    for pc, ops in (
+        (3317, scan(37, 125, short)),
+        (3627, one_fill),
+        (3949, scan(35, 124, long)),
+    ):
+        for address, op in enumerate(ops, pc):
+            source[address] = _char_for(op, address)
+
+
 @cache
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
@@ -137,6 +184,7 @@ def _decoder() -> _Decoder:
         address, ops = line.split()
         lo = int(address)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
+    _write_hub_fills(source)
     _write_guard_approaches(source)
     _write_guard_returns(source)
     # The short seed at the first entry follows its six-cell approach.
