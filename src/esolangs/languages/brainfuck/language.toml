@@ -106,12 +106,19 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: OR all-zeros" }
 
 [resource_evidence.workspace]
-expression = "max(7n,2n+7) + bl(2n) + bl(n) + bl(L)"
-exact = false
+# The singleton counter holds n raw bytes and a two-bit counter.
+# Its longest winning source is OR: 35n-7 reader, 12n-1 singleton
+# body and 59 inverted print. Other trees hold at most one wide
+# cell among 2n+1 bits, or one ASCII byte among 2n+2 bits.
+cases = [
+    { through = 1, expression = "18" },
+    { expression = "7n+bl(2n)+bl(n)+bl(47n+51)" },
+]
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula}; OR fills the shared ASCII counter" }
 
 [resource_evidence.scaling]
 # 35T/2 + 55n + 25: the inherited tree envelope before zero-arm pruning.
