@@ -5,6 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from .isa import _char_for
+from .packed_layout import (
+    _LONG_HUB,
+    _ONE_HUB,
+    _SHORT_HUB,
+)
 
 type _Jump = Callable[[int, int], None]
 type _Return = Callable[[int, int, _Jump], None]
@@ -18,12 +23,24 @@ class _SpillCode:
         self.return_to = return_to
         self.ops: list[str] = []
 
-    def apply(self, op: str, target: int) -> None:
+    def _emit(self, op: str, target: int) -> None:
         if self.return_to is not None:
             self.return_to(self.pointer, target, self.jump)
         self.walk(target)
         self.ops.append(op)
         self.pointer += 1
+
+    def rotate(self, target: int) -> None:
+        self._emit("*", target)
+
+    def crazy(self, target: int) -> None:
+        self._emit("p", target)
+
+    def read(self, target: int) -> None:
+        self._emit("/", target)
+
+    def jump_code(self, target: int) -> None:
+        self._emit("i", target)
 
     def walk(self, target: int) -> None:
         assert target >= self.pointer
@@ -36,16 +53,16 @@ class _SpillCode:
         self.pointer = landing
 
     def mix(self, operand: int, target: int) -> None:
-        self.apply("*", operand)
-        self.apply("p", target)
+        self.rotate(operand)
+        self.crazy(target)
 
     def short(self, operand: int) -> None:
-        self.jump(operand, 45925)
-        self.jump(45926, 45)
+        self.jump(operand, _SHORT_HUB)
+        self.jump(_SHORT_HUB + 1, 45)
 
     def long(self, operand: int) -> None:
-        self.jump(operand, 54673)
-        self.jump(54674, 39)
+        self.jump(operand, _LONG_HUB)
+        self.jump(_LONG_HUB + 1, 39)
 
     def reset(self) -> None:
         self.jump(39, 72)
@@ -76,12 +93,12 @@ class _SpillCode:
         for _ in range(count):
             self.jump(93, 113)
             self.jump(113, 88)
-            self.apply("*", 88)
+            self.rotate(88)
 
     def dispatch(self) -> None:
-        self.apply("*", 167)
+        self.rotate(167)
         self.mix(128, 167)
-        self.apply("i", 167)
+        self.jump_code(167)
 
     def write(self, source: bytearray, start: int, end: int) -> None:
         body = "".join(self.ops)
@@ -157,9 +174,9 @@ def _upper_return(pointer: int, target: int, jump: _Jump) -> None:
 
 
 def _lower_fold(source: bytearray) -> None:
-    start, pointer, end = 11786, 41552, 12263
+    start, pointer, end = 11786, _ONE_HUB + 1, 12263
     code = _SpillCode(pointer)
-    code.jump(41552, 36)
+    code.jump(_ONE_HUB + 1, 36)
     code.reset()
     code.walk(201)
     code.return_to = _lower_return
@@ -167,22 +184,22 @@ def _lower_fold(source: bytearray) -> None:
     ones, twos, zero = 128, 129, 198
     code.mix(201, 147)
     code.mix(twos, mask)
-    code.apply("*", mask)
+    code.rotate(mask)
     code.mix(zero, mask)
     code.mix(twos, mask)
-    code.apply("p", word)
+    code.crazy(word)
     code.mix(twos, word)
     code.mix(ones, mask)
-    code.apply("p", word)
+    code.crazy(word)
     code.mix(twos, word)
     code.dispatch()
     code.write(source, start, end)
 
 
 def _middle_fold(source: bytearray) -> None:
-    start, pointer, end = 24908, 45926, 25431
+    start, pointer, end = 24908, _SHORT_HUB + 1, 25431
     code = _SpillCode(pointer)
-    code.jump(45926, 45)
+    code.jump(_SHORT_HUB + 1, 45)
     code.jump(48, 126)
     code.walk(202)
     code.return_to = _mid_return
@@ -191,48 +208,48 @@ def _middle_fold(source: bytearray) -> None:
     code.mix(202, 147)
     code.mix(zero, mask)
     code.mix(twos, mask)
-    code.apply("p", word)
+    code.crazy(word)
     code.mix(twos, word)
     code.mix(ones, mask)
-    code.apply("p", word)
+    code.crazy(word)
     code.mix(zero, seed)
     code.mix(twos, seed)
     code.mix(ones, seed)
-    code.apply("p", word)
+    code.crazy(word)
     code.dispatch()
     code.write(source, start, end)
 
 
 def _upper_fold(source: bytearray) -> None:
-    start, pointer, end = 31388, 54674, 32026
+    start, pointer, end = 31388, _LONG_HUB + 1, 32026
     code = _SpillCode(pointer)
-    code.jump(54674, 39)
+    code.jump(_LONG_HUB + 1, 39)
     code.reset()
     code.return_to = _upper_return
     seed = 126
     ones, twos, zero = 128, 129, 198
     mask, word = 136, 149
 
-    code.apply("*", 133)
-    code.apply("p", 147)
+    code.rotate(133)
+    code.crazy(147)
     for operand in (twos, zero, twos, ones):
         code.mix(operand, mask)
-    code.apply("p", word)
+    code.crazy(word)
     code.mix(zero, mask)
-    code.apply("p", word)
+    code.crazy(word)
     code.mix(twos, word)
     for _ in range(2):
         code.mix(twos, mask)
-    code.apply("p", word)
+    code.crazy(word)
     code.mix(zero, seed)
-    code.apply("*", seed)
+    code.rotate(seed)
     code.mix(twos, seed)
     code.mix(ones, seed)
     for _ in range(4):
-        code.apply("*", seed)
-    code.apply("p", word)
+        code.rotate(seed)
+    code.crazy(word)
     code.mix(ones, seed)
-    code.apply("p", word)
+    code.crazy(word)
     code.dispatch()
     code.write(source, start, end)
 
@@ -246,32 +263,32 @@ def _lower_entry(source: bytearray) -> None:
     code.rotate_selector(5)
     code.long(89)
     code.reset()
-    code.apply("*", 142)
-    code.apply("*", 184)
-    code.apply("i", 186)
+    code.rotate(142)
+    code.rotate(184)
+    code.jump_code(186)
     code.write(source, start, end)
 
 
 def _middle_entry(source: bytearray) -> None:
     start, pointer, end = 24814, 66, 24907
     code = _SpillCode(pointer)
-    code.apply("p", 66)
+    code.crazy(66)
     code.short(70)
     code.jump(45, 112)
     code.jump(112, 0)
     code.jump(2, 63)
-    code.apply("p", 66)
+    code.crazy(66)
     code.short(70)
-    code.apply("p", 46)
+    code.crazy(46)
     code.short(50)
-    code.apply("p", 46)
-    code.apply("p", 48)
+    code.crazy(46)
+    code.crazy(48)
     code.short(50)
-    code.apply("p", 48)
+    code.crazy(48)
     code.short(57)
     code.return_to_readout()
-    code.apply("*", 170)
-    code.apply("i", 180)
+    code.rotate(170)
+    code.jump_code(180)
     code.write(source, start, end)
 
 
@@ -280,29 +297,29 @@ def _middle_exit(source: bytearray) -> None:
     code = _SpillCode(pointer)
     code.walk(189)
     code.jump(189, 86)
-    code.apply("p", 88)
+    code.crazy(88)
     code.rotate_selector(3)
     code.long(89)
-    code.apply("*", 40)
+    code.rotate(40)
     code.jump(41, 36)
-    code.apply("*", 37)
+    code.rotate(37)
     code.reset()
     code.jump(125, 104)
     code.jump(105, 29525)
     code.jump(29525, 93)
     code.jump(93, 113)
     code.jump(113, 88)
-    code.apply("p", 88)
+    code.crazy(88)
     code.long(89)
     code.reset()
     code.jump(129, 0)
     code.jump(1, 86)
-    code.apply("p", 86)
-    code.jump(89, 54673)
-    code.apply("*", 54673)
-    code.jump(54674, 39)
+    code.crazy(86)
+    code.jump(89, _LONG_HUB)
+    code.rotate(_LONG_HUB)
+    code.jump(_LONG_HUB + 1, 39)
     code.jump(51, 187)
-    code.apply("i", 187)
+    code.jump_code(187)
     code.write(source, start, end)
 
 
@@ -311,17 +328,17 @@ def _lower_exit(source: bytearray) -> None:
     code = _SpillCode(pointer)
     code.jump(166, 125)
     code.jump(125, 104)
-    code.apply("p", 105)
+    code.crazy(105)
     code.long(109)
     code.reset()
     code.jump(125, 104)
-    code.apply("p", 105)
+    code.crazy(105)
     code.return_to_all_twos()
-    code.apply("p", 115)
+    code.crazy(115)
     code.short(117)
     code.jump(45, 112)
-    code.apply("p", 115)
-    code.apply("p", 118)
+    code.crazy(115)
+    code.crazy(118)
     for target in (118, 61):
         code.jump(119, 37)
         code.jump(38, 35)
@@ -331,35 +348,35 @@ def _lower_exit(source: bytearray) -> None:
             code.jump(59, 118)
         else:
             code.jump(29525, 60)
-        code.apply("p", target)
-    code.jump(62, 54673)
+        code.crazy(target)
+    code.jump(62, _LONG_HUB)
     code.jump(54675, 38)
     code.jump(38, 35)
     code.jump(35, 29525)
     code.jump(29525, 60)
-    code.apply("p", 61)
+    code.crazy(61)
     code.long(62)
     code.reset()
-    code.apply("p", 126)
-    code.jump(127, 41551)
-    code.jump(41552, 36)
+    code.crazy(126)
+    code.jump(127, _ONE_HUB)
+    code.jump(_ONE_HUB + 1, 36)
     code.reset()
-    code.apply("p", 126)
+    code.crazy(126)
     code.jump(134, 157)
-    code.apply("p", 157)
+    code.crazy(157)
     code.jump(159, 47)
     code.return_to_readout()
-    code.apply("p", 157)
-    code.apply("*", 158)
+    code.crazy(157)
+    code.rotate(158)
     code.jump(159, 47)
     code.jump(52, 127)
-    code.apply("*", 128)
+    code.rotate(128)
     code.jump(129, 0)
     code.jump(0, 34)
-    code.apply("*", 34)
+    code.rotate(34)
     code.jump(35, 29525)
     code.jump(29525, 60)
-    code.apply("i", 61)
+    code.jump_code(61)
     code.write(source, start, end)
 
 

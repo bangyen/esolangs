@@ -31,6 +31,10 @@ from .lookup_independent import (
     independent_lookup,
     scopes,
 )
+from .packed_layout import (
+    _LOOKUP,
+    _ONE_HUB,
+)
 
 _OUTPUT = 4
 _PAIR_BRANCH = (5, 0)
@@ -113,7 +117,9 @@ def prepare(physical: int | None = None) -> Prepared:
     decoder = _decoder()
     independent = _independent()
     known = {
-        _coordinate(a % 3, a): int(decoder.hubs[independent[a - 5213]] == 41551)
+        _coordinate(a % 3, a): int(
+            decoder.hubs[independent[a - _LOOKUP.start]] == _ONE_HUB
+        )
         for a, domain in geo.glyphs.items()
         if a % 3 != 1 and domain
     }

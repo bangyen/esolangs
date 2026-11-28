@@ -6,13 +6,16 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from esolangs.languages.malbolge.generator.isa import _ACTIVE, _char_for
 from esolangs.languages.malbolge.generator.lookup_domains import _glyph_domains
-from esolangs.languages.malbolge.generator.packed import (
-    _SOURCE_OPS,
+from esolangs.languages.malbolge.generator.packed import _SOURCE_OPS, _decoder
+from esolangs.languages.malbolge.interpreter import _XLAT2
+
+from .packed_layout import (
+    _COLUMN_COUNT,
+    _SHORT_HUB,
     _TAPS,
-    _decoder,
+    _column_marker,
     _high_cell,
 )
-from esolangs.languages.malbolge.interpreter import _XLAT2
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -44,7 +47,7 @@ class Geometry(NamedTuple):
 
 def _markers(column: int) -> Iterator[tuple[Role, int]]:
     for op in _ACTIVE:
-        glyph = _char_for(op, 51031 + 3 * column)
+        glyph = _char_for(op, _column_marker(column))
         lane = (2 - glyph) % 3
         if glyph >= 83 and lane in _ORDINARY:
             yield (lane, op), glyph
@@ -68,7 +71,7 @@ def _alphabet(
     )
     if not all(
         all(glyphs[a] for a in row)
-        and (1 in glyphs[row[0]] or hubs[glyphs[row[0]].get(0, 0)] == 45925)
+        and (1 in glyphs[row[0]] or hubs[glyphs[row[0]].get(0, 0)] == _SHORT_HUB)
         for row in reads
     ):
         return None
@@ -82,7 +85,7 @@ def geometry() -> Geometry:
     alphabets: dict[Role, Alphabet] = {}
     mandatory: dict[Role, set[int]] = {}
     navigation: dict[int, tuple[Contact, ...]] = {}
-    navigation_columns = {(word - 1) % 243 for word in _NAVIGATION_WORDS}
+    navigation_columns = {(word - 1) % _COLUMN_COUNT for word in _NAVIGATION_WORDS}
     selected = {(lane, role) for lane, roles in _ORDINARY.items() for role in roles}
     for column in decoder.columns:
         covered = False
@@ -97,11 +100,11 @@ def geometry() -> Geometry:
             covered |= role in selected
             alphabets[role] = shape
             mandatory.setdefault(role, set()).update(
-                a for a in shape[0] if decoder.hubs[glyphs[a].get(0, 0)] != 45925
+                a for a in shape[0] if decoder.hubs[glyphs[a].get(0, 0)] != _SHORT_HUB
             )
         assert covered
     for word, allowed in _SOURCE_OPS.items():
-        column = (word - 1) % 243
+        column = (word - 1) % _COLUMN_COUNT
         slots = tuple(i for i in range(3) if decoder.occupied[word] >> i & 1)
         contacts = []
         for role, marker in _markers(column):

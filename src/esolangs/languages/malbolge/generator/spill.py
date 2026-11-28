@@ -9,16 +9,20 @@ from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine, _op
 from esolangs.runtime.io import ScriptedIO
 
 from .isa import _ACTIVE, _WORDS, _char_for
+from .packed_layout import (
+    _BANK,
+    _COLUMN_COUNT,
+    _SPILL_BRANCH,
+    _SPILL_DISPATCH,
+    _SPILL_MARKER_BASE,
+    _column_marker,
+)
 
-_MARKERS = 57592
-_BANK = 729
 _SHADOW_WALK_OFFSETS = (160, 296, 314, 377, 404, 647, 648, 727)
 _PLACES = (1, 9, 81)
 _HOLES = (7, 8, 3)
 _SCALES = (3, 1, 1)
 _AXES = {24908: 0, 11786: 1, 31388: 2}
-_DISPATCH = 5024
-_BRANCH = 5046
 _SHADOW_WORD = 29527
 
 type _Slot = tuple[int, int]
@@ -44,7 +48,7 @@ def _stage(source: bytearray, row: int) -> _State:
     returned = False
     for _ in range(12000):
         _, pc, _, halted = machine.state
-        if pc == _DISPATCH:
+        if pc == _SPILL_DISPATCH:
             return _State(machine, returned)
         if halted:
             break
@@ -68,7 +72,7 @@ def _walk(frame: _State, domains: _Domains, markers: set[int], glyph: int) -> se
     """Propagate the glyph through the dispatch's jumps and walks."""
     memory = frame.machine.memory
     states = {glyph + 1}
-    for pc in range(_DISPATCH + 1, _BRANCH):
+    for pc in range(_SPILL_DISPATCH + 1, _SPILL_BRANCH):
         op = _op(memory[pc], pc)
         if op == "o":
             states = {(d + 1) % _WORDS for d in states}
@@ -80,7 +84,7 @@ def _walk(frame: _State, domains: _Domains, markers: set[int], glyph: int) -> se
         for d in states:
             for operand in _values(frame, domains, d):
                 value = operand
-                if _DISPATCH <= d < pc and 33 <= operand <= 126:
+                if _SPILL_DISPATCH <= d < pc and 33 <= operand <= 126:
                     value = ord(_XLAT2[operand - 33])
                 following.add((value + 1) % _WORDS)
         states = following
@@ -107,7 +111,7 @@ def _geometric(
     choices: _Options = {}
     for residue in sorted(residues):
         options: dict[int, _Choice] = {}
-        address = _MARKERS + residue
+        address = _SPILL_MARKER_BASE + residue
         for label in _ACTIVE:
             glyph = _char_for(label, address)
             if glyph not in palette:
@@ -254,7 +258,7 @@ def _spill_locations(
     residues = {word % _BANK for word in readouts}
     banks = {word - word % _BANK for word in readouts}
     assert len(readouts) == len(residues) * len(banks)
-    markers = {_MARKERS + residue for residue in residues}
+    markers = {_SPILL_MARKER_BASE + residue for residue in residues}
     primary = {word + 1 for word in readouts}
     # Reserve each column marker and its short-hub companion before
     # assigning spills. The used columns are known after allocation.
@@ -264,7 +268,11 @@ def _spill_locations(
         # The two reversible payload walks read these lanes. Their NOPs
         # carry valid jump glyphs and must stay outside the spill domain.
         | {bank + offset for bank in banks for offset in _SHADOW_WALK_OFFSETS}
-        | {51031 + 3 * i + offset for i in range(243) for offset in (0, 1)}
+        | {
+            _column_marker(i) + offset
+            for i in range(_COLUMN_COUNT)
+            for offset in (0, 1)
+        }
     )
     fixed.update(
         k for k, raw in enumerate(source) if k not in source_ops and _op(raw, k) != "o"
@@ -304,7 +312,7 @@ def _spill_locations(
     _restrict_navigation(options, banks)
     placements = _place(options, shadow)
     for residue, slot in placements.items():
-        source[_MARKERS + residue] = min(
+        source[_SPILL_MARKER_BASE + residue] = min(
             choice.glyph for choice in options[residue].values() if choice.slot == slot
         )
     return placements

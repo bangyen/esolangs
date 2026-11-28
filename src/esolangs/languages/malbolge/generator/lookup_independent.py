@@ -11,6 +11,9 @@ from esolangs.languages.malbolge.generator.packed import _decoder, _operand_enco
 from .lookup_diagram import ALL_PHASES, Diagram
 from .lookup_elimination import Factor, eliminate, min_fill, reconstruct
 from .lookup_geometry import Geometry, Role
+from .packed_layout import (
+    _SHORT_HUB,
+)
 
 type Variable = tuple[int, int]
 type Clause = tuple[tuple[Variable, int], ...]
@@ -50,7 +53,7 @@ def scopes(
 
 
 def _short_zero(geo: Geometry, address: int) -> bool:
-    return _decoder().hubs[geo.glyphs[address].get(0, 0)] == 45925
+    return _decoder().hubs[geo.glyphs[address].get(0, 0)] == _SHORT_HUB
 
 
 def contacts(geo: Geometry, word: int, bits: int) -> Requirements:

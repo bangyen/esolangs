@@ -14,6 +14,13 @@ from esolangs.languages.malbolge.generator.lookup_projection import (
     select_bounded,
 )
 from esolangs.languages.malbolge.generator.lookup_request import selector_axes
+from esolangs.languages.malbolge.generator.packed_layout import (
+    _BANK,
+    _LOOKUP,
+    _SPILL_MARKER_BASE,
+    _column_marker,
+    _high_cell,
+)
 from esolangs.languages.malbolge.interpreter import _XLAT2
 
 BAND = "by-hand"
@@ -33,9 +40,12 @@ def _rows_by_word(decoder: packed._Decoder) -> dict[int, list[tuple[int, int]]]:
             if word in packed._SOURCE_OPS:
                 rows[word].append((4 * prefix + suffix, bit))
     words = {word for word, mask in enumerate(occupied) if mask}
-    markers = {51031 + 3 * col for col in decoder.columns}
-    high_words = {((word - 1) // 243) * 243 + 79 for word in words}
-    spill_routes = {57592 + (primary - 1) % 729 for primary, _, _ in decoder.locations}
+    markers = {_column_marker(col) for col in decoder.columns}
+    high_words = {_high_cell(word) for word in words}
+    spill_routes = {
+        _SPILL_MARKER_BASE + (primary - 1) % _BANK
+        for primary, _, _ in decoder.locations
+    }
     assert words.isdisjoint(markers | high_words | spill_routes)
     assert markers.isdisjoint(high_words | spill_routes)
     assert all(decoder.source[k] == _char_for("p", k) for k in high_words)
@@ -56,13 +66,13 @@ def _domains(
 ) -> dict[int, list[_Choice]]:
     """Collect all legal word/marker combinations for each shared column."""
     source = bytearray(decoder.source)
-    source[5213:5548] = lookup
+    source[_LOOKUP.start : _LOOKUP.stop] = lookup
     domains: dict[int, list[_Choice]] = {}
     for column, occupied in decoder.columns.items():
         words = [word for word in occupied if word in rows]
         choices = []
         for op in _ACTIVE:
-            marker = _char_for(op, 51031 + 3 * column)
+            marker = _char_for(op, _column_marker(column))
             if marker < 83:
                 continue
             rep = column + 1

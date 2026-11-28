@@ -9,12 +9,19 @@ from esolangs.languages.malbolge.generator.isa import _ACTIVE, _WORDS, _char_for
 from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine, _op
 from esolangs.runtime.io import ScriptedIO
 
+from .packed_layout import (
+    _LONG_HUB,
+    _LOOKUP,
+    _ONE_HUB,
+    _SHORT_HUB,
+    _column_marker,
+)
+
 if TYPE_CHECKING:
     from .packed import _Decoder
 
-_LOOKUP = range(5213, 5548)
 _GUARDS = {5585: 5617, 5657: 5687}
-_HUBS = ((45925, 54673), (41551,))
+_HUBS = ((_SHORT_HUB, _LONG_HUB), (_ONE_HUB,))
 
 
 def _rejoins(
@@ -61,7 +68,7 @@ def _glyph_domains(
         for address in _LOOKUP
         if address % 3 != 1 or hubs[decoder.source[address]] in output_hubs
     }
-    mutable_reads = lookup_operands | {51031 + 3 * col for col in decoder.columns}
+    mutable_reads = lookup_operands | {_column_marker(col) for col in decoder.columns}
     operands = {
         address: tuple(
             ord(_XLAT2[raw - 33]) if 29524 <= address <= 29527 else raw

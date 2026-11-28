@@ -25,7 +25,20 @@ from esolangs.runtime.io import ScriptedIO
 from .decoder_routes import _write_decoder_routes
 from .decoder_tail import _write_decoder_tail
 from .emitter import _ENCODING_PERIOD
-from .spill import _BANK, _spill_locations
+from .packed_layout import (
+    _BANK,
+    _COLUMN_COUNT,
+    _HIGH_OPERAND_OFFSET,
+    _LONG_HUB,
+    _LOOKUP,
+    _ONE_HUB,
+    _PRINTERS,
+    _SHORT_HUB,
+    _TAPS,
+    _column_marker,
+    _high_cell,
+)
+from .spill import _spill_locations
 from .spill_routes import _write_spill_routes
 from .startup_input import _write_input_routes
 from .startup_routes import _write_dispatch_setup
@@ -57,8 +70,6 @@ _SOURCE_OPS = {
     59036: "*<iopv",
     59037: "*/<jopv",
 }
-_TAPS = (139, 127, 130)
-_PRINTERS = (4513, 4663, 4585)
 _SHORT = ("ojojjjo*oopp", "ojojjooojo*oopp")
 _LONG = ("ojoooooooojojojjooojo*oopp", "ojoooooooojojojjjo*oopp")
 
@@ -97,11 +108,6 @@ def _at(machine: _Machine, target: int) -> None:
             break
         machine.step()
     raise AssertionError(f"decoder missed instruction {target}")
-
-
-def _high_cell(word: int) -> int:
-    """Return the high lookup operand for the payload word's band."""
-    return (word - 1) // 243 * 243 + 79
 
 
 def _short_hub_cell(k: int) -> bool:
@@ -241,16 +247,18 @@ def _write_high_dispatch(source: bytearray, readouts: tuple[int, ...]) -> None:
         choose = max if address == 52811 else min
         # In the first band at the top-trit transition, both shadow
         # walks also consume this operand, which leads through the one hub.
-        routed = _one_hub_cell if high - 79 == _WORDS // 3 else _short_hub_cell
+        routed = (
+            _one_hub_cell
+            if high - _HIGH_OPERAND_OFFSET == _WORDS // 3
+            else _short_hub_cell
+        )
         source[address] = choose(
             raw for op in _ACTIVE if routed((raw := _char_for(op, address)) + 1)
         )
 
 
-@cache
-def _decoder() -> _Decoder:
-    """Assemble the decoder and follow its three spill routes from reset."""
-    source = bytearray(_char_for("o", k) for k in range(_WORDS))
+def _write_fixed_decoder(source: bytearray) -> None:
+    """Install the startup, routes, and cold printer seeds."""
     _write_reset_seed(source)
     _write_input_routes(source)
     _write_dispatch_setup(source)
@@ -264,8 +272,12 @@ def _decoder() -> _Decoder:
     # The short seed at the first entry follows its six-cell approach.
     for start in (_PRINTERS[0] + 6, *_PRINTERS[1:]):
         _write_printer(source, start, _SHORT[0])
-    readouts = _readouts(16)
-    _write_high_dispatch(source, readouts)
+
+
+def _allocate_payloads(
+    source: bytearray, readouts: tuple[int, ...]
+) -> tuple[tuple[tuple[int, int, int], ...], bytes, dict[int, list[int]]]:
+    """Place spill markers and collect the occupied slots and columns."""
     spill_locations = _spill_locations(source, readouts, _SOURCE_OPS)
     used = bytearray(_WORDS)
     locations = []
@@ -279,19 +291,34 @@ def _decoder() -> _Decoder:
     columns: defaultdict[int, list[int]] = defaultdict(list)
     for word, occupied in enumerate(used):
         if occupied:
-            columns[(word - 1) % 243].append(word)
+            columns[(word - 1) % _COLUMN_COUNT].append(word)
+    return tuple(locations), bytes(used), dict(columns)
+
+
+def _write_column_returns(source: bytearray, columns: dict[int, list[int]]) -> None:
     # The jump beside each column marker leads through the short hub.
     for column in columns:
-        address = 51032 + 3 * column
+        address = _column_marker(column) + 1
         source[address] = next(
             raw
             for op in _ACTIVE
             if _short_hub_cell((raw := _char_for(op, address)) + 1)
         )
+
+
+@cache
+def _decoder() -> _Decoder:
+    """Assemble the decoder and follow its three spill routes from reset."""
+    source = bytearray(_char_for("o", k) for k in range(_WORDS))
+    _write_fixed_decoder(source)
+    readouts = _readouts(16)
+    _write_high_dispatch(source, readouts)
+    locations, occupied, columns = _allocate_payloads(source, readouts)
+    _write_column_returns(source, columns)
     machine = _Machine(source.decode("ascii"), ScriptedIO("0" * 17))
-    _at(machine, 4513)
+    _at(machine, _PRINTERS[0])
     hubs = tuple(machine.memory[v + 4] + 1 for v in range(127))
-    return _Decoder(bytes(source), hubs, tuple(locations), bytes(used), dict(columns))
+    return _Decoder(bytes(source), hubs, locations, occupied, columns)
 
 
 def _selection(table: str) -> tuple[bytes, tuple[int, ...], int]:
@@ -321,9 +348,9 @@ def _pattern(
     for slot, virt in enumerate(perm):
         if used >> slot & 1:
             hub = hubs[source[key + _TAPS[virt]]]
-            if hub == 41551:
+            if hub == _ONE_HUB:
                 bits |= 1 << slot
-            elif hub != 45925 and (not virt or hub != 54673):
+            elif hub != _SHORT_HUB and (not virt or hub != _LONG_HUB):
                 return -1
     return bits
 
@@ -332,11 +359,11 @@ def _marker_labels(
     source: bytearray, hubs: tuple[int, ...], perm: tuple[int, ...], col: int
 ) -> Iterator[_Column]:
     """Yield column markers with all eight ordinary labels."""
-    # Advancing 243 words shifts both raw and high by -243 modulo 94.
+    # Advancing one column period subtracts that period from raw and high modulo 94.
     # Their difference, and thus the ordinary label, depends only on the column.
     rep = col + 1
     for marker_op in _ACTIVE:
-        marker = _char_for(marker_op, 51031 + 3 * col)
+        marker = _char_for(marker_op, _column_marker(col))
         if marker < 83:
             continue
         labels = {}
@@ -372,12 +399,12 @@ def _operand_encodings(lookup: bytes, perm: tuple[int, ...]) -> dict[int, _Encod
     """Invert each navigation word's fixed byte-to-answer mapping."""
     decoder = _decoder()
     source = bytearray(decoder.source)
-    source[5213:5548] = lookup
+    source[_LOOKUP.start : _LOOKUP.stop] = lookup
     encodings = {}
     for word in _SOURCE_OPS:
         by_answer: dict[int, _Operand] = {}
         restricted: dict[int, _Operand] = {}
-        col = (word - 1) % 243
+        col = (word - 1) % _COLUMN_COUNT
         for column in _marker_labels(source, decoder.hubs, perm, col):
             for op, bits in _operand_patterns(
                 source, decoder.hubs, perm, word, column.marker, decoder.occupied[word]
@@ -397,8 +424,8 @@ def _ordinary_columns(lookup: bytes, perm: tuple[int, ...]) -> dict[int, _Column
     """Derive an answer alphabet for each column without navigation operands."""
     decoder = _decoder()
     source = bytearray(decoder.source)
-    source[5213:5548] = lookup
-    restricted = {(word - 1) % 243 for word in _SOURCE_OPS}
+    source[_LOOKUP.start : _LOOKUP.stop] = lookup
+    restricted = {(word - 1) % _COLUMN_COUNT for word in _SOURCE_OPS}
     columns: dict[int, _Column] = {}
     for col in decoder.columns.keys() - restricted:
         for column in _marker_labels(source, decoder.hubs, perm, col):
@@ -444,7 +471,7 @@ def _install_layout(
     source: bytearray, lookup: bytes, perm: tuple[int, ...], polarity: int
 ) -> None:
     """Place the derived lookup and the three straight-line printers."""
-    source[5213:5548] = lookup
+    source[_LOOKUP.start : _LOOKUP.stop] = lookup
     for slot, virt in enumerate(perm):
         old = _PRINTERS[slot]
         pc = old + _TAPS[virt] - _TAPS[slot]
@@ -474,10 +501,12 @@ def _packed_program(table: str) -> str:
     operands[_LEFT_OPERAND], operands[_RIGHT_OPERAND] = _coupled_encodings(
         encodings, answers
     )
-    selected = {(word - 1) % 243: operand.column for word, operand in operands.items()}
+    selected = {
+        (word - 1) % _COLUMN_COUNT: operand.column for word, operand in operands.items()
+    }
     for col, words in columns.items():
         marker, labels = selected[col] if col in selected else ordinary[col]
-        source[51031 + 3 * col] = marker
+        source[_column_marker(col)] = marker
         for k in words:
             op = operands[k].op if k in operands else labels[answers[k]]
             source[k] = _char_for(op, k)

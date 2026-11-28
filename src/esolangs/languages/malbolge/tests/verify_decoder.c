@@ -1,5 +1,5 @@
 /* Executable certificate for the packed Malbolge decoder. The Python driver
- * supplies the VM tables, assembled layouts and source operand domains. */
+ * supplies the VM tables, layout constants and source operand domains. */
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -112,6 +112,15 @@ static int abstract_walk(State *s, Word *m, int limit, int target, int mode) {
   }
   return size == 1 && current[0] == target;
 }
+static int column_marker_address(int word) {
+  return COLUMN_MARKER_BASE +
+         COLUMN_MARKER_STRIDE * ((word - 1) % COLUMN_COUNT);
+}
+
+static int output_lane(int address) {
+  return address >= LOOKUP_START && address < LOOKUP_END && address % 3 != 1;
+}
+
 static void check_access(State *s, Word *m, int row, int op) {
   int c = s->c, d = s->d;
   if (!op || op == 'v')
@@ -141,7 +150,7 @@ static void check_access(State *s, Word *m, int row, int op) {
     s->temporary = d + 1;
   if (c == 6286)
     s->temporary = 0;
-  if (strchr("ji*p", op) && column_marker[d] && c != 38469) {
+  if (strchr("ji*p", op) && column_marker[d] && c != COLUMN_DISPATCH) {
     fprintf(stderr, "other marker read %d row %d k%d\n", c, row, d);
     exit(7);
   }
@@ -175,7 +184,7 @@ static void check_access(State *s, Word *m, int row, int op) {
     }
   }
 }
-static unsigned char native_lookup_domains[335][2];
+static unsigned char native_lookup_domains[LOOKUP_END - LOOKUP_START][2];
 static long guard_checks, guard_glyphs;
 static int checked_key, checked_tap;
 static int guard_finish(const Word *m, int start, int stop, int raw) {
@@ -184,7 +193,7 @@ static int guard_finish(const Word *m, int start, int stop, int raw) {
     int op = opcode(m[c], c);
     assert(op == 'o' || op == 'j');
     if (op == 'j') {
-      if (d >= 5213 && d < 5548 && d % 3 != 1) {
+      if (output_lane(d)) {
         fprintf(stderr, "universal guard at %d reads mutable output %d at %d\n",
                 start, d, c);
         exit(11);
@@ -205,11 +214,11 @@ static void check_guard(State *s, Word *m, int row) {
   int stop = c == 5585 ? 5617 : c == 5657 ? 5687 : c == 5697 ? 5721 : 0;
   if (!stop)
     return;
-  assert(d >= 5213 && d < 5548 && d % 3 == 2);
+  assert(d >= LOOKUP_START && d < LOOKUP_END && d % 3 == 2);
   int want = guard_finish(m, c, stop, m[d]);
   guard_checks++;
   for (int j = 0; j < 2; j++) {
-    int alternate = native_lookup_domains[d - 5213][j];
+    int alternate = native_lookup_domains[d - LOOKUP_START][j];
     if (!alternate)
       continue;
     guard_glyphs++;
@@ -231,16 +240,16 @@ static int step(State *s, Word *m, int row) {
   check_access(s, m, row, op);
   if (recording) {
     check_guard(s, m, row);
-    if (c >= 5213 && c < 5548 && c % 3 != 1 && layout_changes[c])
+    if (output_lane(c) && layout_changes[c])
       abort();
-    if (op && strchr("ji*p", op) && d >= 5213 && d < 5548 && d % 3 != 1 &&
+    if (op && strchr("ji*p", op) && output_lane(d) &&
         layout_changes[d] && c != 5585 && c != 5657 && c != 5697 &&
         !(c == checked_tap && d == checked_key)) {
       fprintf(stderr, "unexpected output-lane read at pc%d addr%d row%d\n", c,
               d, row);
       exit(13);
     }
-    if (op == 'i' && m[d] >= 5213 && m[d] < 5548 && m[d] % 3 != 1 &&
+    if (op == 'i' && output_lane(m[d]) &&
         layout_changes[m[d]])
       abort();
     record_read(c);
@@ -328,15 +337,16 @@ static void load_inputs(void) {
 static Word before_marker[WORDS], before_payload[WORDS], marked_memory[WORDS];
 static unsigned char checkpoint[94][128][3];
 #define SETTINGS 8
+#define LAYOUT_SIZE (250 + LOOKUP_END - LOOKUP_START)
 typedef struct {
-  unsigned char order[3], flip, code[585];
+  unsigned char order[3], flip, code[LAYOUT_SIZE];
 } Layout;
 static Layout layouts[SETTINGS];
-static int models, layout_offset[WORDS], variable_addresses[585],
+static int models, layout_offset[WORDS], variable_addresses[LAYOUT_SIZE],
     variable_count;
 static Word hubs[127];
-static const int printer_entry[] = {4513, 4663, 4585};
-static const int lookup_tap[] = {139, 127, 130};
+static const int printer_entry[] = PRINTER_ENTRIES;
+static const int lookup_tap[] = LOOKUP_TAPS;
 static unsigned char covered[SETTINGS];
 static long suffix_runs, equivalent_layouts;
 static int max_live;
@@ -363,8 +373,8 @@ static void load_layouts(void) {
   assert(fgetc(f) == EOF);
   fclose(f);
   assert(models == SETTINGS);
-  for (int i = 0; i < 585; i++) {
-    int k = i < 250 ? 4450 + i : 5213 + i - 250;
+  for (int i = 0; i < LAYOUT_SIZE; i++) {
+    int k = i < 250 ? 4450 + i : LOOKUP_START + i - 250;
     layout_offset[k] = i + 1;
     if (layout_changes[k])
       variable_addresses[variable_count++] = k;
@@ -422,7 +432,7 @@ static void run_printer(State *start, int setting, int z, int key, int hub,
   recording = 0;
   covered[setting] = 1;
   suffix_runs++;
-  int want = (hub == 41551) ^ ((layout->flip >> z) & 1);
+  int want = (hub == ONE_HUB) ^ ((layout->flip >> z) & 1);
   if (count >= 2000 || opcode(suffix_memory[state.c], state.c) != 'v' ||
       state.reads != 17 || state.outputs != 1 || state.out != 48 + want ||
       hit != 1) {
@@ -468,18 +478,18 @@ static void verify_suffix(State *start, int lookup_glyph, int marker, int z,
         layout_offset[key] ? l->code[layout_offset[key] - 1] : initial[key];
 
     int glyph_choices[2] = {byte, 0};
-    if (key >= 5213 && key < 5548 && key % 3 != 1 && layout_changes[key]) {
-      glyph_choices[0] = native_lookup_domains[key - 5213][0];
-      glyph_choices[1] = native_lookup_domains[key - 5213][1];
+    if (output_lane(key) && layout_changes[key]) {
+      glyph_choices[0] = native_lookup_domains[key - LOOKUP_START][0];
+      glyph_choices[1] = native_lookup_domains[key - LOOKUP_START][1];
     }
-    int layout_reads[585], read_count = 0, ran = 0;
-    unsigned char read_layout[585] = {0};
+    int layout_reads[LAYOUT_SIZE], read_count = 0, ran = 0;
+    unsigned char read_layout[LAYOUT_SIZE] = {0};
     for (int choice = 0; choice < 2; choice++) {
       int alternate = glyph_choices[choice];
       if (!alternate)
         continue;
       int hub = hubs[alternate];
-      if (hub != 41551 && hub != 45925 && !(l->order[z] && hub == 54673))
+      if (hub != ONE_HUB && hub != SHORT_HUB && !(l->order[z] && hub == LONG_HUB))
         continue;
       ran = 1;
       run_printer(start, t, z, key, hub, row, word, raw, marker, lookup_glyph,
@@ -542,7 +552,9 @@ static void verify_suffix(State *start, int lookup_glyph, int marker, int z,
     f->cells[i] = k;
     f->allowed_trits[i] = requirements[k];
     if (operand_values[k][0] > 1 ||
-        (k >= 51031 && k <= 51759 && (k - 51031) % 3 == 0)) {
+        (k >= COLUMN_MARKER_BASE &&
+         k < COLUMN_MARKER_BASE + COLUMN_MARKER_STRIDE * COLUMN_COUNT &&
+         (k - COLUMN_MARKER_BASE) % COLUMN_MARKER_STRIDE == 0)) {
       fprintf(stderr,
               "suffix live data row%d k%d cp%d marker%d z%d mutable%d\n", row,
               word, lookup_glyph, marker, z, k);
@@ -557,7 +569,7 @@ int main(void) {
             sizeof native_lookup_domains);
   for (int k = 0; k < WORDS; k++)
     if (operand_values[k][0])
-      column_marker[51031 + 3 * ((k - 1) % 243)] = 1;
+      column_marker[column_marker_address(k)] = 1;
   load_layouts();
   int n = 131072, markers = 0, operand_cases = 0, marker_joins = 0, keys = 0,
       max_prefix_slice = 0;
@@ -565,11 +577,11 @@ int main(void) {
   for (int row = 0; row < n; row++) {
     memcpy(before_marker, initial, sizeof(initial));
     State state = {0};
-    assert(run_to(&state, before_marker, row, 38469, 12000) >= 0);
+    assert(run_to(&state, before_marker, row, COLUMN_DISPATCH, 12000) >= 0);
     int k = row % 4 == 3 ? spill_words[row / 4] : primary_words[row / 4],
         z = row % 4 == 3 ? slots[row / 4] : row % 4,
-        where = 51031 + 3 * ((k - 1) % 243),
-        high = initial[(k - 1) / 243 * 243 + 79];
+        where = column_marker_address(k),
+        high = initial[(k - 1) / COLUMN_COUNT * COLUMN_COUNT + HIGH_OPERAND_OFFSET];
     assert(state.d == where && state.reads == 17 && !state.outputs);
     State payload = state;
     memcpy(before_payload, before_marker, sizeof(before_payload));
