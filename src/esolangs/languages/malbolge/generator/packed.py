@@ -152,15 +152,22 @@ def _printer_orders() -> Iterator[tuple[int, ...]]:
 @cache
 def _layouts() -> tuple[_Layout, ...]:
     """Derive the compatible printer placements for each calibrated lookup."""
-    lookups = (_DATA / "packed-lookups.txt").read_bytes().splitlines()
+    decoder = _decoder()
+    frame = decoder.source[5213:5548]
+    lane_width = len(frame[::3])
     orders = tuple(_printer_orders())
-    occupied = _decoder().occupied
+    occupied = decoder.occupied
     selected = {word for group in _selector_groups() for word in group}
     independent = {
         word: 1 << occupied[word].bit_count() for word in _SOURCE_OPS.keys() - selected
     }
     layouts = []
-    for lookup in lookups:
+    for lanes in (_DATA / "packed-lookups.txt").read_bytes().splitlines():
+        # Printer taps never use the middle lane. Restore its navigation bytes.
+        frame_lookup = bytearray(frame)
+        frame_lookup[::3] = lanes[:lane_width]
+        frame_lookup[1::3] = lanes[lane_width:]
+        lookup = bytes(frame_lookup)
         for order in orders:
             encodings = _operand_encodings(lookup, order)
             if all(
