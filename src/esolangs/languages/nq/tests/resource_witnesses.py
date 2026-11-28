@@ -1,8 +1,10 @@
-"""Named witnesses for NQ source size."""
+"""Named witnesses for NQ resource bounds."""
 
 from tests.support.witness_tables import parity
 
 
 def resource_tables(n: int) -> tuple[str, ...]:
-    """Flip the first parity bit to fold exactly one leaf pair."""
-    return ("1" + parity(n)[1:],)
+    """Fold one leaf pair, or drive the final instruction with a written flag."""
+    table = parity(n)
+    size = "1" + table[1:]
+    return (size, "1110" + table[4:]) if 2 <= n <= 6 else (size,)
