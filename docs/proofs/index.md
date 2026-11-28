@@ -48,6 +48,21 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   setup and rendering add a machine-bounded cost, including on a cold
   build. The bound uses the fixed machine and word size.
 
+  The source-dependent execution and workspace formulas in the
+  [generator ledger](#generator-ledger) also give linear upper bounds
+  in `T` at every supported arity.
+
+  - **Execution is at most `2T + 18,198` commands.** The prefix count
+    `E` fits within the source length, at most `2T + 13,340` by the
+    ledger's size cases. The tail allowance `J` is at most 200 with short
+    stubs, 124 with full stubs, and `9,101 − 4,243 = 4,858` with the packed
+    decoder. Thus `E + J ≤ 2T + 18,198`.
+  - **Workspace is at most `22T + 1,145,016` bits.** The initial store has
+    59,049 words of at most 16 bits each, so `B ≤ 944,784`.
+    Prefix writes satisfy `W ≤ E`, the stub flag `F` is at most one,
+    and `bl(n) ≤ 5` for `n ≤ 17`. The ledger's workspace formula is
+    therefore at most `944,784 + 11(E + J) + 54`.
+
 - Ascenic: <a id="ascenic-bound"></a> worst-case source is `Theta(T**2)`
   characters for both the language and generator. Arguments rise strictly
   and are unary, so `L` lines cost at least `L(L+1)/2` characters, and a
