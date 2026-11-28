@@ -26,11 +26,11 @@ from .lookup_independent import (
     Variable,
     _compile_check,
     _coordinate,
-    _lift,
     _short_zero,
-    alphabet_table,
+    alphabet_factor,
     fixed_colors,
     independent_lookup,
+    render_lookup,
     scopes,
 )
 from .packed_layout import (
@@ -58,7 +58,6 @@ class Prepared(NamedTuple):
     alphabet_tables: tuple[AlphabetTable, ...]
     targets: dict[int, frozenset[int]]
     patterns: dict[RequestWord, int]
-    groups: tuple[dict[int, list[tuple[int, int]]], ...]
 
 
 def _word_requirements(geo: Geometry, word: int, answer: int, ops: str) -> Requirements:
@@ -85,14 +84,13 @@ def _support(
     return frozenset(a for row in requirements for a, _ in row) - fixed.keys()
 
 
-def selector_axes(
-    groups: tuple[dict[int, list[tuple[int, int]]], ...],
-) -> tuple[int, tuple[int, ...], dict[int, dict[int, int]]]:
+@cache
+def selector_axes() -> tuple[int, tuple[int, ...], dict[int, dict[int, int]]]:
     """Number the projected bits and report the pinned right operand slots."""
     width = 0
     pin = []
     axes: dict[int, dict[int, int]] = {}
-    for group in groups:
+    for group in _selector_groups():
         by_row = sorted(
             (row, word, slot)
             for word, entries in group.items()
@@ -129,7 +127,7 @@ def prepare(physical: int | None = None) -> Prepared:
     roles = scopes(geo, fixed)
     groups = _selector_groups()
     selector = {word for group in groups for word in group}
-    width, _, outputs = selector_axes(groups)
+    width, _, outputs = selector_axes()
     checks: list[Requirements] = []
     patterns: dict[RequestWord, Requirements] = {}
     targets: dict[int, frozenset[Variable]] = {}
@@ -201,18 +199,8 @@ def prepare(physical: int | None = None) -> Prepared:
     shared = []
     tables = []
     for role, scope in roles.items():
-        interface = tuple(
-            sorted(scope & position.keys(), key=position.__getitem__, reverse=True)
-        )
-        private = tuple(sorted(scope - position.keys()))
-        table = alphabet_table(geo, role, fixed, interface, private)
-        reduced = table.permitted
-        for i in reversed(range(len(interface), len(interface) + len(private))):
-            reduced = (reduced | (reduced >> (1 << i))) & ((1 << (1 << i)) - 1)
-        axes_for_role = tuple(position[a] for a in interface)
-        shared.append(
-            Factor(frozenset(axes_for_role), arena.compile_bits(axes_for_role, reduced))
-        )
+        factor, table = alphabet_factor(arena, geo, role, fixed, scope, position)
+        shared.append(factor)
         tables.append(table)
     for req, scope in zip(checks, navigation_scopes, strict=True):
         shared.append(
@@ -238,7 +226,6 @@ def prepare(physical: int | None = None) -> Prepared:
             for word, scope in targets.items()
         },
         compiled,
-        groups,
     )
 
 
@@ -287,18 +274,12 @@ def _requested_relation(
 
 def emit(prepared: Prepared, assignment: int) -> bytes:
     """Lift projected colors and materialize the native lookup frame."""
-    values = {
-        **prepared.fixed,
-        **{a: assignment >> i & 1 for i, a in enumerate(prepared.order)},
-    }
-    for table in prepared.alphabet_tables:
-        _lift(table, values)
-    source = _decoder().source
-    return bytes(
-        options[values.get(_coordinate(a % 3, a), 0)]
-        if options and a % 3 != 1
-        else source[a]
-        for a, options in prepared.geo.glyphs.items()
+    return render_lookup(
+        prepared.geo,
+        prepared.alphabet_tables,
+        prepared.fixed,
+        prepared.order,
+        assignment,
     )
 
 

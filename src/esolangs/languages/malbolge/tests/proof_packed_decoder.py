@@ -169,8 +169,7 @@ def _flip_axes(mask: int, changed: int, full: int) -> int:
 
 def check_cover() -> None:
     """Prove selector totality and bound the allocation for every witness."""
-    groups = packed._selector_groups()
-    width, pin, axes = selector_axes(groups)
+    width, pin, axes = selector_axes()
     full = (1 << (1 << width)) - 1
     physical = tuple(_certify(answer, width) for answer in range(1 << len(pin)))
     flips = tuple(

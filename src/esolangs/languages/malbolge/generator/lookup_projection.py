@@ -17,7 +17,7 @@ from .lookup_request import (
     prepare,
     selector_axes,
 )
-from .packed import _RIGHT_OPERAND, _selector_groups
+from .packed import _RIGHT_OPERAND
 
 _WITNESS_LIMIT = 2_000_000
 
@@ -27,7 +27,7 @@ def project(
 ) -> tuple[Diagram, int]:
     """Eliminate colors while reporting the buckets before projection."""
     plan = prepare(physical)
-    width, _, axes = selector_axes(plan.groups)
+    width, _, axes = selector_axes()
     colors = len(plan.order) - width
     arena = Diagram(len(plan.order), _NODE_LIMIT)
     arena.restore(plan.checkpoint)
@@ -71,7 +71,7 @@ def project(
 
 def select_bounded(requested: SelectorRequest) -> tuple[bytes, int]:
     """Recover a layout by retaining only the requested output cofactors."""
-    width, pin, axes = selector_axes(_selector_groups())
+    width, pin, axes = selector_axes()
     right = requested[_RIGHT_OPERAND]
     logical = sum(right[slot] << rank for rank, slot in enumerate(pin))
     for phase in range(7):

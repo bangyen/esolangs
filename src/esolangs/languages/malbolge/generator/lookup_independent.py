@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable
 from itertools import product
 from typing import NamedTuple
 
@@ -161,6 +162,27 @@ def _compile_check(
     return result
 
 
+def alphabet_factor(
+    arena: Diagram,
+    geo: Geometry,
+    role: Role,
+    fixed: dict[Variable, int],
+    scope: frozenset[Variable],
+    position: dict[Variable, int],
+) -> tuple[Factor, AlphabetTable]:
+    """Project out private colors and retain their table for reconstruction."""
+    interface = tuple(
+        sorted(scope & position.keys(), key=position.__getitem__, reverse=True)
+    )
+    private = tuple(sorted(scope - position.keys()))
+    table = alphabet_table(geo, role, fixed, interface, private)
+    reduced = table.permitted
+    for i in reversed(range(len(interface), len(interface) + len(private))):
+        reduced = (reduced | (reduced >> (1 << i))) & ((1 << (1 << i)) - 1)
+    names = tuple(position[a] for a in interface)
+    return Factor(frozenset(names), arena.compile_bits(names, reduced)), table
+
+
 def _lift(table: AlphabetTable, values: dict[Variable, int]) -> None:
     index = sum(values.get(a, 0) << i for i, a in enumerate(table.interface))
     stride = 1 << len(table.interface)
@@ -170,6 +192,26 @@ def _lift(table: AlphabetTable, values: dict[Variable, int]) -> None:
     assignment = (matching & -matching).bit_length() - 1
     for i, coordinate in enumerate(table.private, len(table.interface)):
         values[coordinate] = assignment >> i & 1
+
+
+def render_lookup(
+    geo: Geometry,
+    tables: Iterable[AlphabetTable],
+    fixed: dict[Variable, int],
+    order: tuple[Variable, ...],
+    assignment: int,
+) -> bytes:
+    """Recover private colors and write their glyphs into the lookup frame."""
+    values = {**fixed, **{a: assignment >> i & 1 for i, a in enumerate(order)}}
+    for table in tables:
+        _lift(table, values)
+    source = _decoder().source
+    return bytes(
+        options[values.get(_coordinate(a % 3, a), 0)]
+        if options and a % 3 != 1
+        else source[a]
+        for a, options in geo.glyphs.items()
+    )
 
 
 def independent_lookup(geo: Geometry) -> bytes:
@@ -198,20 +240,8 @@ def independent_lookup(geo: Geometry) -> bytes:
     factors = []
     tables = []
     for role, scope in role_scopes.items():
-        interface = tuple(
-            sorted(
-                (a for a in scope if a in position),
-                key=position.__getitem__,
-                reverse=True,
-            )
-        )
-        private = tuple(sorted(scope - position.keys()))
-        table = alphabet_table(geo, role, fixed, interface, private)
-        reduced = table.permitted
-        for i in reversed(range(len(interface), len(interface) + len(private))):
-            reduced = (reduced | (reduced >> (1 << i))) & ((1 << (1 << i)) - 1)
-        names = tuple(position[a] for a in interface)
-        factors.append(Factor(frozenset(names), arena.compile_bits(names, reduced)))
+        factor, table = alphabet_factor(arena, geo, role, fixed, scope, position)
+        factors.append(factor)
         tables.append(table)
     for check, scope in zip(checks, check_scopes, strict=True):
         factors.append(
@@ -223,16 +253,8 @@ def independent_lookup(geo: Geometry) -> bytes:
     proof = eliminate(arena, factors, range(len(ordered)))
     assert proof.phases == ALL_PHASES
     result = reconstruct(arena, proof, 0)
-    values = {**fixed, **{a: result >> i & 1 for i, a in enumerate(ordered)}}
-    for table in tables:
-        _lift(table, values)
+    output = render_lookup(geo, tables, fixed, ordered, result)
     decoder = _decoder()
-    output = bytes(
-        options[values.get(_coordinate(a % 3, a), 0)]
-        if options and a % 3 != 1
-        else decoder.source[a]
-        for a, options in geo.glyphs.items()
-    )
     verified = _operand_encodings(output)
     assert all(
         len(verified[word].by_answer) == 1 << decoder.occupied[word].bit_count()
