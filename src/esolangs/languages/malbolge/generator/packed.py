@@ -25,6 +25,7 @@ from esolangs.languages.malbolge.generator.isa import (
 from esolangs.languages.malbolge.interpreter import _XLAT2, _Machine
 from esolangs.runtime.io import ScriptedIO
 
+from .emitter import _ENCODING_PERIOD
 from .spill import _BANK, _spill_locations
 
 _DATA = Path(__file__).resolve().parent
@@ -176,6 +177,27 @@ def _write_hub_fills(source: bytearray) -> None:
             source[address] = _char_for(op, address)
 
 
+def _write_shared_routes(source: bytearray) -> None:
+    """Emit the residue steps, reversible payload reads and glyph palette."""
+    # Apply the accumulator mask, negate through all-twos and reload all-ones.
+    residue = "jop" + "jojjooo*" + "ojjoojjop" + "ojjj*joj"
+    # The two payload passes apply and undo the same crazy involution.
+    shadow_walk = "j" * 7 + "ojojoo" + "j" * 4 + "ojo" + "j" * 3 + "ojooj"
+    payload = "**" + "o" * 23 + "jpoo" + shadow_walk
+    # Printable operands descend cyclically twice for the suffix dispatch.
+    palette = "v" * (2 * _ENCODING_PERIOD)
+    for pc, ops in (
+        (2177, residue),
+        (2293, residue),
+        (2325, residue),
+        (6194, payload),
+        (6260, payload),
+        (4255, palette),
+    ):
+        for address, op in enumerate(ops, pc):
+            source[address] = _char_for(op, address)
+
+
 @cache
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
@@ -185,6 +207,7 @@ def _decoder() -> _Decoder:
         lo = int(address)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
     _write_hub_fills(source)
+    _write_shared_routes(source)
     _write_guard_approaches(source)
     _write_guard_returns(source)
     # The short seed at the first entry follows its six-cell approach.

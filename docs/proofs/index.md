@@ -55,6 +55,7 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   Both dispatch guards return via the encrypted all-ones operand and
   the first walked cell that points to the return. The startup fills
   three hub families by walking the low pointer cells in residue order.
+  Each residue reduction and reversible payload read uses a shared route.
 
   Generation takes `O(T)` RAM work for `T` truth-table rows under the
   fixed 59,049-cell machine. Validation and constant detection scan the
