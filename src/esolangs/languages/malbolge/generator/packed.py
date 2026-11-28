@@ -83,6 +83,11 @@ def _at(machine: _Machine, target: int) -> None:
     raise AssertionError(f"decoder missed instruction {target}")
 
 
+def _high_cell(word: int) -> int:
+    """Return the high lookup operand for the payload word's band."""
+    return (word - 1) // 243 * 243 + 79
+
+
 @cache
 def _decoder() -> _Decoder:
     """Assemble the decoder and follow its three spill routes from reset."""
@@ -91,11 +96,14 @@ def _decoder() -> _Decoder:
         address, ops = line.split()
         lo = int(address)
         source[lo : lo + len(ops)] = [_char_for(op, lo + i) for i, op in enumerate(ops)]
+    readouts = _readouts(16)
+    # Primary and spill words occupy the same high bands.
+    for k in {_high_cell(w + 1) for w in readouts}:
+        source[k] = _char_for("p", k)
     machine = _Machine(source.decode("ascii"), ScriptedIO("0" * 17))
     _at(machine, 5024)
     # The marker selects which base-nine digit the spill routine replaces.
     directions = {}
-    readouts = _readouts(16)
     for marker in {source[57592 + w % 729] for w in readouts}:
         d = marker + 1
         for pc in range(5025, 5046):
@@ -194,7 +202,7 @@ def _pattern(
     used: int,
 ) -> int:
     """Read the requested output slots through their three physical lookup taps."""
-    high = _char_for("p", ((k - 1) // 243) * 243 + 79)
+    high = _char_for("p", _high_cell(k))
     key = 5113 + 3 * _char_for("p", 19745 + high - raw) - marker
     bits = 0
     for slot, virt in enumerate(perm):
