@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator
 from functools import cache
+from itertools import permutations
 from pathlib import Path
 from typing import NamedTuple
 
@@ -131,16 +132,41 @@ def _decoder() -> _Decoder:
     return _Decoder(bytes(source), hubs, tuple(locations), bytes(used), dict(columns))
 
 
+def _printer_orders() -> Iterator[tuple[int, ...]]:
+    """Place both polarities of each printer inside its frame."""
+    for order in permutations(range(3)):
+        if all(
+            start
+            + _TAPS[channel]
+            - _TAPS[slot]
+            + 7
+            + max(map(len, _SHORT if channel == 0 else _LONG))
+            <= limit
+            for slot, (start, channel, limit) in enumerate(
+                zip(_PRINTERS, order, (4538, 4698, 4619), strict=True)
+            )
+        ):
+            yield order
+
+
 @cache
 def _layouts() -> tuple[_Layout, ...]:
-    """Read the calibrated lookup and printer order pairs in selection order."""
+    """Derive the compatible printer placements for each calibrated lookup."""
     lookups = (_DATA / "packed-lookups.txt").read_bytes().splitlines()
+    orders = tuple(_printer_orders())
+    occupied = _decoder().occupied
+    selected = {word for group in _selector_groups() for word in group}
+    independent = {
+        word: 1 << occupied[word].bit_count() for word in _SOURCE_OPS.keys() - selected
+    }
     layouts = []
-    for line in (
-        (_DATA / "packed-settings.txt").read_text(encoding="ascii").splitlines()
-    ):
-        index, order = line.split()
-        layouts.append((lookups[int(index)], tuple(map(int, order))))
+    for lookup in lookups:
+        for order in orders:
+            encodings = _operand_encodings(lookup, order)
+            if all(
+                len(encodings[w].by_answer) == width for w, width in independent.items()
+            ):
+                layouts.append((lookup, order))
     return tuple(layouts)
 
 

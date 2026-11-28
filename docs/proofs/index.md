@@ -27,8 +27,11 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   line before the remaining paths and cycles are oriented. The
   131,072 (word, slot) pairs are distinct across 44,224 words.
   Each column marker maps the eight legal source bytes to eight output
-  triples. Words shared with navigation have fewer legal bytes. The
-  generator derives one compatibility mask per pattern in each of seven
+  triples. Words shared with navigation have fewer legal bytes. Four
+  printer orders fit their instruction frames. A lookup/order pair is
+  eligible when each navigation word outside the selector groups can
+  encode all its occupied bits independently. The generator derives one
+  compatibility mask per pattern in each of seven
   answer groups. It intersects the requested masks and decodes the first set
   bit into the lookup, printer order and polarity. Inverse encodings map
   requested answers directly to legal operands. The

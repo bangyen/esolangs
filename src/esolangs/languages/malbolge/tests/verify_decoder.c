@@ -265,7 +265,7 @@ static void load_inputs(void) {
 
 static Word before_marker[WORDS], before_payload[WORDS], marked_memory[WORDS];
 static unsigned char checkpoint[94][128][3];
-#define SETTINGS 1312
+#define SETTINGS 2272
 typedef struct {
   unsigned char order[3], flip, code[585];
 } Layout;
