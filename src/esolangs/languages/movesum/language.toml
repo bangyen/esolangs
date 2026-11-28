@@ -82,12 +82,14 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-expression = "7n + 72"
-exact = false
+# All ones maximize the written cell widths just before cell 3 clears.
+# The last row also reaches the final command and both no-op latches.
+expression = "5n+56+bl(4T+6n+2)+bl(2n-1)"
+exact = true
 arities = [1, 2, 3, 5]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
 qualitative = { growth = "linear", text = "4T + 6n + 4 commands, 32 characters a row" }
