@@ -21,14 +21,6 @@ Keep the registry-wide scaling regressions in `tests/proofs/deep/linearity.py`.
 An unresolved bound stays open; it does not authorize removing its regression
 check or weakening a contract.
 
-## Engineering
-
-- **Malbolge navigation, inexpressibility for an algebraic
-  signature:** the [bounded-read lower bound](limitations.md#searches)
-  excludes rules based on cycle data and bounded algebraic features. The open question is whether a term over the restricted algebraic
-  signature can compute the optimal first step. The classified invariant
-  relations give no separation. Reopen with a separating non-product or
-  non-uniform relation, or a term computing the step.
 ## Wiki shortlist
 
 - Six screened candidates advance to the next implementation pass. Each subset probe passed all 65,536 arity-four tables

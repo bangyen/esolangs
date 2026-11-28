@@ -135,6 +135,37 @@ backward walks. Continuation pages occupy gaps between readout blocks.
 The earlier scan-greedy router and its fixed-probe lower bounds are
 recorded in the history of this section.
 
+The historical 420-cell routing graph admits an algebraic optimal first
+step. Addresses and cell values are ten-trit words. Let `S` be word
+successor, `R` rotate right, and `C` be crazy.
+The term `T = (R ∘ S^19683)^10` increments each trit modulo three. With
+`z = C(C(x,C(T(x),x)),C(x,x))`, each trit of `z` is zero, so `S^k(z)`
+supplies word constants. The trit mask `I(x) = C(x,C(T²(x),T²(x)))`
+indicates a zero trit. Boolean masks use `¬a = C(a,z)` and
+`a ∧ b = I(C(a,T²(b)))`; OR follows by De Morgan. Applying `I` to
+`x`, `T²(x)`, and `T(x)` gives the three digit indicators.
+To assemble a trit from its disjoint 1 and 2 indicators `a,b`, use
+`C(¬a,T²(¬b))`. Thus Boolean masks select whole words digit by digit.
+Intersecting an indicator with a one-trit mask and OR-ing its rotations
+broadcasts a digit test. Word equality and lexicographic trit comparison
+then give the order and selection used below.
+
+From the effective start, the two successors of `p` are `S(p)` and
+`S(mem[p])`. An unknown word is encoded as 59,048, whose successor is
+zero. Replace a walk at the ceiling boundary or a jump outside 1–419
+with `p` itself. Every memory read is at the start or a composition of
+these guarded moves. With sentinel cost 420, set `D₀(p)` to zero at the
+target and 420 elsewhere. Set `Dₖ₊₁(p) = min(D₀(p), 1+Dₖ(walk(p)),
+1+Dₖ(jump(p)))`. Induction gives the cheapest cost for at most `k`
+moves. Removing cycles bounds a shortest route by 419 moves, so compare
+`D₄₁₈` at the two first successors, choosing walk on ties below 420.
+At the target no move is needed. Two sentinel costs mean unreachable.
+The fixed recurrence expands into a term using only derived reads and
+the operations above. It permits more reads than the historical
+fixed-probe bound. The
+[executable replay](../src/esolangs/languages/malbolge/tests/proof_navigation.py)
+checks all 10,000 four-cell graph and endpoint combinations.
+
 Short-layout hubs use ternary masks, and stubs use the gaps left by
 held reads. The hub and stub layout checks every occupied cell against the
 readout set.
