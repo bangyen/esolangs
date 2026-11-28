@@ -51,6 +51,21 @@ class _SpillCode:
         self.jump(39, 72)
         self.jump(72, 125)
 
+    def return_to_all_twos(self) -> None:
+        """Return through the low operands to D112, the all-twos operand."""
+        self.jump(106, 45)
+        self.jump(45, 112)
+
+    def return_to_readout(self) -> None:
+        """Return through the low operands to D157, the readout register."""
+        self.jump(52, 127)
+        self.jump(134, 157)
+
+    def return_to_rotation_seed(self) -> None:
+        """Return through the low operands to D126, the rotation seed."""
+        self.jump(65, 47)
+        self.jump(48, 126)
+
     def rotate_selector(self, count: int) -> None:
         for _ in range(count):
             self.jump(93, 113)
@@ -243,8 +258,7 @@ def _middle_entry(source: bytearray) -> None:
     code.short(50)
     code.apply("p", 48)
     code.short(57)
-    code.jump(52, 127)
-    code.jump(134, 157)
+    code.return_to_readout()
     code.apply("*", 170)
     code.apply("i", 180)
     code.write(source, 24814, 24907)
@@ -289,8 +303,7 @@ def _lower_exit(source: bytearray) -> None:
     code.reset()
     code.jump(125, 104)
     code.apply("p", 105)
-    code.jump(106, 45)
-    code.jump(45, 112)
+    code.return_to_all_twos()
     code.apply("p", 115)
     code.short(117)
     code.jump(45, 112)
@@ -322,8 +335,7 @@ def _lower_exit(source: bytearray) -> None:
     code.jump(134, 157)
     code.apply("p", 157)
     code.jump(159, 47)
-    code.jump(52, 127)
-    code.jump(134, 157)
+    code.return_to_readout()
     code.apply("p", 157)
     code.apply("*", 158)
     code.jump(159, 47)

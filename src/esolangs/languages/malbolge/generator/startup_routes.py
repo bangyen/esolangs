@@ -62,8 +62,7 @@ def _first_digit(source: bytearray) -> None:
 
     def return_mask(operand: int) -> None:
         code.jump(operand, 65)
-        code.jump(65, 47)
-        code.jump(48, 126)
+        code.return_to_rotation_seed()
 
     return_mask(130)
     code.apply("p", 128)
@@ -81,8 +80,7 @@ def _first_digit(source: bytearray) -> None:
     code.jump(72, 125)
     code.apply("p", 130)
     code.jump(131, 106)
-    code.jump(106, 45)
-    code.jump(45, 112)
+    code.return_to_all_twos()
     code.apply("*", 112)
     code.jump(114, 124)
     code.apply("p", 129)
@@ -97,14 +95,9 @@ def _first_digit(source: bytearray) -> None:
     code.mix(198, 202)
     code.apply("p", 203)
 
-    def return_staged_word() -> None:
-        code.jump(204, 73)
-        code.jump(74, 48)
-        code.jump(48, 126)
-
-    return_staged_word()
+    _return_staged_word(code)
     code.apply("p", 203)
-    return_staged_word()
+    _return_staged_word(code)
     code.apply("p", 149)
     code.jump(152, 90)
     code.jump(91, 84)
@@ -113,17 +106,15 @@ def _first_digit(source: bytearray) -> None:
     code.apply("p", 149)
     for _ in range(2):
         code.apply("p", 201)
-        return_staged_word()
+        _return_staged_word(code)
     code.apply("p", 133)
     code.jump(134, 64)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("p", 133)
     code.apply("p", 147)
     code.jump(148, 40)
     code.jump(40, 64)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("p", 147)
     code.apply("p", 148)
     code.jump(149, 29525)
@@ -144,16 +135,11 @@ def _through_reset_seed(code: _SpillCode) -> None:
     code.jump(94, 34)
 
 
-def _through_all_twos(code: _SpillCode) -> None:
-    code.jump(106, 45)
-    code.jump(45, 112)
-
-
 def _finish_first_group(source: bytearray) -> None:
     code = _SpillCode(61)
     code.jump(61, 100)
     code.apply("p", 102)
-    _through_all_twos(code)
+    code.return_to_all_twos()
     code.apply("*", 112)
     code.jump(113, 88)
     code.jump(92, 75)
@@ -209,7 +195,7 @@ def _fold_second_group(source: bytearray) -> None:
     code.jump(93, 113)
     code.jump(116, 102)
     code.apply("*", 102)
-    _through_all_twos(code)
+    code.return_to_all_twos()
     code.apply("*", 112)
     code.jump(113, 88)
     code.jump(90, 56)
@@ -263,6 +249,13 @@ def _fold_second_group(source: bytearray) -> None:
     code.write(source, 1110, 1233)
 
 
+def _rotate_input_mask(code: _SpillCode) -> None:
+    """Rotate D83 through the return from D62."""
+    code.jump(62, 98)
+    code.jump(98, 82)
+    code.apply("*", 83)
+
+
 def _fold_third_group(source: bytearray) -> None:
     code = _SpillCode(39)
     code.jump(42, 59)
@@ -287,9 +280,7 @@ def _fold_third_group(source: bytearray) -> None:
     code.jump(130, 29525)
     code.jump(29525, 60)
     code.apply("p", 60)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.apply("*", 83)
+    _rotate_input_mask(code)
     code.jump(85, 66)
     code.jump(67, 110)
     code.apply("*", 112)
@@ -298,9 +289,7 @@ def _fold_third_group(source: bytearray) -> None:
     code.jump(90, 56)
     code.jump(56, 78)
     code.jump(78, 62)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.apply("*", 83)
+    _rotate_input_mask(code)
     code.apply("/", 84)
     code.jump(85, 66)
     code.apply("p", 68)
@@ -312,9 +301,7 @@ def _fold_third_group(source: bytearray) -> None:
     code.apply("p", 88)
     code.jump(90, 56)
     code.apply("p", 60)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.apply("*", 83)
+    _rotate_input_mask(code)
     code.jump(84, 50)
     code.jump(52, 127)
     code.apply("*", 128)
@@ -341,9 +328,7 @@ def _fold_fourth_group(source: bytearray) -> None:
     code = _SpillCode(90)
     code.jump(90, 56)
     code.apply("p", 61)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.apply("*", 83)
+    _rotate_input_mask(code)
     code.apply("*", 88)
     code.jump(89, 51)
     code.apply("/", 51)
@@ -353,9 +338,7 @@ def _fold_fourth_group(source: bytearray) -> None:
     code.jump(130, 29525)
     code.jump(29525, 60)
     code.apply("p", 61)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.apply("*", 83)
+    _rotate_input_mask(code)
     code.jump(85, 66)
     code.jump(67, 110)
     code.apply("*", 112)
@@ -366,23 +349,19 @@ def _fold_fourth_group(source: bytearray) -> None:
     code.jump(140, 29525)
     code.jump(29525, 60)
     code.apply("p", 61)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("p", 127)
     code.jump(128, 29525)
     code.jump(29525, 60)
     code.apply("p", 61)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.apply("*", 83)
+    _rotate_input_mask(code)
     code.jump(84, 50)
     code.jump(52, 127)
     code.apply("*", 128)
     code.jump(130, 29525)
     code.jump(29525, 60)
     code.apply("p", 61)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("p", 137)
     code.jump(139, 112)
     code.jump(113, 88)
@@ -420,9 +399,7 @@ def _fold_fifth_group(source: bytearray) -> None:
     code.apply("*", 127)
     code.jump(128, 29525)
     code.jump(29525, 60)
-    code.jump(62, 98)
-    code.jump(98, 82)
-    code.apply("*", 83)
+    _rotate_input_mask(code)
     code.jump(86, 80)
     code.apply("*", 83)
     code.apply("/", 85)
@@ -457,8 +434,7 @@ def _read_suffix(source: bytearray) -> None:
     code.apply("p", 132)
     code.apply("*", 133)
     code.jump(134, 64)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("p", 126)
     code.jump(129, 0)
     code.jump(1, 86)
@@ -483,8 +459,7 @@ def _save_suffix_and_readout(source: bytearray) -> None:
     code.apply("p", 146)
     code.jump(147, 29525)
     code.jump(29525, 60)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("p", 132)
     code.jump(134, 64)
     code.jump(65, 47)
@@ -497,8 +472,7 @@ def _save_suffix_and_readout(source: bytearray) -> None:
     code.apply("p", 146)
     code.jump(147, 29525)
     code.jump(29525, 60)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("*", 126)
     code.apply("*", 127)
     code.jump(128, 29525)
@@ -526,6 +500,7 @@ def _save_suffix_and_readout(source: bytearray) -> None:
 
 
 def _seed_address_rotations(source: bytearray) -> None:
+    """Set the rotation seed before the paired rotations at C1959."""
     code = _SpillCode(151)
     code.jump(151, 43)
     code.jump(48, 126)
@@ -544,6 +519,7 @@ def _seed_address_rotations(source: bytearray) -> None:
 
 
 def _finish_address_rotations(source: bytearray) -> None:
+    """Continue at C1992 after the paired rotations."""
     code = _SpillCode(127)
     code.jump(131, 106)
     code.jump(106, 45)
@@ -553,8 +529,7 @@ def _finish_address_rotations(source: bytearray) -> None:
     code.apply("p", 146)
     code.jump(147, 29525)
     code.jump(29525, 60)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.jump(126, 163)
     code.apply("*", 165)
     code.apply("*", 180)
@@ -607,6 +582,7 @@ def _finish_address_rotations(source: bytearray) -> None:
 
 
 def _stage_address_residues(source: bytearray) -> None:
+    """Stage the next residue mask between the passes at C2177 and C2293."""
     code = _SpillCode(35)
     code.jump(35, 54)
     code.jump(55, 76)
@@ -647,6 +623,7 @@ def _stage_address_residues(source: bytearray) -> None:
 
 
 def _reload_residue_mask(source: bytearray) -> None:
+    """Reload the mask between the passes at C2293 and C2325."""
     code = _SpillCode(35)
     code.apply("p", 35)
     code.jump(36, 65)
@@ -665,6 +642,7 @@ def _prime_pointer(code: _SpillCode, cell: int, *returns: tuple[int, int]) -> No
 
 
 def _prime_hub_operands(source: bytearray) -> None:
+    """Prime the low pointer cells before the three hub fills."""
     code = _SpillCode(35)
     _prime_pointer(code, 35, (38, 35))
     code.jump(36, 65)
@@ -675,19 +653,19 @@ def _prime_hub_operands(source: bytearray) -> None:
     code.jump(110, 73)
     _prime_pointer(code, 73, (74, 48), (49, 109), (110, 73))
     code.jump(81, 55)
-    _prime_pointer(code, 56, (58, 90), (90, 56))
-    _prime_pointer(code, 57, (58, 90), (90, 56))
+    for cell in range(56, 58):
+        _prime_pointer(code, cell, (58, 90), (90, 56))
     code.jump(59, 118)
     code.jump(119, 37)
     _prime_pointer(code, 37, (38, 35))
     _prime_pointer(code, 40, (41, 36))
-    _prime_pointer(code, 42, (44, 108), (111, 42))
-    _prime_pointer(code, 43, (44, 108), (111, 42))
+    for cell in range(42, 44):
+        _prime_pointer(code, cell, (44, 108), (111, 42))
     code.jump(44, 108)
     code.jump(110, 73)
-    _prime_pointer(code, 74, (77, 74))
-    _prime_pointer(code, 75, (77, 74))
-    _prime_pointer(code, 76, (77, 74))
+    # D74 through D76 all return through D77.
+    for cell in range(74, 77):
+        _prime_pointer(code, cell, (77, 74))
     _prime_pointer(code, 77, (78, 62), (62, 98), (100, 77))
     _prime_pointer(code, 80, (81, 55), (55, 76))
     code.jump(82, 67)
@@ -696,9 +674,8 @@ def _prime_hub_operands(source: bytearray) -> None:
     _prime_pointer(code, 111, (114, 124), (125, 104), (107, 111))
     _prime_pointer(code, 116, (117, 120), (120, 115))
     _prime_pointer(code, 117, (120, 115))
-    _prime_pointer(code, 120, (123, 117))
-    _prime_pointer(code, 121, (123, 117))
-    _prime_pointer(code, 122, (123, 117))
+    for cell in range(120, 123):
+        _prime_pointer(code, cell, (123, 117))
     _prime_pointer(code, 123, (124, 114))
     _prime_pointer(code, 124, (125, 104), (105, 92), (93, 113), (114, 124))
     code.jump(125, 104)
@@ -707,11 +684,10 @@ def _prime_hub_operands(source: bytearray) -> None:
     _prime_pointer(code, 94, (95, 86), (87, 105), (105, 92))
     code.jump(95, 86)
     _prime_pointer(code, 87, (91, 84))
-    _prime_pointer(code, 89, (93, 113), (113, 88))
-    _prime_pointer(code, 90, (93, 113), (113, 88))
-    _prime_pointer(code, 91, (93, 113), (113, 88))
-    _prime_pointer(code, 96, (100, 77), (79, 95))
-    _prime_pointer(code, 97, (100, 77), (79, 95))
+    for cell in range(89, 92):
+        _prime_pointer(code, cell, (93, 113), (113, 88))
+    for cell in range(96, 98):
+        _prime_pointer(code, cell, (100, 77), (79, 95))
     code.jump(98, 82)
     _prime_pointer(code, 82, (83, 202), (206, 81))
     _prime_pointer(code, 84, (87, 29525), (29525, 60), (62, 98), (98, 82))
@@ -728,8 +704,8 @@ def _prime_hub_operands(source: bytearray) -> None:
     code.jump(29525, 60)
     _prime_pointer(code, 60, (63, 87), (87, 29525), (29525, 60))
     _prime_pointer(code, 62, (63, 87), (87, 29525), (29525, 60))
-    _prime_pointer(code, 63, (65, 47), (47, 29525), (29525, 60))
-    _prime_pointer(code, 64, (65, 47), (47, 29525), (29525, 60))
+    for cell in range(63, 65):
+        _prime_pointer(code, cell, (65, 47), (47, 29525), (29525, 60))
     _prime_pointer(code, 69, (70, 116), (116, 29525), (29525, 60))
     code.apply("p", 70)
     code.jump(71, 107)
@@ -769,8 +745,7 @@ def _prepare_short_hub(source: bytearray) -> None:
     code.apply("p", 55)
     code.jump(56, 29525)
     code.jump(29525, 60)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.jump(126, 163)
     code.mix(180, 184)
     code.apply("*", 185)
@@ -787,8 +762,7 @@ def _prepare_short_hub(source: bytearray) -> None:
     code.apply("*", 112)
     code.jump(114, 29525)
     code.jump(29525, 60)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.jump(126, 163)
     code.apply("p", 190)
     code.apply("p", 194)
@@ -816,6 +790,7 @@ def _prepare_short_hub(source: bytearray) -> None:
 
 
 def _prepare_one_hub(source: bytearray) -> None:
+    """Continue after the short-hub fill and prepare the fill at C3627."""
     code = _SpillCode(125)
     code.jump(127, 29525)
     code.jump(29526, 59)
@@ -852,8 +827,7 @@ def _prepare_one_hub(source: bytearray) -> None:
     code.apply("*", 186)
     code.jump(188, 34)
     code.jump(36, 65)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.jump(126, 163)
     code.mix(164, 182)
     code.apply("*", 185)
@@ -886,6 +860,7 @@ def _prepare_one_hub(source: bytearray) -> None:
 
 
 def _prepare_long_hub(source: bytearray) -> None:
+    """Continue after the one-hub fill and prepare the fill at C3949."""
     code = _SpillCode(128)
     code.jump(129, 0)
     code.jump(0, 34)
@@ -952,6 +927,7 @@ def _prepare_long_hub(source: bytearray) -> None:
 
 
 def _enter_dispatch(source: bytearray) -> None:
+    """Continue after the long-hub fill and emit the jump at C4242."""
     code = _SpillCode(124)
     code.apply("*", 136)
     code.apply("*", 157)
@@ -974,11 +950,10 @@ def _enter_dispatch(source: bytearray) -> None:
     code.jump(129, 0)
     code.jump(3, 60)
     code.apply("p", 62)
-    code.jump(65, 47)
-    code.jump(48, 126)
+    code.return_to_rotation_seed()
     code.apply("*", 128)
     code.jump(131, 106)
-    _through_all_twos(code)
+    code.return_to_all_twos()
     code.apply("p", 116)
     code.apply("*", 118)
     code.jump(119, 37)
