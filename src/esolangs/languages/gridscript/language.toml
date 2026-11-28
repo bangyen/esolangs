@@ -46,18 +46,24 @@ version = 2
 construction = "esolangs.languages.gridscript.generator:gridscript_request"
 
 [resource_evidence.execution]
-# Two moves; SPLIT, a read, the index's 3 commands an input, REMOVE and
-# PRINT (3n + 3); a low input adds at most one command and the remainder 4.
-# Parity uses at most 2n+7 commands, including both moves.
+# Two tracer moves surround the commands. A packed lookup with m
+# essential inputs pays 4m+7 when all inputs index one chunk.
+# Otherwise its first high input and REMOVE cost two, later high
+# inputs cost three each and the four low inputs cost fifteen.
+# The tree uses T pushes and six commands per internal node.
+# Ignored inputs replace a selector by one read, and parity takes
+# at most 2n+7. AND attains the full count from n=2, NOT at n=1.
 cases = [
-    { through = 31, expression = "3n + 11" },
-    { expression = "7T+3n+11" },
+    { through = 1, expression = "9" },
+    { through = 4, expression = "4n+7" },
+    { through = 35, expression = "3n+10" },
+    { expression = "7T+n-2" },
 ]
-exact = false
-arities = [1, 2, 3, 6]
+exact = true
+arities = [1, 2, 3, 4, 5, 6]
 first = 1
 unit = "commands"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} including both tracer moves" }
 
 [resource_evidence.workspace]
 # The buffer, 8 bits a one-bit chunk at worst; pending and held node sets
