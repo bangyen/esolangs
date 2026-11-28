@@ -65,7 +65,7 @@
   "movesum": "linear: 4T + 6n + 4 commands, 32 characters a row",
   "nandypants": "linear: \u0398(T / log T) blocks of O(log T) digits",
   "nor_machine": "linear: 6T + 8r + O(n^2) characters for r runs of 1s",
-  "nq": "linear: at most 10T - 6 characters",
+  "nq": "linear: worst max(9T-6,10T-14) characters",
   "nybbleist": "linear: worst floor(3T/4)+9n+4n*ceil(bl(2n)/4)+13 characters, n=2..7; at most otherwise; packed nybbles and selectors",
   "object_disoriented": "linear: worst min(24T+56,H) (n=1), H (n=2..8), min(24T+56,H) (n\u22659) characters, exact n=2..8",
   "obrainfuck": "linear: worst 4T + 52n + 47 characters",

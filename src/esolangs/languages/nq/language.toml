@@ -65,6 +65,7 @@ construction = "esolangs.languages.nq.generator:nq_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.nq.generator:nq_request"
+witnesses = "esolangs.languages.nq.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "3n + 4"
@@ -83,12 +84,15 @@ unit = "bits"
 description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: queued trits, flag, cursor, lap and input progress" }
 
 [resource_evidence.scaling]
-expression = "10T - 6"
-exact = false
+# A full tree forces parity by induction: the two full children must
+# be opposite parity. An ordinary tree loses at least eight characters
+# at its first fold. Flipping one parity bit folds exactly its final pair.
+expression = "max(9T-6,10T-14)"
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1

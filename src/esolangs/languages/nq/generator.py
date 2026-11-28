@@ -11,7 +11,7 @@ using guards over complete enqueue operands; other guards stay grouped.
 Both guard-binding readings agree.
 
 Size:
-    At most 10T-6 characters; parity 9T-6. n=10 random 1847: 7,154 chars.
+    Worst max(9T-6, 10T-14) characters. n=10 random 1847: 7,154 chars.
     Root constants: n + 4 chars and n + 3 commands.
 """
 
