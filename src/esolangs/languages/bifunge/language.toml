@@ -58,15 +58,27 @@ unit = "steps"
 description = { growth = "sqrt T", claim = "worst", template = "{claim} {formula}; the same distance to each leaf" }
 
 [resource_evidence.workspace]
-# Coordinates and cursor, n+7 stack bits, two partial bytes, heading and halt flag.
-# With even n, dropping one essential input keeps the same y radius
-# and lengthens the reader by one. The next omission reduces the radius.
-expression = "n+bl(2*2^⌊n/2⌋-1)+bl(15n+18*2^⌈n/2⌉)+bl(n)+40"
-exact = false
-arities = [1, 2, 3, 4]
+# A reader with m essential inputs has prefix P=16n-m and
+# Y=P+36*2^floor((m-1)/2). Its highest row is Y-1; left/up headings
+# cost one extra bit but reach at most Y-18, before the final split.
+# From m=4 both peaks keep the maximal x width floor(m/2)+1:
+# go down/right, or take the final horizontal left after a right.
+# The full reader reaches n+7 stack bits; ignored inputs can't
+# exceed it, even with a retained leading zero. The two buffers,
+# halt flag and byte cursor add 9+8+1+bl(n) bits.
+# At fixed m parity, adding two inputs raises both coordinate bounds.
+# Dropping one from even n can gain a y bit but loses an x bit;
+# from odd n it only lowers y. The constant row is smaller from
+# n=2. For q=floor((n-1)/2), the full reader has
+# 32*2^q <= Y-18 < 64*2^q and Y-1 < 128*2^q. The negative
+# heading reaches q+7 including its extra bit. Parity attains
+# the bound; the small cases n<=3 were exhausted.
+expression = "2n+34+bl(n)"
+exact = true
+arities = [1, 2, 3, 4, 6, 7, 8]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula}" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}; coordinate, heading, stack and byte buffers" }
 
 [resource_evidence.scaling]
 # Each command occupies four text cells. Newlines do not count toward grid area.
