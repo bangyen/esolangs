@@ -90,14 +90,15 @@ cases = [
     { through = 6, expression = "17n+9" },
     { through = 8, expression = "17n+8" },
     { through = 11, expression = "17n+16" },
-    { through = 14, expression = "17n+15" },
+    { through = 15, expression = "17n+15" },
+    { through = 19, expression = "17n+23" },
     { expression = "16n+8+8digits(residuals_without_constants(n)+1)+bl(3residuals_without_constants(n)+1)" },
 ]
-exact = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+exact = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 arities = [1, 2, 3, 4, 5, 6, 7]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, exact through n=14" }
+description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}, exact n≤19" }
 
 [resource_evidence.scaling]
 # At most ten label occurrences per node, one extra character on each
