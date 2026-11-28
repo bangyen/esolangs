@@ -78,27 +78,38 @@ unit = "steps"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} steps; the all-zero row of conjunction reaches it" }
 
 [resource_evidence.workspace]
-# At most T/8 four-bit deque elements, two nybble registers and at
-# most two bits in the active half-byte buffer. The parsed code has
-# 2n+2P+2m+5 instructions for m>=3 and 2n+11 for m=2.
-expression = "T/2+10+bl(T/2+4n+5)+bl(n)"
-exact = false
-arities = [1, 2, 3, 4]
+# For m>=3 essential bits, the first branch loads 2^(m-3) deque entries.
+# All parsed instructions total 2n+2^(m-1)+2m+5, including untaken arms.
+# NAND attains four bits per entry and both registers at width four
+# once a trim leaves a nybble in X and the survivor is popped into Y.
+# Either half-byte buffer is at most two bits. Small arities are exhaustive.
+cases = [
+    { through = 1, expression = "9" },
+    { through = 2, expression = "14" },
+    { through = 3, expression = "19" },
+    { expression = "T/2+10+bl(T/2+4n+5)+bl(n)" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 8]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} bits; packed deque, registers and cursors" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; packed deque, registers and cursors" }
 
 [resource_evidence.scaling]
-# Let d bound the hex label width. For m>=3 the deque payload costs 3P-2,
-# the m-2 selectors cost at most 5+4d each, and the final pop, shifts
-# and output cost at most 25+8d. With m=2, the direct load adds one char
-# over the pop and replaces the deque payload.
-expression = "floor(3T/4)+9n+4n*ceil(bl(2n)/4)+13"
-exact = [2, 3, 4, 5, 6, 7]
+# Each early selector uses four labels of width d(i), the hex width of
+# 2i. The last two use three each, with two more labels of width d(n).
+# Adding an essential input grows the payload and can only increase
+# the final two selector indices. NAND attains the full-arity count.
+# For q=d(n-1), sum(d(i), i<n)=nq-(16^q-16)/30 by the width thresholds.
+cases = [
+    { through = 1, expression = "14" },
+    { expression = "3T/4+9n+13+(4n-1)ceil(bl(2n-2)/4)-2(16^ceil(bl(2n-2)/4)-16)/15-max(1,ceil(bl(2n-4)/4))+2ceil(bl(2n)/4)" },
+]
+exact = true
 arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "worst", template = "{claim} {formula} characters, n=2..7; at most otherwise; packed nybbles and selectors" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; exact hex widths for packed selectors" }
 
 [semantic_evidence]
 version = 1

@@ -74,13 +74,19 @@ unit = "characters"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} for the largest emitted tree" }
 
 [resource_evidence.workspace]
-# The parity object is just a root, the input and its end marker.
-expression = "16T+16n+9"
-exact = false
+# Every rewrite shortens the object, and the halt flag changes.
+# The largest source witnesses also maximize the initial object length:
+# 5, 11, or 2T+2n+1 characters, respectively.
+cases = [
+    { through = 1, expression = "41" },
+    { through = 2, expression = "89" },
+    { expression = "16T+16n+9" },
+]
+exact = true
 arities = [1, 2, 3, 4]
 first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} bits; object string and halt flag at step boundaries" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; initial object and halt flag" }
 
 [audits]
 trick_prototype = 2026-11-27

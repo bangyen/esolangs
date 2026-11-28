@@ -89,15 +89,26 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-# At most T - 1 written table cells and n + 1 indexing cells. Each has
-# an x of at most n bits, a 1-bit row and at most a 2-bit value. The rest
-# covers the pointers, heading and cursor.
-expression = "(n + 3)T + 2n^2 + 8n + 64"
-exact = false
-arities = [1, 2, 3, 6]
+# Table cells write one bit each, with coordinates 0..T-1. Removing
+# one minimum-width cell leaves (n+1)T-1 bits in row zero.
+# On row one, the all-ones input walks widths n,n-1,...,1,1.
+# Otherwise the first zero fixes the width of all later addresses.
+# A leading zero then all ones maximizes this case: n cells of n+2
+# bits, at least the all-ones total for n>=3. Tables with at most
+# T/2 lookup entries save more in row zero than row one can gain.
+# The same leading-zero run attains pointer peaks n+3, 2 and n+1,
+# since it takes the rightmost detour. Small arities are exhaustive.
+cases = [
+    { through = 1, expression = "19" },
+    { through = 2, expression = "33" },
+    { through = 3, expression = "62" },
+    { expression = "(n+1)T+n²+4n+5+bl(2n-1)" },
+]
+exact = true
+arities = [1, 2, 3, 4, 6]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula} {unit}" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}; table and index cells" }
 
 [resource_evidence.scaling]
 # Three rows by the longer of row 0, T_k + 1 + ones <= 2T, and row 1,

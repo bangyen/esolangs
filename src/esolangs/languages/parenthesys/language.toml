@@ -86,12 +86,25 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit} past n = {previous}: grouped reads, lookup, bit test" }
 
 [resource_evidence.workspace]
-expression = "T + 8⌊(n-1)/3⌋ + 113 + bl(n) + bl(6n+8)"
-exact = false
-arities = [4, 5, 7, 8]
-first = 4
+# The peak just before ind holds the packed table, the column index,
+# the power (up to 128) and five builtin names. The eight flags and
+# fixed text cost 112 bits. The grouped index has g pending pairs
+# of one-letter calls; before the table it uses at most
+# 163+18g+8digits(T/8-1) bits, below the peak from n=6. The
+# one- and two-bit indices are shorter directly. After ind, the
+# remaining arithmetic and literals fit in the space it frees.
+# The all-ones input attains the peak. Arity one to three is exhaustive.
+cases = [
+    { through = 1, expression = "65" },
+    { through = 2, expression = "82" },
+    { through = 3, expression = "115" },
+    { expression = "T+112+8digits(T/8-1)+bl(2n)+bl(n+22+9floor((n-4)/3)+4min(1,n-4-3floor((n-4)/3)))" },
+]
+exact = true
+arities = [1, 2, 3, 4, 5, 7, 8]
+first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit} past n = {previous}: the final call's stack" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; stack at the packed lookup" }
 
 [resource_evidence.scaling]
 expression = "⌊T/8⌋+n+51+17⌊(n-4)/3⌋+6min(1,n-4-3⌊(n-4)/3⌋)"

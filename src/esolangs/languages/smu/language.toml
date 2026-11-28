@@ -96,14 +96,25 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}, eight runs per input byte" }
 
 [resource_evidence.workspace]
-# The terminal empty-name store exceeds the root variable peak at n=1 for constants.
-expression = "C*(2688n-1158+8max(0,2-n)+bl(84n+13))+(1-C)*(24(93T-80)-1214+bl(93T-80))+bl(n)"
-source_terms = { names = ["C"], provider = "esolangs.languages.smu.proof_formulas:workspace_terms" }
-exact = false
-arities = [2, 4]
-first = 2
+# A final split expands to 97 chars; other splits add 80 to their
+# two children. Pads add 84 to one. Thus E=177T/2-80 is the longest
+# expanded code, attained by parity. For n>=2 each root child has
+# length at most H=(E-80)/2. The stack peaks at two child literals
+# and two flag/name chars. One child plus seven 7-char skips is
+# smaller. The + and | bindings retain at most two H-char values;
+# their names and the skip binding add five chars. The final
+# empty-name write follows replacement of both by short leaf values.
+# Parity attains E, 2H+2 and 2H+5 chars, plus bl(E), bl(n), two
+# flags and eight input-buffer bits. One input is exhaustive.
+cases = [
+    { through = 1, expression = "1490" },
+    { expression = "24(177T/2-80)-1214+bl(177T/2-80)+bl(n)" },
+]
+exact = true
+arities = [1, 2, 3, 4, 6]
+first = 1
 unit = "bits"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}. C marks direct constants" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}; expanded code, stack and bindings" }
 
 [resource_evidence.scaling]
 # The raw tree costs at most 6T-5; the final closes add at most T/2.

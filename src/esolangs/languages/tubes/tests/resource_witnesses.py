@@ -1,6 +1,7 @@
-"""Tubes witnesses for the exact grid and command bounds."""
+"""Tubes witnesses for the exact resource bounds."""
 
 
 def resource_tables(n: int) -> tuple[str, ...]:
-    """A single zero at row 1 forces positional indexing and a dense row."""
-    return ("10" + "1" * ((1 << n) - 2),)
+    """Maximize grid width and omit a minimum-width memory address."""
+    ones = "1" * ((1 << n) - 2)
+    return ("10" + ones, ones + "01")
