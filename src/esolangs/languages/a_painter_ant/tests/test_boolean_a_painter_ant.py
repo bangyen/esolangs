@@ -2,6 +2,7 @@
 reads."""
 
 from itertools import product
+from math import log2
 from unittest.mock import patch
 
 import pytest
@@ -16,6 +17,7 @@ from esolangs.languages.a_painter_ant.interpreter import run as run_a_painter_an
 from esolangs.runtime.io import ScriptedIO
 from scripts.benchmark import WrittenState
 from scripts.docs.evidence import construction_boundaries
+from tests.proofs._locality import worst_commands
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import assert_saved_rows
 from tests.support.witness_tables import parity as _parity
@@ -271,3 +273,10 @@ def _check_near_unanimity() -> None:
                     )
                     assert io.reads == 0
                     assert io.input_char() == ord("Q")
+
+
+@pytest.mark.parametrize("n", [4, 8])
+def test_worst_sampled_table_meets_the_locality_floor(n: int) -> None:
+    """Some table needs it: one of ten letters a command."""
+    t = 1 << n
+    assert worst_commands("A Painter Ant", n) >= t / log2(10)

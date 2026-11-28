@@ -722,9 +722,22 @@ Each language's own tests check its generator against its floor.
   `K` commands reach `(K+1)(K+2)/2` cells, so `K >= sqrt(2T/3) - 2` with eight
   symbols and `K >= sqrt(T/2) - 2` with sixteen.
 
-Their ledger bounds match these up to a constant factor. The bound does not
-cover a far jump (matched brackets, goto, calls), a command that reads an
-unbounded token, or several start points (thisthat).
+- A Painter Ant runs its instructions cyclically, one of ten letters a
+  command: `K >= T/log2(10)`.
+- Cyclic tag halts only on an empty queue, so every bit a run appends is
+  deleted within it. A `K`-command run appends only productions `0..K-1` of
+  length at most `K`, and its queue holds at most `K` bits: `(K+1)**2 >= T`.
+
+Their ledger bounds match these up to a constant factor, except cyclic tag's
+`T+n+2`, open against `sqrt T`. Clockwise, Tubes, Streetcode and ArrowQueue
+move one cell a command from one start, a ball of `2K(K+1)+1` cells of at
+most `2**21` symbols: `K >= sqrt(T/42) - 1`. Back's beam wraps and `+` moves
+two cells, halving that. These floors are `sqrt T`; their generators are
+linear. The bound does not cover a far jump (matched brackets, goto, calls),
+a command that reads an unbounded token, data the source seeds without a
+command (Movesum, Taglate), or several start points (thisthat). Rewriting
+(Thue, ///, Sonata) reads a rule anywhere in one step and needs another
+argument.
 
 ## Scaling status
 

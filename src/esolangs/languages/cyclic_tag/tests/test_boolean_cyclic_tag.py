@@ -1,11 +1,14 @@
 """Cyclic tag constant roots consume the input queue without indexed productions."""
 
+from math import sqrt
+
 import pytest
 
 import esolangs
 from esolangs.languages.cyclic_tag.interpreter import _Machine
 from esolangs.runtime.io import ScriptedIO
 from scripts.docs.evidence import construction_boundaries
+from tests.proofs._locality import worst_commands
 from tests.support.evaluation import _evaluate
 from tests.support.generator_support import assert_saved_rows, constant_artifacts
 
@@ -107,3 +110,10 @@ def test_minority_marker_keeps_answer_after_padding(monkeypatch) -> None:
         mutant = esolangs.generate("Cyclic tag", "0011")
         with pytest.raises(AssertionError):
             assert _evaluate("Cyclic tag", mutant, inputs=2) == "0011"
+
+
+@pytest.mark.parametrize("n", [4, 8])
+def test_worst_sampled_table_meets_the_locality_floor(n: int) -> None:
+    """Some table needs it: its run appends only short early productions."""
+    t = 1 << n
+    assert worst_commands("Cyclic tag", n) >= sqrt(t) - 1
