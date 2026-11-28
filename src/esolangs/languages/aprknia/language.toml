@@ -64,6 +64,7 @@ construction = "esolangs.languages.aprknia.generator:aprknia_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.aprknia.generator:aprknia_request"
+witnesses = "esolangs.languages.aprknia.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 expression = "18n + 5"
@@ -74,20 +75,30 @@ unit = "commands"
 description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.workspace]
-expression = "34n + bl(L) + bl(n) + 13"
-exact = false
+# A completed one arm retains 34 bits and peaks at 35 above its child.
+# Parity reaches that peak with the inverted final pair.
+cases = [
+    { through = 1, expression = "39" },
+    { expression = "34n-6+bl(81T/4-19)+bl(n)" },
+]
+exact = true
 arities = [1, 2, 3, 5, 6]
 first = 1
 unit = "bits"
-description = { growth = "poly n", claim = "at most", template = "{claim} {formula} {unit}: quotient guards retain two extra bits per completed one arm" }
+description = { growth = "poly n", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [resource_evidence.scaling]
-expression = "39T"
-exact = false
+# Opposite bottom pairs maximize height two at 62 chars. Higher
+# branches add 19; a zero-child reset requires a smaller child.
+cases = [
+    { through = 1, expression = "23" },
+    { expression = "81T/4-19" },
+]
+exact = true
 arities = [1, 2, 3, 6]
 first = 1
 unit = "characters"
-description = { growth = "linear", claim = "at most", template = "{claim} {formula} {unit}: one at-most22-command node per branch" }
+description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit}" }
 
 [semantic_evidence]
 version = 1

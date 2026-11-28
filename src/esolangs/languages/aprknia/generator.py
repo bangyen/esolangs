@@ -8,7 +8,7 @@ Leaves print 0 or 1 as an integer with selector 2.
 Lower stack garbage is retained: each piece supplies its own operands.
 
 Size:
-    O(T) in the tree's nodes; n=4 parity: 305 chars.
+    Worst 23 chars at n=1, 81T/4-19 otherwise; n=4 parity: 305 chars.
     Root constants: 4n + 5/6 chars and commands.
 
 Decisions:

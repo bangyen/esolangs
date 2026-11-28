@@ -3,7 +3,7 @@
   "addsubjump": "linear: worst min(P,R) characters. P packed, R shared tree, exact n=6..9",
   "algebraic_programming_language": "linear: at most 10T+4n+6 (n=2..14), 21T/2+4n+6 (n\u226515) characters",
   "alight": "linear: worst T+16n+38+digits(48(T-1)) characters: one literal",
-  "aprknia": "linear: at most 39T characters: one at-most22-command node per branch",
+  "aprknia": "linear: worst 23 (n=1), 81T/4-19 (n\u22652) characters characters",
   "arrowqueue": "linear: worst min(6(2T+6n+7),A,B,C,D) cells: cascade and four folds",
   "artppeice": "linear: worst 4T + 59n + 207\u2308n/4\u2309 + 179 characters, n=7..10; at most below",
   "ascenic": "T**2, lower bound: at most 2T\u00b2+(16n+44+4(n-2\u230an/2\u230b))T+floor((48n\u00b2+(203+24(n-2\u230an/2\u230b))n-98+39(n-2\u230an/2\u230b))/2)+8T+34n+80 characters from n = 2: generated \u0398(T**2) on the alternating table with its first pair flipped ([summary](#ascenic-bound))",
