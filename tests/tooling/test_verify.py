@@ -1,6 +1,7 @@
 """The local gate may skip work, but only work CI is known to redo."""
 
 import errno
+import gc
 import io
 import os
 import re
@@ -721,9 +722,16 @@ def test_closed_stdout_does_not_skip_heartbeats_or_the_leaders_deadline(
     monkeypatch.setattr(verify, "STEP_DEADLINES", {"pytest": 0.2})
     monkeypatch.setattr(verify, "HEARTBEAT_SECONDS", 0.05)
     parent = "import os, time; os.close(1); os.close(2); time.sleep(1)"
-    failures, _, _ = verify._run_steps(
-        [("pytest", [sys.executable, "-c", parent], dict(os.environ))], stream=False
-    )
+    # A full collection of a CI worker's heap stalls ~0.2s, the whole
+    # deadline: run 46103841923 saw no heartbeat.  Freezing exempts it.
+    gc.freeze()
+    try:
+        failures, _, _ = verify._run_steps(
+            [("pytest", [sys.executable, "-c", parent], dict(os.environ))],
+            stream=False,
+        )
+    finally:
+        gc.unfreeze()
     assert len(failures) == 1
     output = capsys.readouterr().out
     assert output.count("still running") >= 2
