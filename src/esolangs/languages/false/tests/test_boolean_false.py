@@ -32,9 +32,7 @@ def test_false_tests_the_low_bit_and_splits_every_node() -> None:
     assert _shared("0001", 2) == "^1&$[^1&$[1.]?0=[0.]?]?0=[^%0.]?"
     total = sum(len(false_plain(f"{value:08b}", 3)) for value in range(256))
     assert total == 18528
-    # The shipped build prices ``+b&`` (complementary halves) at five chars; a
-    # mispriced option grew 126 of 403 sampled tables with no other test red.
-    assert sum(len(false(f"{value:08b}")) for value in range(256)) == 7523
+    assert sum(len(false(f"{value:08b}")) for value in range(256)) == 7686
 
 
 @pytest.mark.medium
@@ -147,36 +145,34 @@ def false_plain(truth_table: str, n: int) -> str:
 
 
 def _check_lookup_and_cached_formula() -> None:
-    from esolangs.languages.false import generator
     from esolangs.languages.false.descriptor import LANGUAGE
     from esolangs.languages.false.generator import (
         _balance,
         _expression,
-        _ExpressionSearch,
         _lookup,
-        _splits,
+        _OrderedExpression,
     )
 
     language = esolangs.Language("FALSE")
-    observed = {}
+    observed = set()
+    parts = _OrderedExpression._parts
 
-    def splits(table, positions):
-        choices = _splits(table, positions)
-        observed.setdefault(len(table), set()).add(len(choices))
-        return choices
+    def ordered_parts(formula, table, positions):
+        observed.add(len(table))
+        result = parts(formula, table, positions)
+        assert all(isinstance(part, str) or part[1] == positions[1:] for part in result)
+        return result
 
-    for witness in construction_boundaries(language.name)["split_search_row_cutoff"]:
-        n, table = witness.arity, witness.table()
+    for witness in construction_boundaries(language.name)["ordered_formula"]:
+        table = witness.table()
         observed.clear()
-        with patch.object(generator, "_splits", side_effect=splits):
+        with patch.object(_OrderedExpression, "_parts", ordered_parts):
             artifact = language.generate(table)
-        assert observed[len(table)] == {n if n == 9 else 1}
+        assert len(table) in observed
         assert_saved_rows(
             language, artifact, table, (0, 1, len(table) // 2, len(table) - 1)
         )
 
-    assert tuple(_splits("0" * 512, tuple(range(9)))) == tuple(range(9))
-    assert _splits("0" * 1024, tuple(range(10))) == (0,)
     cases = [
         (5, table) for table in ("1" + "0" * 31, "0" * 31 + "1", "1" * 32, "01" * 16)
     ]
@@ -208,14 +204,14 @@ def _check_lookup_and_cached_formula() -> None:
     table = "".join(str(int(row.bit_count() >= 3)) for row in range(128))
     program = _expression(table, 7, list(range(7)))
     assert ";!" in program
-    assert ";!" not in _ExpressionSearch(dict(enumerate("abcdefg"))).text(
+    assert ";!" not in _OrderedExpression(dict(enumerate("abcdefg"))).text(
         table, tuple(range(7)), budget=0
     )
-    uncached = _ExpressionSearch(dict(enumerate("abcdefghijklmnopqrstuvwxyz"))).text(
+    uncached = _OrderedExpression(dict(enumerate("abcdefghijklmnopqrstuvwxyz"))).text(
         table, tuple(range(7))
     )
     assert ";!" not in uncached
-    uncached = "".join(f"^1&{letter}:" for letter in "abcdefg") + uncached + "1&."
+    uncached = "".join(f"^1&{letter}:" for letter in "abcdefg") + uncached + "."
     for source in (program, uncached):
         for row, expected in enumerate(table):
             io = ScriptedIO(f"{row:07b}")

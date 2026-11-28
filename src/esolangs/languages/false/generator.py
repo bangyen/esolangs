@@ -6,13 +6,13 @@ bits and draining ignored ones. Formulas combine their bits with Boolean
 operators or ``A x;[%B]?``; lookup selects a 32-bit chunk and multiplies the
 wanted bit into its sign position. Both print a normalized answer digit.
 
-Exact chosen formula residuals may share lambdas. Their keys retain ordered
-input positions, and a command budget preserves the execution cap. Existing
+Formulas split in input order. Shared residuals retain ordered input
+positions, and a command budget preserves the execution cap. Existing
 diagram/formula routes protect structured classes, including linear parity;
 the alphabet bounds both stored-input routes. See the 2026-11-02 ablations.
 
 Size:
-    O(n) for parity, O(T) for random tables; n=10 parity: 100 chars,
+    O(n) for parity, O(T) for random tables; n=10 parity: 98 chars,
     n=10 random 1847: 604 chars.
 """
 
@@ -21,7 +21,6 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from string import ascii_lowercase
-from sys import maxsize
 from typing import NamedTuple
 
 from esolangs.generation.decision import decision_layers
@@ -227,35 +226,8 @@ def _root_text(
     return "".join(parts)
 
 
-def _cofactor(table: str, j: int) -> tuple[str, str]:
-    """Split ``table`` on its j-th remaining input (0 = MSB)."""
-    rows = len(table)
-    vars_left = rows.bit_length() - 1
-    stride = 1 << (vars_left - 1 - j)
-    zero = "".join(table[i : i + stride] for i in range(0, rows, 2 * stride))
-    one = "".join(
-        table[i + stride : i + 2 * stride] for i in range(0, rows, 2 * stride)
-    )
-    return zero, one
-
-
 def _complement(table: str) -> str:
     return table.translate(str.maketrans("01", "10"))
-
-
-def _splits(table: str, positions: tuple[int, ...]) -> range | tuple[int, ...]:
-    """Split variables worth trying at this node.
-
-    Trying every split variable is exponential in the number of
-    distinct (subtable, split-set) states on random tables; it pays
-    only where subtables are small or structured.  Above 512 rows
-    split the first remaining variable (random tables are
-    split-order-insensitive in expectation).
-    """
-    # Every state has 2**len(positions) rows.
-    if len(table) <= 512:
-        return range(len(positions))
-    return (0,)
 
 
 def _expression(
@@ -270,39 +242,31 @@ def _expression(
     Each essential input is read, bit-extracted and stored
     (``^1&x:``, 5 chars); each remaining input is drained (``^%``,
     2 chars).  The body is a Boolean formula over the stored bits,
-    built by memoized Shannon decomposition over the table projected
-    onto its essential inputs: at each node the cheapest combine
-    wins -- a dropped input when the halves agree, the xor collapse
-    (``+b&``) for complementary halves, a one-char ``&`` or ``|``
-    step when a cofactor is constant, else ``A x;[%B]?`` (six characters
-    over the two halves).  Variable letters are
+    split in physical order over the table projected onto its essential
+    inputs. Equal halves drop the input. A constant half gives a literal,
+    AND or OR, and complementary nonconstant halves use xor (``+b&``).
+    Other pairs take ``A x;[%B]?``. Variable letters are
     the inputs' own positions.  In the combines a bare letter is a
     variable reference, whose integer is its index -- ``a`` is the
     constant 0 and ``b`` the constant 1 -- so ``+b&`` folds a
     fetch into a sum's parity.
 
-    A formula may skip a conditional half, where the diagram executes one
-    path; the race in :func:`false` keeps whichever text is shorter.
-    The body's value can be -1 where the answer is 1 (a combine's
-    true value), so ``1&`` masks it to the bit before ``.`` prints:
-    +2 chars on every expression-form program.
-
-    ``flip_out`` builds the complement and ends the body with ``~``, whose
-    low bit is the complement's (``~0`` = -1, ``~1`` = -2, ``~-1`` = 0).
+    Each combine leaves a bit because reads store bits, and the conditional
+    selects between two bit-valued bodies. ``flip_out`` builds the complement
+    and normalizes the low bit after applying ``~``.
     """
     sub = _complement(projected) if flip_out else projected
     letters = {pos: chr(ord("a") + pos) for pos in ess}
 
-    search = _ExpressionSearch(letters)
+    formula = _OrderedExpression(letters)
     prologue = "".join(f"^1&{letters[i]}:" if i in letters else "^%" for i in range(n))
+    suffix = "~1&." if flip_out else "."
     budget = (
-        (9 * (1 << n)) // 2 + 5 * n - 7 - len(prologue) - 3 - flip_out
+        (9 * (1 << n)) // 2 + 5 * n - 7 - len(prologue) - len(suffix)
         if n >= 3
         else None
     )
-    return (
-        prologue + search.text(sub, tuple(ess), budget=budget) + "~" * flip_out + "1&."
-    )
+    return prologue + formula.text(sub, tuple(ess), budget=budget) + suffix
 
 
 _ExpressionKey = tuple[str, tuple[int, ...]]
@@ -326,81 +290,37 @@ def _formula_commands(
     return costs[root] + 3 * len(names)
 
 
-class _ExpressionSearch:
-    """One projected table's memoized Shannon decomposition.
-
-    ``size`` prices each (subtable, remaining inputs) state once and
-    ``text`` materialises the cheapest body over the same states.
-    The caches live on the instance: one search serves one table
-    and is dropped with it.
-    """
+class _OrderedExpression:
+    """One projected table's input-order Shannon decomposition."""
 
     def __init__(self, letters: dict[int, str]) -> None:
         self._letters = letters
-        self._sizes: dict[tuple[str, tuple[int, ...]], int] = {}
-
-    def size(self, table: str, positions: tuple[int, ...]) -> int:
-        """The cheapest body length for ``table`` over ``positions``."""
-        key = (table, positions)
-        if key not in self._sizes:
-            self._sizes[key] = self._price(table, positions)
-        return self._sizes[key]
-
-    def _price(self, table: str, positions: tuple[int, ...]) -> int:
-        if table == "0" * len(table) or table == "1" * len(table):
-            return 1
-        if len(positions) == 1:
-            return 2 if table == "01" else 4  # fetch; or 1<fetch>-
-        best = maxsize
-        for j in _splits(table, positions):
-            rest = positions[:j] + positions[j + 1 :]
-            a, b = _cofactor(table, j)
-            if a == b:
-                best = min(best, self.size(a, rest))
-                continue
-            if b == _complement(a):
-                best = min(best, self.size(a, rest) + 5)
-            if a == "0" * len(a):
-                best = min(best, self.size(b, rest) + 3)
-            if b == "1" * len(b):
-                best = min(best, self.size(a, rest) + 3)
-            best = min(best, self.size(a, rest) + self.size(b, rest) + 6)
-        return best
 
     def _parts(
         self, table: str, positions: tuple[int, ...]
     ) -> tuple[str | _ExpressionKey, ...]:
-        """The first minimum-priced combine, without materializing alternatives."""
-        parts: tuple[str | _ExpressionKey, ...]
-        if len(set(table)) == 1:
-            parts = (table[0],)
-        elif len(positions) == 1:
-            fetch = self._letters[positions[0]] + ";"
-            parts = (fetch if table == "01" else "1" + fetch + "-",)
-        else:
-            options: list[tuple[int, tuple[str | _ExpressionKey, ...]]] = []
-            for j in _splits(table, positions):
-                rest = positions[:j] + positions[j + 1 :]
-                a, b = _cofactor(table, j)
-                ka, kb = (a, rest), (b, rest)
-                fetch = self._letters[positions[j]] + ";"
-                if a == b:
-                    options.append((self.size(a, rest), (ka,)))
-                    continue
-                if b == _complement(a):
-                    options.append((self.size(a, rest) + 5, (ka, fetch + "+b&")))
-                if a == "0" * len(a):
-                    options.append((self.size(b, rest) + 3, (kb, fetch + "&")))
-                if b == "1" * len(b):
-                    options.append((self.size(a, rest) + 3, (ka, fetch + "|")))
-                options.append(
-                    (
-                        self.size(a, rest) + self.size(b, rest) + 6,
-                        (ka, fetch + "[%", kb, "]?"),
-                    )
-                )
-            parts = min(options, key=lambda option: option[0])[1]
-        return parts
+        """Split on the first input and derive the combine from the two halves."""
+        if table.count(table[0]) == len(table):
+            return (table[0],)
+        half = len(table) // 2
+        a, b = table[:half], table[half:]
+        rest = positions[1:]
+        ka, kb = (a, rest), (b, rest)
+        if a == b:
+            return (ka,)
+        fetch = self._letters[positions[0]] + ";"
+        invert = "1" + fetch + "-"
+        a_constant = a.count(a[0]) == half
+        b_constant = b.count(b[0]) == half
+        if a_constant and b_constant:
+            return (fetch if a[0] == "0" else invert,)
+        if a_constant:
+            return (kb, fetch + "&" if a[0] == "0" else invert + "|")
+        if b_constant:
+            return (ka, fetch + "|" if b[0] == "1" else invert + "&")
+        if b == _complement(a):
+            return (ka, fetch + "+b&")
+        return (ka, fetch + "[%", kb, "]?")
 
     def text(
         self, table: str, positions: tuple[int, ...], *, budget: int | None = None

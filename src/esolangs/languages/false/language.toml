@@ -2,7 +2,7 @@
 # only their own section and skip this file when it is absent.
 
 [construction_boundaries]
-split_search_row_cutoff = { tables = [{ arity = 9, rule = "dense" }, { arity = 10, rule = "dense" }], benchmark = false, test = "test_boolean_false.py::test_false_stores_repeated_halves_and_skips_equal_ones" }
+ordered_formula = { tables = [{ arity = 9, rule = "dense" }, { arity = 10, rule = "dense" }], benchmark = false, test = "test_boolean_false.py::test_false_stores_repeated_halves_and_skips_equal_ones" }
 
 [deep_arities]
 workspace = 9
@@ -12,16 +12,16 @@ backlinks = 90
 
 [proof_status]
 labels = ["tree"]
-qualification = "shared trees/formulas or a conditional packet tree; signed 32-bit multiplication extracts the answer"
+qualification = "shared trees and formulas split in input order; a conditional packet tree uses a signed 32-bit multiplication to extract the answer"
 
 [generator_sizes]
-"00000001" = { commands_by_row = { "0" = 26, "1" = 26, "2" = 26, "3" = 26, "4" = 26, "5" = 26, "6" = 26, "7" = 26 }, source_units = 26 }
-"00001100" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 22, "5" = 22, "6" = 22, "7" = 22 }, source_units = 22 }
-"00110110" = { commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 28 }
-"0110" = { commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20 }, source_units = 20 }
-"01101001" = { commands_by_row = { "0" = 30, "1" = 30, "2" = 30, "3" = 30, "4" = 30, "5" = 30, "6" = 30, "7" = 30 }, source_units = 30 }
-"0110100110010110" = { commands_by_row = { "0" = 40, "1" = 40, "2" = 40, "3" = 40, "4" = 40, "5" = 40, "6" = 40, "7" = 40, "8" = 40, "9" = 40, "10" = 40, "11" = 40, "12" = 40, "13" = 40, "14" = 40, "15" = 40 }, source_units = 40 }
-"1101001101101101" = { commands_by_row = { "0" = 40, "1" = 52, "2" = 40, "3" = 52, "4" = 40, "5" = 52, "6" = 40, "7" = 52, "8" = 40, "9" = 60, "10" = 40, "11" = 60, "12" = 40, "13" = 60, "14" = 40, "15" = 60 }, source_units = 62 }
+"00000001" = { commands_by_row = { "0" = 24, "1" = 24, "2" = 24, "3" = 24, "4" = 24, "5" = 24, "6" = 24, "7" = 24 }, source_units = 24 }
+"00001100" = { commands_by_row = { "0" = 20, "1" = 20, "2" = 20, "3" = 20, "4" = 20, "5" = 20, "6" = 20, "7" = 20 }, source_units = 20 }
+"00110110" = { commands_by_row = { "0" = 22, "1" = 22, "2" = 22, "3" = 22, "4" = 30, "5" = 30, "6" = 30, "7" = 30 }, source_units = 31 }
+"0110" = { commands_by_row = { "0" = 18, "1" = 18, "2" = 18, "3" = 18 }, source_units = 18 }
+"01101001" = { commands_by_row = { "0" = 28, "1" = 28, "2" = 28, "3" = 28, "4" = 28, "5" = 28, "6" = 28, "7" = 28 }, source_units = 28 }
+"0110100110010110" = { commands_by_row = { "0" = 38, "1" = 38, "2" = 38, "3" = 38, "4" = 38, "5" = 38, "6" = 38, "7" = 38, "8" = 38, "9" = 38, "10" = 38, "11" = 38, "12" = 38, "13" = 38, "14" = 38, "15" = 38 }, source_units = 38 }
+"1101001101101101" = { commands_by_row = { "0" = 36, "1" = 36, "2" = 36, "3" = 36, "4" = 39, "5" = 39, "6" = 39, "7" = 39, "8" = 48, "9" = 48, "10" = 48, "11" = 48, "12" = 59, "13" = 59, "14" = 59, "15" = 59 }, source_units = 62 }
 "11111110" = { commands_by_row = { "0" = 27, "1" = 27, "2" = 27, "3" = 27, "4" = 27, "5" = 27, "6" = 27, "7" = 27 }, source_units = 27 }
 
 [ablations]
@@ -61,7 +61,7 @@ version = 1
 [[evidence.anchors]]
 arity = 10
 rule = "parity"
-size = 100
+size = 98
 unit = "chars"
 scale = 1
 construction = "esolangs.languages.false.generator:false_request"
@@ -122,13 +122,14 @@ tests = [
     "src/esolangs/languages/false/tests/test_false.py::test_advancing_a_finished_state_is_a_no_op",
 ]
 
-[ablations.redundant_preconditions_20261104]
-kind = "measurement"
-audited = 2026-11-05
+[ablations.ordered_formula_20261127]
+kind = "replay"
+baseline_revision = "e5932ef60e78a8a86d6c1928512607ffe24bd760"
+audited = 2026-11-27
 witness = { arity = 3, rule = "random", seed = 1847 }
-source = { unit = "chars", value = 22 }
+source = { unit = "chars", before = 22, after = 20 }
 scale = 1
 budget = 10
 band = "fast"
 construction = "esolangs.languages.false.generator:false_request"
-notes = "Rebased construction smoke measurement only; original repair evidence is scoped in its commit: Each recursive expression state has2**len(positions) rows, so the <=6-variable disjunct is already covered by the <=512-row guard. Remove only that redundant disjunct; split choices and emitted programs are unchanged."
+notes = "Split formulas in input order and derive the combine from the two halves. The direct formula already produces a bit. All arity-3 tables total 7523 to 7686 characters and 56722 to 55792 commands. The 64 random tables at each of arities 7 and 8 keep their source and sampled command totals."

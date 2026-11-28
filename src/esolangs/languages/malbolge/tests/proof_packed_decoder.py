@@ -141,6 +141,7 @@ def main() -> int:
                 packed._group_choices(lookup, perm, group)
             ):
                 combined[pattern] |= polarities << (8 * i)
+    assert packed._selector_masks() == tuple(map(tuple, choices))
 
     # The frontier keeps distinct intersections. An empty intersection witnesses
     # an uncovered assignment even when two requested prefixes share a mask.

@@ -25,11 +25,15 @@ archived in Git at `9c4d0b392:docs/proofs/`. Executable proof tests remain.
   The 131,072 (word, slot) pairs are distinct across 44,608 words.
   Each column marker maps the eight legal source bytes to eight output
   triples. Words shared with navigation have fewer legal bytes. The
-  generator intersects seven masks to choose one lookup, printer order
-  and polarity for their requested outputs. The
+  generator derives one compatibility mask per pattern in each of seven
+  answer groups. It intersects the requested masks and decodes the first set
+  bit into the lookup, printer order and polarity. Inverse encodings map
+  requested answers directly to legal operands. The
   [executable certificate](../../src/esolangs/languages/malbolge/tests/proof_packed_decoder.py)
   reconstructs the masks from the instruction bytes and checks all
-  8,388,608 assignments. Words 39,391 and 39,394 are chosen jointly.
+  8,388,608 assignments. Words 39,391 and 39,394 use the joint rule
+  that a left `<` permits any right operand, while other left operands
+  require a right operand other than `j` or `v`.
   Word 59,036 excludes `j` because pairing it with byte 67 at 29,530
   halts without output on row 89,100. The packed source occupies all
   59,049 cells. The [native verifier](../../src/esolangs/languages/malbolge/tests/verify_decoder.py)
@@ -409,7 +413,7 @@ for the level counts. `tests/proofs/test_execution_formulas.py` and
 | EGL | finite lookup | a boustrophedon table has three rows per block; binary weights walk horizontally or down whole blocks; symmetric tables retain the count reader | linear: worst 3T+25n+digits(T)+8 (n=1..3), 2T+2^⌊(n+3)/2⌋+5·2^(n-⌊(n+3)/2⌋)+25n+digits(2^⌊(n+3)/2⌋)+digits(3·2^(n-⌊(n+3)/2⌋))+1 (n≥4) characters: T-1 painted ones | proved | linear: worst (1+R)*(3T+85n+5+min(1,max(0,n-3))*(-T+2^min(n,floor((n+3)/2))+5T/2^min(n,floor((n+3)/2))-6))+R commands. R marks wrapping with additional no-ops | linear: worst (1-G)*(3T+2n+10+bl(L-digits(T)-3)+bl(L-digits(T)-9))+G*(W*H+7+2max(1,bl(W-1))+2max(1,bl(H-1))+2max(1,bl(B)))+2bl(n) bits. G marks the grid route, W and H are its dimensions, and B counts body characters |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row | linear: worst 2T+7n (n=4..5), 7T/4+9n+1 (n≥6) characters, unwrapped | proved | linear: worst L+1 commands past n=3, unwrapped source with all-one setters | linear: worst 8L+T+n+1+bl(L) (n=4..5), 8L+T+2n+1+bl(L) (n≥6) bits, frame and staged Boolean cells |
 | Fackward | tree | a level is a block whose quiet pass reads the bit; `/ c 49` makes it 0 or 1, that many `~` swap the two child blocks, `!` drops one and `)` runs the other; equal halves fold | linear: worst 43T/2 - 29 characters past n = 1: block per node | proved | poly n: worst 38n - 26 steps: 38 a level, the last printing what it reads | linear: worst 159T - 225 + bl(n) bits past n = 1: the two stacks hold the program's tokens |
-| FALSE | tree | shared trees/formulas or a conditional packet tree; signed 32-bit multiplication extracts the answer | linear: at most 9T/2+5n-7 characters past n = 3: to n = 15 | proved | linear: at most 9T/2 + 5n - 7 commands past n = 3: formula budget or diagram path | poly n: at most A*(34n+67+2bl(L)*(n+2))+B*(5n+6+2bl(L)*(S+2n+2))+C*(n+1+2bl(L)*(S+n+2))+(1-A-B-C)*(6n+1+2bl(L))+bl(n) bits. A/B lookup routes, C cached lambda, S non-input stores |
+| FALSE | tree | shared trees and formulas split in input order; a conditional packet tree uses a signed 32-bit multiplication to extract the answer | linear: at most 9T/2+5n-7 characters past n = 3: to n = 15 | proved | linear: at most 9T/2 + 5n - 7 commands past n = 3: formula budget or diagram path | poly n: at most A*(34n+67+2bl(L)*(n+2))+B*(5n+6+2bl(L)*(S+2n+2))+C*(n+1+2bl(L)*(S+n+2))+(1-A-B-C)*(6n+1+2bl(L))+bl(n) bits. A/B lookup routes, C cached lambda, S non-input stores |
 | Fargo | tree | finite folded layout | linear: at most 15T/2-1+weighted_bit_sum(n-1) (n≥2) characters: inline Davio form | proved | linear: at most 9T - 5 commands: each expanded token runs once, plus 2 per executed shared-name reference | linear: at most 18D + (1-D)*(16(L-3)+bl(L)+11) bits: D marks the false literal |
 | Fish | finite lookup | the inputs form a Horner index and g fetches its table bit; six-bit packing is used only while float coordinates remain exact | linear: worst 18n+18 (n=2), 15⌈(4n+43)/15⌉+6+⌈T/6⌉ (n=3..45), 2^bl(4n+39+4bl(4n+43))+6+⌈T/6⌉ (n=46..55), 2T (n≥56) cells | proved | poly n: worst 9n+9 (n=2), max(6n+9,4n+43) (n=3..55), 9n+9 (n≥56) commands | poly n: at most bl(9n+8)+n+13+bl(n) (n=2), bl(4n+42)+bl(n)+1+max(2max(7,n)+3,bl(15⌈(4n+43)/15⌉)+71) (n=3..45), bl(4n+38+4bl(4n+39+4bl(4n+43)))+bl(n)+1+max(2max(7,n)+3,bl(4n+39+4bl(4n+43))+72) (n≥46) bits |
 | Flipscript | tree | the quasi-reduced decision diagram, root level first; a node reads one input line and jumps X*A+B lines down to its zero or one child; a constant child lands in a run of reads ending in its output | linear: at most 17T + 64 characters | proved | linear: worst 2n + 3 commands | poly n: at most 2n + 100 bits |
