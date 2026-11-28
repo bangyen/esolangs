@@ -12,7 +12,7 @@ from .isa import _ACTIVE, _WORDS, _char_for
 
 _MARKERS = 57592
 _BANK = 729
-_SHADOW_WALK_OFFSETS = (296, 314, 377, 404, 647, 648)
+_SHADOW_WALK_OFFSETS = (160, 296, 314, 377, 404, 647, 648, 727)
 _PLACES = (1, 9, 81)
 _HOLES = (7, 8, 3)
 _SCALES = (3, 1, 1)

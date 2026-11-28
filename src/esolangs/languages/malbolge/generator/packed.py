@@ -204,6 +204,56 @@ def _write_shared_routes(source: bytearray) -> None:
             source[address] = _char_for(op, address)
 
 
+def _write_rotation_routes(source: bytearray) -> None:
+    """Emit repeated rotations and their data-pointer returns."""
+
+    def walk(start: int, target: int) -> str:
+        return "o" * (target - start)
+
+    # Rotate D133 and D126, then advance back to D133.
+    pair = "*j" + walk(64, 65) + "j" + walk(47, 48) + "j*"
+    rotate_pair = pair + walk(127, 133)
+    # D93 and D113 send the data pointer back to the selector at D88.
+    selector = walk(89, 93) + "jj*"
+    # The D38 return brings D back to the column word at D36.
+    column = "*" + (walk(37, 38) + "j" + walk(35, 36) + "*") * 4
+    # Rotate D167 and reload all-ones from D128 before writing D167.
+    fold = "p" + walk(150, 167) + "*jj" + walk(126, 128) + "*" + walk(129, 167) + "pjj"
+    # Update the readout, write both return hubs, and reload all-twos.
+    readout = (
+        "p"
+        + walk(143, 145)
+        + "jj"
+        + walk(41551, 41552)
+        + "jpj"
+        + walk(45925, 45926)
+        + "jj*j"
+        + walk(88, 89)
+        + "j"
+        + walk(54673, 54678)
+        + "j"
+        + walk(70, 71)
+        + "pj"
+    )
+    # After rotating D209, enter the long hub and return through D72.
+    suffix = walk(186, 209) + "*jj" + walk(54673, 54674) + "jjj"
+    for pc, ops in (
+        (1959, rotate_pair * 2 + pair),
+        (11681, selector * 4),
+        (12156, fold),
+        (25443, selector * 3),
+        (31919, fold),
+        (38016, readout),
+        (38122, readout),
+        (44483, column),
+        (44807, suffix),
+        (44898, suffix),
+        (44989, suffix),
+    ):
+        for address, op in enumerate(ops, pc):
+            source[address] = _char_for(op, address)
+
+
 def _write_reset_seed(source: bytearray) -> None:
     """Build the reset constants while C and D walk together."""
     pc = 0
@@ -256,6 +306,7 @@ def _decoder() -> _Decoder:
     _write_reset_seed(source)
     _write_hub_fills(source)
     _write_shared_routes(source)
+    _write_rotation_routes(source)
     _write_guard_approaches(source)
     _write_guard_returns(source)
     # The short seed at the first entry follows its six-cell approach.
