@@ -44,6 +44,7 @@ construction = "esolangs.languages.gridscript.generator:gridscript_request"
 [resource_evidence]
 version = 2
 construction = "esolangs.languages.gridscript.generator:gridscript_request"
+witnesses = "esolangs.languages.gridscript.tests.resource_witnesses:resource_tables"
 
 [resource_evidence.execution]
 # Two tracer moves surround the commands. A packed lookup with m
@@ -66,20 +67,28 @@ unit = "commands"
 description = { growth = "linear", claim = "worst", template = "{claim} {formula} {unit} including both tracer moves" }
 
 [resource_evidence.workspace]
-# The buffer, 8 bits a one-bit chunk at worst; pending and held node sets
-# over at most 4n + 9 nodes; the index in the dataspace; tracer floats,
-# three variables and the input cursor. Parity has at most 2n+5 nodes
-# and no buffer. Its accumulator and saved sum have magnitude at most n+1.
-# The wide tree has up to 7T+n+2 pending nodes and n+2 small variables.
+# The tracer frame peaks with both inside and pending holding IDs
+# 1..N. The fixed frame costs 133 bits. In a chunk of w rows,
+# variable c can retain w bits and a one bit, or c loses a bit to
+# a's final divide by two. The names cost 16. The signed remainder
+# intermediate costs up to w+1 bits, or the index needs n-4.
+# One near-full table keeps every packed token five digits.
+# A projection's lost node IDs or chunk tokens pay for its extra z.
+# The wide tree buffers n+1 bits in postorder, writes a and b
+# (19 bits with names) and uses three bits for a nonzero data cell.
+# Losing one input name pays for z and reduces the tree buffer.
 cases = [
-    { through = 31, expression = "8T + 2(4n+9)bl(4n+9) + 2bl(2n) + n + 400" },
-    { expression = "2(7T+n+5)bl(7T+n+5)+8T+8n(bl(n)+4)+1024" },
+    { through = 1, expression = "184" },
+    { through = 4, expression = "153+2bit_sum(4n+6)+2T+bl(2n)" },
+    { through = 35, expression = "168+max(17,n-4)+2bit_sum(3n+9)+5T/2+bl(2n)" },
+    { expression = "156+n+2bit_sum(7T+n-3)+V+bl(2n)" },
 ]
-exact = false
-arities = [1, 2, 3, 6]
+source_terms = { names = ["V"], provider = "esolangs.languages.gridscript.proof_formulas:workspace_terms" }
+exact = true
+arities = [1, 2, 3, 4, 5, 6, 7, 8]
 first = 1
 unit = "bits"
-description = { growth = "T log T", claim = "at most", template = "{claim} {formula}" }
+description = { growth = "T log T", claim = "worst", template = "{claim} {formula} {unit}, with V pricing the wide tree's input variables" }
 
 [resource_evidence.scaling]
 # Widest chunks, 7 characters a command line and a 35-character header.
